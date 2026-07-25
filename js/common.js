@@ -1497,9 +1497,11 @@ function mapSupabaseSelfReceived(rows) {
 // already been awarded the Heroic version of that exact item (see
 // priority_order_stale_after_heroic in
 // 20260713150512_priority_order_fairness_warnings.sql). Not season-filtered
-// for the same reason fetchSupabasePriorityOrder() isn't -- resolves to raw
-// rows, or [] on any failure so the nav badge just shows nothing rather than
-// erroring.
+// here for the same reason fetchSupabasePriorityOrder() isn't -- this
+// promise fires before DATA.seasonName is known, so the season filter is
+// applied downstream in applyHeavyData() once DATA is populated. Resolves
+// to raw rows, or [] on any failure so the nav badge just shows nothing
+// rather than erroring.
 function fetchSupabasePriorityStaleAfterHeroic() {
   if (!supabaseClient) return Promise.resolve([]);
   return supabaseClient
@@ -1525,14 +1527,15 @@ function fetchSupabasePriorityStaleAfterHeroic() {
 // warnings.sql). Fetched with item_name/boss already joined so the Priority
 // List conflict banner can name the actual items/players involved instead of
 // just a count from priority_order_same_boss_conflicts /
-// priority_order_first_prio_counts. Not season-filtered for the same reason
-// fetchSupabasePriorityStaleAfterHeroic() isn't -- resolves to raw rows, or
-// [] on any failure so the badge just shows nothing rather than erroring.
+// priority_order_first_prio_counts. Not season-filtered here for the same
+// reason fetchSupabasePriorityStaleAfterHeroic() isn't -- filtered downstream
+// in applyHeavyData() instead. Resolves to raw rows, or [] on any failure so
+// the badge just shows nothing rather than erroring.
 function fetchSupabasePriorityLiveFirstPrios() {
   if (!supabaseClient) return Promise.resolve([]);
   return supabaseClient
     .from('priority_order_live_first_prios')
-    .select('player_id, name_realm, item_id, item_name, track, boss')
+    .select('season, player_id, name_realm, item_id, item_name, track, boss')
     .eq('team_id', _teamCfg.supabaseTeamId)
     .then(function (result) {
       if (result.error) {
@@ -2307,12 +2310,15 @@ function loadData(onCoreReady, onHeavyReady) {
       DATA.recentAttendanceTrend = mappedAttendance ? mapSupabaseAttendanceTrend(mappedAttendance.players) : {};
       var mappedBis = bisRows ? mapSupabaseBisItems(bisRows) : null;
       DATA.bisList = mappedBis || {};
-      var mappedPriority = priorityRows
-        ? mapSupabasePriorityOrder(priorityRows, seasonCodeForDisplay(DATA.seasonName || ''))
-        : null;
+      var currentSeasonCode = seasonCodeForDisplay(DATA.seasonName || '');
+      var mappedPriority = priorityRows ? mapSupabasePriorityOrder(priorityRows, currentSeasonCode) : null;
       DATA.priorityOrder = mappedPriority || {};
-      DATA.priorityStaleAfterHeroic = priorityStaleAfterHeroicRows || [];
-      DATA.priorityLiveFirstPrios = priorityLiveFirstPriosRows || [];
+      DATA.priorityStaleAfterHeroic = (priorityStaleAfterHeroicRows || []).filter(function (r) {
+        return r.season === currentSeasonCode;
+      });
+      DATA.priorityLiveFirstPrios = (priorityLiveFirstPriosRows || []).filter(function (r) {
+        return r.season === currentSeasonCode;
+      });
       var itemMaps = buildItemMaps(itemRows);
       DATA.itemSlots = itemMaps.itemSlots;
       DATA.itemArmorTypes = itemMaps.itemArmorTypes;

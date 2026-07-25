@@ -439,8 +439,13 @@ function renderWishlistIncompleteBanner() {
 function refreshPriorityStaleBadge() {
   Promise.all([fetchSupabasePriorityStaleAfterHeroic(), fetchSupabasePriorityLiveFirstPrios()]).then(
     function (results) {
-      DATA.priorityStaleAfterHeroic = results[0];
-      DATA.priorityLiveFirstPrios = results[1];
+      var seasonCode = seasonCodeForDisplay(DATA.seasonName || '');
+      DATA.priorityStaleAfterHeroic = (results[0] || []).filter(function (r) {
+        return r.season === seasonCode;
+      });
+      DATA.priorityLiveFirstPrios = (results[1] || []).filter(function (r) {
+        return r.season === seasonCode;
+      });
       updatePriorityBadges();
     }
   );
