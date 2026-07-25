@@ -201,4 +201,18 @@ describe('wishlistCompleteness', () => {
     const result = sandbox.wishlistCompleteness();
     expect(result.missingRows).not.toContain('Finger 1');
   });
+
+  it('an officer bis_items pick from a different season view does not count toward completeness', () => {
+    const itemSlots = { Helm: 'Head', Necklace: 'Neck' };
+    const itemIds = { Helm: 1, Necklace: 2 };
+    const prefs = [];
+    const bisList = { Kat: [{ item: 'Helm', dbSlot: 'Head' }] };
+    const sandbox = makeSandbox(itemSlots, itemIds, prefs, bisList);
+    sandbox.DATA.seasonView = 'S2';
+    sandbox.DATA.itemZones = { Helm: 1 };
+    sandbox.DATA.raidZones = [{ wclZoneId: '1', season: 'S1' }];
+
+    const result = sandbox.wishlistCompleteness();
+    expect(result.missingRows).toContain('Head');
+  });
 });

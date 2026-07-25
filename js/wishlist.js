@@ -821,6 +821,11 @@ function wishlistCompleteness() {
     typeof getBisItems === 'function' && _wishlistPlayerFirstName
       ? getBisItems(_wishlistPlayerNameRealm || _wishlistPlayerFirstName)
       : [];
+  if (typeof isItemInSeasonScope === 'function') {
+    officerBisItems = officerBisItems.filter(function (entry) {
+      return isItemInSeasonScope(entry.item);
+    });
+  }
   var officerBuckets = wishlistOfficerRowBuckets(officerBisItems);
   if (!taggedRows.Weapon && officerBuckets.Weapon && itemSlots[officerBuckets.Weapon.item] === 'One-Hand') {
     offHandRequired = true;
