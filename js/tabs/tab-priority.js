@@ -439,7 +439,7 @@ function renderWishlistIncompleteBanner() {
 function refreshPriorityStaleBadge() {
   Promise.all([fetchSupabasePriorityStaleAfterHeroic(), fetchSupabasePriorityLiveFirstPrios()]).then(
     function (results) {
-      var seasonCode = seasonCodeForDisplay(DATA.seasonName || '');
+      var seasonCode = resolveSeasonViewCode();
       DATA.priorityStaleAfterHeroic = (results[0] || []).filter(function (r) {
         return r.season === seasonCode;
       });
@@ -894,7 +894,7 @@ function prioEditFetchFairnessWarnings() {
   if (!supabaseClient) return;
   var itemId = (DATA.itemIds || {})[PRIO_EDIT.item];
   if (!itemId) return;
-  var season = window.DATA && DATA.seasonName ? seasonCodeForDisplay(DATA.seasonName.trim()) : '';
+  var season = resolveSeasonViewCode();
   var track = PRIO_EDIT.difficulty === 'Mythic' ? 'Myth' : 'Hero';
   var boss = (DATA.itemBosses || {})[PRIO_EDIT.item] || '';
 
@@ -1214,7 +1214,7 @@ function prioEditGenerate() {
 
   var itemId = (DATA.itemIds || {})[PRIO_EDIT.item];
   var track = PRIO_EDIT.difficulty === 'Mythic' ? 'Myth' : 'Hero';
-  var season = window.DATA && DATA.seasonName ? seasonCodeForDisplay(DATA.seasonName.trim()) : '';
+  var season = resolveSeasonViewCode();
 
   if (!itemId) {
     btn.disabled = false;
@@ -1305,7 +1305,7 @@ function prioEditSave() {
   }
 
   var track = PRIO_EDIT.difficulty === 'Mythic' ? 'Myth' : 'Hero';
-  var season = window.DATA && DATA.seasonName ? seasonCodeForDisplay(DATA.seasonName.trim()) : '';
+  var season = resolveSeasonViewCode();
 
   saveBtn.disabled = true;
   saveBtn.textContent = 'Saving...';

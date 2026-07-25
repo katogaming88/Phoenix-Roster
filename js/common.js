@@ -2310,7 +2310,7 @@ function loadData(onCoreReady, onHeavyReady) {
       DATA.recentAttendanceTrend = mappedAttendance ? mapSupabaseAttendanceTrend(mappedAttendance.players) : {};
       var mappedBis = bisRows ? mapSupabaseBisItems(bisRows) : null;
       DATA.bisList = mappedBis || {};
-      var currentSeasonCode = seasonCodeForDisplay(DATA.seasonName || '');
+      var currentSeasonCode = resolveSeasonViewCode();
       var mappedPriority = priorityRows ? mapSupabasePriorityOrder(priorityRows, currentSeasonCode) : null;
       DATA.priorityOrder = mappedPriority || {};
       DATA.priorityStaleAfterHeroic = (priorityStaleAfterHeroicRows || []).filter(function (r) {
@@ -2356,6 +2356,18 @@ function loadData(onCoreReady, onHeavyReady) {
 // and gets wiped to [] by every archive_current_season() call (#537).
 function resolveSeasonView() {
   return (DATA && (DATA.seasonView || DATA.seasonName)) || '';
+}
+
+// The season code to tag/query priority_order (and its fairness-warning
+// views) with: DATA.seasonView when explicitly set -- already a raid_zones-
+// style code, see populateSeasonViewOptions() -- else seasonCodeForDisplay()
+// of the live DATA.seasonName. Deliberately not resolveSeasonView() itself:
+// that helper's raw seasonName fallback is left unconverted on purpose, so
+// isItemInSeasonScope()'s zone-id lookup fails open when seasonView is unset
+// (#549); priority_order.season always needs a real code, live season or not,
+// so a team without a seasonView override still gets one.
+function resolveSeasonViewCode() {
+  return (DATA && DATA.seasonView) || seasonCodeForDisplay((DATA && DATA.seasonName) || '');
 }
 
 // The set of raid zone IDs (#535, #549) the given season string covers, per
