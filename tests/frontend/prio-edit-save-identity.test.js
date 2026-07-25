@@ -46,6 +46,7 @@ function makeSandbox({ roster, ranked, itemIds }) {
     window: { DATA: { seasonName: 'Season 1' } },
     DATA: { seasonName: 'Season 1', itemIds, roster, itemSlots: {}, itemBosses: {} },
     seasonCodeForDisplay: (name) => (name === 'Season 1' ? 'S1' : name),
+    resolveSeasonViewCode: () => 'S1',
     normalise: (str) =>
       String(str || '')
         .normalize('NFD')
