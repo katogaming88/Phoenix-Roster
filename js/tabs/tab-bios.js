@@ -243,3 +243,228 @@ function saveBios() {
       if (status) status.textContent = err.message || 'Error saving.';
     });
 }
+
+// Guild officer bios (#577) -- a second, parallel officer editor for
+// guild-officer bio cards. Separate list from TEAM_OFFICER_BIOS above: team
+// officers only decide team-specific duties and aren't necessarily guild
+// officers, and most (not all) team officers happen to also hold a guild
+// officer rank. Same shape/round-trip as the Team section above, just a
+// distinct DOM/config namespace so the two never collide.
+
+var GUILD_OFFICER_BIOS = [];
+
+function buildGuildBioCards() {
+  GUILD_OFFICER_BIOS = JSON.parse(JSON.stringify((DATA && DATA.guildOfficerBios) || []));
+  populateGuildBioRosterPicker();
+  renderGuildBioCards();
+}
+
+function populateGuildBioRosterPicker() {
+  var sel = document.getElementById('guildBioRosterPicker');
+  if (!sel) return;
+  var roster = (DATA && DATA.roster) || [];
+  var sorted = roster.slice().sort(function (a, b) {
+    return (a.nick || a.firstName).localeCompare(b.nick || b.firstName);
+  });
+  sel.innerHTML = '<option value="">-- Not on roster --</option>';
+  for (var i = 0; i < sorted.length; i++) {
+    var p = sorted[i];
+    var opt = document.createElement('option');
+    opt.value = p.firstName;
+    opt.textContent = p.nick ? p.nick + ' (' + p.firstName + ')' : p.firstName;
+    sel.appendChild(opt);
+  }
+}
+
+function guildBioAdd() {
+  guildBioCollectFromDOM();
+  var pickerEl = document.getElementById('guildBioRosterPicker');
+  var pickedName = pickerEl ? pickerEl.value : '';
+  var player = null;
+  if (pickedName) {
+    var roster = (DATA && DATA.roster) || [];
+    for (var i = 0; i < roster.length; i++) {
+      if (roster[i].firstName === pickedName) {
+        player = roster[i];
+        break;
+      }
+    }
+  }
+  GUILD_OFFICER_BIOS.push({
+    name: player ? player.nick || player.firstName : '',
+    characterName: player ? player.firstName : '',
+    pronouns: '',
+    title: '',
+    classKey: player ? player.class || '' : '',
+    spec: player ? player.spec || '' : '',
+    bio: '',
+    imagePath: ''
+  });
+  if (pickerEl) pickerEl.value = '';
+  renderGuildBioCards();
+}
+
+function guildBioRemove(idx) {
+  guildBioCollectFromDOM();
+  GUILD_OFFICER_BIOS.splice(idx, 1);
+  renderGuildBioCards();
+}
+
+function guildBioMoveUp(idx) {
+  if (idx <= 0) return;
+  guildBioCollectFromDOM();
+  var entry = GUILD_OFFICER_BIOS.splice(idx, 1)[0];
+  GUILD_OFFICER_BIOS.splice(idx - 1, 0, entry);
+  renderGuildBioCards();
+}
+
+function guildBioMoveDown(idx) {
+  guildBioCollectFromDOM();
+  if (idx >= GUILD_OFFICER_BIOS.length - 1) return;
+  var entry = GUILD_OFFICER_BIOS.splice(idx, 1)[0];
+  GUILD_OFFICER_BIOS.splice(idx + 1, 0, entry);
+  renderGuildBioCards();
+}
+
+function guildBioCollectFromDOM() {
+  var wrap = document.getElementById('guildBioCards');
+  if (!wrap) return;
+  var blocks = wrap.querySelectorAll('.guild-bio-editor-block');
+  for (var i = 0; i < blocks.length; i++) {
+    if (!GUILD_OFFICER_BIOS[i]) continue;
+    var nameEl = blocks[i].querySelector('.guild-bio-name-input');
+    var charEl = blocks[i].querySelector('.guild-bio-charname-input');
+    var pronounsEl = blocks[i].querySelector('.guild-bio-pronouns-input');
+    var titleEl = blocks[i].querySelector('.guild-bio-title-input');
+    var classEl = blocks[i].querySelector('.guild-bio-class-select');
+    var specEl = blocks[i].querySelector('.guild-bio-spec-input');
+    var imgEl = blocks[i].querySelector('.guild-bio-image-input');
+    var bioEl = blocks[i].querySelector('.guild-bio-text-input');
+    if (nameEl) GUILD_OFFICER_BIOS[i].name = nameEl.value.trim();
+    if (charEl) GUILD_OFFICER_BIOS[i].characterName = charEl.value.trim();
+    if (pronounsEl) GUILD_OFFICER_BIOS[i].pronouns = pronounsEl.value.trim();
+    if (titleEl) GUILD_OFFICER_BIOS[i].title = titleEl.value.trim();
+    if (classEl) GUILD_OFFICER_BIOS[i].classKey = classEl.value;
+    if (specEl) GUILD_OFFICER_BIOS[i].spec = specEl.value.trim();
+    if (imgEl) GUILD_OFFICER_BIOS[i].imagePath = imgEl.value.trim();
+    if (bioEl) GUILD_OFFICER_BIOS[i].bio = bioEl.value.trim();
+  }
+}
+
+function renderGuildBioCards() {
+  var wrap = document.getElementById('guildBioCards');
+  if (!wrap) return;
+  if (!GUILD_OFFICER_BIOS.length) {
+    wrap.innerHTML =
+      '<p style="font-size:1rem;color:var(--text-muted);">No guild officer bios added yet. Click "+ Add Guild Officer" to start.</p>';
+    return;
+  }
+  var classKeys = Object.keys(CLASS_SPECS).sort();
+  var html = '';
+  for (var i = 0; i < GUILD_OFFICER_BIOS.length; i++) {
+    var entry = GUILD_OFFICER_BIOS[i];
+    html +=
+      '<div class="guild-bio-editor-block" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:1rem;">';
+    html += '<div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-bottom:0.5rem;">';
+    html +=
+      '<input class="guild-bio-name-input add-player-input" placeholder="Display name (e.g. Kat)" value="' +
+      _escAttr(entry.name) +
+      '" style="flex:1;min-width:140px;font-size:1.07rem;padding:0.35rem 0.6rem;">';
+    html +=
+      '<input class="guild-bio-charname-input add-player-input" placeholder="Character name (e.g. Katorri)" value="' +
+      _escAttr(entry.characterName || '') +
+      '" style="flex:1;min-width:140px;font-size:1rem;padding:0.35rem 0.6rem;">';
+    html +=
+      '<button class="btn btn-muted" style="padding:2px 10px;font-size:0.93rem;" onclick="guildBioMoveUp(' +
+      i +
+      ')"' +
+      (i === 0 ? ' disabled' : '') +
+      '>&uarr;</button>';
+    html +=
+      '<button class="btn btn-muted" style="padding:2px 10px;font-size:0.93rem;" onclick="guildBioMoveDown(' +
+      i +
+      ')"' +
+      (i === GUILD_OFFICER_BIOS.length - 1 ? ' disabled' : '') +
+      '>&darr;</button>';
+    html +=
+      '<button class="btn btn-danger" style="padding:2px 10px;font-size:0.93rem;" onclick="guildBioRemove(' +
+      i +
+      ')">Remove</button>';
+    html += '</div>';
+    html += '<div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-bottom:0.5rem;">';
+    html +=
+      '<input class="guild-bio-title-input add-player-input" placeholder="Title (e.g. Loot Officer)" value="' +
+      _escAttr(entry.title || '') +
+      '" style="flex:1;min-width:160px;font-size:1rem;padding:0.3rem 0.55rem;">';
+    html +=
+      '<input class="guild-bio-pronouns-input add-player-input" placeholder="Pronouns (e.g. she/her)" value="' +
+      _escAttr(entry.pronouns || '') +
+      '" style="min-width:130px;font-size:1rem;padding:0.3rem 0.55rem;">';
+    html +=
+      '<select class="guild-bio-class-select add-player-input" style="min-width:140px;font-size:1rem;padding:0.3rem 0.55rem;">';
+    html += '<option value=""' + (entry.classKey ? '' : ' selected') + '>-- Class --</option>';
+    for (var c = 0; c < classKeys.length; c++) {
+      html +=
+        '<option value="' +
+        classKeys[c] +
+        '"' +
+        (entry.classKey === classKeys[c] ? ' selected' : '') +
+        '>' +
+        classKeys[c] +
+        '</option>';
+    }
+    html += '</select>';
+    html +=
+      '<input class="guild-bio-spec-input add-player-input" placeholder="Spec (e.g. Protection)" value="' +
+      _escAttr(entry.spec || '') +
+      '" style="min-width:140px;font-size:1rem;padding:0.3rem 0.55rem;">';
+    html += '</div>';
+    html += '<div style="margin-bottom:0.5rem;">';
+    html +=
+      '<input class="guild-bio-image-input add-player-input" placeholder="assets/officers/kato.jpg" value="' +
+      _escAttr(entry.imagePath || '') +
+      '" style="width:100%;font-size:1rem;padding:0.3rem 0.55rem;">';
+    html +=
+      '<p style="font-size:0.91rem;color:var(--text-muted);margin:0.3rem 0 0;">To add a photo, commit an image to <code>assets/officers/</code> in the repo, then paste its relative path here. Leave blank to show initials instead.</p>';
+    html += '</div>';
+    html +=
+      '<textarea class="guild-bio-text-input add-player-notes" placeholder="Short bio..." rows="3" style="width:100%;font-size:1rem;padding:0.3rem 0.55rem;">' +
+      _esc(entry.bio || '') +
+      '</textarea>';
+    html += '</div>';
+  }
+  wrap.innerHTML = html;
+}
+
+function saveGuildBios() {
+  guildBioCollectFromDOM();
+  var btn = document.getElementById('guildBioSaveBtn');
+  var status = document.getElementById('guildBioStatus');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+  }
+
+  saveTeamSetting({ guildOfficerBios: GUILD_OFFICER_BIOS })
+    .then(function () {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Save Guild Bios';
+      }
+      DATA.guildOfficerBios = JSON.parse(JSON.stringify(GUILD_OFFICER_BIOS));
+      writeAuditLog('Guild Officer Bios Saved', null, null, GUILD_OFFICER_BIOS.length + ' bio(s)');
+      if (status) {
+        status.textContent = 'Saved!';
+        setTimeout(function () {
+          if (status) status.textContent = '';
+        }, 2500);
+      }
+    })
+    .catch(function (err) {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Save Guild Bios';
+      }
+      if (status) status.textContent = err.message || 'Error saving.';
+    });
+}

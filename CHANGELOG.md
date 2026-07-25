@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.9] - 2026-07-25
+
+### Frontend
+
+- Renamed the public "Bios" nav tab to "About", split into Team and Guild sub-tabs (#577). Team shows the existing officer bios unchanged; Guild is a new, separate officer-authored bio list (`team_settings.config.guildOfficerBios`) for the guild's own officers, since not every team officer holds a guild officer rank and vice versa. The pill sub-tab bar only appears once both sections have entries -- a team with only one populated section just sees that content directly. The "About" nav item itself still stays hidden until at least one of the two has an entry.
+
 ## [3.49.8] - 2026-07-25
 
 ### Frontend

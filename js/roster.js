@@ -8,7 +8,7 @@ function showView(name) {
     'rosterViewWrap',
     'streamersViewWrap',
     'historyViewWrap',
-    'bioViewWrap',
+    'aboutViewWrap',
     'newsViewWrap',
     'helpViewWrap'
   ].forEach(function (id) {
@@ -18,7 +18,7 @@ function showView(name) {
     document.getElementById('landingView').classList.add('active');
     updateSignupNavItem();
     updateHistoryNavItem();
-    updateBiosNavItem();
+    updateAboutNavItem();
   }
   if (name === 'profile') document.getElementById('profileViewWrap').classList.add('active');
   if (name === 'signup') document.getElementById('signupViewWrap').classList.add('active');
@@ -36,9 +36,11 @@ function showView(name) {
     document.getElementById('historyViewWrap').classList.add('active');
     buildSeasonRecap();
   }
-  if (name === 'bios') {
-    document.getElementById('bioViewWrap').classList.add('active');
+  if (name === 'about') {
+    document.getElementById('aboutViewWrap').classList.add('active');
     buildBios();
+    buildGuildBios();
+    showAboutSubTab('team');
   }
   if (name === 'news') {
     document.getElementById('newsViewWrap').classList.add('active');
@@ -46,7 +48,7 @@ function showView(name) {
     markNewsSeen();
   }
   if (name === 'help') document.getElementById('helpViewWrap').classList.add('active');
-  ['navHome', 'navSignup', 'navRoster', 'navStreamers', 'navHistory', 'navBios', 'navNews', 'navHelp'].forEach(
+  ['navHome', 'navSignup', 'navRoster', 'navStreamers', 'navHistory', 'navAbout', 'navNews', 'navHelp'].forEach(
     function (id) {
       var el = document.getElementById(id);
       if (el) el.classList.remove('active');
@@ -59,7 +61,7 @@ function showView(name) {
     roster: 'navRoster',
     streamers: 'navStreamers',
     history: 'navHistory',
-    bios: 'navBios',
+    about: 'navAbout',
     news: 'navNews',
     help: 'navHelp'
   }[name];
@@ -295,11 +297,38 @@ function updateHistoryNavItem() {
   if (el) el.style.display = DATA && DATA.seasonHistory && DATA.seasonHistory.length ? '' : 'none';
 }
 
-// Hidden until this team has added at least one team officer bio (#477,
-// second slice) -- same "nothing to show yet" reasoning as the History tab.
-function updateBiosNavItem() {
-  var el = document.getElementById('navBios');
-  if (el) el.style.display = DATA && DATA.teamOfficerBios && DATA.teamOfficerBios.length ? '' : 'none';
+// Hidden until this team has added at least one team or guild officer bio
+// (#477, #577) -- same "nothing to show yet" reasoning as the History tab.
+function updateAboutNavItem() {
+  var el = document.getElementById('navAbout');
+  var hasTeam = !!(DATA && DATA.teamOfficerBios && DATA.teamOfficerBios.length);
+  var hasGuild = !!(DATA && DATA.guildOfficerBios && DATA.guildOfficerBios.length);
+  if (el) el.style.display = hasTeam || hasGuild ? '' : 'none';
+}
+
+// Which of the About tab's Team/Guild sub-tabs is showing. Same "collapse to
+// a single section with no pill bar" rule as showRosterSubTab() when only
+// one side has content -- a team with no Guild bios yet shouldn't see a
+// pointless one-button switcher.
+var _aboutSubTab = 'team';
+
+function showAboutSubTab(tab) {
+  var hasTeam = !!(DATA && DATA.teamOfficerBios && DATA.teamOfficerBios.length);
+  var hasGuild = !!(DATA && DATA.guildOfficerBios && DATA.guildOfficerBios.length);
+  if (!hasTeam && hasGuild) tab = 'guild';
+  _aboutSubTab = hasGuild && tab === 'guild' ? 'guild' : 'team';
+
+  var subNav = document.getElementById('aboutSubNav');
+  var tabTeamBtn = document.getElementById('aboutSubTabTeam');
+  var tabGuildBtn = document.getElementById('aboutSubTabGuild');
+  var teamEl = document.getElementById('aboutTeamSection');
+  var guildEl = document.getElementById('aboutGuildSection');
+
+  if (subNav) subNav.style.display = hasTeam && hasGuild ? 'flex' : 'none';
+  if (tabTeamBtn) tabTeamBtn.classList.toggle('active', _aboutSubTab === 'team');
+  if (tabGuildBtn) tabGuildBtn.classList.toggle('active', _aboutSubTab === 'guild');
+  if (teamEl) teamEl.style.display = hasTeam && _aboutSubTab === 'team' ? '' : 'none';
+  if (guildEl) guildEl.style.display = hasGuild && _aboutSubTab === 'guild' ? '' : 'none';
 }
 
 document.getElementById('playerSelect').addEventListener('change', function (e) {
@@ -538,6 +567,53 @@ function buildSeasonRecap() {
 function buildBios() {
   var bios = (DATA && DATA.teamOfficerBios) || [];
   var el = document.getElementById('bioView');
+  if (!el || !bios.length) return;
+
+  var html = '<div class="bio-wrap">';
+  for (var i = 0; i < bios.length; i++) {
+    var entry = bios[i];
+    var displayName = entry.name || 'Unnamed';
+    html += '<div class="bio-card">';
+    if (entry.imagePath) {
+      html += '<img class="bio-photo" src="' + _escAttr(entry.imagePath) + '" alt="">';
+    } else {
+      html += '<div class="bio-photo bio-photo-fallback">' + _esc(displayName.slice(0, 2).toUpperCase()) + '</div>';
+    }
+    html +=
+      '<div class="bio-name">' +
+      _esc(displayName) +
+      (entry.pronouns ? ' <span class="bio-pronouns">(' + _esc(entry.pronouns) + ')</span>' : '') +
+      '</div>';
+    if (entry.characterName) {
+      html += '<div class="bio-charname">' + _esc(entry.characterName) + '</div>';
+    }
+    if (entry.title) {
+      html += '<div class="bio-title">' + _esc(entry.title) + '</div>';
+    }
+    if (entry.classKey) {
+      html +=
+        '<span class="badge badge-class" style="' +
+        classBadgeStyle(entry.classKey) +
+        '">' +
+        _esc(entry.spec || entry.classKey) +
+        '</span>';
+    }
+    if (entry.bio) {
+      html += '<div class="bio-text">' + _esc(entry.bio) + '</div>';
+    }
+    html += '</div>';
+  }
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+// Public About tab's Guild sub-tab (#577) -- guild officer bio cards, same
+// shape/editor pattern as buildBios() above but a separate list
+// (team_settings.config.guildOfficerBios) since guild officers aren't
+// necessarily this team's own officers.
+function buildGuildBios() {
+  var bios = (DATA && DATA.guildOfficerBios) || [];
+  var el = document.getElementById('guildBioView');
   if (!el || !bios.length) return;
 
   var html = '<div class="bio-wrap">';

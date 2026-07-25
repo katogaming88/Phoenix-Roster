@@ -176,6 +176,11 @@ a.prog-boss-pulls:hover { color:var(--gold); text-decoration:underline; }
 .roster-sub-tab { font-family:'Rajdhani',sans-serif; font-size:0.95rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; padding:0.5rem 0; background:transparent; border:none; border-bottom:2px solid transparent; color:var(--text-muted); cursor:pointer; }
 .roster-sub-tab:hover { color:var(--text); }
 .roster-sub-tab.active { color:var(--gold-light); border-bottom-color:var(--gold); }
+
+.about-sub-nav { display:flex; gap:1.25rem; margin-bottom:1rem; border-bottom:1px solid var(--border); }
+.about-sub-tab { font-family:'Rajdhani',sans-serif; font-size:0.95rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; padding:0.5rem 0; background:transparent; border:none; border-bottom:2px solid transparent; color:var(--text-muted); cursor:pointer; }
+.about-sub-tab:hover { color:var(--text); }
+.about-sub-tab.active { color:var(--gold-light); border-bottom-color:var(--gold); }
 .pub-loot-title { font-size:0.91rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--text-muted); font-weight:600; margin-bottom:0.5rem; padding-bottom:0.4rem; border-bottom:1px solid var(--border-mid); }
 .pub-loot-search { margin-bottom:0.6rem; }
 .pub-loot-empty { color:var(--text-muted); font-size:1rem; padding:0.5rem 0; }
