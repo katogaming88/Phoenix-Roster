@@ -163,6 +163,7 @@ describe('applyTeamSettingsToData', () => {
       features: {},
       externalLinks: {},
       teamOfficerBios: [],
+      guildOfficerBios: [],
       wishlistStatusLabels: {}
     });
   });

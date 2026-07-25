@@ -66,7 +66,10 @@ function switchTab(name) {
     buildReportsTab();
   }
   if (name === 'season') buildSeasonTab();
-  if (name === 'bios') buildBioCards();
+  if (name === 'bios') {
+    buildBioCards();
+    buildGuildBioCards();
+  }
   if (name === 'admin') buildAdminTab();
 }
 
