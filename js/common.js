@@ -1266,10 +1266,10 @@ function fetchSupabaseBisItems() {
  * bare-first-name caller). Carries obtained/playerId/itemId so the BiS Lists
  * editor (tab-bis.js) can write back without a second lookup.
  * @param {any[]} rows - bis_items rows with embedded items and players
- * @returns {Object<string, {item: string, slot: string, dbSlot: string|null, obtained: boolean, playerId: number, itemId: number}[]>}
+ * @returns {Object<string, {item: string, slot: string, dbSlot: string|null, obtained: boolean, playerId: number, itemId: number, season: string|null}[]>}
  */
 function mapSupabaseBisItems(rows) {
-  /** @type {Object<string, {item: string, slot: string, dbSlot: string|null, obtained: boolean, playerId: number, itemId: number}[]>} */
+  /** @type {Object<string, {item: string, slot: string, dbSlot: string|null, obtained: boolean, playerId: number, itemId: number, season: string|null}[]>} */
   var map = {};
   (rows || []).forEach(function (row) {
     var players = row.players || {};
