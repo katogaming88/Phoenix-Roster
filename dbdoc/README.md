@@ -6,7 +6,7 @@
 | ---- | ------- | ------- | ---- |
 | [public.attendance](public.attendance.md) | 9 |  | BASE TABLE |
 | [public.audit_log](public.audit_log.md) | 8 |  | BASE TABLE |
-| [public.bis_items](public.bis_items.md) | 6 |  | BASE TABLE |
+| [public.bis_items](public.bis_items.md) | 7 |  | BASE TABLE |
 | [public.bis_requests](public.bis_requests.md) | 8 |  | BASE TABLE |
 | [public.classes_specs](public.classes_specs.md) | 4 |  | BASE TABLE |
 | [public.item_bosses](public.item_bosses.md) | 2 |  | BASE TABLE |
@@ -38,7 +38,7 @@
 | [public.priority_order_first_prio_counts](public.priority_order_first_prio_counts.md) | 5 |  | VIEW |
 | [public.priority_order_same_boss_conflicts](public.priority_order_same_boss_conflicts.md) | 10 |  | VIEW |
 | [public.priority_order_stale_after_heroic](public.priority_order_stale_after_heroic.md) | 7 |  | VIEW |
-| [public.item_preferences](public.item_preferences.md) | 9 |  | BASE TABLE |
+| [public.item_preferences](public.item_preferences.md) | 10 |  | BASE TABLE |
 | [public.site_settings](public.site_settings.md) | 4 |  | BASE TABLE |
 | [public.incoming_roster](public.incoming_roster.md) | 6 |  | VIEW |
 
@@ -182,6 +182,7 @@ erDiagram
   boolean obtained
   timestamp_with_time_zone updated_at
   text slot
+  text season
 }
 "public.bis_requests" {
   integer id
@@ -502,6 +503,7 @@ erDiagram
   text slot
   timestamp_with_time_zone updated_at
   timestamp_with_time_zone created_at
+  text season
 }
 "public.site_settings" {
   integer id

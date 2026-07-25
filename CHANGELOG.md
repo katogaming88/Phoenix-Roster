@@ -8,6 +8,19 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.7] - 2026-07-25
+
+### Frontend
+
+- Fixed the officer BiS Lists tab (grid editor, BiS count, completion %) and a raider's own Priority List section showing every season's officer picks forever instead of respecting the selected season view -- `bis_items` has no `season` column, so unlike Wishlist and the Priority tab, nothing was checking `isItemInSeasonScope()` against it. All BiS displays now scope to the season view the same way Wishlist already does.
+- Tagging a raid item as BiS for a slot that already had a Wishlist Other Sources placeholder (M+/Crafted/Catalyst) in it now deletes that placeholder outright instead of demoting it to Good. Those rows lock permanently once set (#515 follow-up), so demoting one left a stale, un-editable "Good" row behind rather than actually freeing the slot.
+- Fixed the Wishlist's own "officer BiS set" row label crediting an officer's `bis_items` pick from a different season view -- `wishlistCompleteness()`'s officer-bucket lookup had the same missing season filter as the BiS Lists tab above, so a slot only actually covered by a prior season's officer pick wrongly showed as settled.
+- Fixed Other Sources placeholder rows (M+/Crafted/Catalyst, in both the officer BiS Lists editor and a raider's own Wishlist) never disappearing once the season view moved on -- unlike real items, these aren't tied to a raid zone, so the season filter above didn't do anything for them at all. They now carry their own `season` (#580), stamped when tagged, and are hidden once that season no longer matches the one being viewed. Existing rows were backfilled to each team's currently-configured season name.
+
+### Backend
+
+- Added a nullable `season` text column to `bis_items` and `item_preferences`, backfilled to each team's `team_settings.config->>'seasonName'` (#580).
+
 ## [3.49.6] - 2026-07-25
 
 ### Frontend

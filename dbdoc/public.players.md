@@ -102,6 +102,7 @@ erDiagram
   boolean obtained
   timestamp_with_time_zone updated_at
   text slot
+  text season
 }
 "public.bis_requests" {
   integer id
@@ -229,6 +230,7 @@ erDiagram
   text slot
   timestamp_with_time_zone updated_at
   timestamp_with_time_zone created_at
+  text season
 }
 "public.teams" {
   integer id

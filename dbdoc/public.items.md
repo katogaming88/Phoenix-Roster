@@ -63,6 +63,7 @@ erDiagram
   boolean obtained
   timestamp_with_time_zone updated_at
   text slot
+  text season
 }
 "public.item_bosses" {
   integer item_id FK
@@ -112,6 +113,7 @@ erDiagram
   text slot
   timestamp_with_time_zone updated_at
   timestamp_with_time_zone created_at
+  text season
 }
 ```
 

@@ -120,7 +120,7 @@ function fetchMyItemPreferences(playerId) {
   if (!supabaseClient) return Promise.resolve(null);
   var query = supabaseClient
     .from('item_preferences')
-    .select('id, item_id, status, note, slot')
+    .select('id, item_id, status, note, slot, season')
     .eq('player_id', playerId)
     .then(function (result) {
       if (result.error) {
@@ -509,7 +509,9 @@ function wishlistOtherSourceHTML(name, globallyTaggedSlots) {
   var candidateSlots = name === 'Catalyst' ? CATALYST_SOURCE_SLOTS : WISHLIST_SLOTS;
   var taggedSlots = [];
   _wishlistPrefs.forEach(function (p) {
-    if (p.item_id === itemId && p.slot) taggedSlots.push(p.slot);
+    if (p.item_id !== itemId || !p.slot) return;
+    if (typeof isItemInSeasonScope === 'function' && !isItemInSeasonScope(name, p.season)) return;
+    taggedSlots.push(p.slot);
   });
   var shownSlots = candidateSlots.filter(function (s) {
     return taggedSlots.indexOf(s) !== -1;
@@ -575,12 +577,16 @@ function wishlistOtherSourcesSectionHTML() {
   if (!placeholders.length) return '';
   var itemIds = (DATA && DATA.itemIds) || {};
   var placeholderItemIds = {};
+  var placeholderNameById = {};
   placeholders.forEach(function (name) {
     placeholderItemIds[itemIds[name]] = true;
+    placeholderNameById[itemIds[name]] = name;
   });
   var summaryItems = _wishlistPrefs
     .filter(function (p) {
-      return placeholderItemIds[p.item_id];
+      if (!placeholderItemIds[p.item_id]) return false;
+      if (typeof isItemInSeasonScope !== 'function') return true;
+      return isItemInSeasonScope(placeholderNameById[p.item_id], p.season);
     })
     .map(function (p) {
       return { itemId: p.item_id, slot: p.slot };
@@ -699,7 +705,7 @@ function wishlistUpsert(itemId, slot, patch) {
       .eq('player_id', _wishlistPlayerId)
       .eq('item_id', itemId);
     updateQuery = slot ? updateQuery.eq('slot', slot) : updateQuery.is('slot', null);
-    request = updateQuery.select('id, item_id, status, note, slot');
+    request = updateQuery.select('id, item_id, status, note, slot, season');
   } else {
     var row = {
       team_id: _teamCfg.supabaseTeamId,
@@ -707,12 +713,13 @@ function wishlistUpsert(itemId, slot, patch) {
       item_id: itemId,
       slot: slot || null,
       status: 'good',
-      note: null
+      note: null,
+      season: typeof resolveSeasonView === 'function' ? resolveSeasonView() : null
     };
     Object.keys(patch).forEach(function (k) {
       row[k] = patch[k];
     });
-    request = supabaseClient.from('item_preferences').insert(row).select('id, item_id, status, note, slot');
+    request = supabaseClient.from('item_preferences').insert(row).select('id, item_id, status, note, slot, season');
   }
 
   request
@@ -821,6 +828,11 @@ function wishlistCompleteness() {
     typeof getBisItems === 'function' && _wishlistPlayerFirstName
       ? getBisItems(_wishlistPlayerNameRealm || _wishlistPlayerFirstName)
       : [];
+  if (typeof isItemInSeasonScope === 'function') {
+    officerBisItems = officerBisItems.filter(function (entry) {
+      return isItemInSeasonScope(entry.item, entry.season);
+    });
+  }
   var officerBuckets = wishlistOfficerRowBuckets(officerBisItems);
   if (!taggedRows.Weapon && officerBuckets.Weapon && itemSlots[officerBuckets.Weapon.item] === 'One-Hand') {
     offHandRequired = true;
@@ -845,18 +857,29 @@ function wishlistCompleteness() {
 // Only one item can be BiS per slot at a time: tagging a new one
 // auto-demotes whatever was previously BiS in an overlapping row to Good,
 // so it stays tracked as a backup instead of two items both claiming BiS.
+// Other Sources placeholders (M+/Crafted/Catalyst, identified by their
+// explicit p.slot -- real catalog items always carry slot: null) don't get
+// demoted like that: they're not a real backup item, just a stand-in for
+// "something not from raid," so once a real raid drop claims the slot as
+// BiS the placeholder is removed outright rather than left behind as a
+// locked, un-editable "Good" row.
 function wishlistSetStatus(itemId, slot, status) {
   if (status === 'bis') {
     var rows = wishlistItemRows(itemId, slot || null);
     if (rows.length) {
-      _wishlistPrefs.forEach(function (p) {
+      _wishlistPrefs.slice().forEach(function (p) {
         if (p.item_id === itemId && (p.slot || null) === (slot || null)) return;
         if (p.status !== 'bis') return;
         var otherRows = wishlistItemRows(p.item_id, p.slot || null);
         var overlaps = otherRows.some(function (r) {
           return rows.indexOf(r) !== -1;
         });
-        if (overlaps) wishlistUpsert(p.item_id, p.slot || null, { status: 'good' });
+        if (!overlaps) return;
+        if (p.slot) {
+          wishlistRemovePreference(p.item_id, p.slot);
+        } else {
+          wishlistUpsert(p.item_id, p.slot || null, { status: 'good' });
+        }
       });
     }
   }
