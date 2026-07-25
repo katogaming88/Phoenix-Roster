@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.10] - 2026-07-25
+
+### Frontend
+
+- Added an "About" sub-tab to the public About tab (#577) -- static copy on what WGA Raid Hub is and who built it. Since this content always exists, the About nav item is no longer hidden for teams without Team/Guild officer bios yet, and its pill sub-tab bar now shows whenever 2+ of Team/Guild/About are populated.
+
 ## [3.49.9] - 2026-07-25
 
 ### Frontend
