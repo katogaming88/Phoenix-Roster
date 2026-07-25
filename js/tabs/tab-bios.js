@@ -1,4 +1,4 @@
-// Blaze Commander bios (#477, second slice) -- an officer editor for the
+﻿// Team officer bios (#477, second slice) -- an officer editor for the
 // per-team raid-officer bio cards shown on the public "Bios" tab
 // (js/roster.js buildBios()). Modeled directly on Raid Progression's
 // SEASON_RAIDS/raidCollectFromDOM()/renderRaidProgressionCards() round trip
@@ -16,10 +16,10 @@
 // but it's a one-time copy at add time, not a link -- the bio entry doesn't
 // track that player afterward.
 
-var BLAZE_COMMANDER_BIOS = [];
+var TEAM_OFFICER_BIOS = [];
 
 function buildBioCards() {
-  BLAZE_COMMANDER_BIOS = JSON.parse(JSON.stringify((DATA && DATA.blazeCommanderBios) || []));
+  TEAM_OFFICER_BIOS = JSON.parse(JSON.stringify((DATA && DATA.teamOfficerBios) || []));
   populateBioRosterPicker();
   renderBioCards();
 }
@@ -61,7 +61,7 @@ function bioAdd() {
       }
     }
   }
-  BLAZE_COMMANDER_BIOS.push({
+  TEAM_OFFICER_BIOS.push({
     name: player ? player.nick || player.firstName : '',
     characterName: player ? player.firstName : '',
     pronouns: '',
@@ -77,27 +77,27 @@ function bioAdd() {
 
 function bioRemove(idx) {
   bioCollectFromDOM();
-  BLAZE_COMMANDER_BIOS.splice(idx, 1);
+  TEAM_OFFICER_BIOS.splice(idx, 1);
   renderBioCards();
 }
 
 function bioMoveUp(idx) {
   if (idx <= 0) return;
   bioCollectFromDOM();
-  var entry = BLAZE_COMMANDER_BIOS.splice(idx, 1)[0];
-  BLAZE_COMMANDER_BIOS.splice(idx - 1, 0, entry);
+  var entry = TEAM_OFFICER_BIOS.splice(idx, 1)[0];
+  TEAM_OFFICER_BIOS.splice(idx - 1, 0, entry);
   renderBioCards();
 }
 
 function bioMoveDown(idx) {
   bioCollectFromDOM();
-  if (idx >= BLAZE_COMMANDER_BIOS.length - 1) return;
-  var entry = BLAZE_COMMANDER_BIOS.splice(idx, 1)[0];
-  BLAZE_COMMANDER_BIOS.splice(idx + 1, 0, entry);
+  if (idx >= TEAM_OFFICER_BIOS.length - 1) return;
+  var entry = TEAM_OFFICER_BIOS.splice(idx, 1)[0];
+  TEAM_OFFICER_BIOS.splice(idx + 1, 0, entry);
   renderBioCards();
 }
 
-// Reads current input/select/textarea values back into BLAZE_COMMANDER_BIOS
+// Reads current input/select/textarea values back into TEAM_OFFICER_BIOS
 // before any add/remove/reorder mutates the array -- otherwise an
 // in-progress edit in another card would be lost on re-render, same role
 // as raidCollectFromDOM() (tab-season.js).
@@ -106,7 +106,7 @@ function bioCollectFromDOM() {
   if (!wrap) return;
   var blocks = wrap.querySelectorAll('.bio-editor-block');
   for (var i = 0; i < blocks.length; i++) {
-    if (!BLAZE_COMMANDER_BIOS[i]) continue;
+    if (!TEAM_OFFICER_BIOS[i]) continue;
     var nameEl = blocks[i].querySelector('.bio-name-input');
     var charEl = blocks[i].querySelector('.bio-charname-input');
     var pronounsEl = blocks[i].querySelector('.bio-pronouns-input');
@@ -115,29 +115,29 @@ function bioCollectFromDOM() {
     var specEl = blocks[i].querySelector('.bio-spec-input');
     var imgEl = blocks[i].querySelector('.bio-image-input');
     var bioEl = blocks[i].querySelector('.bio-text-input');
-    if (nameEl) BLAZE_COMMANDER_BIOS[i].name = nameEl.value.trim();
-    if (charEl) BLAZE_COMMANDER_BIOS[i].characterName = charEl.value.trim();
-    if (pronounsEl) BLAZE_COMMANDER_BIOS[i].pronouns = pronounsEl.value.trim();
-    if (titleEl) BLAZE_COMMANDER_BIOS[i].title = titleEl.value.trim();
-    if (classEl) BLAZE_COMMANDER_BIOS[i].classKey = classEl.value;
-    if (specEl) BLAZE_COMMANDER_BIOS[i].spec = specEl.value.trim();
-    if (imgEl) BLAZE_COMMANDER_BIOS[i].imagePath = imgEl.value.trim();
-    if (bioEl) BLAZE_COMMANDER_BIOS[i].bio = bioEl.value.trim();
+    if (nameEl) TEAM_OFFICER_BIOS[i].name = nameEl.value.trim();
+    if (charEl) TEAM_OFFICER_BIOS[i].characterName = charEl.value.trim();
+    if (pronounsEl) TEAM_OFFICER_BIOS[i].pronouns = pronounsEl.value.trim();
+    if (titleEl) TEAM_OFFICER_BIOS[i].title = titleEl.value.trim();
+    if (classEl) TEAM_OFFICER_BIOS[i].classKey = classEl.value;
+    if (specEl) TEAM_OFFICER_BIOS[i].spec = specEl.value.trim();
+    if (imgEl) TEAM_OFFICER_BIOS[i].imagePath = imgEl.value.trim();
+    if (bioEl) TEAM_OFFICER_BIOS[i].bio = bioEl.value.trim();
   }
 }
 
 function renderBioCards() {
   var wrap = document.getElementById('bioCards');
   if (!wrap) return;
-  if (!BLAZE_COMMANDER_BIOS.length) {
+  if (!TEAM_OFFICER_BIOS.length) {
     wrap.innerHTML =
       '<p style="font-size:1rem;color:var(--text-muted);">No officer bios added yet. Click "+ Add Officer" to start.</p>';
     return;
   }
   var classKeys = Object.keys(CLASS_SPECS).sort();
   var html = '';
-  for (var i = 0; i < BLAZE_COMMANDER_BIOS.length; i++) {
-    var entry = BLAZE_COMMANDER_BIOS[i];
+  for (var i = 0; i < TEAM_OFFICER_BIOS.length; i++) {
+    var entry = TEAM_OFFICER_BIOS[i];
     html +=
       '<div class="bio-editor-block" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:1rem;">';
     html += '<div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-bottom:0.5rem;">';
@@ -159,7 +159,7 @@ function renderBioCards() {
       '<button class="btn btn-muted" style="padding:2px 10px;font-size:0.93rem;" onclick="bioMoveDown(' +
       i +
       ')"' +
-      (i === BLAZE_COMMANDER_BIOS.length - 1 ? ' disabled' : '') +
+      (i === TEAM_OFFICER_BIOS.length - 1 ? ' disabled' : '') +
       '>&darr;</button>';
     html +=
       '<button class="btn btn-danger" style="padding:2px 10px;font-size:0.93rem;" onclick="bioRemove(' +
@@ -220,14 +220,14 @@ function saveBios() {
     btn.textContent = 'Saving...';
   }
 
-  saveTeamSetting({ blazeCommanderBios: BLAZE_COMMANDER_BIOS })
+  saveTeamSetting({ teamOfficerBios: TEAM_OFFICER_BIOS })
     .then(function () {
       if (btn) {
         btn.disabled = false;
         btn.textContent = 'Save Bios';
       }
-      DATA.blazeCommanderBios = JSON.parse(JSON.stringify(BLAZE_COMMANDER_BIOS));
-      writeAuditLog('Blaze Commander Bios Saved', null, null, BLAZE_COMMANDER_BIOS.length + ' bio(s)');
+      DATA.teamOfficerBios = JSON.parse(JSON.stringify(TEAM_OFFICER_BIOS));
+      writeAuditLog('Team Officer Bios Saved', null, null, TEAM_OFFICER_BIOS.length + ' bio(s)');
       if (status) {
         status.textContent = 'Saved!';
         setTimeout(function () {

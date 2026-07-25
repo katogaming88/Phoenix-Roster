@@ -295,11 +295,11 @@ function updateHistoryNavItem() {
   if (el) el.style.display = DATA && DATA.seasonHistory && DATA.seasonHistory.length ? '' : 'none';
 }
 
-// Hidden until this team has added at least one Blaze Commander bio (#477,
+// Hidden until this team has added at least one team officer bio (#477,
 // second slice) -- same "nothing to show yet" reasoning as the History tab.
 function updateBiosNavItem() {
   var el = document.getElementById('navBios');
-  if (el) el.style.display = DATA && DATA.blazeCommanderBios && DATA.blazeCommanderBios.length ? '' : 'none';
+  if (el) el.style.display = DATA && DATA.teamOfficerBios && DATA.teamOfficerBios.length ? '' : 'none';
 }
 
 document.getElementById('playerSelect').addEventListener('change', function (e) {
@@ -529,14 +529,14 @@ function buildSeasonRecap() {
   el.innerHTML = html;
 }
 
-// Public "Bios" tab (#477, second slice) -- Blaze Commander bio cards,
+// Public "Bios" tab (#477, second slice) -- team officer bio cards,
 // officer-authored via officer.html's Officer Bios tab (js/tabs/tab-bios.js)
-// and saved into team_settings.config.blazeCommanderBios. Display order is
+// and saved into team_settings.config.teamOfficerBios. Display order is
 // array order (officers reorder with move up/down in the editor, not
 // alphabetical/sorted here). Fields are self-contained on each entry (not
 // looked up from DATA.roster) -- see tab-bios.js's header comment for why.
 function buildBios() {
-  var bios = (DATA && DATA.blazeCommanderBios) || [];
+  var bios = (DATA && DATA.teamOfficerBios) || [];
   var el = document.getElementById('bioView');
   if (!el || !bios.length) return;
 

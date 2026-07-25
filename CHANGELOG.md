@@ -8,6 +8,16 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.8] - 2026-07-25
+
+### Frontend
+
+- Renamed the internal `blazeCommanderBios` key/variable to `teamOfficerBios` throughout the Officer Bios editor and public Bios tab (#577). "Blaze Commander" was We Go Again's own guild-specific officer rank name, baked into a field every team uses regardless of what they call their own leadership rank; no visible UI or behavior change.
+
+### Backend
+
+- Renamed the `team_settings.config.blazeCommanderBios` jsonb key to `teamOfficerBios` for all teams (#577).
+
 ## [3.49.7] - 2026-07-25
 
 ### Frontend
