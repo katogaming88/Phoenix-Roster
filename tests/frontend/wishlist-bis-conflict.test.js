@@ -39,7 +39,7 @@ function makeSandbox(itemSlots, itemIds, existingPrefs) {
   vm.runInContext(COMMON_JS, sandbox, { filename: 'common.js' });
   vm.runInContext(WISHLIST_JS, sandbox, { filename: 'wishlist.js' });
 
-  sandbox.DATA = { itemSlots, itemPlaceholders: {}, itemIds, wishlistOpen: true };
+  sandbox.DATA = { itemSlots, itemPlaceholders: {}, itemIds, wishlistOpen: true, roster: [] };
   sandbox._wishlistPlayerId = 11;
   sandbox._wishlistPlayerFirstName = 'Kat';
   sandbox._wishlistPrefs = existingPrefs;
@@ -70,6 +70,24 @@ function makeSandbox(itemSlots, itemIds, existingPrefs) {
             },
             select() {
               return Promise.resolve({ data: [{ id: 1, ...patch }], error: null });
+            }
+          };
+          return builder;
+        },
+        delete() {
+          const entry = { type: 'delete', table, eqs: {} };
+          requests.push(entry);
+          const builder = {
+            eq(col, val) {
+              entry.eqs[col] = val;
+              return builder;
+            },
+            is(col, val) {
+              entry.eqs[col] = val;
+              return builder;
+            },
+            then(resolve) {
+              return Promise.resolve({ error: null }).then(resolve);
             }
           };
           return builder;
@@ -134,6 +152,23 @@ describe('wishlistSetStatus BiS-per-slot conflict resolution', () => {
 
     const demote = requests.find((r) => r.type === 'update');
     expect(demote).toBeFalsy();
+  });
+
+  it('removes (not demotes) an Other Sources placeholder occupying the same slot', async () => {
+    const { sandbox, requests } = makeSandbox({ 'New Helm': 'Head' }, { 'New Helm': 2, 'M+': 3 }, [
+      { id: 1, item_id: 3, status: 'bis', note: null, slot: 'Head' }
+    ]);
+
+    sandbox.wishlistSetStatus(2, null, 'bis');
+    await new Promise((r) => setImmediate(r));
+
+    const demote = requests.find((r) => r.type === 'update' && r.patch.status === 'good');
+    expect(demote).toBeFalsy();
+
+    const del = requests.find((r) => r.type === 'delete');
+    expect(del).toBeTruthy();
+    expect(del.eqs.item_id).toBe(3);
+    expect(sandbox._wishlistPrefs.some((p) => p.item_id === 3)).toBe(false);
   });
 
   it('leaves other slots alone when tagging a non-BiS status', () => {

@@ -845,18 +845,29 @@ function wishlistCompleteness() {
 // Only one item can be BiS per slot at a time: tagging a new one
 // auto-demotes whatever was previously BiS in an overlapping row to Good,
 // so it stays tracked as a backup instead of two items both claiming BiS.
+// Other Sources placeholders (M+/Crafted/Catalyst, identified by their
+// explicit p.slot -- real catalog items always carry slot: null) don't get
+// demoted like that: they're not a real backup item, just a stand-in for
+// "something not from raid," so once a real raid drop claims the slot as
+// BiS the placeholder is removed outright rather than left behind as a
+// locked, un-editable "Good" row.
 function wishlistSetStatus(itemId, slot, status) {
   if (status === 'bis') {
     var rows = wishlistItemRows(itemId, slot || null);
     if (rows.length) {
-      _wishlistPrefs.forEach(function (p) {
+      _wishlistPrefs.slice().forEach(function (p) {
         if (p.item_id === itemId && (p.slot || null) === (slot || null)) return;
         if (p.status !== 'bis') return;
         var otherRows = wishlistItemRows(p.item_id, p.slot || null);
         var overlaps = otherRows.some(function (r) {
           return rows.indexOf(r) !== -1;
         });
-        if (overlaps) wishlistUpsert(p.item_id, p.slot || null, { status: 'good' });
+        if (!overlaps) return;
+        if (p.slot) {
+          wishlistRemovePreference(p.item_id, p.slot);
+        } else {
+          wishlistUpsert(p.item_id, p.slot || null, { status: 'good' });
+        }
       });
     }
   }
