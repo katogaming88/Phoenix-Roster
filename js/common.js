@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.49.7';
+var VERSION = '3.49.8';
 
 // Shared by the officer.html Help tab and index.html's raider Help tab/tips.
 function toggleHelp(id) {
@@ -1697,7 +1697,7 @@ function applyTeamSettingsToData(data, config) {
   if (config.activeSignupSeason !== undefined) data.signupSeason = config.activeSignupSeason;
   data.features = config.features || {};
   data.externalLinks = config.externalLinks || {};
-  data.blazeCommanderBios = config.blazeCommanderBios || [];
+  data.teamOfficerBios = config.teamOfficerBios || [];
   data.wishlistStatusLabels = config.wishlistStatusLabels || {};
 }
 

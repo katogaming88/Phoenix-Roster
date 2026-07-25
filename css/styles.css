@@ -158,7 +158,7 @@ a.prog-boss-pulls:hover { color:var(--gold); text-decoration:underline; }
 .recap-season-name { font-family:'Cinzel',serif; font-size:1.07rem; font-weight:600; color:var(--gold-light); letter-spacing:0.02em; margin-bottom:0.25rem; }
 .recap-season-score { font-size:1rem; color:var(--text-muted); }
 
-/* Blaze Commander bios (#477, second slice) -- officer-authored bio cards. */
+/* Team officer bios (#477, second slice) -- officer-authored bio cards. */
 .bio-wrap { display:grid; grid-template-columns:repeat(2,1fr); gap:1rem; width:100%; max-width:760px; }
 @media (max-width:560px) { .bio-wrap { grid-template-columns:1fr; } }
 .bio-card { background:var(--bg-card); border:1px solid var(--border-mid); border-top:2px solid rgba(214,163,68,0.4); border-radius:6px; padding:1.25rem 1.1rem; display:flex; flex-direction:column; align-items:center; text-align:center; gap:0.2rem; }

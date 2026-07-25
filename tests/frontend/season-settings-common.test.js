@@ -162,7 +162,7 @@ describe('applyTeamSettingsToData', () => {
       signupsOpen: true,
       features: {},
       externalLinks: {},
-      blazeCommanderBios: [],
+      teamOfficerBios: [],
       wishlistStatusLabels: {}
     });
   });
