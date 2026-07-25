@@ -8,6 +8,13 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.7] - 2026-07-25
+
+### Frontend
+
+- Fixed the officer BiS Lists tab (grid editor, BiS count, completion %) and a raider's own Priority List section showing every season's officer picks forever instead of respecting the selected season view -- `bis_items` has no `season` column, so unlike Wishlist and the Priority tab, nothing was checking `isItemInSeasonScope()` against it. All BiS displays now scope to the season view the same way Wishlist already does.
+- Tagging a raid item as BiS for a slot that already had a Wishlist Other Sources placeholder (M+/Crafted/Catalyst) in it now deletes that placeholder outright instead of demoting it to Good. Those rows lock permanently once set (#515 follow-up), so demoting one left a stale, un-editable "Good" row behind rather than actually freeing the slot.
+
 ## [3.49.6] - 2026-07-25
 
 ### Frontend
