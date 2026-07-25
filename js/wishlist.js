@@ -397,6 +397,20 @@ function wishlistRowHTML(name, itemId, slot, rowIndex, lockOnceSet) {
       ? getRank(_wishlistPlayerNameRealm, name)
       : [];
   var rankHTML = lockOnceSet ? '' : typeof rankPillHTML === 'function' ? rankPillHTML(rank) : '';
+  // Remove button: only for Other Sources rows (lockOnceSet) -- their status
+  // buttons are permanently disabled once set, so this is the only way back
+  // out of a mis-tagged slot. Regular gear-slot rows stay freely
+  // re-taggable via the status buttons themselves, so they don't need one.
+  var removeHTML =
+    lockOnceSet && wishlistOpen()
+      ? '<button type="button" class="btn btn-muted" style="font-size:0.85rem;padding:2px 8px;" ' +
+        (_wishlistSaving[itemId + '|' + (slot || '')] ? 'disabled ' : '') +
+        'onclick="wishlistRemovePreference(' +
+        itemId +
+        ",'" +
+        (slot ? slot.replace(/'/g, "\\'") : '') +
+        '\')">Remove</button>'
+      : '';
   return (
     '<div style="padding:0.4rem 0.6rem;border-radius:4px;border:1px solid ' +
     rowBorder +
@@ -409,6 +423,7 @@ function wishlistRowHTML(name, itemId, slot, rowIndex, lockOnceSet) {
     rankHTML +
     '<div style="display:flex;gap:0.3rem;flex-wrap:wrap;">' +
     wishlistStatusButtonsHTML(itemId, slot, lockOnceSet) +
+    removeHTML +
     '</div>' +
     '</div>' +
     '</div>' +
@@ -850,4 +865,40 @@ function wishlistSetStatus(itemId, slot, status) {
 
 function wishlistSetNote(itemId, slot, note) {
   wishlistUpsert(itemId, slot || null, { note: note || null });
+}
+
+// Other Sources rows lock once tagged (wishlistStatusButtonsHTML's
+// lockOnceSet) so a raider can't casually retag M+/Crafted/Catalyst picks --
+// but a mis-click on the wrong slot had no way back short of an officer
+// fixing it in the DB. This deletes the row outright (not just clearing
+// status) so the slot's "+ Add" dropdown offers it again.
+function wishlistRemovePreference(itemId, slot) {
+  if (!_wishlistPlayerId || !wishlistOpen()) return;
+  var pref = wishlistPrefFor(itemId, slot || null);
+  if (!pref) return;
+  var savingKey = itemId + '|' + (slot || '');
+  _wishlistSaving[savingKey] = true;
+  var msgEl = document.getElementById('wishlistSaveMsg-' + _wishlistPlayerFirstName);
+  if (msgEl) msgEl.textContent = 'Removing...';
+
+  var deleteQuery = supabaseClient
+    .from('item_preferences')
+    .delete()
+    .eq('player_id', _wishlistPlayerId)
+    .eq('item_id', itemId);
+  deleteQuery = slot ? deleteQuery.eq('slot', slot) : deleteQuery.is('slot', null);
+
+  deleteQuery.then(function (result) {
+    delete _wishlistSaving[savingKey];
+    if (result.error) {
+      var msg = document.getElementById('wishlistSaveMsg-' + _wishlistPlayerFirstName);
+      if (msg) msg.textContent = 'Failed: ' + result.error.message;
+      return;
+    }
+    var idx = _wishlistPrefs.indexOf(pref);
+    if (idx !== -1) _wishlistPrefs.splice(idx, 1);
+    if (typeof renderProfile === 'function' && _wishlistPlayerFirstName) {
+      renderProfile(_wishlistPlayerFirstName, 'landing');
+    }
+  });
 }
