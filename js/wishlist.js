@@ -85,6 +85,9 @@ var WISHLIST_CATALOG_SLOT_TO_ROWS = {
   'Off Hand': ['Off Hand'],
   'Held In Off-hand': ['Off Hand']
 };
+// The 4 non-tier slots the catalyst produces with fixed stats regardless of
+// input item -- see wishlistOtherSourcesSectionHTML's comment.
+var CATALYST_SOURCE_SLOTS = ['Back', 'Wrist', 'Waist', 'Feet'];
 
 // Same armor-type scoping as tab-bis.js's search (bisSlotOnInput): rows for
 // which armor type doesn't apply (jewelry, cloaks, weapons) skip the filter,
@@ -394,6 +397,20 @@ function wishlistRowHTML(name, itemId, slot, rowIndex, lockOnceSet) {
       ? getRank(_wishlistPlayerNameRealm, name)
       : [];
   var rankHTML = lockOnceSet ? '' : typeof rankPillHTML === 'function' ? rankPillHTML(rank) : '';
+  // Remove button: only for Other Sources rows (lockOnceSet) -- their status
+  // buttons are permanently disabled once set, so this is the only way back
+  // out of a mis-tagged slot. Regular gear-slot rows stay freely
+  // re-taggable via the status buttons themselves, so they don't need one.
+  var removeHTML =
+    lockOnceSet && wishlistOpen()
+      ? '<button type="button" class="btn btn-danger" style="font-size:0.85rem;padding:2px 8px;" ' +
+        (_wishlistSaving[itemId + '|' + (slot || '')] ? 'disabled ' : '') +
+        'onclick="wishlistRemovePreference(' +
+        itemId +
+        ",'" +
+        (slot ? slot.replace(/'/g, "\\'") : '') +
+        '\')">Remove</button>'
+      : '';
   return (
     '<div style="padding:0.4rem 0.6rem;border-radius:4px;border:1px solid ' +
     rowBorder +
@@ -406,6 +423,7 @@ function wishlistRowHTML(name, itemId, slot, rowIndex, lockOnceSet) {
     rankHTML +
     '<div style="display:flex;gap:0.3rem;flex-wrap:wrap;">' +
     wishlistStatusButtonsHTML(itemId, slot, lockOnceSet) +
+    removeHTML +
     '</div>' +
     '</div>' +
     '</div>' +
@@ -476,18 +494,19 @@ function wishlistRevealPlaceholderSlot(name, selectId) {
   wishlistSetStatus(itemId, slot, 'bis');
 }
 
-// One M+/Crafted sub-block: rows for slots already tagged for that source,
-// plus a "+ Add" control to tag a new slot -- both offer every slot, since
-// each genuinely can drop/be crafted for anything. `globallyTaggedSlots` (a
-// slot -> true map across both sources) keeps a slot already tagged under
-// one source out of the other's "+ Add" dropdown -- only one source can
-// cover a given slot at a time.
+// One M+/Crafted/Catalyst sub-block: rows for slots already tagged for that
+// source, plus a "+ Add" control to tag a new slot. M+/Crafted offer every
+// slot, since each genuinely can drop/be crafted for anything -- Catalyst
+// only offers CATALYST_SOURCE_SLOTS (see wishlistOtherSourcesSectionHTML's
+// comment for why). `globallyTaggedSlots` (a slot -> true map across all
+// sources) keeps a slot already tagged under one source out of another's
+// "+ Add" dropdown -- only one source can cover a given slot at a time.
 function wishlistOtherSourceHTML(name, globallyTaggedSlots) {
   var itemIds = (DATA && DATA.itemIds) || {};
   var itemId = itemIds[name];
   if (itemId == null) return '';
 
-  var candidateSlots = WISHLIST_SLOTS;
+  var candidateSlots = name === 'Catalyst' ? CATALYST_SOURCE_SLOTS : WISHLIST_SLOTS;
   var taggedSlots = [];
   _wishlistPrefs.forEach(function (p) {
     if (p.item_id === itemId && p.slot) taggedSlots.push(p.slot);
@@ -543,17 +562,16 @@ function wishlistOtherSourceHTML(name, globallyTaggedSlots) {
   return html;
 }
 
-// Catalyst is deliberately left out here: catalyzing keeps an item's own
-// stats/cantrip (season-wide as of the upcoming tier, not just the 5 armor
-// slots -- see the tier-set-slot reminder above), so it's never a distinct
-// "source" the way M+/Crafted are -- the real item is what should get
-// tagged directly, using the "Catalyst Only" status button on it. Formerly
-// had its own sub-block here for Cloak/Bracer/Belt/Boots; removed since
-// nothing had adopted it yet and the mechanic makes it meaningless.
+// Catalyst only gets its own sub-block for Back/Wrist/Waist/Feet
+// (CATALYST_SOURCE_SLOTS below) -- those 4 non-tier slots come out of the
+// catalyst with fixed stats regardless of what was fed in, so "how did you
+// get it" is meaningful the same way it is for M+/Crafted. The 5 actual
+// tier slots (Head/Shoulder/Chest/Hands/Legs) keep the input item's own
+// stats when catalyzed, so tagging a source there stays meaningless -- the
+// real item is what should get tagged directly, using the "Catalyst Only"
+// status button on it.
 function wishlistOtherSourcesSectionHTML() {
-  var placeholders = wishlistPlaceholderNames().filter(function (name) {
-    return name !== 'Catalyst';
-  });
+  var placeholders = wishlistPlaceholderNames();
   if (!placeholders.length) return '';
   var itemIds = (DATA && DATA.itemIds) || {};
   var placeholderItemIds = {};
@@ -574,7 +592,7 @@ function wishlistOtherSourcesSectionHTML() {
   });
 
   var intro =
-    '<p style="font-size:1.04rem;color:var(--text);margin:0 0 0.6rem;">Use this only when a slot\'s actual <strong>BiS</strong> comes from M+ or Crafted instead of a raid drop. Pick a slot and click + Add -- it saves and locks in as BiS immediately.</p>';
+    '<p style="font-size:1.04rem;color:var(--text);margin:0 0 0.6rem;">Use this only when a slot\'s actual <strong>BiS</strong> comes from M+, Crafted, or (for Back/Wrist/Waist/Feet) the Catalyst instead of a raid drop. Pick a slot and click + Add -- it saves and locks in as BiS immediately.</p>';
   var body =
     intro +
     placeholders
@@ -584,7 +602,7 @@ function wishlistOtherSourcesSectionHTML() {
       .join('');
   return wishlistCollapsibleCardHTML(
     '__other__',
-    'Other Sources -- BiS Not From Raid (M+ / Crafted)',
+    'Other Sources -- BiS Not From Raid (M+ / Crafted / Catalyst)',
     summaryItems,
     body
   );
@@ -847,4 +865,40 @@ function wishlistSetStatus(itemId, slot, status) {
 
 function wishlistSetNote(itemId, slot, note) {
   wishlistUpsert(itemId, slot || null, { note: note || null });
+}
+
+// Other Sources rows lock once tagged (wishlistStatusButtonsHTML's
+// lockOnceSet) so a raider can't casually retag M+/Crafted/Catalyst picks --
+// but a mis-click on the wrong slot had no way back short of an officer
+// fixing it in the DB. This deletes the row outright (not just clearing
+// status) so the slot's "+ Add" dropdown offers it again.
+function wishlistRemovePreference(itemId, slot) {
+  if (!_wishlistPlayerId || !wishlistOpen()) return;
+  var pref = wishlistPrefFor(itemId, slot || null);
+  if (!pref) return;
+  var savingKey = itemId + '|' + (slot || '');
+  _wishlistSaving[savingKey] = true;
+  var msgEl = document.getElementById('wishlistSaveMsg-' + _wishlistPlayerFirstName);
+  if (msgEl) msgEl.textContent = 'Removing...';
+
+  var deleteQuery = supabaseClient
+    .from('item_preferences')
+    .delete()
+    .eq('player_id', _wishlistPlayerId)
+    .eq('item_id', itemId);
+  deleteQuery = slot ? deleteQuery.eq('slot', slot) : deleteQuery.is('slot', null);
+
+  deleteQuery.then(function (result) {
+    delete _wishlistSaving[savingKey];
+    if (result.error) {
+      var msg = document.getElementById('wishlistSaveMsg-' + _wishlistPlayerFirstName);
+      if (msg) msg.textContent = 'Failed: ' + result.error.message;
+      return;
+    }
+    var idx = _wishlistPrefs.indexOf(pref);
+    if (idx !== -1) _wishlistPrefs.splice(idx, 1);
+    if (typeof renderProfile === 'function' && _wishlistPlayerFirstName) {
+      renderProfile(_wishlistPlayerFirstName, 'landing');
+    }
+  });
 }

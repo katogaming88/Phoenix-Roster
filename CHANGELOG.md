@@ -8,6 +8,18 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.5] - 2026-07-24
+
+### Frontend
+
+- Added a "Remove" button to Wishlist Other Sources rows (M+/Crafted/Catalyst). Those rows lock permanently once a status is set (#515 follow-up) so a raider can't casually retag them, but that also meant a mis-clicked slot had no way back short of an officer fixing it directly in the DB. Remove deletes the `item_preferences` row outright, freeing the slot back up in the "+ Add" dropdown.
+
+## [3.49.4] - 2026-07-24
+
+### Frontend
+
+- Restored "Catalyst" as a Wishlist Other Sources option, scoped to Back/Wrist/Waist/Feet only. Corrected understanding of the catalyst mechanic: those 4 non-tier slots come out of the catalyst with fixed stats regardless of the item fed in, so tagging "how did you get it" is meaningful for them the same way it is for M+/Crafted. The 5 actual tier slots (Head/Shoulder/Chest/Hands/Legs) still keep the input item's own stats when catalyzed, so a source tag there remains meaningless -- unchanged from before.
+
 ## [3.49.3] - 2026-07-23
 
 ### Frontend
