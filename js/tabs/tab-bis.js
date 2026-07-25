@@ -536,7 +536,9 @@ function buildBisListsTab() {
 
     for (var j = 0; j < players.length; j++) {
       var p = players[j];
-      var bisCount = getBisItems(p.nameRealm).length;
+      var bisCount = getBisItems(p.nameRealm).filter(function (e) {
+        return typeof isItemInSeasonScope !== 'function' || isItemInSeasonScope(e.item);
+      }).length;
       var roleColor =
         p.role === 'Tank'
           ? 'var(--tank)'
@@ -670,6 +672,7 @@ function bisSlotBuckets(items) {
   var unassigned = [];
 
   items.forEach(function (entry, idx) {
+    if (typeof isItemInSeasonScope === 'function' && !isItemInSeasonScope(entry.item)) return;
     if (entry.dbSlot && BIS_SLOTS.indexOf(entry.dbSlot) !== -1 && !buckets[entry.dbSlot]) {
       buckets[entry.dbSlot] = { entry: entry, index: idx };
     } else {

@@ -2602,7 +2602,9 @@ function getSelfReceivedItems(firstName) {
 function refreshBisCompletion(firstName, nameRealm) {
   var el = document.getElementById('bis-completion-' + firstName);
   if (!el) return;
-  var bisItems = getBisItems(nameRealm || firstName);
+  var bisItems = getBisItems(nameRealm || firstName).filter(function (e) {
+    return typeof isItemInSeasonScope !== 'function' || isItemInSeasonScope(e.item);
+  });
   if (!bisItems.length) return;
   var selfRecItems = getSelfReceivedItems(firstName);
   var selfRecMap = {};
@@ -3893,7 +3895,9 @@ function renderProfile(firstName, backTo, container) {
   var wishlistSectionHTML = typeof ownWishlistSectionHTML === 'function' ? ownWishlistSectionHTML(player, backTo) : '';
 
   // Priority list
-  var bisItems = getBisItems(player.nameRealm);
+  var bisItems = getBisItems(player.nameRealm).filter(function (e) {
+    return typeof isItemInSeasonScope !== 'function' || isItemInSeasonScope(e.item);
+  });
   // Read-time merge only -- bis_items itself is never written to. A raider's
   // own wishlist "BiS" tag supersedes the officer's pick for that slot in
   // this display; untouched everywhere else (tab-conflicts.js,
