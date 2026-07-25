@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.4] - 2026-07-24
+
+### Frontend
+
+- Restored "Catalyst" as a Wishlist Other Sources option, scoped to Back/Wrist/Waist/Feet only. Corrected understanding of the catalyst mechanic: those 4 non-tier slots come out of the catalyst with fixed stats regardless of the item fed in, so tagging "how did you get it" is meaningful for them the same way it is for M+/Crafted. The 5 actual tier slots (Head/Shoulder/Chest/Hands/Legs) still keep the input item's own stats when catalyzed, so a source tag there remains meaningless -- unchanged from before.
+
 ## [3.49.3] - 2026-07-23
 
 ### Frontend
