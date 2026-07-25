@@ -403,7 +403,7 @@ function wishlistRowHTML(name, itemId, slot, rowIndex, lockOnceSet) {
   // re-taggable via the status buttons themselves, so they don't need one.
   var removeHTML =
     lockOnceSet && wishlistOpen()
-      ? '<button type="button" class="btn btn-muted" style="font-size:0.85rem;padding:2px 8px;" ' +
+      ? '<button type="button" class="btn btn-danger" style="font-size:0.85rem;padding:2px 8px;" ' +
         (_wishlistSaving[itemId + '|' + (slot || '')] ? 'disabled ' : '') +
         'onclick="wishlistRemovePreference(' +
         itemId +
