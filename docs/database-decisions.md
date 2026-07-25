@@ -532,3 +532,15 @@ Umbrella issue. Original scope, later split into #262 (nullability/duplicate gua
 - The UI will honor the officer/team-leader split when the frontend moves to Supabase; that scope (which Admin-tab panels tighten, which stay officer-level) is recorded in #317.
 
 [Full discussion -> #294](https://github.com/katogaming88/WGA-Raid-Hub/issues/294)
+
+---
+
+## #580 -- bis_items/item_preferences: season column for Other Sources placeholder scoping
+
+- Other Sources rows (`M+`/`Crafted`/`Catalyst`, used as BiS/Wishlist stand-ins for gear not from a raid drop) aren't tied to a raid zone, so `isItemInSeasonScope()` always treated them as in scope regardless of the viewed season -- an officer's "M+ - Head" pick from Season 1 kept showing up forever, even in a Season 2 view, unlike real items (scoped via `items.wcl_zone_id`).
+- **Decision:** added a nullable `season` text column to both `bis_items` and `item_preferences`. New rows (any item, not just placeholders) are stamped with `resolveSeasonView()`'s current value -- the same `raid_zones.season`-format string ("Midnight Season 1"), not the short `priority_order.season`-style code ("MID1"). `isItemInSeasonScope(name, rowSeason)` gained an optional second parameter used only for placeholders; real items still resolve purely through `items.wcl_zone_id`, ignoring it.
+- Existing rows were backfilled to each team's `team_settings.config->>'seasonName'` (the best available guess for "when was this tagged"), since neither table nor any other table records a per-team "current season" more precisely than that free-text field.
+- Rows with no season stamped (backfill gap, or any future manual insert that skips the column) fail open -- shown regardless of season -- matching the existing fail-open convention for real items with no `wcl_zone_id`.
+- **Follow-up not included:** `getIncompleteWishlists()`'s completeness check (`js/tabs/tab-priority.js`) still counts a raider's own stale-season Other Sources tag as "covering" a slot -- only the *display* of these rows (BiS Lists editor, Wishlist's own Other Sources card) was season-scoped this pass.
+
+[Full discussion -> #580](https://github.com/katogaming88/WGA-Raid-Hub/issues/580)

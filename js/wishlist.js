@@ -120,7 +120,7 @@ function fetchMyItemPreferences(playerId) {
   if (!supabaseClient) return Promise.resolve(null);
   var query = supabaseClient
     .from('item_preferences')
-    .select('id, item_id, status, note, slot')
+    .select('id, item_id, status, note, slot, season')
     .eq('player_id', playerId)
     .then(function (result) {
       if (result.error) {
@@ -509,7 +509,9 @@ function wishlistOtherSourceHTML(name, globallyTaggedSlots) {
   var candidateSlots = name === 'Catalyst' ? CATALYST_SOURCE_SLOTS : WISHLIST_SLOTS;
   var taggedSlots = [];
   _wishlistPrefs.forEach(function (p) {
-    if (p.item_id === itemId && p.slot) taggedSlots.push(p.slot);
+    if (p.item_id !== itemId || !p.slot) return;
+    if (typeof isItemInSeasonScope === 'function' && !isItemInSeasonScope(name, p.season)) return;
+    taggedSlots.push(p.slot);
   });
   var shownSlots = candidateSlots.filter(function (s) {
     return taggedSlots.indexOf(s) !== -1;
@@ -575,12 +577,16 @@ function wishlistOtherSourcesSectionHTML() {
   if (!placeholders.length) return '';
   var itemIds = (DATA && DATA.itemIds) || {};
   var placeholderItemIds = {};
+  var placeholderNameById = {};
   placeholders.forEach(function (name) {
     placeholderItemIds[itemIds[name]] = true;
+    placeholderNameById[itemIds[name]] = name;
   });
   var summaryItems = _wishlistPrefs
     .filter(function (p) {
-      return placeholderItemIds[p.item_id];
+      if (!placeholderItemIds[p.item_id]) return false;
+      if (typeof isItemInSeasonScope !== 'function') return true;
+      return isItemInSeasonScope(placeholderNameById[p.item_id], p.season);
     })
     .map(function (p) {
       return { itemId: p.item_id, slot: p.slot };
@@ -699,7 +705,7 @@ function wishlistUpsert(itemId, slot, patch) {
       .eq('player_id', _wishlistPlayerId)
       .eq('item_id', itemId);
     updateQuery = slot ? updateQuery.eq('slot', slot) : updateQuery.is('slot', null);
-    request = updateQuery.select('id, item_id, status, note, slot');
+    request = updateQuery.select('id, item_id, status, note, slot, season');
   } else {
     var row = {
       team_id: _teamCfg.supabaseTeamId,
@@ -707,12 +713,13 @@ function wishlistUpsert(itemId, slot, patch) {
       item_id: itemId,
       slot: slot || null,
       status: 'good',
-      note: null
+      note: null,
+      season: typeof resolveSeasonView === 'function' ? resolveSeasonView() : null
     };
     Object.keys(patch).forEach(function (k) {
       row[k] = patch[k];
     });
-    request = supabaseClient.from('item_preferences').insert(row).select('id, item_id, status, note, slot');
+    request = supabaseClient.from('item_preferences').insert(row).select('id, item_id, status, note, slot, season');
   }
 
   request
@@ -823,7 +830,7 @@ function wishlistCompleteness() {
       : [];
   if (typeof isItemInSeasonScope === 'function') {
     officerBisItems = officerBisItems.filter(function (entry) {
-      return isItemInSeasonScope(entry.item);
+      return isItemInSeasonScope(entry.item, entry.season);
     });
   }
   var officerBuckets = wishlistOfficerRowBuckets(officerBisItems);

@@ -1232,7 +1232,9 @@ function fetchSupabaseBisItems() {
   if (!supabaseClient) return Promise.resolve(null);
   var query = supabaseClient
     .from('bis_items')
-    .select('player_id, item_id, obtained, slot, items(name, slot, is_placeholder), players!inner(name_realm, team_id)')
+    .select(
+      'player_id, item_id, obtained, slot, season, items(name, slot, is_placeholder), players!inner(name_realm, team_id)'
+    )
     .eq('players.team_id', _teamCfg.supabaseTeamId)
     .then(function (result) {
       if (result.error) {
@@ -1293,7 +1295,8 @@ function mapSupabaseBisItems(rows) {
       dbSlot: row.slot || null,
       obtained: !!row.obtained,
       playerId: row.player_id,
-      itemId: row.item_id
+      itemId: row.item_id,
+      season: row.season || null
     });
   });
   return map;
@@ -2388,8 +2391,11 @@ function currentZoneIdsForSeason(season) {
 // #549), per items.wcl_zone_id (#535) -- shared by the Priority tab, BiS grid
 // editor, and Raider Wishlist so the "current tier only" scoping rule lives in
 // one place. Placeholder items (M+/Crafted/Catalyst) aren't tied to a raid
-// zone and are always in scope, as are items with no wcl_zone_id tag yet --
-// neither is part of the season concept this function scopes by.
+// zone, so they can't be scoped this way at all -- pass the row's own
+// `rowSeason` (bis_items.season / item_preferences.season, stamped at tag
+// time) for those instead. Rows tagged before that column existed have
+// rowSeason null/undefined and fail open (shown regardless of season)
+// rather than silently disappearing.
 //
 // Fail-open only applies to the default (seasonView unset) case: no
 // raid_zones rows for the live season yet still shows everything, so an
@@ -2398,8 +2404,8 @@ function currentZoneIdsForSeason(season) {
 // that season means an empty view, the honest state, not a silent fallback
 // to "show everything" (this doubles as the way to verify a new tier's
 // import actually worked).
-function isItemInSeasonScope(name) {
-  if ((DATA.itemPlaceholders || {})[name]) return true;
+function isItemInSeasonScope(name, rowSeason) {
+  if ((DATA.itemPlaceholders || {})[name]) return !rowSeason || rowSeason === resolveSeasonView();
   var zone = (DATA.itemZones || {})[name];
   if (!zone) return true;
   var explicit = !!(DATA && DATA.seasonView);
@@ -2603,7 +2609,7 @@ function refreshBisCompletion(firstName, nameRealm) {
   var el = document.getElementById('bis-completion-' + firstName);
   if (!el) return;
   var bisItems = getBisItems(nameRealm || firstName).filter(function (e) {
-    return typeof isItemInSeasonScope !== 'function' || isItemInSeasonScope(e.item);
+    return typeof isItemInSeasonScope !== 'function' || isItemInSeasonScope(e.item, e.season);
   });
   if (!bisItems.length) return;
   var selfRecItems = getSelfReceivedItems(firstName);
@@ -3896,7 +3902,7 @@ function renderProfile(firstName, backTo, container) {
 
   // Priority list
   var bisItems = getBisItems(player.nameRealm).filter(function (e) {
-    return typeof isItemInSeasonScope !== 'function' || isItemInSeasonScope(e.item);
+    return typeof isItemInSeasonScope !== 'function' || isItemInSeasonScope(e.item, e.season);
   });
   // Read-time merge only -- bis_items itself is never written to. A raider's
   // own wishlist "BiS" tag supersedes the officer's pick for that slot in

@@ -537,7 +537,7 @@ function buildBisListsTab() {
     for (var j = 0; j < players.length; j++) {
       var p = players[j];
       var bisCount = getBisItems(p.nameRealm).filter(function (e) {
-        return typeof isItemInSeasonScope !== 'function' || isItemInSeasonScope(e.item);
+        return typeof isItemInSeasonScope !== 'function' || isItemInSeasonScope(e.item, e.season);
       }).length;
       var roleColor =
         p.role === 'Tank'
@@ -672,7 +672,7 @@ function bisSlotBuckets(items) {
   var unassigned = [];
 
   items.forEach(function (entry, idx) {
-    if (typeof isItemInSeasonScope === 'function' && !isItemInSeasonScope(entry.item)) return;
+    if (typeof isItemInSeasonScope === 'function' && !isItemInSeasonScope(entry.item, entry.season)) return;
     if (entry.dbSlot && BIS_SLOTS.indexOf(entry.dbSlot) !== -1 && !buckets[entry.dbSlot]) {
       buckets[entry.dbSlot] = { entry: entry, index: idx };
     } else {
@@ -996,7 +996,12 @@ function bisSlotPickItem(itemName) {
     .then(function (itemId) {
       return supabaseClient
         .from('bis_items')
-        .insert({ player_id: player.id, item_id: itemId, slot: slotName })
+        .insert({
+          player_id: player.id,
+          item_id: itemId,
+          slot: slotName,
+          season: typeof resolveSeasonView === 'function' ? resolveSeasonView() : null
+        })
         .then(function (result) {
           if (result.error) throw new Error(result.error.message);
           return writeAuditLog('BiS Item Added', 'players', player.id, bisItemAuditDetail(itemName, slotName)).then(
