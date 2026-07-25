@@ -283,6 +283,11 @@
           "name": "slot",
           "type": "text",
           "nullable": true
+        },
+        {
+          "name": "season",
+          "type": "text",
+          "nullable": true
         }
       ],
       "indexes": [
@@ -3433,6 +3438,11 @@
           "type": "timestamp with time zone",
           "nullable": false,
           "default": "now()"
+        },
+        {
+          "name": "season",
+          "type": "text",
+          "nullable": true
         }
       ],
       "indexes": [

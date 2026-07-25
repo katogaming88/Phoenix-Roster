@@ -13,6 +13,7 @@
 | slot | text |  | true |  |  |  |
 | updated_at | timestamp with time zone |  | true |  |  |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
+| season | text |  | true |  |  |  |
 
 ## Constraints
 
@@ -57,6 +58,7 @@ erDiagram
   text slot
   timestamp_with_time_zone updated_at
   timestamp_with_time_zone created_at
+  text season
 }
 "public.teams" {
   integer id

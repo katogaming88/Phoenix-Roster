@@ -10,6 +10,7 @@
 | obtained | boolean | false | false |  |  |  |
 | updated_at | timestamp with time zone |  | true |  |  |  |
 | slot | text |  | true |  |  |  |
+| season | text |  | true |  |  |  |
 
 ## Constraints
 
@@ -47,6 +48,7 @@ erDiagram
   boolean obtained
   timestamp_with_time_zone updated_at
   text slot
+  text season
 }
 "public.players" {
   integer id
