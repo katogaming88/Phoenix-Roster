@@ -8,6 +8,13 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.6] - 2026-07-25
+
+### Frontend
+
+- Fixed the Priority List conflicts banner (stale-after-heroic #1s, same-boss #1 conflicts, duplicate #1s) showing entries from other seasons regardless of which season a team was actually on -- the underlying queries had no season filter at all. Both are now scoped to the team's current season, matching the ranked Priority List itself.
+- Priority Edit's save/generate/fairness-warning calls, and the ranked Priority List's own read, were tagging/filtering by the live raid season only, ignoring a team's `seasonView` (a forward-looking season pointer used to prep a future season's catalog/BiS/Wishlist ahead of time). A team pointed at a future season while still raiding the current one had no way to actually save priorities under that future season -- they'd silently land tagged as the live season instead. All of these now respect `seasonView` when it's set.
+
 ## [3.49.5] - 2026-07-24
 
 ### Frontend

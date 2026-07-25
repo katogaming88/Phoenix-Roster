@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.49.5';
+var VERSION = '3.49.6';
 
 // Shared by the officer.html Help tab and index.html's raider Help tab/tips.
 function toggleHelp(id) {
@@ -1497,9 +1497,11 @@ function mapSupabaseSelfReceived(rows) {
 // already been awarded the Heroic version of that exact item (see
 // priority_order_stale_after_heroic in
 // 20260713150512_priority_order_fairness_warnings.sql). Not season-filtered
-// for the same reason fetchSupabasePriorityOrder() isn't -- resolves to raw
-// rows, or [] on any failure so the nav badge just shows nothing rather than
-// erroring.
+// here for the same reason fetchSupabasePriorityOrder() isn't -- this
+// promise fires before DATA.seasonName is known, so the season filter is
+// applied downstream in applyHeavyData() once DATA is populated. Resolves
+// to raw rows, or [] on any failure so the nav badge just shows nothing
+// rather than erroring.
 function fetchSupabasePriorityStaleAfterHeroic() {
   if (!supabaseClient) return Promise.resolve([]);
   return supabaseClient
@@ -1525,14 +1527,15 @@ function fetchSupabasePriorityStaleAfterHeroic() {
 // warnings.sql). Fetched with item_name/boss already joined so the Priority
 // List conflict banner can name the actual items/players involved instead of
 // just a count from priority_order_same_boss_conflicts /
-// priority_order_first_prio_counts. Not season-filtered for the same reason
-// fetchSupabasePriorityStaleAfterHeroic() isn't -- resolves to raw rows, or
-// [] on any failure so the badge just shows nothing rather than erroring.
+// priority_order_first_prio_counts. Not season-filtered here for the same
+// reason fetchSupabasePriorityStaleAfterHeroic() isn't -- filtered downstream
+// in applyHeavyData() instead. Resolves to raw rows, or [] on any failure so
+// the badge just shows nothing rather than erroring.
 function fetchSupabasePriorityLiveFirstPrios() {
   if (!supabaseClient) return Promise.resolve([]);
   return supabaseClient
     .from('priority_order_live_first_prios')
-    .select('player_id, name_realm, item_id, item_name, track, boss')
+    .select('season, player_id, name_realm, item_id, item_name, track, boss')
     .eq('team_id', _teamCfg.supabaseTeamId)
     .then(function (result) {
       if (result.error) {
@@ -2307,12 +2310,15 @@ function loadData(onCoreReady, onHeavyReady) {
       DATA.recentAttendanceTrend = mappedAttendance ? mapSupabaseAttendanceTrend(mappedAttendance.players) : {};
       var mappedBis = bisRows ? mapSupabaseBisItems(bisRows) : null;
       DATA.bisList = mappedBis || {};
-      var mappedPriority = priorityRows
-        ? mapSupabasePriorityOrder(priorityRows, seasonCodeForDisplay(DATA.seasonName || ''))
-        : null;
+      var currentSeasonCode = resolveSeasonViewCode();
+      var mappedPriority = priorityRows ? mapSupabasePriorityOrder(priorityRows, currentSeasonCode) : null;
       DATA.priorityOrder = mappedPriority || {};
-      DATA.priorityStaleAfterHeroic = priorityStaleAfterHeroicRows || [];
-      DATA.priorityLiveFirstPrios = priorityLiveFirstPriosRows || [];
+      DATA.priorityStaleAfterHeroic = (priorityStaleAfterHeroicRows || []).filter(function (r) {
+        return r.season === currentSeasonCode;
+      });
+      DATA.priorityLiveFirstPrios = (priorityLiveFirstPriosRows || []).filter(function (r) {
+        return r.season === currentSeasonCode;
+      });
       var itemMaps = buildItemMaps(itemRows);
       DATA.itemSlots = itemMaps.itemSlots;
       DATA.itemArmorTypes = itemMaps.itemArmorTypes;
@@ -2350,6 +2356,18 @@ function loadData(onCoreReady, onHeavyReady) {
 // and gets wiped to [] by every archive_current_season() call (#537).
 function resolveSeasonView() {
   return (DATA && (DATA.seasonView || DATA.seasonName)) || '';
+}
+
+// The season code to tag/query priority_order (and its fairness-warning
+// views) with: DATA.seasonView when explicitly set -- already a raid_zones-
+// style code, see populateSeasonViewOptions() -- else seasonCodeForDisplay()
+// of the live DATA.seasonName. Deliberately not resolveSeasonView() itself:
+// that helper's raw seasonName fallback is left unconverted on purpose, so
+// isItemInSeasonScope()'s zone-id lookup fails open when seasonView is unset
+// (#549); priority_order.season always needs a real code, live season or not,
+// so a team without a seasonView override still gets one.
+function resolveSeasonViewCode() {
+  return (DATA && DATA.seasonView) || seasonCodeForDisplay((DATA && DATA.seasonName) || '');
 }
 
 // The set of raid zone IDs (#535, #549) the given season string covers, per
