@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=3.49.11">
+<link rel="stylesheet" href="css/styles.css?v=3.49.12">
 <script>var whTooltips = {colorLinks: true, iconizeLinks: true, iconSize: 'small'};</script>
 <script src="https://wow.zamimg.com/widgets/power.js"></script>
 </head>
@@ -166,21 +166,35 @@
       <button class="about-sub-tab active" id="aboutSubTabTeam" onclick="showAboutSubTab('team')">Team</button>
       <button class="about-sub-tab" id="aboutSubTabGuild" onclick="showAboutSubTab('guild')">Guild</button>
       <button class="about-sub-tab" id="aboutSubTabAbout" onclick="showAboutSubTab('about')">About</button>
+      <button class="about-sub-tab" id="aboutSubTabContact" onclick="showAboutSubTab('contact')">Contact</button>
     </div>
-    <div id="aboutTeamSection">
+    <div id="aboutTeamSection" style="display:contents;">
       <div id="bioView"></div>
     </div>
-    <div id="aboutGuildSection" style="display:none">
+    <div id="aboutGuildSection" style="display:none;">
       <div id="guildBioView"></div>
     </div>
-    <div id="aboutInfoSection" style="display:none">
+    <div id="aboutInfoSection" style="display:none;">
       <div class="pub-loot">
         <div class="pub-loot-title">What Is This?</div>
         <p style="color:var(--text);font-size:1rem;line-height:1.5;">WGA Raid Hub is a raid management site built for We Go Again's raid teams. Every raider gets a personal profile -- priority standing, BiS wishlist, attendance -- and officers get a full dashboard for loot, signups, and roster management. Warcraftlogs and Raider.io profiles are linked in for reference, and officers can pull in Warcraftlogs performance scores each season.</p>
       </div>
       <div class="pub-loot" style="margin-top:1.5rem;">
         <div class="pub-loot-title">About Kat</div>
-        <p style="color:var(--text);font-size:1rem;line-height:1.5;">Built and maintained by Kat (Katorri), a raid officer who got tired of juggling spreadsheets and built this instead. Bug reports and feature ideas are always welcome -- reach out on Discord.</p>
+        <p style="color:var(--text);font-size:1rem;line-height:1.5;">Built and maintained by Kat (Katorri), a raid officer who got tired of juggling spreadsheets and built this instead. Bug reports and feature ideas are always welcome -- reach out on Discord, or use the Contact tab below.</p>
+      </div>
+    </div>
+    <div id="aboutContactSection" style="display:none;">
+      <div class="pub-loot">
+        <div class="pub-loot-title">Report a Site Issue</div>
+        <div style="display:flex;flex-direction:column;gap:0.75rem;">
+          <input type="text" id="contactName" class="add-player-input" placeholder="Name (optional)">
+          <textarea id="contactMessage" class="add-player-input" placeholder="What's going on?" rows="5"></textarea>
+          <div style="display:flex;align-items:center;gap:0.75rem;">
+            <button type="button" class="btn btn-gold" id="contactSubmitBtn" onclick="submitContactForm()">Send</button>
+            <span id="contactStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -323,14 +337,15 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/common.js?v=3.49.11"></script>
-<script src="js/discord.js?v=3.49.11"></script>
-<script src="js/officer-quick-actions.js?v=3.49.11"></script>
-<script src="js/streamers.js?v=3.49.11"></script>
-<script src="js/news.js?v=3.49.11"></script>
-<script src="js/roster.js?v=3.49.11"></script>
-<script src="js/signup.js?v=3.49.11"></script>
-<script src="js/wishlist.js?v=3.49.11"></script>
+<script src="js/common.js?v=3.49.12"></script>
+<script src="js/discord.js?v=3.49.12"></script>
+<script src="js/officer-quick-actions.js?v=3.49.12"></script>
+<script src="js/streamers.js?v=3.49.12"></script>
+<script src="js/news.js?v=3.49.12"></script>
+<script src="js/roster.js?v=3.49.12"></script>
+<script src="js/contact.js?v=3.49.12"></script>
+<script src="js/signup.js?v=3.49.12"></script>
+<script src="js/wishlist.js?v=3.49.12"></script>
 <script>
 ['versionNum','versionNumProfile','versionNumSignup','versionNumRoster','versionNumStreamers','versionNumHistory','versionNumAbout','versionNumNews','versionNumHelp'].forEach(function(id){document.getElementById(id).textContent=VERSION;});
 document.title = TEAM_NAME + ' -- Roster';

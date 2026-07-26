@@ -227,6 +227,11 @@ function resolveDiscordSession(session) {
           authUserId: session.user.id,
           teamMemberId: member ? member.id : null,
           username: session.user.user_metadata.full_name || session.user.user_metadata.name,
+          // Discord snowflake ID (same raw_user_meta_data.provider_id the
+          // claim_character/admin-grant RPCs match on server-side) -- lets
+          // the Contact form tag the submitter as a clickable/pingable
+          // mention instead of asking for an email address (#577 follow-up).
+          discordId: session.user.user_metadata.provider_id || null,
           nameRealm: nameRealm,
           isOfficer: !!member && (member.role === 'officer' || member.role === 'team_leader'),
           isTeamLeader: !!member && member.role === 'team_leader',

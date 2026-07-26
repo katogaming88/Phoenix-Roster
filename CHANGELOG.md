@@ -8,6 +8,13 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.12] - 2026-07-25
+
+### Frontend
+
+- Added a Contact sub-tab to the public About tab (#577) -- a form for reporting site issues, posted through a new `contact-webhook` Edge Function to a single fixed admin Discord channel regardless of which team's site it was submitted from. Unlike the existing `discord-bot-webhook` (a per-team relay to each team's own self-hosted bot server), this posts directly to a Discord native incoming webhook with no per-team routing. No email field -- a logged-in submitter's Discord snowflake ID rides along instead, rendered as a clickable `<@id>` mention in the Discord embed so a reply is a right-click away. Needs the `CONTACT_WEBHOOK_URL` Edge Function secret set and the function deployed before it actually delivers anywhere -- missing the secret is a silent no-op, same as `discord-bot-webhook`'s missing-per-team-secret case.
+- Fixed the About tab's Team/Guild/About/Contact sub-tab sections rendering too narrow and left-aligned instead of centered -- their wrapper divs now use `display:contents` so each section's content becomes a direct centered flex child of the page body again, matching every other tab.
+
 ## [3.49.11] - 2026-07-25
 
 ### Frontend
