@@ -1,5 +1,12 @@
 [
   {
+    "date": "2026-07-25",
+    "category": "Feature",
+    "version": "3.49.13",
+    "title": "See who's already signed up when picking your class",
+    "body": "Step 3 of Sign Up now shows who else already plays the class you pick. If you're signing up as Tank or Healer, you'll also see a heads up if the team already has enough -- you can still sign up either way, but it's worth considering DPS as backup or talking to an officer first."
+  },
+  {
     "date": "2026-07-23",
     "category": "Change",
     "version": "3.48.0",

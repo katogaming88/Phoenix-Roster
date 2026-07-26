@@ -490,8 +490,11 @@ function buildSignupRoleAdvisoryHtml(role) {
   }).length;
   var roleLabel = roleKey === 'Tank' ? 'tank' : 'healer';
   var countLine = count + ' ' + roleLabel + (count === 1 ? '' : 's') + ' already signed up';
+  // Always shown in the caution/yellow style -- Tank/Heal are inherently
+  // capacity-sensitive roles, unlike the neutral DPS class-info box, even
+  // before an officer has configured an actual target.
   if (target == null) {
-    return '<p class="signup-role-info">' + countLine + '.</p>';
+    return '<p class="signup-role-info signup-role-info-warn">' + countLine + '.</p>';
   }
   if (count >= target) {
     return (
@@ -506,7 +509,15 @@ function buildSignupRoleAdvisoryHtml(role) {
       'ing.</p>'
     );
   }
-  return '<p class="signup-role-info">' + count + ' of ' + target + ' ' + roleLabel + 's currently signed up.</p>';
+  return (
+    '<p class="signup-role-info signup-role-info-warn">' +
+    count +
+    ' of ' +
+    target +
+    ' ' +
+    roleLabel +
+    's currently signed up.</p>'
+  );
 }
 
 // Live-patches #signupRoleInfo as the Primary Role radio changes, without a
