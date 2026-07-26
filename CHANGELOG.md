@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.13] - 2026-07-25
+
+### Frontend
+
+- Added a total count and a per-role count to the public Roster tab's pending ("Next Season Roster (Tentative)") view -- a "N Pending Raiders" line above the table, and each role's group header now shows its own count (e.g. "Tanks (2)").
+
 ## [3.49.12] - 2026-07-25
 
 ### Frontend

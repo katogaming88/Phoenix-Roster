@@ -197,7 +197,9 @@ function buildIncomingRosterSection() {
     if (groups[p.role]) groups[p.role].push(p);
   }
 
-  var html = '<table class="roster-table"><thead><tr><th>Player</th><th>Class / Spec</th></tr></thead><tbody>';
+  var html =
+    '<div class="pub-loot-title">' + rows.length + ' Pending Raider' + (rows.length === 1 ? '' : 's') + '</div>';
+  html += '<table class="roster-table"><thead><tr><th>Player</th><th>Class / Spec</th></tr></thead><tbody>';
 
   for (var r = 0; r < order.length; r++) {
     var role = order[r];
@@ -206,7 +208,7 @@ function buildIncomingRosterSection() {
     players.sort(function (a, b) {
       return a.firstName.localeCompare(b.firstName);
     });
-    html += '<tr class="group-header"><td colspan="2">' + labels[role] + '</td></tr>';
+    html += '<tr class="group-header"><td colspan="2">' + labels[role] + ' (' + players.length + ')</td></tr>';
 
     for (var j = 0; j < players.length; j++) {
       var player = players[j];
