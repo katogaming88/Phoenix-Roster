@@ -213,6 +213,7 @@ function renderSignupStep() {
       ';">' +
       signupData.className +
       '</h2>' +
+      buildSignupClassInfoHtml(signupData.className) +
       (signupHasClassMismatch() ? buildClassMismatchWarningHtml() : '') +
       '<div class="signup-field">' +
       '<span class="signup-label">Main Spec</span>' +
@@ -247,11 +248,12 @@ function renderSignupStep() {
           r +
           '"' +
           (signupData.role === r ? ' checked' : '') +
-          '>' +
+          ' onchange="updateSignupRoleInfo()">' +
           r +
           '</label>';
       });
-      html += '</div></div>';
+      html +=
+        '</div>' + '<div id="signupRoleInfo">' + buildSignupRoleAdvisoryHtml(signupData.role || '') + '</div></div>';
     }
     html +=
       '<p id="signupError" class="signup-error"></p>' +
@@ -405,6 +407,128 @@ function updateOffSpecList() {
     }
   );
   group.innerHTML = buildOffSpecHTML(specData.specs, mainSpec, currentChecked);
+}
+
+// Who to compare a signup-in-progress against: always the already-approved
+// incoming roster (#499). Also excludes still-pending signups -- season_
+// signups RLS only lets officers read it, and the one raider-facing RPC
+// (get_own_signup) is scoped to the caller's own row, so there's no privacy-
+// safe way to name other pending applicants here.
+//
+// The confirmed active roster is included too, but ONLY when the team's
+// live raiding season already equals the season being signed up for
+// (DATA.seasonName === DATA.signupSeason) -- e.g. Hellfire, who push
+// approved signups straight onto the roster instead of leaving them
+// pending, so their roster already IS this season's confirmed membership.
+// When the two differ (e.g. Phoenix, still raiding a prior season while
+// collecting signups for the next one), the roster reflects a stale season
+// and would wrongly count someone who simply hasn't signed up yet --
+// officers already have a separate view for that; the incoming roster alone
+// is the accurate answer there.
+function signupClassmatesPool() {
+  var incoming = (window.DATA && DATA.incomingRoster) || [];
+  var seasonName = ((window.DATA && DATA.seasonName) || '').trim().toLowerCase();
+  var signupSeason = ((window.DATA && DATA.signupSeason) || '').trim().toLowerCase();
+  var includeRoster = !!seasonName && !!signupSeason && seasonName === signupSeason;
+  if (!includeRoster) return incoming;
+
+  // Same swap-duplicate handling as before: a returning roster member who
+  // resubmits under the same character name is deduped (incoming wins); a
+  // true main-swap to a different character name has its old character
+  // excluded via incoming_roster's swap_from_name_realm column.
+  var swappedFromKeys = {};
+  incoming.forEach(function (p) {
+    if (p.swapFromNameRealm) swappedFromKeys[String(p.swapFromNameRealm).toLowerCase()] = true;
+  });
+  var byNameRealm = {};
+  ((window.DATA && DATA.roster) || []).forEach(function (p) {
+    var key = signupNameRealmKey(p);
+    if (swappedFromKeys[key]) return;
+    byNameRealm[key] = p;
+  });
+  incoming.forEach(function (p) {
+    byNameRealm[signupNameRealmKey(p)] = p;
+  });
+  return Object.keys(byNameRealm).map(function (k) {
+    return byNameRealm[k];
+  });
+}
+
+function signupNameRealmKey(p) {
+  return String(p.nameRealm || p.firstName + '-' + p.realm || '').toLowerCase();
+}
+
+// Always shown for step 3, regardless of role/spec -- "who else already
+// plays this class" (#586 follow-up). Class-level only, not spec-level: a
+// Paladin signing up sees every other Paladin regardless of whether they're
+// tanking/healing/dpsing.
+function buildSignupClassInfoHtml(className) {
+  var classmates = signupClassmatesPool().filter(function (p) {
+    return p.class === className;
+  });
+  if (!classmates.length) {
+    return '<p class="signup-role-info">No one else is currently playing ' + signupEscHtml(className) + '.</p>';
+  }
+  var names = classmates.map(function (p) {
+    return signupEscHtml(p.nick || p.firstName);
+  });
+  return '<p class="signup-role-info">Already playing ' + signupEscHtml(className) + ': ' + names.join(', ') + '</p>';
+}
+
+// Tank/Heal capacity advisory against an officer-set target
+// (DATA.targetTankCount/targetHealCount, Season Settings -- "Target Roster
+// Sizes"). Returns '' for any other role, including a pure class's fixed
+// Melee/Ranged role -- there's no cap on DPS, so no advisory box is shown
+// for those at all (see the signupStep === 3 render, which only inserts
+// #signupRoleInfo for hybrid classes to begin with).
+function buildSignupRoleAdvisoryHtml(role) {
+  var roleKey = role === 'Tank' ? 'Tank' : role === 'Healer' ? 'Heal' : null;
+  if (!roleKey) return '';
+  var target = roleKey === 'Tank' ? DATA && DATA.targetTankCount : DATA && DATA.targetHealCount;
+  var count = signupClassmatesPool().filter(function (p) {
+    return p.role === roleKey;
+  }).length;
+  var roleLabel = roleKey === 'Tank' ? 'tank' : 'healer';
+  var countLine = count + ' ' + roleLabel + (count === 1 ? '' : 's') + ' already signed up';
+  // Always shown in the caution/yellow style -- Tank/Heal are inherently
+  // capacity-sensitive roles, unlike the neutral DPS class-info box, even
+  // before an officer has configured an actual target.
+  if (target == null) {
+    return '<p class="signup-role-info signup-role-info-warn">' + countLine + '.</p>';
+  }
+  if (count >= target) {
+    return (
+      '<p class="signup-role-info signup-role-info-warn">' +
+      countLine +
+      ' (target: ' +
+      target +
+      '). Consider signing up as DPS and being a backup ' +
+      roleLabel +
+      ", or talk to an officer if you're set on " +
+      roleLabel +
+      'ing.</p>'
+    );
+  }
+  return (
+    '<p class="signup-role-info signup-role-info-warn">' +
+    count +
+    ' of ' +
+    target +
+    ' ' +
+    roleLabel +
+    's currently signed up.</p>'
+  );
+}
+
+// Live-patches #signupRoleInfo as the Primary Role radio changes, without a
+// full step re-render -- mirrors updateOffSpecList()'s partial-DOM-patch
+// pattern so it doesn't disturb the Main Spec/Off Spec selections already
+// made on this same render.
+function updateSignupRoleInfo() {
+  var roleEl = document.querySelector('input[name="primaryRole"]:checked');
+  var el = document.getElementById('signupRoleInfo');
+  if (!el) return;
+  el.innerHTML = buildSignupRoleAdvisoryHtml(roleEl ? roleEl.value : '');
 }
 
 function buildClaimDiffersWarningHtml() {

@@ -8,6 +8,17 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.13] - 2026-07-25
+
+### Frontend
+
+- Added a total count and a per-role count to the public Roster tab's pending ("Next Season Roster (Tentative)") view -- a "N Pending Raiders" line above the table, and each role's group header now shows its own count (e.g. "Tanks (2)").
+- Signup Step 3 (Spec/Role) now shows who else already plays the selected class, and, for hybrid classes picking Tank or Healer, a capacity advisory against a new officer-set "Target Roster Sizes" setting -- once the count meets or exceeds the target, raiders see a nudge to consider DPS/backup instead, or talk to an officer. Always counts already-approved incoming-roster signups; the confirmed active roster is counted too only when a team's live raiding season already equals the season being signed up for (i.e. officers push approved signups straight onto the roster instead of leaving them pending) -- otherwise the roster reflects a prior season and would wrongly count someone who simply hasn't signed up yet for the season in question. Pending (not-yet-officer-approved) signups aren't counted -- `season_signups` RLS keeps those officer-only, and there's no privacy-safe way to name other still-under-review applicants here. A returning roster member who resubmits for continuity, or genuinely swaps to a different main, no longer shows up twice in that comparison.
+
+### Backend
+
+- `incoming_roster` view now also exposes `swap_from_name_realm`, so a true main-swap signup can exclude the old character it replaces from the signup-time class comparison above instead of double-counting one real person under two names. Not a security change -- character names are already public elsewhere in this app.
+
 ## [3.49.12] - 2026-07-25
 
 ### Frontend

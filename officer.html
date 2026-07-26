@@ -11,8 +11,8 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=3.49.12">
-  <link rel="stylesheet" href="css/officer.css?v=3.49.12">
+  <link rel="stylesheet" href="css/styles.css?v=3.49.13">
+  <link rel="stylesheet" href="css/officer.css?v=3.49.13">
   <!-- Hover tooltips for Buff Coverage's spell links (#491) and item links
        (Priority tab/BiS grid, itemNameBlockHtml(), #567). Auto-attaches to
        any <a class="wowhead">. whTooltips must be set before power.js loads
@@ -733,6 +733,22 @@
                 </div>
               </div>
 
+              <!-- Target Roster Sizes -->
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">Target Roster Sizes<button class="help-btn" onclick="toggleHelp('help-roster-targets')" title="Show help">?</button></h4>
+                <div id="help-roster-targets" class="help-tip">
+                  Shown to raiders signing up as Tank or Healer: once the confirmed roster plus already-approved incoming roster meets or exceeds a target, they see a nudge to consider DPS/backup instead, or talk to an officer. Leave a field blank to skip the nudge for that role -- raiders still see the plain count either way.
+                </div>
+                <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;margin-top:0.75rem;">
+                  <span style="font-size:0.92rem;color:var(--text-muted);">Tanks</span>
+                  <input type="number" id="targetTankCountInput" class="add-player-input" min="0" max="20" style="max-width:70px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+                  <span style="font-size:0.92rem;color:var(--text-muted);">Healers</span>
+                  <input type="number" id="targetHealCountInput" class="add-player-input" min="0" max="20" style="max-width:70px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+                  <button class="btn btn-gold" id="rosterTargetsSaveBtn" onclick="saveRosterTargets()">Save</button>
+                  <span id="rosterTargetsStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+                </div>
+              </div>
+
               <!-- WarcraftLogs Guild URL -->
               <div class="help-ref-card">
                 <h4 class="help-ref-title">WarcraftLogs Guild URL<button class="help-btn" onclick="toggleHelp('help-wcl-url')" title="Show help">?</button></h4>
@@ -1139,27 +1155,27 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/common.js?v=3.49.12"></script>
-  <script src="js/discord.js?v=3.49.12"></script>
-  <script src="js/officer.js?v=3.49.12"></script>
-  <script src="js/tabs/tab-roster.js?v=3.49.12"></script>
-  <script src="js/tabs/tab-conflicts.js?v=3.49.12"></script>
-  <script src="js/tabs/tab-fairness.js?v=3.49.12"></script>
-  <script src="js/tabs/tab-attendance.js?v=3.49.12"></script>
-  <script src="js/tabs/tab-bench-fairness.js?v=3.49.12"></script>
-  <script src="js/tabs/tab-signups.js?v=3.49.12"></script>
-  <script src="js/tabs/tab-requests.js?v=3.49.12"></script>
-  <script src="js/tabs/tab-bis.js?v=3.49.12"></script>
-  <script src="js/tabs/tab-pending-roster.js?v=3.49.12"></script>
-  <script src="js/tabs/tab-mplus.js?v=3.49.12"></script>
-  <script src="js/tabs/tab-priority.js?v=3.49.12"></script>
-  <script src="js/tabs/tab-audit.js?v=3.49.12"></script>
-  <script src="js/tabs/tab-reports.js?v=3.49.12"></script>
-  <script src="js/tabs/tab-season.js?v=3.49.12"></script>
-  <script src="js/tabs/tab-bios.js?v=3.49.12"></script>
-  <script src="js/tabs/tab-loot-import.js?v=3.49.12"></script>
-  <script src="js/tabs/tab-scoring.js?v=3.49.12"></script>
-  <script src="js/tabs/tab-admin.js?v=3.49.12"></script>
+  <script src="js/common.js?v=3.49.13"></script>
+  <script src="js/discord.js?v=3.49.13"></script>
+  <script src="js/officer.js?v=3.49.13"></script>
+  <script src="js/tabs/tab-roster.js?v=3.49.13"></script>
+  <script src="js/tabs/tab-conflicts.js?v=3.49.13"></script>
+  <script src="js/tabs/tab-fairness.js?v=3.49.13"></script>
+  <script src="js/tabs/tab-attendance.js?v=3.49.13"></script>
+  <script src="js/tabs/tab-bench-fairness.js?v=3.49.13"></script>
+  <script src="js/tabs/tab-signups.js?v=3.49.13"></script>
+  <script src="js/tabs/tab-requests.js?v=3.49.13"></script>
+  <script src="js/tabs/tab-bis.js?v=3.49.13"></script>
+  <script src="js/tabs/tab-pending-roster.js?v=3.49.13"></script>
+  <script src="js/tabs/tab-mplus.js?v=3.49.13"></script>
+  <script src="js/tabs/tab-priority.js?v=3.49.13"></script>
+  <script src="js/tabs/tab-audit.js?v=3.49.13"></script>
+  <script src="js/tabs/tab-reports.js?v=3.49.13"></script>
+  <script src="js/tabs/tab-season.js?v=3.49.13"></script>
+  <script src="js/tabs/tab-bios.js?v=3.49.13"></script>
+  <script src="js/tabs/tab-loot-import.js?v=3.49.13"></script>
+  <script src="js/tabs/tab-scoring.js?v=3.49.13"></script>
+  <script src="js/tabs/tab-admin.js?v=3.49.13"></script>
   <script>
 document.getElementById('versionNum').textContent = VERSION;
 document.title = TEAM_NAME + ' -- Officer';

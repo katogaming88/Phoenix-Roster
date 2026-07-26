@@ -8,6 +8,16 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-07-25 -- `incoming_roster` view exposes `swap_from_name_realm`
+
+Decided directly in conversation (no tracking issue) while building the signup-time "who else already plays this class" feature: a returning roster member who submits a genuine main-swap to a *different* character name would otherwise show up twice in that comparison -- once under their current roster character, once under the new incoming one -- since the client had no way to know one supersedes the other.
+
+- **Added `s.swap_from_name_realm` to the `incoming_roster` view's column list** (appended at the end, not inserted mid-list -- `CREATE OR REPLACE VIEW` can only add trailing columns without erroring). Not a security change: character names are already public everywhere else in this app (roster, bios, loot log); the view's existing officer-only boundary (`player_note`, `signup_officer_note`, `reviewed_at`, `reviewed_by`, `off_specs`, `main_swap`, `submitted_at`) is unchanged.
+- Client-side (`js/signup.js`'s `signupClassmatesPool()`), an incoming row's `swapFromNameRealm` now excludes that name+realm from the roster half of the comparison pool entirely, rather than showing both. A same-name resubmission (no real swap, just resigning under the same character) is handled separately by de-duping on name+realm, keeping the incoming entry.
+- Migration (`20260726104522_incoming_roster_swap_from_name_realm.sql`) had to sort *after* `20260726104514_incoming_roster_public_view.sql` (the view's actual `CREATE VIEW`) -- a real ordering conflict, not just cosmetic drift, since a plain `CREATE VIEW` errors if the view already exists.
+
+---
+
 ## 2026-07-23 -- Un-bundles signups from `seasonView` (#549 correction): `signupSeason` keeps its own independent setting
 
 Surfaced during implementation, before #549 shipped: bundling `signupSeason` into `seasonView` (the 2026-07-22 entry below) assumed the two concepts move on the same timeline. They don't. Signups for the next tier routinely open while the current tier is still being raided -- that overlap is the normal case, not an edge case -- but item/BiS/Wishlist scoping is about what raiders should see for tonight's raid. Pointing `seasonView` at the next season to open its signups would have also flipped every raider's Priority tab/BiS grid/Wishlist to that next season's (probably still-incomplete) item catalog mid-raid.

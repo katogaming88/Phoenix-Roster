@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.49.12';
+var VERSION = '3.49.13';
 
 // Shared by the officer.html Help tab and index.html's raider Help tab/tips.
 function toggleHelp(id) {
@@ -929,7 +929,7 @@ function fetchSupabaseIncomingRoster() {
   if (!supabaseClient) return Promise.resolve(null);
   var query = supabaseClient
     .from('incoming_roster')
-    .select('signup_id, signup_name_realm, class, spec, role')
+    .select('signup_id, signup_name_realm, swap_from_name_realm, class, spec, role')
     .eq('team_id', _teamCfg.supabaseTeamId)
     .then(function (result) {
       if (result.error) {
@@ -1023,7 +1023,8 @@ function mapSupabaseIncomingRoster(rows) {
       nick: '',
       class: row.class || '',
       spec: row.spec || '',
-      role: row.role
+      role: row.role,
+      swapFromNameRealm: row.swap_from_name_realm || ''
     });
   });
   return players;
@@ -1677,7 +1678,14 @@ var SEASON_CONFIG_KEYS = [
   // tab/BiS/Wishlist to next season's still-incomplete catalog mid-raid --
   // corrected same day, see docs/database-decisions.md). Nullable, resolved
   // via resolveSeasonView() below.
-  'seasonView'
+  'seasonView',
+  // Officer-set target roster sizes, shown as a signup-time advisory
+  // (js/signup.js's buildSignupRoleAdvisoryHtml()) once the confirmed
+  // roster + already-approved incoming roster meets or exceeds either
+  // count. Unset/0 means no target configured -- the advisory just shows
+  // the plain count with no "we have enough" nudge.
+  'targetTankCount',
+  'targetHealCount'
 ];
 
 /**

@@ -12,7 +12,8 @@ CREATE VIEW incoming_roster AS (
     s.signup_name_realm,
     cs.class,
     cs.spec,
-    cs.role
+    cs.role,
+    s.swap_from_name_realm
    FROM ((season_signups s
      JOIN team_settings ts ON ((ts.team_id = s.team_id)))
      LEFT JOIN classes_specs cs ON ((cs.id = COALESCE(s.swap_class_spec_id, s.class_spec_id))))
@@ -32,6 +33,7 @@ CREATE VIEW incoming_roster AS (
 | class | text |  | true |  |  |  |
 | spec | text |  | true |  |  |  |
 | role | text |  | true |  |  |  |
+| swap_from_name_realm | text |  | true |  |  |  |
 
 ## Referenced Tables
 
@@ -54,6 +56,7 @@ erDiagram
   text class
   text spec
   text role
+  text swap_from_name_realm
 }
 ```
 

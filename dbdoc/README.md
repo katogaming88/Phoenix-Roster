@@ -40,7 +40,7 @@
 | [public.priority_order_stale_after_heroic](public.priority_order_stale_after_heroic.md) | 7 |  | VIEW |
 | [public.item_preferences](public.item_preferences.md) | 10 |  | BASE TABLE |
 | [public.site_settings](public.site_settings.md) | 4 |  | BASE TABLE |
-| [public.incoming_roster](public.incoming_roster.md) | 6 |  | VIEW |
+| [public.incoming_roster](public.incoming_roster.md) | 7 |  | VIEW |
 
 ## Stored procedures and functions
 
@@ -518,6 +518,7 @@ erDiagram
   text class
   text spec
   text role
+  text swap_from_name_realm
 }
 ```
 
