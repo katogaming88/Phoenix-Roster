@@ -8,6 +8,16 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.19] - 2026-07-26
+
+### Frontend
+
+- **Added designated Backup Tank / Backup Healer roster flags** -- two new independent toggles in the officer Player Settings panel, alongside Trial/Bench. Multiple raiders can hold either designation at once (no exclusivity), and it's not restricted to a player's own current role (a DPS with a tank offspec can be flagged Backup Tank). Shows as a badge on the profile page (public, same visibility as the Trial/Bench badges) and as a status tag in the officer roster table. Also added to the Pending Roster promotion flow -- two new checkboxes alongside the existing Trial checkbox, threaded into `add_signup_to_roster()` at promotion time the same way Trial already is (there's no column on `season_signups` itself).
+
+### Backend
+
+- Added `players.is_backup_tank` / `players.is_backup_healer` (boolean, default false) and two new trailing parameters on `add_signup_to_roster()`. Adding parameters this way produced a second, distinct function overload rather than replacing the original in place (confirmed against a local `db reset`) -- the old 3-arg overload is dropped and the new 5-arg one gets fresh, explicit `authenticated`-only grants, since a genuinely new function doesn't inherit the original's and Postgres grants EXECUTE to `PUBLIC` (`anon` included) by default.
+
 ## [3.49.18] - 2026-07-26
 
 ### Frontend

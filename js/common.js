@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.49.18';
+var VERSION = '3.49.19';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -970,7 +970,7 @@ function fetchSupabaseRoster() {
   var query = supabaseClient
     .from('players')
     .select(
-      'id, name_realm, nickname, is_trial, is_bench, bis_link, bis_allowed, m_plus_excluded, m_plus_note, join_date, officer_notes, classes_specs(class, spec, role)'
+      'id, name_realm, nickname, is_trial, is_bench, is_backup_tank, is_backup_healer, bis_link, bis_allowed, m_plus_excluded, m_plus_note, join_date, officer_notes, classes_specs(class, spec, role)'
     )
     .eq('team_id', _teamCfg.supabaseTeamId)
     .is('archived_at', null)
@@ -1123,6 +1123,8 @@ function mapSupabaseRoster(rows, jsonpRoster, mplusRejections) {
       realm: parts.slice(1).join('-').trim(),
       isTrial: !!row.is_trial,
       isBench: !!row.is_bench,
+      isBackupTank: !!row.is_backup_tank,
+      isBackupHealer: !!row.is_backup_healer,
       attendance: jsonpRow.attendance || '',
       nick: row.nickname || '',
       class: cs.class || '',
@@ -3724,6 +3726,8 @@ function renderProfile(firstName, backTo, container) {
   var benchBadge = player.isBench
     ? '<span class="badge" style="background:rgba(255,255,255,0.04);color:var(--text);border:1px solid var(--border);">Bench</span>'
     : '';
+  var backupTankBadge = player.isBackupTank ? '<span class="badge badge-backup-tank">Backup Tank</span>' : '';
+  var backupHealerBadge = player.isBackupHealer ? '<span class="badge badge-backup-healer">Backup Healer</span>' : '';
 
   // Per-character Armory/Raider.IO/WCL links (#289) -- constructed from
   // name/realm, no submission or API call.
@@ -4386,6 +4390,34 @@ function renderProfile(firstName, backTo, container) {
           '</div>'
         : '') +
       '<div style="display:flex;align-items:center;gap:0.75rem;">' +
+      '<span style="font-size:1.04rem;color:var(--text-muted);min-width:3.5rem;">Backup Tank</span>' +
+      '<button id="backupTankToggle-' +
+      player.firstName +
+      '" class="btn ' +
+      (player.isBackupTank ? 'btn-gold' : 'btn-muted') +
+      '" style="font-size:1rem;padding:0.25rem 0.75rem;" onclick="togglePlayerBackupTank(\'' +
+      nrSafe +
+      "','" +
+      fnSafe +
+      '\')">' +
+      (player.isBackupTank ? 'Remove Backup Tank' : 'Mark as Backup Tank') +
+      '</button>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:0.75rem;">' +
+      '<span style="font-size:1.04rem;color:var(--text-muted);min-width:3.5rem;">Backup Healer</span>' +
+      '<button id="backupHealerToggle-' +
+      player.firstName +
+      '" class="btn ' +
+      (player.isBackupHealer ? 'btn-gold' : 'btn-muted') +
+      '" style="font-size:1rem;padding:0.25rem 0.75rem;" onclick="togglePlayerBackupHealer(\'' +
+      nrSafe +
+      "','" +
+      fnSafe +
+      '\')">' +
+      (player.isBackupHealer ? 'Remove Backup Healer' : 'Mark as Backup Healer') +
+      '</button>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:0.75rem;">' +
       '<span style="font-size:1.04rem;color:var(--text-muted);min-width:3.5rem;">M+ Excl.</span>' +
       '<button id="mplusExclToggle-' +
       player.firstName +
@@ -4500,6 +4532,8 @@ function renderProfile(firstName, backTo, container) {
     '</span>' +
     trialBadge +
     benchBadge +
+    backupTankBadge +
+    backupHealerBadge +
     classLine +
     fullyBisBadge +
     '</div>' +

@@ -276,6 +276,8 @@ select#playerSelect option { background:#1a1d27; }
 .badge-Ranged { background:rgba(191,140,255,0.12); color:var(--ranged); border:1px solid rgba(191,140,255,0.2); }
 .badge-Melee  { background:rgba(255,124,92,0.12);  color:var(--melee);  border:1px solid rgba(255,124,92,0.2); }
 .badge-trial  { background:rgba(240,200,112,0.1);  color:#f0c870;       border:1px solid rgba(240,200,112,0.2); }
+.badge-backup-tank   { background:rgba(74,158,255,0.1);  color:var(--tank); border:1px solid rgba(74,158,255,0.2); }
+.badge-backup-healer { background:rgba(61,220,132,0.1);  color:var(--heal); border:1px solid rgba(61,220,132,0.2); }
 .badge-class  { border:1px solid transparent; }
 .profile-section { padding:1rem 1.25rem; border-bottom:1px solid var(--border); }
 .profile-section:last-child { border-bottom:none; }
@@ -370,6 +372,8 @@ select#playerSelect option { background:#1a1d27; }
 .tag { font-size:1rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; padding:1px 6px; border-radius:2px; }
 .tag-trial { background:rgba(240,200,112,0.1); color:#f0c870; border:1px solid rgba(240,200,112,0.2); }
 .tag-bench { background:rgba(255,255,255,0.04); color:var(--text); border:1px solid var(--border); }
+.tag-backup-tank { background:rgba(74,158,255,0.1); color:var(--tank); border:1px solid rgba(74,158,255,0.2); }
+.tag-backup-healer { background:rgba(61,220,132,0.1); color:var(--heal); border:1px solid rgba(61,220,132,0.2); }
 #officerProfile { margin-top:1.5rem; }
 
 /* Roster filters */

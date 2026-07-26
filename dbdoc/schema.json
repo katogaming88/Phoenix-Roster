@@ -1213,6 +1213,18 @@
           "name": "officer_notes",
           "type": "text",
           "nullable": true
+        },
+        {
+          "name": "is_backup_tank",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "is_backup_healer",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
         }
       ],
       "indexes": [
@@ -4228,12 +4240,6 @@
       "type": "FUNCTION"
     },
     {
-      "name": "public.add_signup_to_roster",
-      "return_type": "int4",
-      "arguments": "p_signup_id integer, p_is_trial boolean DEFAULT true, p_archive_player_id integer DEFAULT NULL::integer",
-      "type": "FUNCTION"
-    },
-    {
       "name": "public.claim_character",
       "return_type": "record",
       "arguments": "p_team_id integer, p_name_realm text",
@@ -4441,6 +4447,12 @@
       "name": "public.update_own_signup",
       "return_type": "int4",
       "arguments": "p_signup_id integer, p_name_realm text, p_class text, p_spec text, p_off_specs text DEFAULT ''::text, p_main_swap boolean DEFAULT false, p_player_note text DEFAULT NULL::text, p_swap_from_name_realm text DEFAULT NULL::text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.add_signup_to_roster",
+      "return_type": "int4",
+      "arguments": "p_signup_id integer, p_is_trial boolean DEFAULT true, p_archive_player_id integer DEFAULT NULL::integer, p_is_backup_tank boolean DEFAULT false, p_is_backup_healer boolean DEFAULT false",
       "type": "FUNCTION"
     }
   ],

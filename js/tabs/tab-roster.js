@@ -55,6 +55,8 @@ function runRosterWrite(promise, msgEl) {
 var ROSTER_FIELD_COLUMN = {
   isTrial: 'is_trial',
   isBench: 'is_bench',
+  isBackupTank: 'is_backup_tank',
+  isBackupHealer: 'is_backup_healer',
   joinDate: 'join_date',
   mPlusExcluded: 'm_plus_excluded',
   officerNote: 'officer_notes'
@@ -62,6 +64,8 @@ var ROSTER_FIELD_COLUMN = {
 var ROSTER_FIELD_AUDIT_LABEL = {
   isTrial: 'Trial Status Changed',
   isBench: 'Bench Status Changed',
+  isBackupTank: 'Backup Tank Status Changed',
+  isBackupHealer: 'Backup Healer Status Changed',
   joinDate: 'Join Date Changed',
   mPlusExcluded: 'M+ Exclusion Toggled',
   officerNote: 'Officer Note Changed'
@@ -72,6 +76,8 @@ var ROSTER_FIELD_RAW_VALUE = { joinDate: true, officerNote: true };
 function rosterFieldAuditDetail(field, value) {
   if (field === 'isTrial') return value ? 'Trial added' : 'Trial removed';
   if (field === 'isBench') return value ? 'Moved to bench' : 'Removed from bench';
+  if (field === 'isBackupTank') return value ? 'Marked as backup tank' : 'Backup tank removed';
+  if (field === 'isBackupHealer') return value ? 'Marked as backup healer' : 'Backup healer removed';
   if (field === 'joinDate') return 'Changed to ' + value;
   if (field === 'mPlusExcluded') return value ? 'Excluded' : 'Exclusion removed';
   if (field === 'officerNote') return value ? 'Changed to ' + value : 'Cleared';
@@ -287,7 +293,9 @@ function buildRosterTable() {
               : 'var(--melee)';
       var statusTags = '';
       if (p.isTrial) statusTags += '<span class="tag tag-trial">Trial</span> ';
-      if (p.isBench) statusTags += '<span class="tag tag-bench">Bench</span>';
+      if (p.isBench) statusTags += '<span class="tag tag-bench">Bench</span> ';
+      if (p.isBackupTank) statusTags += '<span class="tag tag-backup-tank">Backup Tank</span> ';
+      if (p.isBackupHealer) statusTags += '<span class="tag tag-backup-healer">Backup Healer</span>';
       if (!statusTags) statusTags = '<span style="color:var(--text);">-</span>';
       var barPct = pct.toFixed(1) + '%';
       var clsColor = classColor(p.class);
@@ -1013,6 +1021,46 @@ function togglePlayerBench(nameRealm, firstName) {
       btn.disabled = false;
       btn.className = 'btn ' + (newVal ? 'btn-gold' : 'btn-muted');
       btn.textContent = newVal ? 'Remove from Bench' : 'Move to Bench';
+    }
+  });
+}
+
+function togglePlayerBackupTank(nameRealm, firstName) {
+  var player = findRosterPlayer(nameRealm);
+  if (!player) return;
+  var newVal = !player.isBackupTank;
+  var btn = document.getElementById('backupTankToggle-' + firstName);
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+  }
+  var msgEl = document.getElementById('playerSettingsMsg-' + firstName);
+  runRosterWrite(updateRosterFieldSupabase(nameRealm, 'isBackupTank', newVal), msgEl).then(function (ok) {
+    if (ok) player.isBackupTank = newVal;
+    if (btn) {
+      btn.disabled = false;
+      btn.className = 'btn ' + (newVal ? 'btn-gold' : 'btn-muted');
+      btn.textContent = newVal ? 'Remove Backup Tank' : 'Mark as Backup Tank';
+    }
+  });
+}
+
+function togglePlayerBackupHealer(nameRealm, firstName) {
+  var player = findRosterPlayer(nameRealm);
+  if (!player) return;
+  var newVal = !player.isBackupHealer;
+  var btn = document.getElementById('backupHealerToggle-' + firstName);
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+  }
+  var msgEl = document.getElementById('playerSettingsMsg-' + firstName);
+  runRosterWrite(updateRosterFieldSupabase(nameRealm, 'isBackupHealer', newVal), msgEl).then(function (ok) {
+    if (ok) player.isBackupHealer = newVal;
+    if (btn) {
+      btn.disabled = false;
+      btn.className = 'btn ' + (newVal ? 'btn-gold' : 'btn-muted');
+      btn.textContent = newVal ? 'Remove Backup Healer' : 'Mark as Backup Healer';
     }
   });
 }

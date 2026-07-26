@@ -119,6 +119,8 @@ erDiagram
   timestamp_with_time_zone updated_at
   boolean bis_allowed
   text officer_notes
+  boolean is_backup_tank
+  boolean is_backup_healer
 }
 ```
 
