@@ -182,7 +182,30 @@ describe('saveTeamSetting', () => {
     const sandbox = loadCommonJs(supabase);
     await expect(sandbox.saveTeamSetting({ seasonName: 'New' })).resolves.toEqual({ seasonName: 'New' });
     expect(rpcCalls).toEqual([
-      { name: 'set_team_setting', params: { p_team_id: 1, p_updates: { seasonName: 'New' } } }
+      {
+        name: 'set_team_setting',
+        params: { p_team_id: 1, p_updates: { seasonName: 'New' }, p_skip_audit: false }
+      }
+    ]);
+  });
+
+  it('passes p_skip_audit: true when the caller opts out (its own friendly writeAuditLog() covers this save)', async () => {
+    const rpcCalls = [];
+    const supabase = {
+      createClient: () => ({
+        rpc(name, params) {
+          rpcCalls.push({ name, params });
+          return Promise.resolve({ data: { seasonName: 'New' }, error: null });
+        }
+      })
+    };
+    const sandbox = loadCommonJs(supabase);
+    await sandbox.saveTeamSetting({ seasonName: 'New' }, true);
+    expect(rpcCalls).toEqual([
+      {
+        name: 'set_team_setting',
+        params: { p_team_id: 1, p_updates: { seasonName: 'New' }, p_skip_audit: true }
+      }
     ]);
   });
 

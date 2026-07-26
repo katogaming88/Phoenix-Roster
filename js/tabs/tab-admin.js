@@ -282,7 +282,7 @@ function executeDangerOp(key) {
 // season_snapshots table this comment used to carve out as untouched no longer
 // exists, #455).
 function clearSeasonHistorySupabase(finish) {
-  saveTeamSetting({ seasonHistory: [] })
+  saveTeamSetting({ seasonHistory: [] }, true)
     .then(function (config) {
       if (DATA) DATA.seasonHistory = (config && config.seasonHistory) || [];
       if (typeof buildSeasonTab === 'function') buildSeasonTab();
@@ -654,7 +654,7 @@ function saveAdminWishlistLabels() {
   if (btn) btn.disabled = true;
   if (statusEl) statusEl.textContent = 'Saving...';
 
-  saveTeamSetting({ wishlistStatusLabels: overrides })
+  saveTeamSetting({ wishlistStatusLabels: overrides }, true)
     .then(function (config) {
       DATA.wishlistStatusLabels = config.wishlistStatusLabels || {};
       var changed = Object.keys(overrides).length;

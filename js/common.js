@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.49.19';
+var VERSION = '3.49.20';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -1870,12 +1870,23 @@ function featureEnabled(key) {
  * returns the new config, mirroring the old jsonpRequest(...&action=set...)
  * callback pattern but via the set_team_setting RPC (#221). Restricted to
  * team_leader/site_admin by the "Team leaders write settings" RLS policy.
+ * set_team_setting logs its own generic 'team_setting_updated' audit_log
+ * entry for every call by default -- pass skipAudit: true when the caller is
+ * about to write its own friendlier-named entry for this same save (e.g.
+ * "M+ Exclusions Closed"), so the Audit Log tab doesn't show both for one
+ * user action. Leave it false for anything with no friendly entry of its own
+ * (feature flags, seasonView, etc.) so it keeps its only audit trail.
  * @param {Object} updates
+ * @param {boolean} [skipAudit]
  * @returns {Promise<Object>}
  */
-function saveTeamSetting(updates) {
+function saveTeamSetting(updates, skipAudit) {
   return supabaseClient
-    .rpc('set_team_setting', { p_team_id: _teamCfg.supabaseTeamId, p_updates: updates })
+    .rpc('set_team_setting', {
+      p_team_id: _teamCfg.supabaseTeamId,
+      p_updates: updates,
+      p_skip_audit: !!skipAudit
+    })
     .then(function (result) {
       if (result.error) throw new Error(result.error.message);
       return result.data;

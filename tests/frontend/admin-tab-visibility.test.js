@@ -373,7 +373,9 @@ describe('Clear Season History goes through Supabase, not GAS (#423)', () => {
     await flush();
 
     expect(saveTeamSetting).toHaveBeenCalledTimes(1);
-    expect(saveTeamSetting).toHaveBeenCalledWith({ seasonHistory: [] });
+    // skipAudit: true -- the friendly writeAuditLog() call right after covers
+    // this save, so set_team_setting's own generic entry is suppressed.
+    expect(saveTeamSetting).toHaveBeenCalledWith({ seasonHistory: [] }, true);
     expect(writeAuditLog).toHaveBeenCalledWith('Season History Cleared', null, null, null);
   });
 

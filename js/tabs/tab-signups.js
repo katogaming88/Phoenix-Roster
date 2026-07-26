@@ -19,7 +19,7 @@ function setSignupsOpen(open) {
     btn.textContent = 'Saving...';
   }
 
-  saveTeamSetting({ signupsOpen: open })
+  saveTeamSetting({ signupsOpen: open }, true)
     .then(function () {
       if (btn) btn.disabled = false;
       if (DATA) DATA.signupsOpen = open;

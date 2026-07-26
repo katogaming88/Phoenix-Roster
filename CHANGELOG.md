@@ -8,6 +8,16 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.20] - 2026-07-26
+
+### Frontend
+
+- **Fixed the officer Audit Log tab showing two rows for a single settings change** -- every toggle/save routed through `saveTeamSetting()` (M+ Exclusions, BiS Submissions, Wishlist Editing, Signups open/closed, Season Name/Start/End/Code Prefix, WarcraftLogs Guild URL, Raid Progression, Roster Targets, Trial Thresholds, Wishlist Tier Labels, Team Officer Bios, Season History Cleared) was logging twice: once from the DB's own generic `team_setting_updated` entry (added by a prior migration to audit every `team_settings` write) and again from an older, friendlier-named client-side `writeAuditLog()` call that predates it. `saveTeamSetting()` now takes an optional `skipAudit` flag, passed as `true` from every call site above so only the friendly entry lands -- feature flags, `seasonView`, and `activeSignupSeason` (which have no friendly entry of their own) keep the automatic generic logging as their only audit trail. "Season Archived" also gets its incidental follow-up save's generic entry suppressed, since it only describes an auto-filled season name, not the archive itself -- the meaningful "Season Archived" entry already covers that.
+
+### Backend
+
+- `set_team_setting()` gets a new trailing parameter (`p_skip_audit boolean default false`). Adding it produced a second, distinct function overload rather than replacing the original in place (same pitfall as `add_signup_to_roster()` in #593/#594) -- the migration drops the stale 2-arg overload and re-grants the new 3-arg one explicitly (`authenticated` only).
+
 ## [3.49.19] - 2026-07-26
 
 ### Frontend
