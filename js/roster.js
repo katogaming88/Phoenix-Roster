@@ -346,10 +346,15 @@ function showAboutSubTab(tab) {
   }
   if (tabAboutBtn) tabAboutBtn.classList.toggle('active', _aboutSubTab === 'about');
   if (tabContactBtn) tabContactBtn.classList.toggle('active', _aboutSubTab === 'contact');
-  if (teamEl) teamEl.style.display = hasTeam && _aboutSubTab === 'team' ? '' : 'none';
-  if (guildEl) guildEl.style.display = hasGuild && _aboutSubTab === 'guild' ? '' : 'none';
-  if (infoEl) infoEl.style.display = _aboutSubTab === 'about' ? '' : 'none';
-  if (contactEl) contactEl.style.display = _aboutSubTab === 'contact' ? '' : 'none';
+  // display:contents (not '') on these wrappers so they drop out of the box
+  // model entirely when shown -- their pub-loot/bio-wrap children become
+  // direct centered flex children of .landing-body again, matching every
+  // other tab. A plain block wrapper would stretch full-width and left-align
+  // its children instead of centering them (#577 follow-up fix).
+  if (teamEl) teamEl.style.display = hasTeam && _aboutSubTab === 'team' ? 'contents' : 'none';
+  if (guildEl) guildEl.style.display = hasGuild && _aboutSubTab === 'guild' ? 'contents' : 'none';
+  if (infoEl) infoEl.style.display = _aboutSubTab === 'about' ? 'contents' : 'none';
+  if (contactEl) contactEl.style.display = _aboutSubTab === 'contact' ? 'contents' : 'none';
 }
 
 document.getElementById('playerSelect').addEventListener('change', function (e) {

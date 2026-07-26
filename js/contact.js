@@ -5,9 +5,13 @@
 // alongside a real DB write), this *is* the whole action -- the user needs
 // to see it actually sent, so it follows tab-bios.js's saveBios() status-
 // message pattern instead.
+//
+// No email field -- if the submitter is logged in with Discord, their
+// snowflake ID (getDiscordSession().discordId) rides along instead, so the
+// Edge Function can render it as a <@id> mention in the Discord embed:
+// clickable/right-clickable straight to a DM, no email round trip needed.
 function submitContactForm() {
   var nameEl = document.getElementById('contactName');
-  var emailEl = document.getElementById('contactEmail');
   var messageEl = document.getElementById('contactMessage');
   var btn = document.getElementById('contactSubmitBtn');
   var status = document.getElementById('contactStatus');
@@ -24,13 +28,15 @@ function submitContactForm() {
   }
   if (status) status.textContent = '';
 
+  var discordSession = typeof getDiscordSession === 'function' ? getDiscordSession() : null;
+
   supabaseClient.functions
     .invoke('contact-webhook', {
       body: {
         team: TEAM_SLUG,
-        page: 'about',
         name: nameEl ? nameEl.value.trim() : '',
-        email: emailEl ? emailEl.value.trim() : '',
+        discordUsername: (discordSession && discordSession.username) || '',
+        discordId: (discordSession && discordSession.discordId) || '',
         message: message
       }
     })
@@ -47,7 +53,6 @@ function submitContactForm() {
         return;
       }
       if (nameEl) nameEl.value = '';
-      if (emailEl) emailEl.value = '';
       if (messageEl) messageEl.value = '';
       if (status) status.textContent = 'Sent! Thanks for the report.';
     })

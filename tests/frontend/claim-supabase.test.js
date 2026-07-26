@@ -321,6 +321,7 @@ describe('resolveDiscordSession', () => {
       authUserId: 'u1',
       teamMemberId: 5,
       username: 'Kato',
+      discordId: null,
       nameRealm: 'Linked-Illidan',
       isOfficer: false,
       isTeamLeader: false,
