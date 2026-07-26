@@ -297,38 +297,53 @@ function updateHistoryNavItem() {
   if (el) el.style.display = DATA && DATA.seasonHistory && DATA.seasonHistory.length ? '' : 'none';
 }
 
-// Hidden until this team has added at least one team or guild officer bio
-// (#477, #577) -- same "nothing to show yet" reasoning as the History tab.
+// Always visible (#577, third slice) -- the About sub-tab's static "what is
+// this site" copy means there's always something to show now, even for a
+// brand new team with no Team/Guild bios yet.
 function updateAboutNavItem() {
   var el = document.getElementById('navAbout');
-  var hasTeam = !!(DATA && DATA.teamOfficerBios && DATA.teamOfficerBios.length);
-  var hasGuild = !!(DATA && DATA.guildOfficerBios && DATA.guildOfficerBios.length);
-  if (el) el.style.display = hasTeam || hasGuild ? '' : 'none';
+  if (el) el.style.display = '';
 }
 
-// Which of the About tab's Team/Guild sub-tabs is showing. Same "collapse to
-// a single section with no pill bar" rule as showRosterSubTab() when only
-// one side has content -- a team with no Guild bios yet shouldn't see a
-// pointless one-button switcher.
+// Which of the About tab's Team/Guild/About sub-tabs is showing. Same
+// "collapse to a single section with no pill bar" rule as
+// showRosterSubTab() when only one side has content -- the pill bar only
+// appears once 2+ of the three sections are actually populated. About is
+// always populated (static copy), so it's also the guaranteed fallback: a
+// team with no Team/Guild bios yet still lands somewhere real instead of a
+// blank section.
 var _aboutSubTab = 'team';
 
 function showAboutSubTab(tab) {
   var hasTeam = !!(DATA && DATA.teamOfficerBios && DATA.teamOfficerBios.length);
   var hasGuild = !!(DATA && DATA.guildOfficerBios && DATA.guildOfficerBios.length);
-  if (!hasTeam && hasGuild) tab = 'guild';
-  _aboutSubTab = hasGuild && tab === 'guild' ? 'guild' : 'team';
+  var hasAbout = true;
+  if (tab === 'team' && !hasTeam) tab = hasGuild ? 'guild' : 'about';
+  if (tab === 'guild' && !hasGuild) tab = hasTeam ? 'team' : 'about';
+  _aboutSubTab = tab === 'guild' || tab === 'about' ? tab : 'team';
 
   var subNav = document.getElementById('aboutSubNav');
   var tabTeamBtn = document.getElementById('aboutSubTabTeam');
   var tabGuildBtn = document.getElementById('aboutSubTabGuild');
+  var tabAboutBtn = document.getElementById('aboutSubTabAbout');
   var teamEl = document.getElementById('aboutTeamSection');
   var guildEl = document.getElementById('aboutGuildSection');
+  var infoEl = document.getElementById('aboutInfoSection');
 
-  if (subNav) subNav.style.display = hasTeam && hasGuild ? 'flex' : 'none';
-  if (tabTeamBtn) tabTeamBtn.classList.toggle('active', _aboutSubTab === 'team');
-  if (tabGuildBtn) tabGuildBtn.classList.toggle('active', _aboutSubTab === 'guild');
+  var populatedCount = (hasTeam ? 1 : 0) + (hasGuild ? 1 : 0) + (hasAbout ? 1 : 0);
+  if (subNav) subNav.style.display = populatedCount > 1 ? 'flex' : 'none';
+  if (tabTeamBtn) {
+    tabTeamBtn.style.display = hasTeam ? '' : 'none';
+    tabTeamBtn.classList.toggle('active', _aboutSubTab === 'team');
+  }
+  if (tabGuildBtn) {
+    tabGuildBtn.style.display = hasGuild ? '' : 'none';
+    tabGuildBtn.classList.toggle('active', _aboutSubTab === 'guild');
+  }
+  if (tabAboutBtn) tabAboutBtn.classList.toggle('active', _aboutSubTab === 'about');
   if (teamEl) teamEl.style.display = hasTeam && _aboutSubTab === 'team' ? '' : 'none';
   if (guildEl) guildEl.style.display = hasGuild && _aboutSubTab === 'guild' ? '' : 'none';
+  if (infoEl) infoEl.style.display = _aboutSubTab === 'about' ? '' : 'none';
 }
 
 document.getElementById('playerSelect').addEventListener('change', function (e) {

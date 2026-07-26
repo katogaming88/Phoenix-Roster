@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=3.49.9">
+<link rel="stylesheet" href="css/styles.css?v=3.49.10">
 <script>var whTooltips = {colorLinks: true, iconizeLinks: true, iconSize: 'small'};</script>
 <script src="https://wow.zamimg.com/widgets/power.js"></script>
 </head>
@@ -165,12 +165,23 @@
     <div id="aboutSubNav" class="about-sub-nav" style="display:none">
       <button class="about-sub-tab active" id="aboutSubTabTeam" onclick="showAboutSubTab('team')">Team</button>
       <button class="about-sub-tab" id="aboutSubTabGuild" onclick="showAboutSubTab('guild')">Guild</button>
+      <button class="about-sub-tab" id="aboutSubTabAbout" onclick="showAboutSubTab('about')">About</button>
     </div>
     <div id="aboutTeamSection">
       <div id="bioView"></div>
     </div>
     <div id="aboutGuildSection" style="display:none">
       <div id="guildBioView"></div>
+    </div>
+    <div id="aboutInfoSection" style="display:none">
+      <div class="pub-loot">
+        <div class="pub-loot-title">What Is This?</div>
+        <p style="color:var(--text);font-size:1rem;line-height:1.5;">WGA Raid Hub is a raid management site built for We Go Again's raid teams. Every raider gets a personal profile -- priority standing, BiS wishlist, attendance -- and officers get a full dashboard for loot, signups, and roster management. Warcraftlogs and Raider.io profiles are linked in for reference, and officers can pull in Warcraftlogs performance scores each season.</p>
+      </div>
+      <div class="pub-loot" style="margin-top:1.5rem;">
+        <div class="pub-loot-title">About Kat</div>
+        <p style="color:var(--text);font-size:1rem;line-height:1.5;">Built and maintained by Kat (Katorri), a raid officer who got tired of juggling spreadsheets and built this instead. Bug reports and feature ideas are always welcome -- reach out on Discord.</p>
+      </div>
     </div>
   </div>
   <div class="footer">We Go Again &middot; <span class="team-name">Phoenix</span> &middot; v<span id="versionNumAbout"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a> &middot; <a class="footer-link footer-icon-link" href="https://patreon.com/Katorri" target="_blank" rel="noopener" aria-label="Support on Patreon" title="Support on Patreon"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M0 .48v23.04h4.22V.48zm15.385 0c-4.764 0-8.641 3.88-8.641 8.65 0 4.755 3.877 8.623 8.641 8.623 4.75 0 8.615-3.868 8.615-8.623C24 4.36 20.136.48 15.385.48z"/></svg></a></div>
@@ -312,14 +323,14 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/common.js?v=3.49.9"></script>
-<script src="js/discord.js?v=3.49.9"></script>
-<script src="js/officer-quick-actions.js?v=3.49.9"></script>
-<script src="js/streamers.js?v=3.49.9"></script>
-<script src="js/news.js?v=3.49.9"></script>
-<script src="js/roster.js?v=3.49.9"></script>
-<script src="js/signup.js?v=3.49.9"></script>
-<script src="js/wishlist.js?v=3.49.9"></script>
+<script src="js/common.js?v=3.49.10"></script>
+<script src="js/discord.js?v=3.49.10"></script>
+<script src="js/officer-quick-actions.js?v=3.49.10"></script>
+<script src="js/streamers.js?v=3.49.10"></script>
+<script src="js/news.js?v=3.49.10"></script>
+<script src="js/roster.js?v=3.49.10"></script>
+<script src="js/signup.js?v=3.49.10"></script>
+<script src="js/wishlist.js?v=3.49.10"></script>
 <script>
 ['versionNum','versionNumProfile','versionNumSignup','versionNumRoster','versionNumStreamers','versionNumHistory','versionNumBios','versionNumNews','versionNumHelp'].forEach(function(id){document.getElementById(id).textContent=VERSION;});
 document.title = TEAM_NAME + ' -- Roster';
