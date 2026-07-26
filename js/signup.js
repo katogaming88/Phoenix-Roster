@@ -409,28 +409,37 @@ function updateOffSpecList() {
   group.innerHTML = buildOffSpecHTML(specData.specs, mainSpec, currentChecked);
 }
 
-// Who to compare a signup-in-progress against: the confirmed roster plus
-// already-approved incoming roster (#499). Deliberately excludes still-
-// pending signups -- season_signups RLS only lets officers read it, and the
-// one raider-facing RPC (get_own_signup) is scoped to the caller's own row,
-// so there's no privacy-safe way to name other pending applicants here.
+// Who to compare a signup-in-progress against: always the already-approved
+// incoming roster (#499). Also excludes still-pending signups -- season_
+// signups RLS only lets officers read it, and the one raider-facing RPC
+// (get_own_signup) is scoped to the caller's own row, so there's no privacy-
+// safe way to name other pending applicants here.
 //
-// Two ways one real person can otherwise appear twice, both handled here:
-// 1. A returning roster member resubmits under their SAME character name
-//    (continuity, or just a spec change) -- exists in both arrays at once
-//    until promoted. Deduped by name+realm, keeping the incoming-roster
-//    entry, since it reflects what they're actually playing next season.
-// 2. A true main-swap to a DIFFERENT character name (swapFromNameRealm set,
-//    from incoming_roster's swap_from_name_realm column) -- the OLD
-//    character is dropped from the roster half of the pool entirely, since
-//    it's about to be replaced, not played alongside the new one.
+// The confirmed active roster is included too, but ONLY when the team's
+// live raiding season already equals the season being signed up for
+// (DATA.seasonName === DATA.signupSeason) -- e.g. Hellfire, who push
+// approved signups straight onto the roster instead of leaving them
+// pending, so their roster already IS this season's confirmed membership.
+// When the two differ (e.g. Phoenix, still raiding a prior season while
+// collecting signups for the next one), the roster reflects a stale season
+// and would wrongly count someone who simply hasn't signed up yet --
+// officers already have a separate view for that; the incoming roster alone
+// is the accurate answer there.
 function signupClassmatesPool() {
   var incoming = (window.DATA && DATA.incomingRoster) || [];
+  var seasonName = ((window.DATA && DATA.seasonName) || '').trim().toLowerCase();
+  var signupSeason = ((window.DATA && DATA.signupSeason) || '').trim().toLowerCase();
+  var includeRoster = !!seasonName && !!signupSeason && seasonName === signupSeason;
+  if (!includeRoster) return incoming;
+
+  // Same swap-duplicate handling as before: a returning roster member who
+  // resubmits under the same character name is deduped (incoming wins); a
+  // true main-swap to a different character name has its old character
+  // excluded via incoming_roster's swap_from_name_realm column.
   var swappedFromKeys = {};
   incoming.forEach(function (p) {
     if (p.swapFromNameRealm) swappedFromKeys[String(p.swapFromNameRealm).toLowerCase()] = true;
   });
-
   var byNameRealm = {};
   ((window.DATA && DATA.roster) || []).forEach(function (p) {
     var key = signupNameRealmKey(p);
