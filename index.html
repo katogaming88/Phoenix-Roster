@@ -166,6 +166,7 @@
       <button class="about-sub-tab active" id="aboutSubTabTeam" onclick="showAboutSubTab('team')">Team</button>
       <button class="about-sub-tab" id="aboutSubTabGuild" onclick="showAboutSubTab('guild')">Guild</button>
       <button class="about-sub-tab" id="aboutSubTabAbout" onclick="showAboutSubTab('about')">About</button>
+      <button class="about-sub-tab" id="aboutSubTabContact" onclick="showAboutSubTab('contact')">Contact</button>
     </div>
     <div id="aboutTeamSection">
       <div id="bioView"></div>
@@ -180,7 +181,21 @@
       </div>
       <div class="pub-loot" style="margin-top:1.5rem;">
         <div class="pub-loot-title">About Kat</div>
-        <p style="color:var(--text);font-size:1rem;line-height:1.5;">Built and maintained by Kat (Katorri), a raid officer who got tired of juggling spreadsheets and built this instead. Bug reports and feature ideas are always welcome -- reach out on Discord.</p>
+        <p style="color:var(--text);font-size:1rem;line-height:1.5;">Built and maintained by Kat (Katorri), a raid officer who got tired of juggling spreadsheets and built this instead. Bug reports and feature ideas are always welcome -- reach out on Discord, or use the Contact tab below.</p>
+      </div>
+    </div>
+    <div id="aboutContactSection" style="display:none">
+      <div class="pub-loot">
+        <div class="pub-loot-title">Report a Site Issue</div>
+        <div style="display:flex;flex-direction:column;gap:0.75rem;max-width:500px;">
+          <input type="text" id="contactName" class="add-player-input" placeholder="Name (optional)">
+          <input type="email" id="contactEmail" class="add-player-input" placeholder="Email (optional, if you'd like a reply)">
+          <textarea id="contactMessage" class="add-player-input" placeholder="What's going on?" rows="5"></textarea>
+          <div style="display:flex;align-items:center;gap:0.75rem;">
+            <button type="button" class="btn btn-gold" id="contactSubmitBtn" onclick="submitContactForm()">Send</button>
+            <span id="contactStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -329,6 +344,7 @@
 <script src="js/streamers.js?v=3.49.11"></script>
 <script src="js/news.js?v=3.49.11"></script>
 <script src="js/roster.js?v=3.49.11"></script>
+<script src="js/contact.js?v=3.49.11"></script>
 <script src="js/signup.js?v=3.49.11"></script>
 <script src="js/wishlist.js?v=3.49.11"></script>
 <script>
