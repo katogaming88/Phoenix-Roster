@@ -8,6 +8,17 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-07-26 -- Guild Officer Bios move to `site_settings`, gated by `is_site_admin()`
+
+Decided directly in conversation (no tracking issue): Guild Officer Bios (#577/#586) had been stored in `team_settings.config.guildOfficerBios`, which is scoped per team_id -- a bio saved on one team's site never showed up on another's, even though the guild's officers are the same people regardless of which team's site you're viewing.
+
+- **Moved to `site_settings.guild_officer_bios`** (a new jsonb column on the existing guild-wide singleton table added for maintenance mode, #245) -- same shape/RLS/public-read pattern as `maintenance_mode`, no new table, no new RLS policy needed (the table's existing "Public read site_settings" `using (true)` policy and base grant already cover it).
+- **Write access gated by `is_site_admin()`**, not `my_team_role(team_id) = 'team_leader'` -- a team's own leader has no natural authority over guild-wide content. New `set_guild_officer_bios()` RPC mirrors `admin_set_maintenance_mode()`'s shape exactly (`SECURITY DEFINER`, `is_site_admin()` check, its own `write_audit_log()` call).
+- The officer editor (`officer.html`'s Bios tab) still shows the current Guild bios to any officer, read-only, with the add/save/reorder controls disabled and a note shown when the logged-in user isn't a site admin -- rather than hiding the section outright, so a non-admin officer can still see who's listed.
+- Existing data backfilled from whichever team had a non-empty `guildOfficerBios` (only one did), then that now-dead key stripped from every team's `team_settings.config`.
+
+---
+
 ## 2026-07-25 -- `incoming_roster` view exposes `swap_from_name_realm`
 
 Decided directly in conversation (no tracking issue) while building the signup-time "who else already plays this class" feature: a returning roster member who submits a genuine main-swap to a *different* character name would otherwise show up twice in that comparison -- once under their current roster character, once under the new incoming one -- since the client had no way to know one supersedes the other.

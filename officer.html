@@ -11,8 +11,8 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=3.49.15">
-  <link rel="stylesheet" href="css/officer.css?v=3.49.15">
+  <link rel="stylesheet" href="css/styles.css?v=3.49.16">
+  <link rel="stylesheet" href="css/officer.css?v=3.49.16">
   <!-- Hover tooltips for Buff Coverage's spell links (#491) and item links
        (Priority tab/BiS grid, itemNameBlockHtml(), #567). Auto-attaches to
        any <a class="wowhead">. whTooltips must be set before power.js loads
@@ -849,10 +849,11 @@
             <div class="help-ref-card" style="margin-bottom:1rem;">
               <h4 class="help-ref-title">Guild Officer Bios<button class="help-btn" onclick="toggleHelp('help-guild-bios')" title="Show help">?</button></h4>
               <div id="help-guild-bios" class="help-tip">
-                Shown publicly on the "About" tab's Guild sub-tab, in the order listed here. A separate list from Team Officer Bios above -- these are the guild's actual officers, and most (not all) team officers happen to also hold a guild officer rank. Same editing rules as Team Officer Bios apply.
+                Shown publicly on the "About" tab's Guild sub-tab, in the order listed here -- guild-wide, the same list on every team's site, not per-team like Team Officer Bios above. Only site admins can edit this, since it isn't any one team's content to own.
               </div>
+              <p id="guildBiosAdminNote" class="signup-officer-note" style="display:none;margin-top:0.5rem;">Only site admins can edit Guild Officer Bios. You can see the current list below, read-only.</p>
               <div id="guildBioCards" style="display:flex;flex-direction:column;gap:1rem;margin-top:0.75rem;"></div>
-              <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
+              <div id="guildBiosControls" style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
                 <select id="guildBioRosterPicker" class="add-player-input" style="max-width:220px;font-size:0.95rem;padding:0.35rem 0.6rem;">
                   <option value="">-- Not on roster --</option>
                 </select>
@@ -1149,27 +1150,27 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/common.js?v=3.49.15"></script>
-  <script src="js/discord.js?v=3.49.15"></script>
-  <script src="js/officer.js?v=3.49.15"></script>
-  <script src="js/tabs/tab-roster.js?v=3.49.15"></script>
-  <script src="js/tabs/tab-conflicts.js?v=3.49.15"></script>
-  <script src="js/tabs/tab-fairness.js?v=3.49.15"></script>
-  <script src="js/tabs/tab-attendance.js?v=3.49.15"></script>
-  <script src="js/tabs/tab-bench-fairness.js?v=3.49.15"></script>
-  <script src="js/tabs/tab-signups.js?v=3.49.15"></script>
-  <script src="js/tabs/tab-requests.js?v=3.49.15"></script>
-  <script src="js/tabs/tab-bis.js?v=3.49.15"></script>
-  <script src="js/tabs/tab-pending-roster.js?v=3.49.15"></script>
-  <script src="js/tabs/tab-mplus.js?v=3.49.15"></script>
-  <script src="js/tabs/tab-priority.js?v=3.49.15"></script>
-  <script src="js/tabs/tab-audit.js?v=3.49.15"></script>
-  <script src="js/tabs/tab-reports.js?v=3.49.15"></script>
-  <script src="js/tabs/tab-season.js?v=3.49.15"></script>
-  <script src="js/tabs/tab-bios.js?v=3.49.15"></script>
-  <script src="js/tabs/tab-loot-import.js?v=3.49.15"></script>
-  <script src="js/tabs/tab-scoring.js?v=3.49.15"></script>
-  <script src="js/tabs/tab-admin.js?v=3.49.15"></script>
+  <script src="js/common.js?v=3.49.16"></script>
+  <script src="js/discord.js?v=3.49.16"></script>
+  <script src="js/officer.js?v=3.49.16"></script>
+  <script src="js/tabs/tab-roster.js?v=3.49.16"></script>
+  <script src="js/tabs/tab-conflicts.js?v=3.49.16"></script>
+  <script src="js/tabs/tab-fairness.js?v=3.49.16"></script>
+  <script src="js/tabs/tab-attendance.js?v=3.49.16"></script>
+  <script src="js/tabs/tab-bench-fairness.js?v=3.49.16"></script>
+  <script src="js/tabs/tab-signups.js?v=3.49.16"></script>
+  <script src="js/tabs/tab-requests.js?v=3.49.16"></script>
+  <script src="js/tabs/tab-bis.js?v=3.49.16"></script>
+  <script src="js/tabs/tab-pending-roster.js?v=3.49.16"></script>
+  <script src="js/tabs/tab-mplus.js?v=3.49.16"></script>
+  <script src="js/tabs/tab-priority.js?v=3.49.16"></script>
+  <script src="js/tabs/tab-audit.js?v=3.49.16"></script>
+  <script src="js/tabs/tab-reports.js?v=3.49.16"></script>
+  <script src="js/tabs/tab-season.js?v=3.49.16"></script>
+  <script src="js/tabs/tab-bios.js?v=3.49.16"></script>
+  <script src="js/tabs/tab-loot-import.js?v=3.49.16"></script>
+  <script src="js/tabs/tab-scoring.js?v=3.49.16"></script>
+  <script src="js/tabs/tab-admin.js?v=3.49.16"></script>
   <script>
 renderSiteNav('officer');
 document.getElementById('versionNum').textContent = VERSION;

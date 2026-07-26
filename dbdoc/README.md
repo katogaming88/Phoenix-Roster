@@ -39,7 +39,7 @@
 | [public.priority_order_same_boss_conflicts](public.priority_order_same_boss_conflicts.md) | 10 |  | VIEW |
 | [public.priority_order_stale_after_heroic](public.priority_order_stale_after_heroic.md) | 7 |  | VIEW |
 | [public.item_preferences](public.item_preferences.md) | 10 |  | BASE TABLE |
-| [public.site_settings](public.site_settings.md) | 4 |  | BASE TABLE |
+| [public.site_settings](public.site_settings.md) | 5 |  | BASE TABLE |
 | [public.incoming_roster](public.incoming_roster.md) | 7 |  | VIEW |
 
 ## Stored procedures and functions
@@ -84,6 +84,7 @@
 | public.submit_self_received | record | p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_source text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_slot text DEFAULT NULL::text | FUNCTION |
 | public.direct_mark_received | int4 | p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_source text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_slot text DEFAULT NULL::text | FUNCTION |
 | public.sync_bis_obtained_from_self_received | trigger |  | FUNCTION |
+| public.set_guild_officer_bios | jsonb | p_bios jsonb | FUNCTION |
 | public.flag_bis_list_changed | int4 | p_team_id integer, p_name_realm text, p_player_note text DEFAULT NULL::text | FUNCTION |
 | public.get_own_signup | record | p_team_id integer | FUNCTION |
 | public.update_own_signup | int4 | p_signup_id integer, p_name_realm text, p_class text, p_spec text, p_off_specs text DEFAULT ''::text, p_main_swap boolean DEFAULT false, p_player_note text DEFAULT NULL::text, p_swap_from_name_realm text DEFAULT NULL::text | FUNCTION |
@@ -510,6 +511,7 @@ erDiagram
   boolean maintenance_mode
   text maintenance_message
   timestamp_with_time_zone updated_at
+  jsonb guild_officer_bios
 }
 "public.incoming_roster" {
   integer signup_id

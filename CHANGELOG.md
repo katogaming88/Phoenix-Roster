@@ -8,6 +8,16 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.16] - 2026-07-26
+
+### Frontend
+
+- **Fixed Guild Officer Bios not appearing on every team's site** -- they were stored per-team (`team_settings.config.guildOfficerBios`), so a bio saved on Phoenix's site never showed up on Hellfire's or Immolation's. Now sourced from a genuinely guild-wide store, the same list everywhere. Editing is now restricted to site admins (a team's own officer/leader isn't automatically authorized to edit guild-wide content) -- a non-admin officer still sees the current list on officer.html's Bios tab, read-only, with a note explaining why the controls are disabled.
+
+### Backend
+
+- Added `site_settings.guild_officer_bios` (the existing guild-wide singleton settings table, alongside `maintenance_mode`) and a new `set_guild_officer_bios()` RPC, `SECURITY DEFINER` and gated by `is_site_admin()` -- mirrors `admin_set_maintenance_mode()`'s shape exactly. Existing data backfilled from whichever team had it set, then the dead `guildOfficerBios` key removed from every team's `team_settings.config`.
+
 ## [3.49.15] - 2026-07-26
 
 ### Frontend

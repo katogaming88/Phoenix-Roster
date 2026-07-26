@@ -8,6 +8,7 @@
 | maintenance_mode | boolean | false | false |  |  |  |
 | maintenance_message | text |  | true |  |  |  |
 | updated_at | timestamp with time zone | now() | false |  |  |  |
+| guild_officer_bios | jsonb | '[]'::jsonb | false |  |  |  |
 
 ## Constraints
 
@@ -32,6 +33,7 @@ erDiagram
   boolean maintenance_mode
   text maintenance_message
   timestamp_with_time_zone updated_at
+  jsonb guild_officer_bios
 }
 ```
 

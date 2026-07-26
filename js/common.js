@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.49.15';
+var VERSION = '3.49.16';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -1046,6 +1046,41 @@ function fetchSupabaseIncomingRoster() {
   return Promise.race([query, timeout]);
 }
 
+// Guild Officer Bios are guild-wide, not per-team (fixed after #586 shipped
+// them into team_settings.config, which is scoped per team_id) -- sourced
+// from site_settings' singleton id=1 row, same as maintenance_mode.
+function fetchSupabaseGuildOfficerBios() {
+  if (!supabaseClient) return Promise.resolve(null);
+  var query = supabaseClient
+    .from('site_settings')
+    .select('guild_officer_bios')
+    .eq('id', 1)
+    .maybeSingle()
+    .then(function (result) {
+      if (result.error || !result.data) return null;
+      return result.data.guild_officer_bios || [];
+    })
+    .catch(function () {
+      return null;
+    });
+  var timeout = new Promise(function (resolve) {
+    setTimeout(function () {
+      resolve(null);
+    }, 10000);
+  });
+  return Promise.race([query, timeout]);
+}
+
+// Saves Guild Officer Bios via the set_guild_officer_bios RPC (SECURITY
+// DEFINER, is_site_admin()-gated) -- NOT saveTeamSetting(), since this isn't
+// per-team data. Mirrors saveTeamSetting()'s shape.
+function saveGuildOfficerBios(bios) {
+  return supabaseClient.rpc('set_guild_officer_bios', { p_bios: bios }).then(function (result) {
+    if (result.error) throw new Error(result.error.message);
+    return result.data;
+  });
+}
+
 /**
  * Maps Supabase players rows to the roster shape the Apps Script core payload
  * emits (see getRoster() in gs/wgaWebApp.gs), so no render code changes.
@@ -1802,7 +1837,8 @@ function applyTeamSettingsToData(data, config) {
   data.features = config.features || {};
   data.externalLinks = config.externalLinks || {};
   data.teamOfficerBios = config.teamOfficerBios || [];
-  data.guildOfficerBios = config.guildOfficerBios || [];
+  // guildOfficerBios is guild-wide (site_settings, heavy-loaded in loadData()),
+  // not sourced from any one team's config -- see fetchSupabaseGuildOfficerBios().
   data.wishlistStatusLabels = config.wishlistStatusLabels || {};
 }
 
@@ -2344,6 +2380,9 @@ function loadData(onCoreReady, onHeavyReady) {
   var incomingRosterPromise = fetchSupabaseIncomingRoster();
   // Fired alongside; the heavy callback waits for it before setting raidZones.
   var raidZonesPromise = fetchSupabaseRaidZones();
+  // Fired alongside; the heavy callback waits for it before setting
+  // guildOfficerBios. Guild-wide (site_settings), not per-team.
+  var guildOfficerBiosPromise = fetchSupabaseGuildOfficerBios();
 
   // Builds DATA from the Supabase roster/settings/M+ rejections, then runs
   // onCoreReady. GAS is retired (#225) -- there is no core payload to overlay
@@ -2394,7 +2433,8 @@ function loadData(onCoreReady, onHeavyReady) {
       streamersPromise,
       raidProgressPromise,
       incomingRosterPromise,
-      raidZonesPromise
+      raidZonesPromise,
+      guildOfficerBiosPromise
     ]).then(function (results) {
       var lootRows = results[0];
       var bisRows = results[1];
@@ -2409,6 +2449,7 @@ function loadData(onCoreReady, onHeavyReady) {
       var raidProgressRows = results[10];
       var incomingRosterRows = results[11];
       var raidZonesRows = results[12];
+      var guildOfficerBiosRows = results[13];
       DATA.raidZones = raidZonesRows || [];
       var mappedLoot = lootRows ? mapSupabaseLoot(lootRows) : null;
       DATA.lootCounts = mappedLoot || {};
@@ -2444,6 +2485,7 @@ function loadData(onCoreReady, onHeavyReady) {
       DATA.raidProgress = mapSupabaseRaidProgress(raidProgressRows);
       var mappedIncomingRoster = incomingRosterRows ? mapSupabaseIncomingRoster(incomingRosterRows) : null;
       DATA.incomingRoster = mappedIncomingRoster || [];
+      DATA.guildOfficerBios = guildOfficerBiosRows || [];
       if (typeof populateBossFilters === 'function') populateBossFilters();
       if (onHeavyReady) onHeavyReady();
     });
