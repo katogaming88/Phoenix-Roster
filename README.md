@@ -1,244 +1,126 @@
 # WGA Raid Hub
 
-A live web app for We Go Again raid teams -- a full raid hub giving raiders a personal profile and officers a complete management dashboard, all driven by a Google Sheet backend.
+A live web app for We Go Again raid teams -- a full raid hub giving raiders a personal profile and officers a complete management dashboard. Supabase (Postgres + Auth + RLS) is the backend; there is no build step and no server of its own -- both pages are static HTML/JS hosted on GitHub Pages, talking to Supabase directly from the browser.
 
-Supports multiple teams (Team Phoenix and Hellfire Rollers) from a single codebase. Append `?team=hellfire` to any URL to switch teams.
+Supports multiple teams (Phoenix, Hellfire Rollers, Immolation) from a single codebase. Append `?team=hellfire` (or `?team=immolation`) to any URL to switch teams; a raider or officer who's claimed a character on a given team is redirected there automatically on a cold visit.
 
 ---
 
 ## What it does
 
-### Landing page (public)
+### Landing page (public, `index.html`)
 
-- Character selector dropdown -- choose your character to open your profile
-- Stats row showing current Raiders count and total items distributed this tier
-- Recent Loot feed showing the last 10 items distributed across the roster
-- Raid Progression tracker showing all raids for the current season as cards with kill counts, boss lists, first-kill dates, and AOTC badge
-- Discord login button -- sign in with Discord to claim your character and access personalised features
+- Character selector dropdown -- choose your character to open your profile (officers get the full roster; a claimed-but-unclaimed-dropdown raider gets a one-click "View My Profile" instead)
+- Stats row showing current Raiders count and total items distributed this season
+- Recent Loot feed, searchable, showing items distributed across the roster this season
+- Raid Progression tracker -- every raid in the current season as cards with kill counts, boss lists, first-kill dates, and AOTC badge
+- A floating live Twitch widget for raiders currently streaming
+- Discord login -- sign in with Discord (via Supabase Auth) to claim your character and unlock personalised features
 
-### Raider profile (public, no login)
+Other public nav tabs: **Roster** (current + next-season "tentative" roster), **Streams** (full streamer directory), **Sign Up** (multi-step season signup form), **History** (past seasons' progression and rosters), **About** (team bios, guild leadership bios, guild info, contact form), **News**, **Help**. The current view (and an open profile) is reflected into the URL, so a reload restores where you were instead of always dropping back to Home.
 
-- **Attendance** -- full-tier attendance percentage with a colour-coded progress bar and monthly sparkline, expandable to show any Excused/No Show dates
-- **Items Received** -- total items received this tier, expandable to show the full list with slot and difficulty
-- **BiS List** -- link to the player's submitted BiS list; submit or update directly from the profile
+### Raider profile (public, no login required to view)
+
+- **Attendance** -- season attendance percentage with a colour-coded progress bar and monthly sparkline, expandable to show Excused/No Show dates
+- **Items Received** -- items received this season, expandable to the full list with slot and difficulty
+- **BiS List** -- link to the player's submitted BiS list; submit or update directly from the profile when submissions are open
+- **Wishlist** -- per-item tiered status (BiS / Good / OK / Catalyst Only / Pass) a raider sets themselves, feeding into priority generation
 - **Loot Priority** -- every BiS item with the player's current priority rank, slot, and source
-- **Self-mark received** -- submit items received outside of raid (M+, Great Vault, Crafted, Catalyst, Bonus Roll) for officer approval; Discord-authenticated raiders are auto-approved
+- **Self-mark received** -- submit items received outside of raid (M+, Great Vault, Crafted, Catalyst, Bonus Roll) for officer approval; a Discord-authenticated raider marking their own claimed character is auto-approved
+- **M+ Exclusion** request, when the team has that window open
+- Trial / Bench / Backup Tank / Backup Healer badges, when applicable
 
 ### Discord login (raiders and officers)
 
-Officers and raiders sign in with Discord through Supabase Auth (a full-page redirect). On first login, raiders claim their character from the roster; a "Claim your character" box on the home page also lets them claim any time they are logged in without one. Subsequent visits restore the session automatically.
+Everyone signs in with the same Discord button (Supabase Auth, full-page redirect). On first login a raider claims their character from the team's roster; a persistent "Claim your character" prompt on the landing page covers logging in without a claim yet, including pointing at the right team if they're already claimed elsewhere. Officer/admin status is derived from the database (`team_members.role`, `site_admins`), not a separate login -- an existing Discord session just unlocks more once it resolves.
 
-- **My Profile** -- nav dropdown shortcut to your claimed character's profile page
-- **Officers** -- Discord-authenticated officers go straight to the officer dashboard
-- **Admins** -- a separate admin Discord ID list controls access to the Admin tab
-
-### Season signup (public)
-
-Multi-step signup form accessible from the landing page. Officers can open or close signups from the officer dashboard.
+- **My Profile** -- nav dropdown shortcut to your claimed character's profile
+- **Officer Access** -- shown to officers/team leaders/site admins, links straight to `officer.html`
+- **Site Admin** -- a separate Discord-authenticated page (`admin.html`), gated to `site_admins` only
 
 ### Officer dashboard (`officer.html`)
 
-Accessible via Discord OAuth only (session lasts 2 hours). The dashboard has a global season selector to filter loot, fairness, and attendance to a specific season.
+Discord-authenticated, session lasts 2 hours. A global season selector filters loot, fairness, and attendance to a specific past season. Every tab/sub-tab below can be individually hidden per team via Feature Flags (Admin tab), except Roster and Season Settings.
 
 | Tab | Sub-tabs | What it shows |
 |-----|----------|--------------|
-| **Roster** | Roster / Discord Claims | Roster: full player table with attendance, items, BiS status, trial/bench tags. Filter by role, attendance, BiS, or trial/bench. Sort by name, attendance, or items. Click a player to expand their full profile inline with edit controls. Discord Claims: all claimed Discord-to-character mappings; officers can remove claims; admins can grant or revoke officer access per user. |
-| **Loot** | Import / Import History / Contested Items / Loot Fairness | Import: paste RCLootCouncil JSON to write loot to the sheet. Import History: view previously imported batches. Contested Items: every raid item sorted by how many players have it on their BiS, with each player's priority rank. Loot Fairness: bar chart of items received per player, filterable by Heroic or Mythic. |
-| **Priority** | Priority List / Unmanaged Items | RCLootCouncil export string generator (generate and copy to clipboard). Priority List: full priority order per item, filterable by boss and searchable; each item has a Priority Generator button to auto-rank players by blended score with an editable, saveable order. Unmanaged Items: BiS items with no priority order yet assigned, with badge count. |
-| **BiS Manager** | Submissions / BiS Lists | Submissions: open/close BiS submissions globally or per player; approve or reject submitted links (approving writes the URL to the Roster sheet). BiS Lists: role-grouped player table; Edit opens an inline item editor with the player's current BiS items, BiS source link, and armor-type-filtered item search/autocomplete. |
-| **Attendance** | Manage / Attendance Scores / Bench Fairness | Manage: attendance grid editable per player per night; Refresh from WCL pulls latest raid nights; Commit Attendance Scores writes attendance % to Scoring. Attendance Scores: players below a threshold (adjustable slider), sorted lowest first. Bench Fairness: bench player attendance comparison. |
-| **Signups** | Signups / Pending Roster | Signups: open/close the public signup form; review, approve, or deny signup submissions. Pending Roster: approved applicants waiting to be added to the roster. |
-| **M+ Exclusions** | -- | Review and approve or reject M+ exclusion requests submitted by raiders. Toggle exclusion per player manually. |
-| **Received Item Requests** | -- | Approve or reject raider self-mark requests. Approving writes the item to their loot history. Officers can also mark items received directly from the Roster tab player card. |
-| **Season Settings** | -- | Season Start Date (attendance window start), Season Name (applied to imported loot), Season End Date (optional close date), Raid Progression (boss kill dates shown publicly), Archive Season (pushes season to history and resets settings), Season History (list of past seasons). |
-| **Audit Log** | -- | Append-only log of every officer action -- player changes, approvals, loot marks, status changes -- with timestamp, actor, action, target, and old/new values. Live search filter. |
-| **Admin** | Properties / Data Export / Officers / Danger Zone | Visible to site admins and team leaders. Team leaders see Properties, Officers, and Clear Season History in the Danger Zone; Data Export and the sheet wipes are site-admin only. Officers sub-tab: grant or revoke officer dashboard access for claimed characters. |
-| **Help** | -- | Officer workflow reference guide covering common tasks. |
+| **Roster** | Roster / Discord Claims | Roster: full player table with attendance, items, BiS status, Trial/Bench/Backup Tank/Backup Healer tags; filter and sort; click a player to expand their profile inline with edit controls, add/remove/rename players. Discord Claims: every claimed Discord-to-character mapping; remove a claim or grant/revoke officer access. |
+| **Loot** | Import / Import History / Loot Fairness | Import: paste RCLootCouncil JSON to write loot to the database. Import History: view previously imported batches. Loot Fairness: bar chart of items received per player, filterable by Heroic or Mythic. |
+| **Priority** | Priority List / Contested Items / Unmanaged Items | RCLootCouncil export string generator. Priority List: full priority order per item, filterable/searchable, each item has a Priority Generator button (auto-rank by blended score) with an editable, saveable order. Contested Items: every item sorted by how many players have it on their BiS/Wishlist. Unmanaged Items: BiS items with no priority order yet, badge-counted. |
+| **BiS Manager** | Submissions / BiS Lists | Submissions: open/close BiS submissions globally or per player; approve or reject submitted links. BiS Lists: role-grouped player table; Edit opens the 16-slot BiS item grid with armor-type-filtered item search/autocomplete. |
+| **Attendance** | Manage / Attendance Scores / Bench Fairness | Manage: attendance grid editable per player per night, Refresh from WCL, Commit Attendance Scores. Attendance Scores: players below a threshold. Bench Fairness: bench player attendance comparison. |
+| **Scoring** | -- | Fetches WarcraftLogs performance scores per player, editable/overridable manually, committed as one of the Priority Generator's blended-score inputs. |
+| **Signups** | Signups / Pending Roster / History | Signups: open/close the public form; review/approve/deny submissions. Pending Roster: approved applicants awaiting a roster add, with Trial/Backup Tank/Backup Healer toggles at promotion time. History: past signup activity. |
+| **M+ Exclusions** | -- | Review/approve/reject raider-submitted M+ exclusion requests; toggle exclusion per player manually; open/close the request window. |
+| **Received Item Requests** | -- | Approve or reject raider self-mark requests; writes straight to loot history on approval. |
+| **Season Settings** | Settings / Raid Progression / History | Settings: season name/start/end, season code prefix, target tank/heal roster counts, trial thresholds, WCL guild link. Raid Progression: boss kill dates shown publicly. History: past seasons, Archive Season (snapshots the roster and pushes to history), Unarchive. |
+| **Officer Bios** | -- | Team officer bio cards shown on the public About tab; also edits Guild Officer Bios (guild-wide, site-admin write access). |
+| **Audit Log** | -- | Searchable, append-only log of every officer/admin action -- actor, action, target, detail, timestamp. |
+| **Reports** | Raid Nights Since Last Item / BiS Demand vs Awards / Priority Order Health / Season Loot Pace | Read-only analytics views over the season's loot/priority/BiS data. |
+| **Admin** | Properties / Data Export / Officers / Feature Flags / Danger Zone | Visible to team leaders and site admins. Team leaders see Properties, Officers, Feature Flags, and Danger Zone (but only its one team-leader-scoped op, Clear Season History); Data Export and every other Danger Zone clear (Loot Data, BiS Submissions, Signups, Pending Roster, M+ Exclusion Requests, Self-Received) are site-admin only. |
+| **Help** | -- | Officer workflow reference guide. |
 
-Officer controls on the Roster tab (player card):
-- Add or remove players directly from the page
-- Change class, spec, role, trial status, bench status, or join date per player
-- Rename a player (Name-Realm)
-- Free-text officer notes per player (stored server-side, officer view only)
-- Update a player's BiS link directly without the approval queue
-- Allow a specific player to submit a BiS update outside an open window
-- Mark items received directly (bypasses the approval queue)
+### Site Admin dashboard (`admin.html`)
 
----
-
-## File structure
-
-| File | Purpose |
-|------|---------|
-| `index.html` | Public page -- landing, raider profiles, season signup |
-| `officer.html` | Officer dashboard -- all management tabs |
-| `js/common.js` | Shared globals, `TEAMS`, `VERSION`, data helpers, `renderProfile` |
-| `js/discord.js` | Discord login via Supabase Auth (full-page redirect), session mapping, nav rendering |
-| `js/roster.js` | Public page boot, dropdown, stats row, recent loot |
-| `js/signup.js` | Multi-step signup form logic |
-| `js/officer.js` | Officer boot, auth gate, session expiry, tab dispatch |
-| `js/tabs/tab-*.js` | One file per officer tab (15 files) |
-| `css/styles.css` | All styles |
-| `css/officer.css` | Officer-specific styles |
-| `gs/wgaWebApp.gs` | Apps Script -- reads the sheet and serves the roster/attendance/BiS/priority JSON payload (web app endpoint) and officer write actions (attendance refresh, loot import, priority export) |
-| `gs/Config.gs` | Shared constants -- sheet names, column indices, WCL credentials |
-| `gs/Menu.gs` | Spreadsheet menu definitions (`onOpen`) |
-| `gs/Export.gs` | RCLootCouncil priority export -- builds and base64-encodes the import string |
-| `gs/Dropdowns.gs` | Priority Order and BiS List dropdown management |
-| `gs/WCL.gs` | WarcraftLogs API -- fetches performance scores and writes draft/trend columns |
-| `gs/Attendance.gs` | WCL attendance fetch, sheet writer, and score commit |
-| `gs/PriorityGenerator.gs` | Blended priority score calculator for the Priority Generator |
-| `gs/LootReceived.gs` | Difficulty-aware loot tracking -- highlights received items in Priority Generator |
-| `gs/PriorityLegend.gs` | Writes the scoring key/legend to the Priority Generator tab |
-| `gs/About.gs` | Rebuilds the About tab in the spreadsheet |
-| `gs/Utils.gs` | One-off utilities (e.g. set BiS List validation to warn-only) |
+A separate, site-wide (not per-team) page gated to `site_admins`:
+- **Teams** -- create/archive teams
+- **Site Admins** -- grant/revoke site-admin access by Discord ID
+- **Feature Flags** -- the same per-team flags as officer.html's Admin tab, in one cross-team table
+- **Audit Log** -- cross-team, searchable
+- **Maintenance Mode** -- site-wide banner + data-load gate
 
 ---
 
-## How it works
+## Auth, sessions, and access control
 
-1. The **Google Sheet** is the source of truth -- officers update the Roster, BiS List, Priority Order, Scoring, and Loot Data tabs as normal
-2. The **Apps Script** (`wgaWebApp.gs`) reads those tabs and returns a JSON payload via JSONP when either page loads; Discord login and character claims now run through Supabase instead (Supabase Auth for login, the `claim_character` function for claims)
-3. `index.html` and `officer.html` fetch that payload on load and render all views dynamically -- no page reloads. The roster itself now reads from **Supabase** (Phase 2 of the migration), with the Apps Script copy as fallback if that query fails; attendance and M+ exclusion fields still come from the Apps Script payload
-4. Both pages are hosted on **GitHub Pages** at the repo root
-5. The **TEAMS object** in `js/common.js` maps each team slug to its own GAS deployment URL; append `?team=hellfire` to switch teams
-
-Data is split into two cached payloads: core (roster, settings -- 5 min cache) and heavy (BiS lists, item data, loot counts, attendance -- 15 min cache). Use **Clear Cache** in the officer dashboard toolbar to force a refresh after sheet changes.
+- **Discord OAuth via Supabase Auth** is the only login method, for raiders, officers, and admins alike -- one button, one flow.
+- **Character claim** links a raider's Discord identity to a `players` row (`team_members` + `claim_character()`); a person can claim characters on multiple teams.
+- **Officer access** is a `team_members.role` value (`officer`/`team_leader`), not a separate credential -- granted/revoked from the Roster tab's Discord Claims sub-tab or the Admin tab.
+- **Site-admin access** is the `site_admins` table (by Discord ID), managed from `admin.html`.
+- Every write path is enforced by Postgres Row Level Security, not client-side checks -- see [`docs/RLS.md`](docs/RLS.md) for the full policy/function matrix.
 
 ---
 
-## Setup
+## Architecture
 
-### 1. Google Apps Script (one time per team)
+1. **Supabase Postgres** is the single source of truth -- schema and RLS policies live in `supabase/migrations/`, applied in order.
+2. `index.html`, `officer.html`, and `admin.html` are plain static pages (no build step, no bundler) that call Supabase directly from the browser via `supabase-js`, using a public anon key restricted by RLS.
+3. **Feature flags** (`team_settings.config.features`) let a team hide tabs/sub-tabs it doesn't use, editable per-team from the Admin tab or site-wide from `admin.html`.
+4. Both pages are hosted on **GitHub Pages** at the repo root; the `TEAMS` object in `js/common.js` maps each team slug to its Supabase team ID, switched via `?team=`.
+5. Google Sheets/Apps Script was the original backend but has been **fully retired** (the migration's last phase closed 2026-07-21) -- the `gs/*.gs` files remain in the repo only as historical record; nothing reads or writes through them anymore.
 
-1. Open the Google Sheet -- **Extensions > Apps Script**
-2. Create a script file for each `.gs` file in the `gs/` folder and paste in the contents
-3. **Deploy > New Deployment** -- Type: Web App, Execute as: Me, Access: Anyone
-4. Copy the Web App URL and paste it into the relevant `gasUrl` entry in `js/common.js` under `var TEAMS = { ... }`
-
-### 2. Discord OAuth (one time)
-
-1. Create a Discord app at [discord.com/developers](https://discord.com/developers/applications)
-2. Under **OAuth2**, add redirect URI: `https://yourusername.github.io/repo-name/discord-callback.html`
-3. Enable the `identify` scope
-4. Copy the **Client ID** (public) and **Client Secret** (keep private)
-5. In each team's Apps Script, go to **Project Settings > Script Properties** and add:
-   - `DISCORD_CLIENT_ID` -- your Discord app client ID
-   - `DISCORD_CLIENT_SECRET` -- your Discord app client secret
-6. Replace `DISCORD_CLIENT_ID` in `js/discord.js` with your client ID
-7. Replace `DISCORD_REDIRECT_URI` in `js/discord.js` with your actual callback URL
-
-### 3. Officer and admin access
-
-Officer and admin access is controlled by GAS Script Properties (set per team deployment):
-
-| Property | Format | Effect |
-|----------|--------|--------|
-| `officerDiscordIds` | Comma-separated Discord user IDs | These users can access the officer dashboard via Discord login |
-| `adminDiscordIds` | Comma-separated Discord user IDs | These users also see the Admin tab |
-
-Discord user IDs can be found by enabling Developer Mode in Discord and right-clicking a user.
-
-### 4. GitHub Pages (one time)
-
-1. Push all files to your GitHub repo
-2. **Settings > Pages > Deploy from branch > main / root**
-3. Your public URL will be `https://yourusername.github.io/repo-name`
-
-### 5. Roster tab columns
-
-| Col | Header |
-|-----|--------|
-| A | Has 1st Prio - S2 |
-| B | Is Trial |
-| C | Attendance % (formula) |
-| D | Player (Name-Realm) |
-| E | Nickname |
-| F | Class |
-| G | Spec |
-| H | Role |
-| I | BiS Link |
-| J | Sort Key (auto) |
-| K | Priority |
-| M | Join Date (YYYY-MM-DD) |
-
-Paste the formula from `AttendanceFormula.txt` into **C4** and drag down. Format column C as custom number format `0"%"`.
-
-### 6. Item Lookup tab columns
-
-| Col | Header |
-|-----|--------|
-| A | Item Name |
-| C | Slot |
-| D | Armor Type (Plate / Mail / Leather / Cloth -- leave blank for weapons, shields, off-hands, tokens) |
-| E | Sort ID |
-| F | Boss |
-
-See issue #132 for the full workflow for populating this sheet from Wowhead each tier.
+For the full file-by-file breakdown, local dev setup (Docker + Supabase CLI), migration workflow, and PR requirements, see [`CONTRIBUTING.md`](CONTRIBUTING.md) -- that's the maintained source of truth for project structure so it doesn't drift out of sync with this file the way it previously did.
 
 ---
 
-## Officer workflows
+## Database
 
-| Task | What to do |
-|------|-----------|
-| Player joins | Use Add Player in the Roster tab, or add to the sheet then Clear Cache |
-| Player leaves | Use Remove Player in the Roster tab |
-| Role / trial / bench / class / spec / join date change | Edit inline from the player card on the Roster tab |
-| Rename a player | Use Rename in the player card on the Roster tab |
-| Grant officer access | Roster > Discord Claims > Grant Officer (admin only), or Admin > Officers |
-| Revoke officer access | Roster > Discord Claims > Revoke (admin only), or Admin > Officers |
-| Remove a Discord claim | Roster > Discord Claims > Remove |
-| BiS link submitted | Approve from BiS Manager > Submissions (writes to sheet automatically) |
-| Edit a player's BiS items directly | BiS Manager > BiS Lists > Edit |
-| Loot imported | Loot > Import -- paste RCLootCouncil JSON; entries are tagged with the current season name |
-| Priority updated | Priority tab > Priority Generator button per item; edit and Save |
-| RCLootCouncil sync | Priority tab > Generate export string; copy and paste in-game |
-| Attendance refreshed | Attendance > Manage > Refresh from WCL, then Commit Attendance Scores |
-| New tier starts | Repopulate Item Lookup sheet -- see issue #132 |
-| Season rollover | Season Settings -- see Archive Season rollover workflow and issue #131 |
+- [`dbdoc/`](dbdoc/) -- generated schema docs (tables, columns, triggers, functions, ER diagrams), regenerated with `npm run db:docs`. Never hand-edit.
+- [`docs/database-schema-reference.md`](docs/database-schema-reference.md) -- a narrative companion to `dbdoc/`.
+- [`docs/RLS.md`](docs/RLS.md) -- hand-maintained policy/function reference (tbls can't generate this).
+- [`docs/database-decisions.md`](docs/database-decisions.md) -- a running log of settled schema decisions and the reasoning behind them.
+- [`docs/backup-restore.md`](docs/backup-restore.md) -- what's backed up, what's regenerable without a backup, and the restore runbook.
 
 ---
 
-## Redeploying the Apps Script
+## Local development
 
-Only needed when `wgaWebApp.gs` or any `.gs` file changes -- not for sheet data changes.
+See [`docs/supabase-local-dev-setup.md`](docs/supabase-local-dev-setup.md) for setting up the local Supabase stack (Docker + CLI) from scratch.
 
-1. Apps Script > **Deploy > Manage Deployments**
-2. Click the pencil icon on the existing deployment
-3. Set version to **New version**, then **Deploy** -- the URL stays the same
+```
+npm run lint           # eslint over js/, scripts/, tests/
+npm run format:check   # prettier check
+npm run typecheck      # tsc --noEmit (js/common.js is @ts-check'd)
+npm run test:frontend  # vitest -- frontend logic, no browser needed
+npm run test:rls       # vitest -- RLS policy behavior against a local reset
+npm run db:docs        # regenerate dbdoc/ after a migration change
+npm run db:rls         # regenerate docs/rls_policies.csv
+```
 
----
-
-## Sheet tabs read by the Apps Script
-
-| Tab | What's read |
-|-----|------------|
-| Roster | Player list, roles, trial/bench status, BiS links, class/spec, sort key, join date |
-| Scoring | Attendance scores (column D) |
-| BiS List | Each player's BiS items per slot |
-| Priority Order | Ranked player lists per item and difficulty |
-| Item Lookup | Item names, slot types, armor types, sort IDs, and boss sources |
-| Loot Data | All loot awarded this tier (IMPORTRANGE source) |
-| Pasted Loot | RCLC loot imported via the officer dashboard |
-| Attendance | Per-night attendance statuses for scoring and penalty date tracking |
-| Discord Claims | Discord ID to Name-Realm mappings from OAuth login |
-| Roster Responses | Season signup submissions |
-| Self Received Requests | Raider-submitted received item requests |
-| BiS Responses | BiS list link submissions |
-| M+ Exclusion Requests | Raider-submitted M+ exclusion requests |
-| Officer Audit Log | Append-only officer action log |
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full PR checklist (what a migration change additionally requires) and versioning/changelog rules.
 
 ---
 
-## Backups & recovery
+## Roadmap
 
-Nightly database dumps ship off-provider to Cloudflare R2 -- see [`docs/backup-restore.md`](docs/backup-restore.md) for what's covered, what's regenerable without a backup, and where the restore runbook lives.
-
----
-
-## Auth and sessions
-
-- **Discord OAuth** -- only auth method for both raiders and officers. Sessions are stored in `localStorage` per team and validated against GAS on each page load. Sessions expire after 30 days.
-- **Officer access** -- controlled by `officerDiscordIds` GAS Script Property (comma-separated Discord IDs). Takes effect immediately without requiring users to re-login.
-- **Admin access** -- controlled by `adminDiscordIds` GAS Script Property. Admins see the Admin tab.
+See [`docs/ROADMAP.md`](docs/ROADMAP.md) and the [issue tracker](https://github.com/katogaming88/WGA-Raid-Hub/issues) for planned work.
