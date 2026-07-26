@@ -78,7 +78,7 @@ function makeSandbox({ saveTeamSettingImpl, rpcResult, els = {}, data = {} } = {
 }
 
 describe('saveSeasonName (#221)', () => {
-  it('saves via saveTeamSetting and updates DATA/audit log on success', async () => {
+  it('saves via saveTeamSetting and updates DATA on success', async () => {
     const els = {
       seasonNameInput: makeEl({ value: 'New Season' }),
       seasonNameSaveBtn: makeEl(),
@@ -91,9 +91,10 @@ describe('saveSeasonName (#221)', () => {
 
     expect(saveTeamSettingCalls).toEqual([{ seasonName: 'New Season' }]);
     expect(sandbox.DATA.seasonName).toBe('New Season');
-    expect(auditLogCalls).toEqual([
-      { action: 'Season Name Set', targetType: null, targetId: null, detail: 'New Season' }
-    ]);
+    // No client-side writeAuditLog() call -- set_team_setting already logs a
+    // generic 'team_setting_updated' entry server-side (duplicated every save
+    // until removed here, see the Audit Log tab fix this accompanies).
+    expect(auditLogCalls).toEqual([]);
     expect(els.seasonNameStatus.textContent).toBe('Saved!');
     expect(els.seasonNameSaveBtn.disabled).toBe(false);
   });
@@ -132,7 +133,8 @@ describe('saveTrialThresholds (#221)', () => {
 
     expect(saveTeamSettingCalls).toEqual([{ trialWeeks: 52, trialAttend: 0 }]);
     expect(sandbox.PROMO_THRESHOLDS).toEqual({ weeks: 52, attend: 0 });
-    expect(auditLogCalls[0].detail).toBe('52 wk / 0%');
+    // No client-side writeAuditLog() call -- set_team_setting already logs it.
+    expect(auditLogCalls).toEqual([]);
   });
 });
 

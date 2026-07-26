@@ -287,9 +287,6 @@ function clearSeasonHistorySupabase(finish) {
       if (DATA) DATA.seasonHistory = (config && config.seasonHistory) || [];
       if (typeof buildSeasonTab === 'function') buildSeasonTab();
       loadAdminProperties();
-      return writeAuditLog('Season History Cleared', null, null, null);
-    })
-    .then(function () {
       finish(null, true);
     })
     .catch(function (err) {
@@ -657,13 +654,6 @@ function saveAdminWishlistLabels() {
   saveTeamSetting({ wishlistStatusLabels: overrides })
     .then(function (config) {
       DATA.wishlistStatusLabels = config.wishlistStatusLabels || {};
-      var changed = Object.keys(overrides).length;
-      writeAuditLog(
-        'Wishlist Tier Labels Saved',
-        null,
-        null,
-        changed ? changed + ' tier(s) renamed' : 'reset to defaults'
-      );
       if (btn) btn.disabled = false;
       if (statusEl) statusEl.textContent = 'Saved';
       setTimeout(function () {

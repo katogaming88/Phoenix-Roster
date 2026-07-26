@@ -23,7 +23,6 @@ function setSignupsOpen(open) {
     .then(function () {
       if (btn) btn.disabled = false;
       if (DATA) DATA.signupsOpen = open;
-      writeAuditLog(open ? 'Signups Opened' : 'Signups Closed', null, null, null);
       renderSignupToggle();
     })
     .catch(function () {

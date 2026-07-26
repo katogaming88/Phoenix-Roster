@@ -23,7 +23,6 @@ function setBisSubmissionsOpen(open) {
     function () {
       if (btn) btn.disabled = false;
       if (DATA) DATA.bisSubmissionsOpen = open;
-      writeAuditLog(open ? 'BiS Submissions Opened' : 'BiS Submissions Closed', null, null, null);
       renderBisToggle();
     },
     function () {
@@ -62,7 +61,6 @@ function setWishlistOpen(open) {
     function () {
       if (btn) btn.disabled = false;
       if (DATA) DATA.wishlistOpen = open;
-      writeAuditLog(open ? 'Wishlist Editing Opened' : 'Wishlist Editing Closed', null, null, null);
       renderWishlistToggle();
     },
     function () {

@@ -226,8 +226,10 @@ function saveBios() {
         btn.disabled = false;
         btn.textContent = 'Save Bios';
       }
+      // No client-side writeAuditLog() call here -- unlike set_guild_officer_bios
+      // (see saveGuildBios() below), this goes through set_team_setting, which
+      // already logs its own generic 'team_setting_updated' entry server-side.
       DATA.teamOfficerBios = JSON.parse(JSON.stringify(TEAM_OFFICER_BIOS));
-      writeAuditLog('Team Officer Bios Saved', null, null, TEAM_OFFICER_BIOS.length + ' bio(s)');
       if (status) {
         status.textContent = 'Saved!';
         setTimeout(function () {
@@ -485,7 +487,7 @@ function saveGuildBios() {
         btn.disabled = false;
         btn.textContent = 'Save Guild Bios';
       }
-      // No client-side writeAuditLog() call here -- unlike set_team_setting,
+      // No client-side writeAuditLog() call here -- like set_team_setting,
       // set_guild_officer_bios logs its own audit entry server-side.
       DATA.guildOfficerBios = JSON.parse(JSON.stringify(GUILD_OFFICER_BIOS));
       if (status) {
