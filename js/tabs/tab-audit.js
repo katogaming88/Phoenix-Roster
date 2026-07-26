@@ -19,6 +19,11 @@ function humanizeAuditKey(key) {
 
 function humanizeAuditValue(v) {
   if (typeof v === 'boolean') return v ? 'On' : 'Off';
+  // A diff value that's an array (bios lists, seasonHistory, raidProgression,
+  // etc.) isn't meaningful to spell out item-by-item in a one-line summary --
+  // String() on an array of objects renders "[object Object]" per element,
+  // which is what this used to fall through to.
+  if (Array.isArray(v)) return v.length + ' item' + (v.length === 1 ? '' : 's');
   return String(v);
 }
 
