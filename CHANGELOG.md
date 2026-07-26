@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.15] - 2026-07-26
+
+### Frontend
+
+- Updated the Officer Bios editor's photo instructions (Team and Guild) -- officers now send Kat the image they want to use rather than committing it into the repo themselves.
+
 ## [3.49.14] - 2026-07-25
 
 ### Frontend
