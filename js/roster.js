@@ -797,7 +797,7 @@ function bootRosterApp() {
           streams: 'streamers',
           signup: 'signup',
           history: 'history',
-          bios: 'bios',
+          about: 'about',
           news: 'news',
           help: 'help'
         }[(location.hash || '').replace('#', '')];

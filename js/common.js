@@ -49,7 +49,103 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.49.13';
+var VERSION = '3.49.14';
+
+// Single source of truth for the top nav's item list/order/labels, shared by
+// index.html (public, JS-driven showView() buttons) and officer.html (a
+// read-only set of links back to index.html's views, since those tabs only
+// exist there) -- previously each page hardcoded its own copy of this list,
+// which is exactly how officer.html's copy drifted out of sync (still said
+// "Bios" and was missing "News" after both shipped on the public page).
+// `hash` is null for Home (plain index.html, no fragment); every other
+// item's hash matches js/roster.js's showView()'s deep-link map (#354).
+var SITE_NAV_ITEMS = [
+  { id: 'navHome', label: 'Home', tooltip: 'Back to the roster overview', view: 'landing', hash: null },
+  { id: 'navRoster', label: 'Roster', tooltip: "See who's currently on the roster", view: 'roster', hash: 'roster' },
+  {
+    id: 'navStreamers',
+    label: 'Streams',
+    tooltip: 'Watch raiders streaming live on Twitch',
+    view: 'streamers',
+    hash: 'streams'
+  },
+  {
+    id: 'navSignup',
+    label: 'Sign Up',
+    tooltip: 'Apply to join the raid team for next season',
+    view: 'signup',
+    hash: 'signup',
+    onclick: 'showSignupView()'
+  },
+  {
+    id: 'navHistory',
+    label: 'History',
+    tooltip: 'Past seasons -- progression and dates',
+    view: 'history',
+    hash: 'history'
+  },
+  { id: 'navAbout', label: 'About', tooltip: 'Meet the team and guild leadership', view: 'about', hash: 'about' },
+  {
+    id: 'navNews',
+    label: 'News',
+    tooltip: "What's new on the site",
+    view: 'news',
+    hash: 'news',
+    extraHtml: '<span id="navNewsDot" class="nav-notif nav-notif-dot" style="display:none"></span>'
+  },
+  {
+    id: 'navHelp',
+    label: 'Help',
+    tooltip: 'How to claim your character, submit BiS, sign up, and more',
+    view: 'help',
+    hash: 'help'
+  }
+];
+
+// Renders SITE_NAV_ITEMS into #siteNavItems -- 'public' mode (index.html)
+// builds the real onclick="showView(...)" buttons; 'officer' mode
+// (officer.html) builds plain links back to index.html's views, with the
+// team query param baked in directly (rather than relying on the page's
+// separate `a[href="index.html"]` team-switch rewrite, which only ever
+// matched the exact bare href -- Home -- not these hash-suffixed ones).
+function renderSiteNav(mode) {
+  var mount = document.getElementById('siteNavItems');
+  if (!mount) return;
+  var html = '';
+  SITE_NAV_ITEMS.forEach(function (item, i) {
+    if (mode === 'officer') {
+      var href = 'index.html';
+      if (TEAM_SLUG !== 'phoenix') href += '?team=' + TEAM_SLUG;
+      if (item.hash) href += '#' + item.hash;
+      html +=
+        '<a href="' +
+        href +
+        '" class="site-nav-item" id="' +
+        item.id +
+        '" data-tooltip="' +
+        item.tooltip +
+        '">' +
+        item.label +
+        '</a>';
+    } else {
+      var onclick = item.onclick || "showView('" + item.view + "')";
+      html +=
+        '<button class="site-nav-item' +
+        (i === 0 ? ' active' : '') +
+        '" id="' +
+        item.id +
+        '" onclick="' +
+        onclick +
+        '" data-tooltip="' +
+        item.tooltip +
+        '">' +
+        item.label +
+        (item.extraHtml || '') +
+        '</button>';
+    }
+  });
+  mount.innerHTML = html;
+}
 
 // Shared by the officer.html Help tab and index.html's raider Help tab/tips.
 function toggleHelp(id) {

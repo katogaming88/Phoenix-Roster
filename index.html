@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=3.49.13">
+<link rel="stylesheet" href="css/styles.css?v=3.49.14">
 <script>var whTooltips = {colorLinks: true, iconizeLinks: true, iconSize: 'small'};</script>
 <script src="https://wow.zamimg.com/widgets/power.js"></script>
 </head>
@@ -48,14 +48,7 @@
 </header>
 
 <nav class="site-nav" id="siteNav">
-  <button class="site-nav-item active" id="navHome" onclick="showView('landing')" data-tooltip="Back to the roster overview">Home</button>
-  <button class="site-nav-item" id="navRoster" onclick="showView('roster')" data-tooltip="See who's currently on the roster">Roster</button>
-  <button class="site-nav-item" id="navStreamers" onclick="showView('streamers')" data-tooltip="Watch raiders streaming live on Twitch">Streams</button>
-  <button class="site-nav-item" id="navSignup" onclick="showSignupView()" data-tooltip="Apply to join the raid team for next season">Sign Up</button>
-  <button class="site-nav-item" id="navHistory" onclick="showView('history')" data-tooltip="Past seasons -- progression and dates">History</button>
-  <button class="site-nav-item" id="navAbout" onclick="showView('about')" data-tooltip="Meet the team and guild leadership">About</button>
-  <button class="site-nav-item" id="navNews" onclick="showView('news')" data-tooltip="What's new on the site">News<span id="navNewsDot" class="nav-notif nav-notif-dot" style="display:none"></span></button>
-  <button class="site-nav-item" id="navHelp" onclick="showView('help')" data-tooltip="How to claim your character, submit BiS, sign up, and more">Help</button>
+  <div id="siteNavItems" style="display:contents;"></div>
   <div class="site-nav-right">
     <select id="teamSwitcherSelect" class="team-switcher" title="Switch team"></select>
     <div class="nav-bell-wrap">
@@ -337,16 +330,17 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/common.js?v=3.49.13"></script>
-<script src="js/discord.js?v=3.49.13"></script>
-<script src="js/officer-quick-actions.js?v=3.49.13"></script>
-<script src="js/streamers.js?v=3.49.13"></script>
-<script src="js/news.js?v=3.49.13"></script>
-<script src="js/roster.js?v=3.49.13"></script>
-<script src="js/contact.js?v=3.49.13"></script>
-<script src="js/signup.js?v=3.49.13"></script>
-<script src="js/wishlist.js?v=3.49.13"></script>
+<script src="js/common.js?v=3.49.14"></script>
+<script src="js/discord.js?v=3.49.14"></script>
+<script src="js/officer-quick-actions.js?v=3.49.14"></script>
+<script src="js/streamers.js?v=3.49.14"></script>
+<script src="js/news.js?v=3.49.14"></script>
+<script src="js/roster.js?v=3.49.14"></script>
+<script src="js/contact.js?v=3.49.14"></script>
+<script src="js/signup.js?v=3.49.14"></script>
+<script src="js/wishlist.js?v=3.49.14"></script>
 <script>
+renderSiteNav('public');
 ['versionNum','versionNumProfile','versionNumSignup','versionNumRoster','versionNumStreamers','versionNumHistory','versionNumAbout','versionNumNews','versionNumHelp'].forEach(function(id){document.getElementById(id).textContent=VERSION;});
 document.title = TEAM_NAME + ' -- Roster';
 document.getElementById('headerTeamName').textContent = TEAM_NAME;
