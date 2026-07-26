@@ -8,6 +8,13 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.18] - 2026-07-26
+
+### Frontend
+
+- **Added URL-based view routing to index.html (#517)** -- Home, Roster, Streamers, and Profile now reflect into the URL hash (`#roster`, `#streams`, `#profile/<name>`) as you navigate, and a reload restores the same view instead of always dropping back to Home. Extends the one-way hash deep-link officer.html's nav already used (#354) into a two-way one. Loading `#profile/<name>` directly is gated to the profile's own owner or an officer viewer -- anyone else's link falls back to Home, since a hand-edited URL is reachable without the existing "View My Profile" button's implicit self-only reach. Sign Up/History/About/News/Help stay out of scope for now.
+- **Same treatment for officer.html's tabs (#517)** -- switching tabs now keeps the existing `?tab=` param (already used for one-way deep links from index.html's Officer Access nav, #354) in sync, so a reload restores whatever tab you were on instead of dropping back to Roster. No ownership gate needed here -- the whole page is already officer-only.
+
 ## [3.49.17] - 2026-07-26
 
 ### Frontend

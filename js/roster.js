@@ -74,6 +74,15 @@ function showView(name) {
   // or just noisy (mid-signup) -- shown everywhere else (landing, roster, profile).
   var widget = document.getElementById('streamWidget');
   if (widget) widget.classList.toggle('stream-widget-hidden', name === 'streamers' || name === 'signup');
+
+  // Reflect into the URL hash so a reload can restore the view (#517). Only
+  // these three are in scope -- 'profile' sets its own hash (with the player)
+  // from renderProfile() instead, right after this runs. Every other view
+  // (signup, history, about, news, help) is out of scope for now; clear the
+  // hash for them so a stale '#roster'/'#profile/...' from before doesn't win
+  // on the next reload and land the wrong view.
+  var hashByView = { landing: '', roster: 'roster', streamers: 'streams' };
+  if (name !== 'profile') setViewHash(Object.prototype.hasOwnProperty.call(hashByView, name) ? hashByView[name] : '');
 }
 
 function populateDropdown() {
@@ -751,6 +760,40 @@ function onDiscordSessionRestored(session) {
     sessionStorage.removeItem('wga_open_profile');
     autoOpenClaimedProfile(session.nameRealm);
   }
+  _resolveHashProfile(session);
+}
+
+// Same last-loaded-wins collision as onDiscordSessionRestored above, this time
+// with officer-quick-actions.js's onDiscordInitNoSession -- shadow it here and
+// call _qaRefresh() ourselves so anonymous visitors still get its officer
+// bar/player selector/claim prompt reset, then reject any pending #profile/<name>
+// deep-link since there's no session to own it (#517).
+function onDiscordInitNoSession() {
+  if (typeof _qaRefresh === 'function') _qaRefresh();
+  _resolveHashProfile(null);
+}
+
+// URL-hash profile deep-link target (#517), set by bootRosterApp() when the
+// page loads on '#profile/<name>' -- can't be rendered until the Discord
+// session resolves, since only the profile's owner or an officer may view it
+// via URL (unlike the "View My Profile" button, a hand-edited URL is reachable
+// by anyone, so this can't reuse renderProfile()'s no-ownership-check default).
+var _pendingHashProfile = null;
+
+function _resolveHashProfile(session) {
+  if (!_pendingHashProfile) return;
+  var target = _pendingHashProfile;
+  _pendingHashProfile = null;
+  var isOwnProfile = session && session.nameRealm && normalise(session.nameRealm.split('-')[0]) === normalise(target);
+  var isOfficerViewer = session && (session.isOfficer || session.isAdmin);
+  if (!isOwnProfile && !isOfficerViewer) {
+    setViewHash('');
+    return;
+  }
+  var sel = document.getElementById('playerSelect');
+  if (sel) sel.value = target;
+  showView('profile');
+  renderProfile(target, 'landing');
 }
 
 // Auto-open the claimed character's profile after Discord login / session restore.
@@ -792,18 +835,28 @@ function bootRosterApp() {
         renderExternalWclLink();
         // Deep-link support for officer.html's nav (#354) -- its Roster/Streams/Sign
         // Up/Help links point back at index.html since those views only exist here.
-        var hashView = {
-          roster: 'roster',
-          streams: 'streamers',
-          signup: 'signup',
-          history: 'history',
-          about: 'about',
-          news: 'news',
-          help: 'help'
-        }[(location.hash || '').replace('#', '')];
-        if (hashView === 'signup') showSignupView();
-        else if (hashView) showView(hashView);
-        else showView('landing');
+        // '#profile/<name>' (#517) is handled separately below since it can't be
+        // shown until the Discord session resolves (self-or-officer check).
+        var hashRaw = (location.hash || '').replace('#', '');
+        var hashParts = hashRaw.split('/');
+        var hashKey = hashParts[0];
+        if (hashKey === 'profile' && hashParts[1]) {
+          _pendingHashProfile = decodeURIComponent(hashParts[1]);
+          showView('landing');
+        } else {
+          var hashView = {
+            roster: 'roster',
+            streams: 'streamers',
+            signup: 'signup',
+            history: 'history',
+            about: 'about',
+            news: 'news',
+            help: 'help'
+          }[hashKey];
+          if (hashView === 'signup') showSignupView();
+          else if (hashView) showView(hashView);
+          else showView('landing');
+        }
         // Init Discord session after core data is ready so the profile deep-link can
         // find the claimed character in the now-populated player dropdown.
         if (typeof initDiscordLogin === 'function') initDiscordLogin();
