@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.49.17';
+var VERSION = '3.49.18';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -945,6 +945,16 @@ function normalise(str) {
     .replace(/[̀-ͯ]/g, '')
     .toLowerCase()
     .trim();
+}
+
+// Reflects the current view into the URL hash (index.html only -- #517) via
+// replaceState rather than location.hash= so navigating tabs/profiles doesn't
+// spam browser history with an entry per switch. Read back once at boot by
+// bootRosterApp() (js/roster.js) to restore the view across a reload.
+function setViewHash(fragment) {
+  var newHash = fragment ? '#' + fragment : '';
+  if ((location.hash || '') === newHash) return;
+  history.replaceState(null, '', location.pathname + location.search + newHash);
 }
 
 // -- Data loading -----------------------------------------------------------
@@ -3696,6 +3706,10 @@ function renderProfile(firstName, backTo, container) {
     }
   }
   if (!player) return;
+
+  // backTo === 'landing' is the public-page render (officer.html's inline roster
+  // table uses 'officer' instead) -- only reflect those into the URL (#517).
+  if (backTo === 'landing') setViewHash('profile/' + encodeURIComponent(player.firstName));
 
   var displayName = player.nick || player.firstName;
   var initials = displayName.slice(0, 2).toUpperCase();

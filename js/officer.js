@@ -71,6 +71,31 @@ function switchTab(name) {
     buildGuildBioCards();
   }
   if (name === 'admin') buildAdminTab();
+
+  setTabQueryParam(name);
+}
+
+// Reflects the active top-level tab into the URL's '?tab=' param (#517),
+// extending the read-once deep-link buildOfficerDashboard() already supports
+// (used by index.html's officer nav link, js/officer-quick-actions.js) into a
+// two-way one so a reload restores the tab instead of always landing on
+// Roster. history.replaceState rather than reassigning location.search so
+// switching tabs doesn't spam browser history with an entry per switch.
+// 'roster' is the default tab (active in the markup on load) so it's
+// represented by the param's absence rather than '?tab=roster'. Sub-tabs
+// (BiS submissions/lists, Signups sub-tabs, etc.) are out of scope, same as
+// index.html's Roster/About sub-tabs.
+function setTabQueryParam(name) {
+  var params = new URLSearchParams(location.search);
+  if (name && name !== 'roster') {
+    params.set('tab', name);
+  } else {
+    params.delete('tab');
+  }
+  var qs = params.toString();
+  var newSearch = qs ? '?' + qs : '';
+  if (newSearch === location.search) return;
+  history.replaceState(null, '', location.pathname + newSearch + location.hash);
 }
 
 function resetBisSubTab() {
@@ -335,8 +360,19 @@ function buildOfficerDashboard() {
     var el = document.getElementById('dataTimestamp');
     if (el) el.textContent = 'Data as of ' + ts;
   }
+  // buildOfficerDashboard() is also called after roster/season saves (not just
+  // at boot, see tab-roster.js/tab-season.js), and switchTab() now keeps
+  // '?tab=' synced to whatever tab is actually active (#517) -- so on those
+  // later calls tabParam will just be the current tab, not a fresh deep-link
+  // target. Only openTab() when it names a *different* tab than the one
+  // already showing, or every such refresh would redundantly re-click and
+  // rebuild the tab the officer is already sitting on.
   var tabParam = (location.search.match(/[?&]tab=([^&]+)/) || [])[1];
-  if (tabParam) openTab(tabParam);
+  if (tabParam) {
+    var activeNav = document.querySelector('.nav-item.active');
+    var alreadyOnTab = activeNav && (activeNav.getAttribute('onclick') || '').indexOf("'" + tabParam + "'") !== -1;
+    if (!alreadyOnTab) openTab(tabParam);
+  }
   applyFeatureFlagVisibility();
 }
 
