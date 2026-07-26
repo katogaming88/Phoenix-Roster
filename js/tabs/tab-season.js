@@ -702,6 +702,7 @@ function saveSeasonName() {
       if (DATA) DATA.seasonName = val;
       if (input) input.value = val;
       populateSeasonSelector();
+      writeAuditLog('Season Name Set', null, null, val);
       if (status) {
         status.textContent = val ? 'Saved!' : 'Cleared.';
         setTimeout(function () {
@@ -748,6 +749,7 @@ function saveSeasonCodePrefixes() {
       }
       if (codeInput) codeInput.value = codeVal;
       if (displayInput) displayInput.value = displayVal;
+      writeAuditLog('Season Code Prefix Changed', null, null, codeVal + ' / ' + displayVal);
       if (status) {
         status.textContent = 'Saved!';
         setTimeout(function () {
@@ -786,6 +788,7 @@ function saveWclUrl() {
       if (DATA) DATA.externalLinks = { warcraftLogsUrl: val };
       if (input) input.value = val;
       if (typeof renderExternalWclLink === 'function') renderExternalWclLink();
+      writeAuditLog('WarcraftLogs Guild URL Set', null, null, val);
       if (status) {
         status.textContent = val ? 'Saved!' : 'Cleared.';
         setTimeout(function () {
@@ -825,6 +828,7 @@ function saveSeasonStart() {
       if (DATA) DATA.seasonStart = val;
       if (input) input.value = val;
       populateSeasonSelector();
+      writeAuditLog('Season Start Set', null, null, val);
       if (status) {
         status.textContent = val ? 'Saved!' : 'Cleared.';
         setTimeout(function () {
@@ -863,6 +867,7 @@ function saveSeasonEnd() {
       }
       if (DATA) DATA.seasonEnd = val;
       if (input) input.value = val;
+      writeAuditLog('Season End Set', null, null, val);
       if (status) {
         status.textContent = val ? 'Saved!' : 'Cleared.';
         setTimeout(function () {
@@ -1325,6 +1330,7 @@ function saveRaidProgression() {
         btn.textContent = 'Save Progression';
       }
       DATA.raidProgression = JSON.parse(JSON.stringify(SEASON_RAIDS));
+      writeAuditLog('Raid Progression Saved', null, null, SEASON_RAIDS.length + ' raid(s)');
       if (status) {
         status.textContent = 'Saved!';
         setTimeout(function () {
@@ -1369,6 +1375,12 @@ function saveRosterTargets() {
         DATA.targetTankCount = tankCount;
         DATA.targetHealCount = healCount;
       }
+      writeAuditLog(
+        'Roster Targets Set',
+        null,
+        null,
+        (tankCount == null ? '-' : tankCount) + ' tank / ' + (healCount == null ? '-' : healCount) + ' heal'
+      );
       if (status) {
         status.textContent = 'Saved!';
         setTimeout(function () {
@@ -1409,6 +1421,7 @@ function saveTrialThresholds() {
       }
       PROMO_THRESHOLDS.weeks = weeks;
       PROMO_THRESHOLDS.attend = attend;
+      writeAuditLog('Trial Thresholds Set', null, null, weeks + ' wk / ' + attend + '%');
       if (status) {
         status.textContent = 'Saved!';
         setTimeout(function () {

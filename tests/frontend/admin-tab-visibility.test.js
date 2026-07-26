@@ -374,9 +374,7 @@ describe('Clear Season History goes through Supabase, not GAS (#423)', () => {
 
     expect(saveTeamSetting).toHaveBeenCalledTimes(1);
     expect(saveTeamSetting).toHaveBeenCalledWith({ seasonHistory: [] });
-    // No client-side writeAuditLog() call -- set_team_setting already logs a
-    // generic 'team_setting_updated' entry server-side.
-    expect(writeAuditLog).not.toHaveBeenCalled();
+    expect(writeAuditLog).toHaveBeenCalledWith('Season History Cleared', null, null, null);
   });
 
   it('updates DATA.seasonHistory and re-renders the Season tab', async () => {

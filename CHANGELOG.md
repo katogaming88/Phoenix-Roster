@@ -8,12 +8,6 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
-## [3.49.20] - 2026-07-26
-
-### Frontend
-
-- **Fixed the officer Audit Log tab showing two rows for a single settings change** -- every toggle/save routed through `saveTeamSetting()` (M+ Exclusions, BiS Submissions, Wishlist Editing, Signups open/closed, Season Name/Start/End/Code Prefix, WarcraftLogs Guild URL, Raid Progression, Roster Targets, Trial Thresholds, Wishlist Tier Labels, Team Officer Bios, Season History Cleared) was logging twice: once from the DB's own generic `team_setting_updated` entry (added for every `team_settings` write by #384's `set_team_setting` change) and again from an older, redundant client-side `writeAuditLog()` call with a friendlier action name. Removed the redundant client-side calls, matching the pattern already used for Guild Officer Bios -- the DB-side entry's diff detail already carries the same information. "Season Archived" is the one exception left in place: the generic entry from its incidental follow-up save doesn't actually describe the archive itself, so that label stays.
-
 ## [3.49.19] - 2026-07-26
 
 ### Frontend

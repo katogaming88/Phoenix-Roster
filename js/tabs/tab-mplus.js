@@ -16,14 +16,11 @@ function toggleMPlusOpen() {
     btn.textContent = 'Saving...';
   }
 
-  // No client-side writeAuditLog() call here -- set_team_setting (js/common.js
-  // saveTeamSetting()) already logs a generic 'team_setting_updated' entry for
-  // every team_settings write server-side, so a second, friendlier-named call
-  // here duplicated every toggle in the Audit Log tab.
   saveTeamSetting({ mPlusExclusionsOpen: open })
     .then(function () {
       if (btn) btn.disabled = false;
       if (DATA) DATA.mPlusExclusionsOpen = open;
+      writeAuditLog(open ? 'M+ Exclusions Opened' : 'M+ Exclusions Closed', null, null, null);
       renderMPlusToggle();
     })
     .catch(function () {
