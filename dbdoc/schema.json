@@ -4318,12 +4318,6 @@
       "type": "FUNCTION"
     },
     {
-      "name": "public.set_team_setting",
-      "return_type": "jsonb",
-      "arguments": "p_team_id integer, p_updates jsonb",
-      "type": "FUNCTION"
-    },
-    {
       "name": "public.archive_current_season",
       "return_type": "jsonb",
       "arguments": "p_team_id integer, p_roster_snapshot jsonb",
@@ -4453,6 +4447,12 @@
       "name": "public.add_signup_to_roster",
       "return_type": "int4",
       "arguments": "p_signup_id integer, p_is_trial boolean DEFAULT true, p_archive_player_id integer DEFAULT NULL::integer, p_is_backup_tank boolean DEFAULT false, p_is_backup_healer boolean DEFAULT false",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_team_setting",
+      "return_type": "jsonb",
+      "arguments": "p_team_id integer, p_updates jsonb, p_skip_audit boolean DEFAULT false",
       "type": "FUNCTION"
     }
   ],

@@ -540,7 +540,10 @@ function executeArchiveSeason() {
       // blank for an officer to retype. seasonView: null resets any
       // forward-looking "planning" pointer (#549) back to "default to live"
       // now that the planned season just became the live one.
-      return saveTeamSetting({ seasonName: CURRENT_SEASON.displayName, seasonView: null });
+      // skipAudit: true -- this is an incidental follow-up (auto-filling the
+      // new season's name/clearing seasonView), not the archive itself; the
+      // meaningful event is already logged below as "Season Archived".
+      return saveTeamSetting({ seasonName: CURRENT_SEASON.displayName, seasonView: null }, true);
     })
     .then(function (config) {
       if (btn) btn.disabled = false;
@@ -693,7 +696,7 @@ function saveSeasonName() {
     btn.textContent = 'Saving...';
   }
 
-  saveTeamSetting({ seasonName: val })
+  saveTeamSetting({ seasonName: val }, true)
     .then(function () {
       if (btn) {
         btn.disabled = false;
@@ -737,7 +740,7 @@ function saveSeasonCodePrefixes() {
     btn.textContent = 'Saving...';
   }
 
-  saveTeamSetting({ seasonCodePrefix: codeVal, seasonDisplayPrefix: displayVal })
+  saveTeamSetting({ seasonCodePrefix: codeVal, seasonDisplayPrefix: displayVal }, true)
     .then(function () {
       if (btn) {
         btn.disabled = false;
@@ -779,7 +782,7 @@ function saveWclUrl() {
     btn.textContent = 'Saving...';
   }
 
-  saveTeamSetting({ externalLinks: { warcraftLogsUrl: val } })
+  saveTeamSetting({ externalLinks: { warcraftLogsUrl: val } }, true)
     .then(function () {
       if (btn) {
         btn.disabled = false;
@@ -819,7 +822,7 @@ function saveSeasonStart() {
     btn.textContent = 'Saving...';
   }
 
-  saveTeamSetting({ seasonStart: val })
+  saveTeamSetting({ seasonStart: val }, true)
     .then(function () {
       if (btn) {
         btn.disabled = false;
@@ -859,7 +862,7 @@ function saveSeasonEnd() {
     btn.textContent = 'Saving...';
   }
 
-  saveTeamSetting({ seasonEnd: val })
+  saveTeamSetting({ seasonEnd: val }, true)
     .then(function () {
       if (btn) {
         btn.disabled = false;
@@ -1323,7 +1326,7 @@ function saveRaidProgression() {
     btn.textContent = 'Saving...';
   }
 
-  saveTeamSetting({ raidProgression: SEASON_RAIDS })
+  saveTeamSetting({ raidProgression: SEASON_RAIDS }, true)
     .then(function () {
       if (btn) {
         btn.disabled = false;
@@ -1365,7 +1368,7 @@ function saveRosterTargets() {
     btn.textContent = 'Saving...';
   }
 
-  saveTeamSetting({ targetTankCount: tankCount, targetHealCount: healCount })
+  saveTeamSetting({ targetTankCount: tankCount, targetHealCount: healCount }, true)
     .then(function () {
       if (btn) {
         btn.disabled = false;
@@ -1409,7 +1412,7 @@ function saveTrialThresholds() {
     btn.textContent = 'Saving...';
   }
 
-  saveTeamSetting({ trialWeeks: weeks, trialAttend: attend })
+  saveTeamSetting({ trialWeeks: weeks, trialAttend: attend }, true)
     .then(function () {
       if (btn) {
         btn.disabled = false;

@@ -16,7 +16,7 @@ function toggleMPlusOpen() {
     btn.textContent = 'Saving...';
   }
 
-  saveTeamSetting({ mPlusExclusionsOpen: open })
+  saveTeamSetting({ mPlusExclusionsOpen: open }, true)
     .then(function () {
       if (btn) btn.disabled = false;
       if (DATA) DATA.mPlusExclusionsOpen = open;

@@ -19,7 +19,7 @@ function setBisSubmissionsOpen(open) {
     btn.textContent = 'Saving...';
   }
 
-  saveTeamSetting({ bisSubmissionsOpen: open }).then(
+  saveTeamSetting({ bisSubmissionsOpen: open }, true).then(
     function () {
       if (btn) btn.disabled = false;
       if (DATA) DATA.bisSubmissionsOpen = open;
@@ -58,7 +58,7 @@ function setWishlistOpen(open) {
     btn.textContent = 'Saving...';
   }
 
-  saveTeamSetting({ wishlistOpen: open }).then(
+  saveTeamSetting({ wishlistOpen: open }, true).then(
     function () {
       if (btn) btn.disabled = false;
       if (DATA) DATA.wishlistOpen = open;

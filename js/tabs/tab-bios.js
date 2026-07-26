@@ -220,7 +220,7 @@ function saveBios() {
     btn.textContent = 'Saving...';
   }
 
-  saveTeamSetting({ teamOfficerBios: TEAM_OFFICER_BIOS })
+  saveTeamSetting({ teamOfficerBios: TEAM_OFFICER_BIOS }, true)
     .then(function () {
       if (btn) {
         btn.disabled = false;

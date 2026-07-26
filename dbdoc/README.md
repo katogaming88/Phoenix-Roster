@@ -65,7 +65,6 @@
 | public.danger_clear_pending_roster | int4 | p_team_id integer | FUNCTION |
 | public.danger_clear_mplus_exclusion_requests | int4 | p_team_id integer | FUNCTION |
 | public.danger_clear_self_received_requests | int4 | p_team_id integer | FUNCTION |
-| public.set_team_setting | jsonb | p_team_id integer, p_updates jsonb | FUNCTION |
 | public.archive_current_season | jsonb | p_team_id integer, p_roster_snapshot jsonb | FUNCTION |
 | public.unarchive_season | jsonb | p_team_id integer, p_index integer | FUNCTION |
 | public.is_own_player | bool | p_player_id integer | FUNCTION |
@@ -88,6 +87,7 @@
 | public.get_own_signup | record | p_team_id integer | FUNCTION |
 | public.update_own_signup | int4 | p_signup_id integer, p_name_realm text, p_class text, p_spec text, p_off_specs text DEFAULT ''::text, p_main_swap boolean DEFAULT false, p_player_note text DEFAULT NULL::text, p_swap_from_name_realm text DEFAULT NULL::text | FUNCTION |
 | public.add_signup_to_roster | int4 | p_signup_id integer, p_is_trial boolean DEFAULT true, p_archive_player_id integer DEFAULT NULL::integer, p_is_backup_tank boolean DEFAULT false, p_is_backup_healer boolean DEFAULT false | FUNCTION |
+| public.set_team_setting | jsonb | p_team_id integer, p_updates jsonb, p_skip_audit boolean DEFAULT false | FUNCTION |
 
 ## Enums
 
