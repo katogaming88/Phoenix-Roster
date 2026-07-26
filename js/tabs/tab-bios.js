@@ -200,7 +200,7 @@ function renderBioCards() {
       _escAttr(entry.imagePath || '') +
       '" style="width:100%;font-size:1rem;padding:0.3rem 0.55rem;">';
     html +=
-      '<p style="font-size:0.91rem;color:var(--text-muted);margin:0.3rem 0 0;">To add a photo, commit an image to <code>assets/officers/</code> in the repo, then paste its relative path here. Leave blank to show initials instead.</p>';
+      '<p style="font-size:0.91rem;color:var(--text-muted);margin:0.3rem 0 0;">To add a photo, send Kat the image you want to use and she\'ll add it and give you the path to paste here. Leave blank to show initials instead.</p>';
     html += '</div>';
     html +=
       '<textarea class="bio-text-input add-player-notes" placeholder="Short bio..." rows="3" style="width:100%;font-size:1rem;padding:0.3rem 0.55rem;">' +
@@ -425,7 +425,7 @@ function renderGuildBioCards() {
       _escAttr(entry.imagePath || '') +
       '" style="width:100%;font-size:1rem;padding:0.3rem 0.55rem;">';
     html +=
-      '<p style="font-size:0.91rem;color:var(--text-muted);margin:0.3rem 0 0;">To add a photo, commit an image to <code>assets/officers/</code> in the repo, then paste its relative path here. Leave blank to show initials instead.</p>';
+      '<p style="font-size:0.91rem;color:var(--text-muted);margin:0.3rem 0 0;">To add a photo, send Kat the image you want to use and she\'ll add it and give you the path to paste here. Leave blank to show initials instead.</p>';
     html += '</div>';
     html +=
       '<textarea class="guild-bio-text-input add-player-notes" placeholder="Short bio..." rows="3" style="width:100%;font-size:1rem;padding:0.3rem 0.55rem;">' +
