@@ -20,6 +20,8 @@
 | updated_at | timestamp with time zone |  | true |  |  |  |
 | bis_allowed | boolean | false | false |  |  |  |
 | officer_notes | text |  | true |  |  |  |
+| is_backup_tank | boolean | false | false |  |  |  |
+| is_backup_healer | boolean | false | false |  |  |  |
 
 ## Constraints
 
@@ -83,6 +85,8 @@ erDiagram
   timestamp_with_time_zone updated_at
   boolean bis_allowed
   text officer_notes
+  boolean is_backup_tank
+  boolean is_backup_healer
 }
 "public.attendance" {
   integer id

@@ -57,7 +57,7 @@ CREATE VIEW bis_demand_vs_awards AS (
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
 | [public.bis_items](public.bis_items.md) | 7 |  | BASE TABLE |
-| [public.players](public.players.md) | 16 |  | BASE TABLE |
+| [public.players](public.players.md) | 18 |  | BASE TABLE |
 | [public.rclc_loot](public.rclc_loot.md) | 10 |  | BASE TABLE |
 | [public.items](public.items.md) | 11 |  | BASE TABLE |
 | [awards](awards.md) | 0 |  |  |

@@ -8,6 +8,19 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-07-26 -- `players.is_backup_tank`/`is_backup_healer`: independent, non-exclusive, always-on flags
+
+Decided directly in conversation (no tracking issue): a way for officers to mark designated backup tanks/healers on the roster.
+
+- **Multiple raiders can hold either designation at once** -- no single-holder exclusivity, no auto-clearing a previous holder. Same shape as `is_trial`/`is_bench`: independent booleans, no cross-player bookkeeping.
+- **Not restricted to a player's current role** -- a Melee DPS with a tank offspec can be flagged Backup Tank. The columns carry no role check, client or server side.
+- **Always available, no feature flag** -- unlike Bench (gated by `featureEnabled('bench')`), every team gets both toggles unconditionally.
+- **Public badge, same visibility as Trial/Bench** -- shown on the profile page (shared by index.html and officer.html's inline render) and as a status tag in the officer roster table. Not shown on the public roster table, since Trial/Bench aren't either.
+- **Threaded through `add_signup_to_roster()` at promotion time**, not stored on `season_signups` -- same pattern `is_trial` already uses, since there's nothing on a signup itself to derive a backup-role designation from (no smart default, unlike Trial's "new character, not a main-swap" heuristic).
+- **Adding the two trailing parameters produced a second, distinct function overload** rather than replacing `add_signup_to_roster()` in place -- confirmed against a local `db reset`, which left the old 3-arg and new 5-arg signatures both callable. The migration explicitly drops the old overload and re-grants the new one (`authenticated` only, revoked from `anon`/`public`) rather than relying on `CREATE OR REPLACE` to carry grants forward, since a genuinely new function doesn't inherit them and Postgres grants EXECUTE to `PUBLIC` by default.
+
+---
+
 ## 2026-07-26 -- Guild Officer Bios move to `site_settings`, gated by `is_site_admin()`
 
 Decided directly in conversation (no tracking issue): Guild Officer Bios (#577/#586) had been stored in `team_settings.config.guildOfficerBios`, which is scoped per team_id -- a bio saved on one team's site never showed up on another's, even though the guild's officers are the same people regardless of which team's site you're viewing.

@@ -14,7 +14,7 @@
 | [public.rclc_loot](public.rclc_loot.md) | 10 |  | BASE TABLE |
 | [public.mplus_exclusion_requests](public.mplus_exclusion_requests.md) | 9 |  | BASE TABLE |
 | [public.player_wcl_season_perf](public.player_wcl_season_perf.md) | 7 |  | BASE TABLE |
-| [public.players](public.players.md) | 16 |  | BASE TABLE |
+| [public.players](public.players.md) | 18 |  | BASE TABLE |
 | [public.priority_order](public.priority_order.md) | 8 |  | BASE TABLE |
 | [public.scoring](public.scoring.md) | 10 |  | BASE TABLE |
 | [public.season_signups](public.season_signups.md) | 18 |  | BASE TABLE |
@@ -52,7 +52,6 @@
 | public.my_team_role | text | p_team_id integer | FUNCTION |
 | public.rls_auto_enable | event_trigger |  | FUNCTION |
 | public.set_updated_at | trigger |  | FUNCTION |
-| public.add_signup_to_roster | int4 | p_signup_id integer, p_is_trial boolean DEFAULT true, p_archive_player_id integer DEFAULT NULL::integer | FUNCTION |
 | public.claim_character | record | p_team_id integer, p_name_realm text | FUNCTION |
 | public.write_audit_log | int4 | p_team_id integer, p_action text, p_target_type text DEFAULT NULL::text, p_target_id integer DEFAULT NULL::integer, p_detail jsonb DEFAULT NULL::jsonb | FUNCTION |
 | public.resolve_actor_name | text | p_actor_id uuid, p_team_id integer | FUNCTION |
@@ -88,6 +87,7 @@
 | public.flag_bis_list_changed | int4 | p_team_id integer, p_name_realm text, p_player_note text DEFAULT NULL::text | FUNCTION |
 | public.get_own_signup | record | p_team_id integer | FUNCTION |
 | public.update_own_signup | int4 | p_signup_id integer, p_name_realm text, p_class text, p_spec text, p_off_specs text DEFAULT ''::text, p_main_swap boolean DEFAULT false, p_player_note text DEFAULT NULL::text, p_swap_from_name_realm text DEFAULT NULL::text | FUNCTION |
+| public.add_signup_to_roster | int4 | p_signup_id integer, p_is_trial boolean DEFAULT true, p_archive_player_id integer DEFAULT NULL::integer, p_is_backup_tank boolean DEFAULT false, p_is_backup_healer boolean DEFAULT false | FUNCTION |
 
 ## Enums
 
@@ -267,6 +267,8 @@ erDiagram
   timestamp_with_time_zone updated_at
   boolean bis_allowed
   text officer_notes
+  boolean is_backup_tank
+  boolean is_backup_healer
 }
 "public.priority_order" {
   integer id

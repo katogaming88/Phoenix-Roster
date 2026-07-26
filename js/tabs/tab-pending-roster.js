@@ -5,6 +5,8 @@ var _pendingSwapOnly = false;
 var _pendingSortKey = 'name';
 var _pendingSelected = {}; // signupId -> true, for checked entries in the selection-based push
 var _pendingTrialOverride = {}; // signupId -> true/false, user's manual Trial toggle (survives re-render)
+var _pendingBackupTankOverride = {}; // signupId -> true/false, manual Backup Tank toggle (survives re-render)
+var _pendingBackupHealerOverride = {}; // signupId -> true/false, manual Backup Healer toggle (survives re-render)
 var _pendingSwapOverride = {}; // signupId -> selected archive player id, survives re-render
 var _pendingBatchMessage = ''; // last "N of M added, ..." summary from a batch push
 
@@ -277,6 +279,14 @@ function setPendingTrialOverride(signupId, checked) {
   _pendingTrialOverride[signupId] = !!checked;
 }
 
+function setPendingBackupTankOverride(signupId, checked) {
+  _pendingBackupTankOverride[signupId] = !!checked;
+}
+
+function setPendingBackupHealerOverride(signupId, checked) {
+  _pendingBackupHealerOverride[signupId] = !!checked;
+}
+
 function setPendingSwapOverride(signupId, playerId) {
   _pendingSwapOverride[signupId] = playerId || null;
 }
@@ -333,6 +343,8 @@ function batchAddSelectedToRoster() {
     })[0];
     var card = document.querySelector('.signup-response-card[data-row="' + signupId + '"]');
     var trialEl = card ? card.querySelector('.pending-trial-checkbox') : null;
+    var backupTankEl = card ? card.querySelector('.pending-backup-tank-checkbox') : null;
+    var backupHealerEl = card ? card.querySelector('.pending-backup-healer-checkbox') : null;
     var swapEl = card ? card.querySelector('.pending-swap-select') : null;
 
     if (swapEl && !swapEl.value) {
@@ -348,7 +360,9 @@ function batchAddSelectedToRoster() {
       .rpc('add_signup_to_roster', {
         p_signup_id: signupId,
         p_is_trial: !!(trialEl && trialEl.checked),
-        p_archive_player_id: swapEl && swapEl.value ? parseInt(swapEl.value, 10) : null
+        p_archive_player_id: swapEl && swapEl.value ? parseInt(swapEl.value, 10) : null,
+        p_is_backup_tank: !!(backupTankEl && backupTankEl.checked),
+        p_is_backup_healer: !!(backupHealerEl && backupHealerEl.checked)
       })
       .then(function (result) {
         if (result.error) {
@@ -721,6 +735,11 @@ function buildAddToRosterControlHtml(e, isNew) {
   var trialChecked = Object.prototype.hasOwnProperty.call(_pendingTrialOverride, e.signupId)
     ? _pendingTrialOverride[e.signupId]
     : defaultTrial;
+  // Backup Tank/Healer have no smart default (unlike Trial) -- there's nothing
+  // on the signup itself to infer willingness to backup a role from, so both
+  // always start unchecked unless the officer already toggled one this session.
+  var backupTankChecked = !!_pendingBackupTankOverride[e.signupId];
+  var backupHealerChecked = !!_pendingBackupHealerOverride[e.signupId];
 
   return (
     '<div class="pending-add-roster" style="display:flex;align-items:center;flex-wrap:wrap;gap:0.5rem;' +
@@ -731,6 +750,20 @@ function buildAddToRosterControlHtml(e, isNew) {
     ',this.checked)"' +
     (trialChecked ? ' checked' : '') +
     ' style="accent-color:var(--gold-light);">Trial' +
+    '</label>' +
+    '<label style="display:flex;align-items:center;gap:0.3rem;font-size:0.97rem;color:var(--text-muted);cursor:pointer;">' +
+    '<input type="checkbox" class="pending-backup-tank-checkbox" onchange="setPendingBackupTankOverride(' +
+    e.signupId +
+    ',this.checked)"' +
+    (backupTankChecked ? ' checked' : '') +
+    ' style="accent-color:var(--gold-light);">Backup Tank' +
+    '</label>' +
+    '<label style="display:flex;align-items:center;gap:0.3rem;font-size:0.97rem;color:var(--text-muted);cursor:pointer;">' +
+    '<input type="checkbox" class="pending-backup-healer-checkbox" onchange="setPendingBackupHealerOverride(' +
+    e.signupId +
+    ',this.checked)"' +
+    (backupHealerChecked ? ' checked' : '') +
+    ' style="accent-color:var(--gold-light);">Backup Healer' +
     '</label>' +
     swapPicker +
     '<button class="btn request-approve-btn pending-add-btn" onclick="addSignupToRoster(' +
@@ -746,6 +779,8 @@ function buildAddToRosterControlHtml(e, isNew) {
 function addSignupToRoster(signupId, btnEl) {
   var card = btnEl.closest('.signup-response-card');
   var trialEl = card ? card.querySelector('.pending-trial-checkbox') : null;
+  var backupTankEl = card ? card.querySelector('.pending-backup-tank-checkbox') : null;
+  var backupHealerEl = card ? card.querySelector('.pending-backup-healer-checkbox') : null;
   var swapEl = card ? card.querySelector('.pending-swap-select') : null;
   var errEl = card ? card.querySelector('.pending-add-error') : null;
 
@@ -762,7 +797,9 @@ function addSignupToRoster(signupId, btnEl) {
     .rpc('add_signup_to_roster', {
       p_signup_id: signupId,
       p_is_trial: !!(trialEl && trialEl.checked),
-      p_archive_player_id: swapEl && swapEl.value ? parseInt(swapEl.value, 10) : null
+      p_archive_player_id: swapEl && swapEl.value ? parseInt(swapEl.value, 10) : null,
+      p_is_backup_tank: !!(backupTankEl && backupTankEl.checked),
+      p_is_backup_healer: !!(backupHealerEl && backupHealerEl.checked)
     })
     .then(function (result) {
       if (result.error) {
