@@ -1474,12 +1474,12 @@
       ],
       "triggers": [
         {
-          "name": "trg_priority_order_team_id_check",
-          "def": "CREATE TRIGGER trg_priority_order_team_id_check BEFORE INSERT OR UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
-        },
-        {
           "name": "trg_priority_order_updated_at",
           "def": "CREATE TRIGGER trg_priority_order_updated_at BEFORE UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        },
+        {
+          "name": "trg_priority_order_team_id_check",
+          "def": "CREATE TRIGGER trg_priority_order_team_id_check BEFORE INSERT OR UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
         }
       ]
     },
@@ -3621,9 +3621,14 @@
           "name": "role",
           "type": "text",
           "nullable": true
+        },
+        {
+          "name": "swap_from_name_realm",
+          "type": "text",
+          "nullable": true
         }
       ],
-      "def": "CREATE VIEW incoming_roster AS (\n SELECT s.id AS signup_id,\n    s.team_id,\n    s.signup_name_realm,\n    cs.class,\n    cs.spec,\n    cs.role\n   FROM ((season_signups s\n     JOIN team_settings ts ON ((ts.team_id = s.team_id)))\n     LEFT JOIN classes_specs cs ON ((cs.id = COALESCE(s.swap_class_spec_id, s.class_spec_id))))\n  WHERE ((s.status = 'approved'::text) AND (s.approved_player_id IS NULL) AND (s.season = (ts.config -\u003e\u003e 'activeSignupSeason'::text)))\n)",
+      "def": "CREATE VIEW incoming_roster AS (\n SELECT s.id AS signup_id,\n    s.team_id,\n    s.signup_name_realm,\n    cs.class,\n    cs.spec,\n    cs.role,\n    s.swap_from_name_realm\n   FROM ((season_signups s\n     JOIN team_settings ts ON ((ts.team_id = s.team_id)))\n     LEFT JOIN classes_specs cs ON ((cs.id = COALESCE(s.swap_class_spec_id, s.class_spec_id))))\n  WHERE ((s.status = 'approved'::text) AND (s.approved_player_id IS NULL) AND (s.season = (ts.config -\u003e\u003e 'activeSignupSeason'::text)))\n)",
       "referenced_tables": [
         "public.season_signups",
         "public.team_settings",

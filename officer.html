@@ -733,6 +733,22 @@
                 </div>
               </div>
 
+              <!-- Target Roster Sizes -->
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">Target Roster Sizes<button class="help-btn" onclick="toggleHelp('help-roster-targets')" title="Show help">?</button></h4>
+                <div id="help-roster-targets" class="help-tip">
+                  Shown to raiders signing up as Tank or Healer: once the confirmed roster plus already-approved incoming roster meets or exceeds a target, they see a nudge to consider DPS/backup instead, or talk to an officer. Leave a field blank to skip the nudge for that role -- raiders still see the plain count either way.
+                </div>
+                <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;margin-top:0.75rem;">
+                  <span style="font-size:0.92rem;color:var(--text-muted);">Tanks</span>
+                  <input type="number" id="targetTankCountInput" class="add-player-input" min="0" max="20" style="max-width:70px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+                  <span style="font-size:0.92rem;color:var(--text-muted);">Healers</span>
+                  <input type="number" id="targetHealCountInput" class="add-player-input" min="0" max="20" style="max-width:70px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+                  <button class="btn btn-gold" id="rosterTargetsSaveBtn" onclick="saveRosterTargets()">Save</button>
+                  <span id="rosterTargetsStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+                </div>
+              </div>
+
               <!-- WarcraftLogs Guild URL -->
               <div class="help-ref-card">
                 <h4 class="help-ref-title">WarcraftLogs Guild URL<button class="help-btn" onclick="toggleHelp('help-wcl-url')" title="Show help">?</button></h4>

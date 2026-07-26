@@ -25,6 +25,12 @@ function buildSeasonTab() {
   var trialAttendInput = document.getElementById('trialAttendInput');
   if (trialWeeksInput) trialWeeksInput.value = DATA && DATA.trialWeeks != null ? DATA.trialWeeks : 4;
   if (trialAttendInput) trialAttendInput.value = DATA && DATA.trialAttend != null ? DATA.trialAttend : 75;
+  var targetTankCountInput = document.getElementById('targetTankCountInput');
+  var targetHealCountInput = document.getElementById('targetHealCountInput');
+  if (targetTankCountInput)
+    targetTankCountInput.value = DATA && DATA.targetTankCount != null ? DATA.targetTankCount : '';
+  if (targetHealCountInput)
+    targetHealCountInput.value = DATA && DATA.targetHealCount != null ? DATA.targetHealCount : '';
   var codePrefixInput = document.getElementById('seasonCodePrefixInput');
   var displayPrefixInput = document.getElementById('seasonDisplayPrefixInput');
   if (codePrefixInput) codePrefixInput.value = (DATA && DATA.seasonCodePrefix) || 'MID';
@@ -1336,6 +1342,56 @@ function saveRaidProgression() {
       if (btn) {
         btn.disabled = false;
         btn.textContent = 'Save Progression';
+      }
+      if (status) status.textContent = err.message || 'Error saving.';
+    });
+}
+
+// Blank means "no target configured" (null), not a default like Trial
+// Thresholds' 4wk/75% -- a team that's never set this shouldn't suddenly
+// see a "we have enough" nudge appear on the signup form for a number they
+// never chose.
+function saveRosterTargets() {
+  var tankInput = document.getElementById('targetTankCountInput');
+  var healInput = document.getElementById('targetHealCountInput');
+  var btn = document.getElementById('rosterTargetsSaveBtn');
+  var status = document.getElementById('rosterTargetsStatus');
+  var tankParsed = parseInt(tankInput ? tankInput.value : '', 10);
+  var healParsed = parseInt(healInput ? healInput.value : '', 10);
+  var tankCount = isNaN(tankParsed) ? null : Math.max(0, Math.min(20, tankParsed));
+  var healCount = isNaN(healParsed) ? null : Math.max(0, Math.min(20, healParsed));
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+  }
+
+  saveTeamSetting({ targetTankCount: tankCount, targetHealCount: healCount })
+    .then(function () {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Save';
+      }
+      if (DATA) {
+        DATA.targetTankCount = tankCount;
+        DATA.targetHealCount = healCount;
+      }
+      writeAuditLog(
+        'Roster Targets Set',
+        null,
+        null,
+        (tankCount == null ? '-' : tankCount) + ' tank / ' + (healCount == null ? '-' : healCount) + ' heal'
+      );
+      if (status) {
+        status.textContent = 'Saved!';
+        setTimeout(function () {
+          if (status) status.textContent = '';
+        }, 2000);
+      }
+    })
+    .catch(function (err) {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Save';
       }
       if (status) status.textContent = err.message || 'Error saving.';
     });
