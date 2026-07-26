@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.17] - 2026-07-26
+
+### Frontend
+
+- Fixed the officer Audit Log tab showing "[object Object]" for any save whose diff includes an array value (bios lists, `seasonHistory`, `raidProgression`, etc.) -- `humanizeAuditValue()` only knew how to flatten nested objects, so an array fell through to `String()`, which stringifies an array of objects as `"[object Object]"` per element. Now shows a plain item count instead (e.g. "Team Officer Bios: 2 items").
+
 ## [3.49.16] - 2026-07-26
 
 ### Frontend
