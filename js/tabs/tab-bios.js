@@ -252,9 +252,19 @@ function saveBios() {
 // distinct DOM/config namespace so the two never collide.
 
 var GUILD_OFFICER_BIOS = [];
+// Guild Officer Bios are guild-wide (site_settings, not team_settings) --
+// only a site admin can save them, since it isn't any one team's content to
+// own. A non-admin officer still sees the current list, read-only.
+var _guildBiosIsAdmin = false;
 
 function buildGuildBioCards() {
   GUILD_OFFICER_BIOS = JSON.parse(JSON.stringify((DATA && DATA.guildOfficerBios) || []));
+  var session = typeof getDiscordSession === 'function' ? getDiscordSession() : null;
+  _guildBiosIsAdmin = !!(session && session.isAdmin);
+  var note = document.getElementById('guildBiosAdminNote');
+  var controls = document.getElementById('guildBiosControls');
+  if (note) note.style.display = _guildBiosIsAdmin ? 'none' : '';
+  if (controls) controls.style.display = _guildBiosIsAdmin ? 'flex' : 'none';
   populateGuildBioRosterPicker();
   renderGuildBioCards();
 }
@@ -356,10 +366,14 @@ function renderGuildBioCards() {
   if (!wrap) return;
   if (!GUILD_OFFICER_BIOS.length) {
     wrap.innerHTML =
-      '<p style="font-size:1rem;color:var(--text-muted);">No guild officer bios added yet. Click "+ Add Guild Officer" to start.</p>';
+      '<p style="font-size:1rem;color:var(--text-muted);">No guild officer bios added yet.' +
+      (_guildBiosIsAdmin ? ' Click "+ Add Guild Officer" to start.' : '') +
+      '</p>';
     return;
   }
   var classKeys = Object.keys(CLASS_SPECS).sort();
+  var ro = !_guildBiosIsAdmin;
+  var disabledAttr = ro ? ' disabled' : '';
   var html = '';
   for (var i = 0; i < GUILD_OFFICER_BIOS.length; i++) {
     var entry = GUILD_OFFICER_BIOS[i];
@@ -369,39 +383,51 @@ function renderGuildBioCards() {
     html +=
       '<input class="guild-bio-name-input add-player-input" placeholder="Display name (e.g. Kat)" value="' +
       _escAttr(entry.name) +
-      '" style="flex:1;min-width:140px;font-size:1.07rem;padding:0.35rem 0.6rem;">';
+      '"' +
+      disabledAttr +
+      ' style="flex:1;min-width:140px;font-size:1.07rem;padding:0.35rem 0.6rem;">';
     html +=
       '<input class="guild-bio-charname-input add-player-input" placeholder="Character name (e.g. Katorri)" value="' +
       _escAttr(entry.characterName || '') +
-      '" style="flex:1;min-width:140px;font-size:1rem;padding:0.35rem 0.6rem;">';
-    html +=
-      '<button class="btn btn-muted" style="padding:2px 10px;font-size:0.93rem;" onclick="guildBioMoveUp(' +
-      i +
-      ')"' +
-      (i === 0 ? ' disabled' : '') +
-      '>&uarr;</button>';
-    html +=
-      '<button class="btn btn-muted" style="padding:2px 10px;font-size:0.93rem;" onclick="guildBioMoveDown(' +
-      i +
-      ')"' +
-      (i === GUILD_OFFICER_BIOS.length - 1 ? ' disabled' : '') +
-      '>&darr;</button>';
-    html +=
-      '<button class="btn btn-danger" style="padding:2px 10px;font-size:0.93rem;" onclick="guildBioRemove(' +
-      i +
-      ')">Remove</button>';
+      '"' +
+      disabledAttr +
+      ' style="flex:1;min-width:140px;font-size:1rem;padding:0.35rem 0.6rem;">';
+    if (!ro) {
+      html +=
+        '<button class="btn btn-muted" style="padding:2px 10px;font-size:0.93rem;" onclick="guildBioMoveUp(' +
+        i +
+        ')"' +
+        (i === 0 ? ' disabled' : '') +
+        '>&uarr;</button>';
+      html +=
+        '<button class="btn btn-muted" style="padding:2px 10px;font-size:0.93rem;" onclick="guildBioMoveDown(' +
+        i +
+        ')"' +
+        (i === GUILD_OFFICER_BIOS.length - 1 ? ' disabled' : '') +
+        '>&darr;</button>';
+      html +=
+        '<button class="btn btn-danger" style="padding:2px 10px;font-size:0.93rem;" onclick="guildBioRemove(' +
+        i +
+        ')">Remove</button>';
+    }
     html += '</div>';
     html += '<div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-bottom:0.5rem;">';
     html +=
       '<input class="guild-bio-title-input add-player-input" placeholder="Title (e.g. Loot Officer)" value="' +
       _escAttr(entry.title || '') +
-      '" style="flex:1;min-width:160px;font-size:1rem;padding:0.3rem 0.55rem;">';
+      '"' +
+      disabledAttr +
+      ' style="flex:1;min-width:160px;font-size:1rem;padding:0.3rem 0.55rem;">';
     html +=
       '<input class="guild-bio-pronouns-input add-player-input" placeholder="Pronouns (e.g. she/her)" value="' +
       _escAttr(entry.pronouns || '') +
-      '" style="min-width:130px;font-size:1rem;padding:0.3rem 0.55rem;">';
+      '"' +
+      disabledAttr +
+      ' style="min-width:130px;font-size:1rem;padding:0.3rem 0.55rem;">';
     html +=
-      '<select class="guild-bio-class-select add-player-input" style="min-width:140px;font-size:1rem;padding:0.3rem 0.55rem;">';
+      '<select class="guild-bio-class-select add-player-input"' +
+      disabledAttr +
+      ' style="min-width:140px;font-size:1rem;padding:0.3rem 0.55rem;">';
     html += '<option value=""' + (entry.classKey ? '' : ' selected') + '>-- Class --</option>';
     for (var c = 0; c < classKeys.length; c++) {
       html +=
@@ -417,18 +443,26 @@ function renderGuildBioCards() {
     html +=
       '<input class="guild-bio-spec-input add-player-input" placeholder="Spec (e.g. Protection)" value="' +
       _escAttr(entry.spec || '') +
-      '" style="min-width:140px;font-size:1rem;padding:0.3rem 0.55rem;">';
+      '"' +
+      disabledAttr +
+      ' style="min-width:140px;font-size:1rem;padding:0.3rem 0.55rem;">';
     html += '</div>';
     html += '<div style="margin-bottom:0.5rem;">';
     html +=
       '<input class="guild-bio-image-input add-player-input" placeholder="assets/officers/kato.jpg" value="' +
       _escAttr(entry.imagePath || '') +
-      '" style="width:100%;font-size:1rem;padding:0.3rem 0.55rem;">';
-    html +=
-      '<p style="font-size:0.91rem;color:var(--text-muted);margin:0.3rem 0 0;">To add a photo, send Kat the image you want to use and she\'ll add it and give you the path to paste here. Leave blank to show initials instead.</p>';
+      '"' +
+      disabledAttr +
+      ' style="width:100%;font-size:1rem;padding:0.3rem 0.55rem;">';
+    if (!ro) {
+      html +=
+        '<p style="font-size:0.91rem;color:var(--text-muted);margin:0.3rem 0 0;">To add a photo, send Kat the image you want to use and she\'ll add it and give you the path to paste here. Leave blank to show initials instead.</p>';
+    }
     html += '</div>';
     html +=
-      '<textarea class="guild-bio-text-input add-player-notes" placeholder="Short bio..." rows="3" style="width:100%;font-size:1rem;padding:0.3rem 0.55rem;">' +
+      '<textarea class="guild-bio-text-input add-player-notes" placeholder="Short bio..." rows="3"' +
+      disabledAttr +
+      ' style="width:100%;font-size:1rem;padding:0.3rem 0.55rem;">' +
       _esc(entry.bio || '') +
       '</textarea>';
     html += '</div>';
@@ -445,14 +479,15 @@ function saveGuildBios() {
     btn.textContent = 'Saving...';
   }
 
-  saveTeamSetting({ guildOfficerBios: GUILD_OFFICER_BIOS })
+  saveGuildOfficerBios(GUILD_OFFICER_BIOS)
     .then(function () {
       if (btn) {
         btn.disabled = false;
         btn.textContent = 'Save Guild Bios';
       }
+      // No client-side writeAuditLog() call here -- unlike set_team_setting,
+      // set_guild_officer_bios logs its own audit entry server-side.
       DATA.guildOfficerBios = JSON.parse(JSON.stringify(GUILD_OFFICER_BIOS));
-      writeAuditLog('Guild Officer Bios Saved', null, null, GUILD_OFFICER_BIOS.length + ' bio(s)');
       if (status) {
         status.textContent = 'Saved!';
         setTimeout(function () {
