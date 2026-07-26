@@ -11,8 +11,8 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=3.49.13">
-  <link rel="stylesheet" href="css/officer.css?v=3.49.13">
+  <link rel="stylesheet" href="css/styles.css?v=3.49.14">
+  <link rel="stylesheet" href="css/officer.css?v=3.49.14">
   <!-- Hover tooltips for Buff Coverage's spell links (#491) and item links
        (Priority tab/BiS grid, itemNameBlockHtml(), #567). Auto-attaches to
        any <a class="wowhead">. whTooltips must be set before power.js loads
@@ -47,13 +47,7 @@
   </header>
 
   <nav class="site-nav" id="siteNav">
-    <a href="index.html" class="site-nav-item" id="navHome" data-tooltip="Back to the roster overview">Home</a>
-    <a href="index.html#roster" class="site-nav-item" id="navRoster" data-tooltip="See who's currently on the roster">Roster</a>
-    <a href="index.html#streams" class="site-nav-item" id="navStreamers" data-tooltip="Watch raiders streaming live on Twitch">Streams</a>
-    <a href="index.html#signup" class="site-nav-item" id="navSignup" data-tooltip="Apply to join the raid team for next season">Sign Up</a>
-    <a href="index.html#history" class="site-nav-item" id="navHistory" data-tooltip="Past seasons -- progression and dates">History</a>
-    <a href="index.html#bios" class="site-nav-item" id="navBios" data-tooltip="Meet the team's raid officers">Bios</a>
-    <a href="index.html#help" class="site-nav-item" id="navHelp" data-tooltip="How to claim your character, submit BiS, sign up, and more">Help</a>
+    <div id="siteNavItems" style="display:contents;"></div>
     <div class="site-nav-right">
       <select id="teamSwitcherSelect" class="team-switcher" title="Switch team"></select>
       <div class="nav-bell-wrap">
@@ -1155,28 +1149,29 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/common.js?v=3.49.13"></script>
-  <script src="js/discord.js?v=3.49.13"></script>
-  <script src="js/officer.js?v=3.49.13"></script>
-  <script src="js/tabs/tab-roster.js?v=3.49.13"></script>
-  <script src="js/tabs/tab-conflicts.js?v=3.49.13"></script>
-  <script src="js/tabs/tab-fairness.js?v=3.49.13"></script>
-  <script src="js/tabs/tab-attendance.js?v=3.49.13"></script>
-  <script src="js/tabs/tab-bench-fairness.js?v=3.49.13"></script>
-  <script src="js/tabs/tab-signups.js?v=3.49.13"></script>
-  <script src="js/tabs/tab-requests.js?v=3.49.13"></script>
-  <script src="js/tabs/tab-bis.js?v=3.49.13"></script>
-  <script src="js/tabs/tab-pending-roster.js?v=3.49.13"></script>
-  <script src="js/tabs/tab-mplus.js?v=3.49.13"></script>
-  <script src="js/tabs/tab-priority.js?v=3.49.13"></script>
-  <script src="js/tabs/tab-audit.js?v=3.49.13"></script>
-  <script src="js/tabs/tab-reports.js?v=3.49.13"></script>
-  <script src="js/tabs/tab-season.js?v=3.49.13"></script>
-  <script src="js/tabs/tab-bios.js?v=3.49.13"></script>
-  <script src="js/tabs/tab-loot-import.js?v=3.49.13"></script>
-  <script src="js/tabs/tab-scoring.js?v=3.49.13"></script>
-  <script src="js/tabs/tab-admin.js?v=3.49.13"></script>
+  <script src="js/common.js?v=3.49.14"></script>
+  <script src="js/discord.js?v=3.49.14"></script>
+  <script src="js/officer.js?v=3.49.14"></script>
+  <script src="js/tabs/tab-roster.js?v=3.49.14"></script>
+  <script src="js/tabs/tab-conflicts.js?v=3.49.14"></script>
+  <script src="js/tabs/tab-fairness.js?v=3.49.14"></script>
+  <script src="js/tabs/tab-attendance.js?v=3.49.14"></script>
+  <script src="js/tabs/tab-bench-fairness.js?v=3.49.14"></script>
+  <script src="js/tabs/tab-signups.js?v=3.49.14"></script>
+  <script src="js/tabs/tab-requests.js?v=3.49.14"></script>
+  <script src="js/tabs/tab-bis.js?v=3.49.14"></script>
+  <script src="js/tabs/tab-pending-roster.js?v=3.49.14"></script>
+  <script src="js/tabs/tab-mplus.js?v=3.49.14"></script>
+  <script src="js/tabs/tab-priority.js?v=3.49.14"></script>
+  <script src="js/tabs/tab-audit.js?v=3.49.14"></script>
+  <script src="js/tabs/tab-reports.js?v=3.49.14"></script>
+  <script src="js/tabs/tab-season.js?v=3.49.14"></script>
+  <script src="js/tabs/tab-bios.js?v=3.49.14"></script>
+  <script src="js/tabs/tab-loot-import.js?v=3.49.14"></script>
+  <script src="js/tabs/tab-scoring.js?v=3.49.14"></script>
+  <script src="js/tabs/tab-admin.js?v=3.49.14"></script>
   <script>
+renderSiteNav('officer');
 document.getElementById('versionNum').textContent = VERSION;
 document.title = TEAM_NAME + ' -- Officer';
 document.getElementById('headerTeamName').textContent = TEAM_NAME;

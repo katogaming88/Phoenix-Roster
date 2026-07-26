@@ -8,6 +8,13 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.14] - 2026-07-25
+
+### Frontend
+
+- **Fixed the officer dashboard's top nav being out of sync with the public site** -- `officer.html` had its own hardcoded copy of the nav item list, which still said "Bios" and was missing "News" entirely (drifted since #582/#509 only updated `index.html`'s copy). The nav item list (labels/order/tooltips/deep-link targets) is now defined once in `js/common.js` (`SITE_NAV_ITEMS`) and rendered per-page by a shared `renderSiteNav(mode)` -- future nav changes only need to happen in one place.
+- Fixed a related latent bug found while consolidating this: officer.html's non-Home nav links (Roster, Streams, History, About, News, Help) never carried the `?team=` query param when switching away from Phoenix, silently dropping a non-default team's officer back onto Phoenix's public site when clicked. Also fixed the `#bios` deep-link hash in `js/roster.js` still mapping to a `showView('bios')` call that no longer does anything post-#582 -- it's `#about` now.
+
 ## [3.49.13] - 2026-07-25
 
 ### Frontend
