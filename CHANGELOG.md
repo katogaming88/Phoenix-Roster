@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.11] - 2026-07-25
+
+### Frontend
+
+- **Hotfix:** the footer version-number id list still referenced the old `versionNumBios` id from before the Bios -> About rename (#582), which no longer exists in the DOM. `document.getElementById(id).textContent=...` threw on the missing element inside a `forEach`, which silently killed the rest of that inline boot script -- including the team switcher population and every nav-visibility update that ran after it. Every visitor since #582 merged saw a broken nav bar and an empty team switcher. Now points at `versionNumAbout`.
+
 ## [3.49.10] - 2026-07-25
 
 ### Frontend
