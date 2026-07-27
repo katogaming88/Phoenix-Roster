@@ -11,6 +11,32 @@ Reference notes for walking an officer through the dashboard -- not published to
 
 ---
 
+## First-Time Team Setup
+
+A handful of settings live outside the weekly cadence below -- configure these once when a
+team is first stood up (or whenever the season's progression/rosters need redefining):
+
+- **Season Settings -> Raid Progression** -- add one block per raid in the season; boss kill
+  dates show publicly on the landing page. Mini-raids (single/small standalone bosses) get no
+  AOTC date field.
+- **Season Settings -> Settings -> Trial Promotion Thresholds** -- set the weeks-on-roster and
+  attendance % a trial needs to hit both of before the Roster tab's promotion banner appears
+  for them.
+- **Season Settings -> Settings -> Target Roster Sizes** -- optional Tank/Healer count inputs.
+  Once the confirmed roster plus already-approved incoming roster meets or exceeds a target,
+  raiders signing up for that role see a nudge to consider DPS/backup instead or talk to an
+  officer. Leave a field blank to skip the nudge for that role -- raiders still see the plain
+  count either way.
+- **Officer Bios tab** -- add a card per officer (name/character/class/spec can prefill from an
+  existing roster player, a one-time copy, not a live link), pronouns, title, an optional photo
+  path under `assets/officers/`, and a short bio. Save Bios writes the whole list back.
+
+Also worth setting early, even though they're covered in their own sections below: **Season
+Name** and **Season Start Date** (Season Settings -> Settings) before the first loot import or
+attendance refresh.
+
+---
+
 ## Weekly / Recurring Workflow
 
 The day-to-day job as an officer comes down to three cadences. These are the app's own
@@ -37,18 +63,26 @@ directly once they've seen it walked through once.
 
 ### Once per season (the app's own "Rollover workflow")
 1. Set an **End Date** on the current season if it closes before the next one starts.
-2. **Season Settings -> History -> Archive Current Season** -- pushes Season Name/Start/End
-   into history so it shows up in the season selector dropdown going forward.
-3. Set the new **Season Name** and **Start Date** for the upcoming season.
-4. **Loot -> Import History -> Clear All Loot History**, then re-import the new season's loot
-   via **Loot -> Import** (entries auto-tag with the new season name).
+2. **Season Settings -> History -> Start New Season** (formerly "Archive Current Season") --
+   pushes the current Season Name/Start/End into history so it shows up in the season selector
+   dropdown going forward, and does a lot more in the same click: wipes every player's
+   real-item BiS list (placeholder M+/Crafted/Catalyst rows survive), resets M+ exclusion for
+   the whole active roster, resets Bench status for the whole active roster (Trial status is
+   left alone), and auto-fills the new Season Name from the current tier constant. See the
+   Season Settings section below for the full behavior.
+3. Set the new **Start Date** for the upcoming season (Season Name is now auto-filled by step 2).
+4. Re-import the new season's loot via **Loot -> Import** (entries auto-tag with the new season
+   name). Old loot history doesn't need clearing -- entries stay tagged by season and the
+   season selector already filters by it; there is no "Clear All Loot History" action (see the
+   Loot tab section below).
 5. **Attendance -> Refresh from WCL** to pull the new season's raid nights.
-6. Also worth doing at reset: **M+ Exclusions -> Clear All Exclusions** -- clears who's
-   currently excluded while keeping the request history intact (relabeled `Reset`, not
-   deleted). **Do not** use Admin -> Danger Zone -> "Clear M+ Exclusion Requests" for this --
-   that permanently deletes the request history instead and leaves everyone's active exclusion
-   untouched, which is the opposite of what a season reset needs. See the M+ Exclusions
-   section below for the full distinction.
+6. M+ exclusions are already reset team-wide by step 2's Start New Season. **M+ Exclusions ->
+   Clear All Exclusions** is still useful mid-season if you need to reset exclusions without a
+   full season rollover -- it only flips the live exclusion flag, it does not touch or relabel
+   request history. **Do not** use Admin -> Danger Zone -> "Clear M+ Exclusion Requests" for
+   this -- that permanently deletes the request history instead and leaves everyone's active
+   exclusion untouched, the opposite of what a reset needs. See the M+ Exclusions section below
+   for the full distinction.
 
 ---
 
@@ -72,6 +106,8 @@ Two sub-tabs: **Roster**, **Discord Claims**.
   - Allow a player to submit a BiS update even when submissions are closed
   - Toggle their M+ exclusion directly, without a request
   - Mark an item as received directly (skips the approval queue)
+  - Mark them as a designated Backup Tank / Backup Healer (roster flags shown as tags in the
+    table, separate from their main role)
 
 **Discord Claims sub-tab** -- shows characters claimed by raiders via Discord login. Remove a
 claim if a raider linked the wrong character. Officer *promotion* (making someone an officer)
@@ -85,9 +121,12 @@ Three sub-tabs:
 
 - **Import** -- paste RCLootCouncil JSON from in-game; entries are tagged with the current
   Season Name automatically. Set Season Name in Season Settings first.
-- **Import History** -- shows total entries imported and the most recent date. **Clear All Loot
-  History** wipes pasted imports at a season reset -- it does not touch the legacy Loot Data
-  sheet (the old IMPORTRANGE source), only entries pasted through this Import tab.
+- **Import History** -- a table of the most recent RCLootCouncil imports (up to the last 100
+  rows: Time/Player/Item), sourced from the audit log so it only ever shows genuine paste-imports.
+  There is no "Clear All" here -- it was deliberately left out because `rclc_loot` mixes
+  paste-imports with older merged-in legacy-tracker rows with no column to tell them apart, so
+  there's no safe way to delete "just this season's" entries. Loot history is never manually
+  cleared; it stays in place and is filtered by its season tag.
 - **Loot Fairness** -- bar chart of items received per player; filter by Heroic or Mythic
 
 ---
@@ -107,6 +146,9 @@ Three sub-tabs:
 - **Contested Items** -- items wanted by multiple players; flags any player holding 1st priority
   on more than one item so over-allocation gets caught before loot decisions
 - **Unmanaged Items** -- BiS items with no priority order set yet; badge shows the count
+
+All three sub-tabs (and the BiS item-search pool) are scoped to the Season Settings -> Settings
+-> **Season View** picker -- items outside the season you're currently viewing won't appear.
 
 Clicking Edit (or Set Heroic/Set Mythic on an unmanaged item) opens the priority editor:
 - Heroic/Mythic toggle at the top
@@ -159,8 +201,8 @@ Two sub-tabs:
 - **BiS Lists** -- every player grouped by role with their item count. A player with an
   incomplete raider Wishlist shows a "Wishlist incomplete (N)" badge next to their name, hover
   for which slots are missing. Click Edit to open an inline item editor -- search is filtered to
-  their armor type automatically, their BiS source link is shown at the top, and Save writes the
-  list back.
+  their armor type automatically, their BiS source link is shown at the top. There's no Save
+  step -- every add, remove, and obtained-toggle writes to Supabase immediately.
 
 ---
 
@@ -186,9 +228,10 @@ Three sub-tabs:
 
 - **Refresh from WCL** -- calculates an ilvl-bracket percentile score for DPS from recent
   Warcraft Logs reports, holding draft Recent/Trend/Best values in a session cache. Tanks and
-  healers don't get an automatic score -- click their cell to enter one manually.
-- "use" next to the Trend score applies the widest-lookback Best score instead of Recent, if
-  that reads more fairly for someone with a rough recent run.
+  healers don't get an automatic score, and there's currently no click-to-edit cell for them
+  either -- manual tank/healer scoring has no UI path right now.
+- "use" next to the **Best** score copies it into the Recent cell, if the widest-lookback number
+  reads more fairly than a rough recent run.
 - **Commit Performance Scores** -- saves the Recent score into the official Performance value
   that Priority Generator actually reads. Safe to run repeatedly.
 - Color legend: green >=7.0 (Strong), gold >=5.0 (Average), dim <5.0 (Below average), purple
@@ -203,14 +246,15 @@ Three sub-tabs: **Signups**, **Pending Roster**, **History**.
 - **Signups** -- open/close toggle shows/hides the Sign Up button on the landing page.
   Approving marks the application approved and moves it to Pending Roster; Denying marks it
   rejected. If someone re-submits, it overwrites their existing pending entry rather than
-  creating a duplicate. The "x" button deletes a submission outright.
+  creating a duplicate. There's no delete action on this sub-tab -- Approve/Deny are the only
+  options (don't confuse with Pending Roster's **Remove**, which just marks an entry rejected).
 - **Pending Roster** -- applications approved but not yet on the roster. Each card has its own
-  **Add to Roster** button (with a trial toggle and, for main-swap signups, a swap picker); a
-  selection checkbox per card plus **Select All** and **Add Selected to Roster** push a chosen
-  subset at once. A **Buff Coverage** panel checks the pending group the same way the Roster
-  tab's does. A collapsible **Missing Signups** panel lists roster members who haven't submitted
-  a signup this cycle -- read-only, no bulk-remove action from here. **Remove** dismisses a
-  single pending entry instead.
+  **Add to Roster** button (with a trial toggle, Backup Tank / Backup Healer checkboxes, and for
+  main-swap signups, a swap picker); a selection checkbox per card plus **Select All** and **Add
+  Selected to Roster** push a chosen subset at once. A **Buff Coverage** panel checks the
+  pending group the same way the Roster tab's does. A collapsible **Missing Signups** panel
+  lists roster members who haven't submitted a signup this cycle -- read-only, no bulk-remove
+  action from here. **Remove** dismisses a single pending entry instead.
 - **History** -- read-only, grouped by Approved/Pending/Denied, filterable by season.
 
 ---
@@ -228,14 +272,18 @@ Three sub-tabs: **Signups**, **Pending Roster**, **History**.
 - Approving flags the player as M+ excluded on the roster view.
 - Exclusion can also be toggled per player directly from their Roster profile card, without a
   request.
-- **Clear All Exclusions** (on this tab) -- the correct season-reset action. Clears the active
-  exclusion list (nobody stays excluded going into the new season) and relabels any `Approved`
-  request as `Reset` -- it does **not** delete anything, the full request history stays intact.
+- **Clear All Exclusions** (on this tab, #405) -- flips every currently-excluded player's live
+  `m_plus_excluded` flag back off (nobody stays excluded going into the new season). It only
+  touches that flag -- it does **not** relabel or otherwise touch the request rows, the full
+  request history stays intact and unchanged. Note: Season Settings -> **Start New Season**
+  now also resets this flag for the whole active roster as part of archiving, so this button is
+  mainly useful for a mid-season reset without a full season rollover.
   This is completely different from Admin -> Danger Zone -> "Clear M+ Exclusion Requests,"
   which does the opposite: it permanently deletes the request history and does **not** touch
   who's currently excluded -- anyone excluded stays excluded. Running the Danger Zone version
   at a season reset would leave stale exclusions in place while destroying the record of why
-  they were granted. Always use this tab's button for season reset, never the Danger Zone one.
+  they were granted. Always use this tab's button (or Start New Season) for a reset, never the
+  Danger Zone one.
 
 ---
 
@@ -267,11 +315,28 @@ Three sub-tabs: **Settings**, **Raid Progression**, **History**.
   starts.
 - **Trial Promotion Thresholds** -- weeks-on-roster *and* attendance % a trial needs to hit
   both of before the Roster tab's promotion banner appears for them.
+- **Target Roster Sizes** -- optional Tank/Healer count inputs. Once the confirmed roster plus
+  already-approved incoming roster meets or exceeds a target, raiders signing up for that role
+  see a nudge to consider DPS/backup instead or talk to an officer. Leave a field blank to skip
+  the nudge for that role -- raiders still see the plain count either way.
+- **Season Code Prefix** -- the short code (e.g. `MID`) and display prefix (e.g. "Midnight
+  Season") used to auto-generate season names/codes from the current tier constant. Rarely
+  needs touching outside a new expansion.
+- **Season View** -- a forward-looking season picker, separate from the live Season Name, that
+  scopes the item catalog / BiS lists / Wishlist prep to a season you're preparing for before
+  it actually goes live.
+- **WarcraftLogs Guild URL** -- the guild's WCL page, used by the Attendance and Scoring tabs'
+  Refresh from WCL actions.
 - **Raid Progression** -- one block per raid in the season; boss kill dates show publicly on
   the landing page. Mini-raids (single/small standalone bosses) have no AOTC date. Archived
   along with the season.
-- **Archive Current Season** -- pushes the current Season Name/Start/End into history so it
-  appears in the season selector going forward; see the Rollover workflow above.
+- **Start New Season** (renamed from "Archive Current Season") -- pushes the current Season
+  Name/Start/End into history so it appears in the season selector going forward, same as
+  before, but now does considerably more in the same click: wipes every player's real-item BiS
+  list (placeholder M+/Crafted/Catalyst rows survive), resets M+ exclusion for the whole active
+  roster, resets Bench status for the whole active roster (Trial status is untouched), and
+  auto-fills the new Season Name from the current tier constant instead of requiring it typed
+  in manually. See the Rollover workflow above.
 - **Season History** -- past archived seasons, with an **Unarchive** option to restore one as
   active if it was archived by mistake. The most recently archived season also has a
   **WCL Performance Baseline** fetch (#264) -- picks a raid tier from that season, pulls each
@@ -280,26 +345,34 @@ Three sub-tabs: **Settings**, **Raid Progression**, **History**.
   seeds `scoring.performance_score` for the *new* season so heroic priority generation has a
   baseline number before any current-season raid reports exist -- never overwrites a real
   Commit Performance Scores result, only fills in players with no score yet. Run once, right
-  after archiving the old season and starting the new one.
+  after starting the new season.
 
 ---
 
 ## Officer Bios tab
 
-- Editor for the officer cards shown on the public **Bios** tab -- **+ Add Officer** can prefill
-  name/character/class/spec from an existing roster player (a one-time copy, not a live link;
-  editing or removing that player later never touches the bio), or start blank.
+Two cards: **Team Officer Bios** and **Guild Officer Bios**.
+
+- **Team Officer Bios** -- editor for the officer cards shown on the public **About** tab's Team
+  sub-tab (the public tab was renamed from "Bios" to "About," now with Team/Guild/About/Contact
+  sub-tabs). **+ Add Officer** can prefill name/character/class/spec from an existing roster
+  player (a one-time copy, not a live link; editing or removing that player later never touches
+  the bio), or start blank.
 - Per card: display name, character name, title, pronouns, class/spec, an image path (commit a
   photo to `assets/officers/` in the repo first, then paste its relative path -- blank shows
   initials instead), and a short bio text. Reorder with the up/down arrows, **Remove** deletes a
   card, **Save Bios** writes the whole list back.
+- **Guild Officer Bios** -- a second, separate list shown on the public About tab's Guild
+  sub-tab. Same list across every team (guild-wide, not per-team). Editable only by site admins;
+  regular officers and team leaders see it read-only.
 
 ---
 
 ## Audit Log tab
 
 - Every officer action is logged automatically -- approvals, edits, loot marks, status changes
-- Shows timestamp, actor, action, target, old value, new value
+- Shows timestamp, actor, action, target, and a single combined Detail column (a human-readable
+  summary string, not separate old/new value columns)
 - Search box to filter by officer, action, or player name
 
 ---
@@ -361,7 +434,6 @@ the tab at all. In practice this is usually one or two people per team. Five sub
   History; the sheet wipes below it are site-admin only:
   - Clear Season History -- deletes all archived seasons
   - Clear Loot Data -- wipes imported RCLootCouncil loot entries
-  - Clear Pasted Loot -- wipes the Pasted Loot sheet
   - Clear BiS Submissions -- wipes pending BiS link submissions
   - Clear Signups -- wipes all signup applications
   - Clear M+ Exclusion Requests -- permanently deletes every row of the M+ exclusion request
