@@ -75,7 +75,11 @@ directly once they've seen it walked through once.
    name). Old loot history doesn't need clearing -- entries stay tagged by season and the
    season selector already filters by it; there is no "Clear All Loot History" action (see the
    Loot tab section below).
-5. **Attendance -> Refresh from WCL** to pull the new season's raid nights.
+5. Nothing special needed for Attendance -- there's no rollover-specific action here. Once the
+   new season's first raid night happens, the normal after-raid-night **Attendance -> Refresh
+   from WCL** (see the Weekly Workflow above) picks it up like any other night, since it's
+   already scoped to raids on/after the new Season Start Date. Until then, players will show
+   the roster's default "no data yet" 100% for the new season, which is expected, not a bug.
 6. M+ exclusions are already reset team-wide by step 2's Start New Season. **M+ Exclusions ->
    Clear All Exclusions** is still useful mid-season if you need to reset exclusions without a
    full season rollover -- it only flips the live exclusion flag, it does not touch or relabel
