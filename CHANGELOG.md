@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.22] - 2026-07-27
+
+### Frontend
+
+- **Fixed the Priority nav badge going stale after changing Season View** -- the Priority tab's item list itself already rebuilt correctly on every tab switch, but its nav badge (unmanaged + conflict counts) is computed by a separate `updatePriorityBadges()` that only ran on initial page load or after a priority-list save/generate, not when Season View changed what counts as in-scope. `saveSeasonView()` now calls it directly after a successful save.
+
 ## [3.49.21] - 2026-07-27
 
 ### Frontend
