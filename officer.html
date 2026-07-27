@@ -11,8 +11,8 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=3.49.20">
-  <link rel="stylesheet" href="css/officer.css?v=3.49.20">
+  <link rel="stylesheet" href="css/styles.css?v=3.49.21">
+  <link rel="stylesheet" href="css/officer.css?v=3.49.21">
   <!-- Hover tooltips for Buff Coverage's spell links (#491) and item links
        (Priority tab/BiS grid, itemNameBlockHtml(), #567). Auto-attaches to
        any <a class="wowhead">. whTooltips must be set before power.js loads
@@ -892,7 +892,7 @@
                 <h4 class="help-ref-title">Manually edit attendance status</h4>
                 <ol class="help-ref-steps">
                   <li>Go to the <strong>Attendance</strong> tab and select the raid night from the dropdown.</li>
-                  <li>Find the player in the grid and use the status dropdown on their row to set: <em>Present</em>, <em>Bench</em>, <em>Excused</em>, <em>Medical Leave</em>, <em>No Show</em>, or <em>Not on Roster</em>.</li>
+                  <li>Find the player in the grid and use the status dropdown on their row to set: <em>Present</em>, <em>Bench</em>, <em>Excused</em>, <em>Medical Leave</em>, <em>Extended Leave</em>, <em>No Show</em>, or <em>Not on Roster</em>.</li>
                   <li>The change saves immediately -- a checkmark confirms success.</li>
                 </ol>
               </div>
@@ -918,10 +918,9 @@
               <div class="help-ref-card">
                 <h4 class="help-ref-title">Season reset workflow</h4>
                 <ol class="help-ref-steps">
-                  <li>Go to <a href="#" onclick="switchTab('season');return false;">Season Settings</a> and update the <strong>Season Start Date</strong> to the new season's first raid day.</li>
-                  <li>Update the <strong>Season Name</strong> (e.g. "Season 2") so new loot imports are tagged correctly.</li>
-                  <li>Go to <strong>Loot &gt; Import History</strong> and click <strong>Clear All Loot History</strong> to remove last season's entries.</li>
-                  <li>Re-import this season's loot via <strong>Loot &gt; Import</strong>.</li>
+                  <li>Go to <a href="#" onclick="switchTab('season');return false;">Season Settings</a> and click <strong>Start New Season</strong> (History sub-tab). This archives the current season, auto-fills the new Season Name, and resets every player's real-item BiS list, M+ exclusion, and Bench status team-wide.</li>
+                  <li>Set the new <strong>Season Start Date</strong> to the new season's first raid day.</li>
+                  <li>Re-import this season's loot via <strong>Loot &gt; Import</strong> -- old loot history doesn't need clearing, it stays tagged by season.</li>
                   <li>On the <strong>Attendance</strong> tab, click <strong>Refresh from WCL</strong> to pull the new season's raid nights.</li>
                   <li>Commit updated scores via <strong>Commit Attendance Scores</strong>.</li>
                 </ol>
@@ -1150,27 +1149,27 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/common.js?v=3.49.20"></script>
-  <script src="js/discord.js?v=3.49.20"></script>
-  <script src="js/officer.js?v=3.49.20"></script>
-  <script src="js/tabs/tab-roster.js?v=3.49.20"></script>
-  <script src="js/tabs/tab-conflicts.js?v=3.49.20"></script>
-  <script src="js/tabs/tab-fairness.js?v=3.49.20"></script>
-  <script src="js/tabs/tab-attendance.js?v=3.49.20"></script>
-  <script src="js/tabs/tab-bench-fairness.js?v=3.49.20"></script>
-  <script src="js/tabs/tab-signups.js?v=3.49.20"></script>
-  <script src="js/tabs/tab-requests.js?v=3.49.20"></script>
-  <script src="js/tabs/tab-bis.js?v=3.49.20"></script>
-  <script src="js/tabs/tab-pending-roster.js?v=3.49.20"></script>
-  <script src="js/tabs/tab-mplus.js?v=3.49.20"></script>
-  <script src="js/tabs/tab-priority.js?v=3.49.20"></script>
-  <script src="js/tabs/tab-audit.js?v=3.49.20"></script>
-  <script src="js/tabs/tab-reports.js?v=3.49.20"></script>
-  <script src="js/tabs/tab-season.js?v=3.49.20"></script>
-  <script src="js/tabs/tab-bios.js?v=3.49.20"></script>
-  <script src="js/tabs/tab-loot-import.js?v=3.49.20"></script>
-  <script src="js/tabs/tab-scoring.js?v=3.49.20"></script>
-  <script src="js/tabs/tab-admin.js?v=3.49.20"></script>
+  <script src="js/common.js?v=3.49.21"></script>
+  <script src="js/discord.js?v=3.49.21"></script>
+  <script src="js/officer.js?v=3.49.21"></script>
+  <script src="js/tabs/tab-roster.js?v=3.49.21"></script>
+  <script src="js/tabs/tab-conflicts.js?v=3.49.21"></script>
+  <script src="js/tabs/tab-fairness.js?v=3.49.21"></script>
+  <script src="js/tabs/tab-attendance.js?v=3.49.21"></script>
+  <script src="js/tabs/tab-bench-fairness.js?v=3.49.21"></script>
+  <script src="js/tabs/tab-signups.js?v=3.49.21"></script>
+  <script src="js/tabs/tab-requests.js?v=3.49.21"></script>
+  <script src="js/tabs/tab-bis.js?v=3.49.21"></script>
+  <script src="js/tabs/tab-pending-roster.js?v=3.49.21"></script>
+  <script src="js/tabs/tab-mplus.js?v=3.49.21"></script>
+  <script src="js/tabs/tab-priority.js?v=3.49.21"></script>
+  <script src="js/tabs/tab-audit.js?v=3.49.21"></script>
+  <script src="js/tabs/tab-reports.js?v=3.49.21"></script>
+  <script src="js/tabs/tab-season.js?v=3.49.21"></script>
+  <script src="js/tabs/tab-bios.js?v=3.49.21"></script>
+  <script src="js/tabs/tab-loot-import.js?v=3.49.21"></script>
+  <script src="js/tabs/tab-scoring.js?v=3.49.21"></script>
+  <script src="js/tabs/tab-admin.js?v=3.49.21"></script>
   <script>
 renderSiteNav('officer');
 document.getElementById('versionNum').textContent = VERSION;

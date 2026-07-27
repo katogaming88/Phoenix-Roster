@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.21] - 2026-07-27
+
+### Frontend
+
+- **Fixed stale content in the officer Officer Guide tab** -- the attendance status list was missing *Extended Leave*, and the "Season reset workflow" reference card still described a "Clear All Loot History" step that doesn't exist (deliberately removed in #219, since there's no safe way to isolate paste-imported rows from legacy-merged ones). The card now points at Season Settings' "Start New Season" (renamed from "Archive Current Season") and reflects that it auto-fills the season name and resets BiS/M+ exclusion/bench status, and drops the loot-clearing step entirely since loot history stays in place, filtered by its season tag.
+
 ## [3.49.20] - 2026-07-26
 
 ### Frontend
