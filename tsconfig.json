@@ -10,7 +10,13 @@
     "target": "es2020",
     "lib": ["es2020", "dom", "dom.iterable"],
     "strict": false,
-    "noImplicitAny": false
+    "noImplicitAny": false,
+    // globals.d.ts imports @supabase/supabase-js (type-only, #331) purely to
+    // type window.supabase against the generated schema; skipLibCheck keeps
+    // tsc from also type-checking that package's own .d.ts internals (and
+    // its transitive Node-oriented types we don't use, e.g. storage-js'
+    // Buffer/NodeJS references) against this browser-only lib set.
+    "skipLibCheck": true
   },
-  "include": ["js/**/*.js", "js/globals.d.ts"]
+  "include": ["js/**/*.js", "js/globals.d.ts", "js/database.types.ts"]
 }
