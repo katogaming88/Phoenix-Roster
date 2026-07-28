@@ -45,6 +45,7 @@ function makeSandbox({ saveTeamSettingImpl, rpcResult, els = {}, data = {} } = {
     buildOfficerDashboard: () => {},
     buildStatsBar: () => {},
     buildRosterTable: () => {},
+    buildTrialPromoAlert: () => {},
     saveTeamSetting: function (updates) {
       saveTeamSettingCalls.push(updates);
       return (

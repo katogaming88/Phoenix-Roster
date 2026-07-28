@@ -973,6 +973,10 @@ function officerSavePlayerSettings(nameRealm, firstName) {
         function () {
           buildStatsBar();
           buildRosterTable();
+          // Attendance-driven -- buildOfficerDashboard() above ran before
+          // heavy data (DATA.rawAttendanceData) arrived, so its own call to
+          // this saw everyone at 0% attendance and excluded them.
+          buildTrialPromoAlert();
         }
       );
     } else {
