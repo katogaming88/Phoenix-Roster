@@ -123,6 +123,29 @@ The drill then covers:
 | ---- | ---- | ------ |
 | 2026-07-23 | `wga-2026-07-22.dump` + auth | **Pass.** Pulled both objects from R2 with the read-only token. Full restore into `postgres:17`: 9 ignored errors, all matching the expected list above verbatim, nothing unexpected. Counts matched prod exactly (players 75, season_signups 46, audit_log 610; 26 base tables). Selective-restore rehearsal on `season_signups`: 46 rows deleted and restored per-table, no side-effect triggers fired (its only trigger is the `updated_at` stamper), `setval` fix-up exercised. Found: the table's sequence is `signups_id_seq` (legacy name from a rename), which is why the runbook resolves sequences via `pg_get_serial_sequence()`. Auth dump listed cleanly: 2 table-data entries (`auth.users`, `auth.identities`). |
 
+## When the schema changes
+
+Several parts of this doc and `db-backup.yml`'s verify step encode assumptions about the schema as it stood on the date the drill below was run. Nothing re-checks them automatically -- this section is the trigger for deciding whether a re-check or a fresh drill is warranted, not a schedule (re-drilling on every migration would be too heavy).
+
+What's schema-tied:
+
+- **Expected-error list** in `db-backup.yml`'s verify step and the drill section above -- 9 ignored errors as of the 2026-07-23 drill (#544): the container's pre-existing `public` schema, everything referencing the absent `auth` schema, and `supabase_admin` default-privilege statements.
+- **Table-count floor of 20** in the same verify step -- real count was 26 when written.
+- **The four `auth.users` FKs** in the full-rebuild runbook (steps 3 and 9) -- `audit_log.actor_id`, `site_admins.auth_user_id`, `team_members.auth_user_id`, `season_signups.auth_user_id`.
+- **Sequence-name guidance** in the selective-restore runbook -- only as good as the tables it was checked against (`season_signups` resolving to `signups_id_seq` was the drill's find).
+- **Drill-log row counts** -- meaningful only while the tables they name still exist under that name.
+
+Re-check when a migration:
+
+- Adds an FK to `auth.users` on a table not in the four listed above -- add it to the full-rebuild runbook's FK list.
+- Renames a table or column named in this doc or the drill log -- update the reference; always resolve sequences through `pg_get_serial_sequence()` rather than trusting old guidance.
+- Adds DDL or an RLS policy referencing `auth` -- check whether it lands inside or outside the verify step's tolerated error categories.
+- Pushes the public table count close to the floor of 20, or meaningfully past 26 -- raise the floor so it still catches a truncated dump.
+
+**CI nudge**: `schema-docs.yml` fails a PR that adds an `auth.users` FK or renames something in `supabase/migrations/` without also touching this file, mirroring the existing `docs/RLS.md` check in the same workflow. It can't catch the table-count or RLS-policy cases above -- those still rely on this checklist at review time.
+
+As of 2026-07-28 the table count (26 base tables) and the FK list still match the 2026-07-23 drill baseline exactly, so no re-drill is due yet.
+
 ## Ops notes
 
 - GitHub disables `schedule` workflows after 60 days without repo activity; any push re-enables them. Not a realistic risk while the project is active, but worth knowing if it ever goes dormant.
