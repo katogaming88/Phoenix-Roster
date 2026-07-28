@@ -17,6 +17,8 @@ Two objects per run, at `pg/wga-<YYYY-MM-DD>.dump` and `pg/wga-auth-<YYYY-MM-DD>
 - **`pg/wga-<date>.dump`** -- `pg_dump -Fc` of the entire `public` schema (schema + data). Standalone restorable; this is the artifact that matters for actual recovery.
 - **`pg/wga-auth-<date>.dump`** -- `pg_dump -Fc --data-only` of the `auth` schema (`auth.users` + identities only). Kept as a relink reference for `team_members.auth_user_id` -- `auth`'s own table structure is Supabase-managed, not ours to back up structurally.
 
+**Retention**: an R2 lifecycle rule on the bucket (`pg-backup-retention`, prefix `pg/`) deletes objects after 365 days. Set manually in the Cloudflare dashboard (R2 -> bucket -> Settings -> Object lifecycle rules), not by the workflow -- see #546. No `monthly/`-prefix long-term keepers exist past that window; revisit if that's ever needed.
+
 ## Coverage map: what's regenerable vs. backup-only
 
 **Regenerable without a backup** -- these can be rebuilt from other sources if lost:
