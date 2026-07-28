@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.24] - 2026-07-28
+
+### Frontend
+
+- **Fixed the trial promotion alert still not showing on a fresh officer login** -- #604 fixed 3 of the 4 places the officer dashboard reloads, but missed `_grantOfficerAccessViaDiscord()` (officer.html's inline script), the path taken whenever there's no existing `sessionStorage` session -- a first Discord login, or reopening officer.html in a new tab (`sessionStorage` doesn't survive a tab close, unlike a same-tab refresh). That path had the same `loadData()` shape as the other three, missing `buildTrialPromoAlert()` from its heavy-data callback. Same fix applied.
+
 ## [3.49.23] - 2026-07-28
 
 ### Frontend
