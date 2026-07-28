@@ -1,24 +1,22 @@
 /* Officer-only styles will be migrated here from styles.css in a follow-up pass. */
 
-/* ── Stat card difficulty cycle badge ──────────────────────────────────────── */
-.stat-diff-cycle {
-  position: absolute;
-  top: 0.4rem;
-  right: 0.5rem;
+/* ── Stat card difficulty selector (All / Heroic / Mythic) ─────────────────── */
+.stat-diff-buttons { position: absolute; top: 0.5rem; right: 0.55rem; display: flex; flex-direction: column; gap: 0.25rem; }
+.stat-diff-btn {
   font-family: 'Rajdhani', sans-serif;
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  padding: 0.1rem 0.4rem;
-  border-radius: 3px;
-  border: 1px solid var(--gold-dim);
-  background: rgba(214,163,68,0.08);
-  color: var(--gold-light);
+  padding: 0.14rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid var(--border-mid);
+  background: transparent;
+  color: var(--text-muted);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
-.stat-diff-cycle:hover { background: rgba(214,163,68,0.18); }
+.stat-diff-btn:hover { background: rgba(255,255,255,0.06); }
 
 /* ── Stat card tooltips ────────────────────────────────────────────────────── */
 .stat-card[data-tip] { position: relative; cursor: default; }
