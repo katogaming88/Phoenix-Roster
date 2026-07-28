@@ -193,9 +193,9 @@ jobs:
       #
       # Caveat: the free allotment is account-wide while this measures one
       # bucket. That holds while backups are the only thing in the account.
-      # Once #546's lifecycle rule lands, usage plateaus at roughly
-      # retention-days x nightly size, and this becomes the backstop for the
-      # day the dumps outgrow that assumption.
+      # #546's 365-day lifecycle rule (bucket setting, not this workflow)
+      # means usage plateaus at roughly retention-days x nightly size; this
+      # check is the backstop for the day the dumps outgrow that assumption.
       - name: Check bucket capacity
         id: capacity_check
         env:
@@ -233,7 +233,7 @@ jobs:
             exit 0
           fi
 
-          echo "::warning::Backup bucket is at ${PCT}% of its ${LIMIT_GB} GB allotment (${USED_GB} GB used). Time to set or tighten the retention rule (#546)."
+          echo "::warning::Backup bucket is at ${PCT}% of its ${LIMIT_GB} GB allotment (${USED_GB} GB used). Time to tighten the retention rule (currently 365 days, see #546)."
 
           if [ -z "$DISCORD_WEBHOOK_URL" ]; then
             echo "DISCORD_WEBHOOK_URL is not set -- the warning above stands, nothing posted."
