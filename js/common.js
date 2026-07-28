@@ -494,18 +494,25 @@ function characterProfileLinks(firstName, realm) {
 // rather than blocking the whole site over a transient Supabase hiccup.
 function checkMaintenanceMode() {
   if (!supabaseClient) return Promise.resolve({ enabled: false });
+  // supabase-js query builders are PromiseLike, not real Promises -- their
+  // own .then() is typed to return PromiseLike too, which has no .catch().
+  // Passing the error handler as .then()'s second argument sidesteps that
+  // (same runtime behavior here since none of these onFulfilled callbacks
+  // can throw) instead of every call site needing a Promise.resolve() wrap.
   return supabaseClient
     .from('site_settings')
     .select('maintenance_mode, maintenance_message')
     .eq('id', 1)
     .maybeSingle()
-    .then(function (result) {
-      if (result.error || !result.data) return { enabled: false };
-      return { enabled: !!result.data.maintenance_mode, message: result.data.maintenance_message };
-    })
-    .catch(function () {
-      return { enabled: false };
-    });
+    .then(
+      function (result) {
+        if (result.error || !result.data) return { enabled: false };
+        return { enabled: !!result.data.maintenance_mode, message: result.data.maintenance_message };
+      },
+      function () {
+        return { enabled: false };
+      }
+    );
 }
 
 // Full-page takeover: hides the loading spinner, nav, and any officer login
@@ -975,17 +982,19 @@ function fetchSupabaseRoster() {
     .eq('team_id', _teamCfg.supabaseTeamId)
     .is('archived_at', null)
     .order('name_realm')
-    .then(function (result) {
-      if (result.error) {
-        console.warn('Supabase roster query failed.', result.error.message);
+    .then(
+      function (result) {
+        if (result.error) {
+          console.warn('Supabase roster query failed.', result.error.message);
+          return null;
+        }
+        return result.data && result.data.length ? result.data : null;
+      },
+      function (err) {
+        console.warn('Supabase roster query failed.', err);
         return null;
       }
-      return result.data && result.data.length ? result.data : null;
-    })
-    .catch(function (err) {
-      console.warn('Supabase roster query failed.', err);
-      return null;
-    });
+    );
   var timeout = new Promise(function (resolve) {
     setTimeout(function () {
       resolve(null);
@@ -1009,20 +1018,22 @@ function fetchSupabaseMPlusRejections() {
     .eq('team_id', _teamCfg.supabaseTeamId)
     .eq('status', 'rejected')
     .order('submitted_at', { ascending: false })
-    .then(function (result) {
-      if (result.error) return {};
-      var byPlayer = {};
-      (result.data || []).forEach(function (row) {
-        // Ordered newest-first: keep only the first (most recent) row seen per player.
-        if (row.player_id != null && !(row.player_id in byPlayer)) {
-          byPlayer[row.player_id] = row.officer_notes || '';
-        }
-      });
-      return byPlayer;
-    })
-    .catch(function () {
-      return {};
-    });
+    .then(
+      function (result) {
+        if (result.error) return {};
+        var byPlayer = {};
+        (result.data || []).forEach(function (row) {
+          // Ordered newest-first: keep only the first (most recent) row seen per player.
+          if (row.player_id != null && !(row.player_id in byPlayer)) {
+            byPlayer[row.player_id] = row.officer_notes || '';
+          }
+        });
+        return byPlayer;
+      },
+      function () {
+        return {};
+      }
+    );
 }
 
 // Incoming-roster reads come from Supabase (#499): a public view over
@@ -1037,17 +1048,19 @@ function fetchSupabaseIncomingRoster() {
     .from('incoming_roster')
     .select('signup_id, signup_name_realm, swap_from_name_realm, class, spec, role')
     .eq('team_id', _teamCfg.supabaseTeamId)
-    .then(function (result) {
-      if (result.error) {
-        console.warn('Supabase incoming_roster query failed.', result.error.message);
+    .then(
+      function (result) {
+        if (result.error) {
+          console.warn('Supabase incoming_roster query failed.', result.error.message);
+          return null;
+        }
+        return result.data && result.data.length ? result.data : null;
+      },
+      function (err) {
+        console.warn('Supabase incoming_roster query failed.', err);
         return null;
       }
-      return result.data && result.data.length ? result.data : null;
-    })
-    .catch(function (err) {
-      console.warn('Supabase incoming_roster query failed.', err);
-      return null;
-    });
+    );
   var timeout = new Promise(function (resolve) {
     setTimeout(function () {
       resolve(null);
@@ -1066,13 +1079,15 @@ function fetchSupabaseGuildOfficerBios() {
     .select('guild_officer_bios')
     .eq('id', 1)
     .maybeSingle()
-    .then(function (result) {
-      if (result.error || !result.data) return null;
-      return result.data.guild_officer_bios || [];
-    })
-    .catch(function () {
-      return null;
-    });
+    .then(
+      function (result) {
+        if (result.error || !result.data) return null;
+        return result.data.guild_officer_bios || [];
+      },
+      function () {
+        return null;
+      }
+    );
   var timeout = new Promise(function (resolve) {
     setTimeout(function () {
       resolve(null);
@@ -1284,23 +1299,29 @@ function fetchSupabaseLoot() {
    * @returns {Promise<any[]|null>}
    */
   function fetchPage(from, acc) {
-    return supabaseClient
-      .from('rclc_loot')
-      .select('track, season, awarded_at, items(name), players(name_realm)')
-      .eq('team_id', _teamCfg.supabaseTeamId)
-      .order('awarded_at', { ascending: false })
-      .order('id', { ascending: false })
-      .range(from, from + PAGE - 1)
-      .then(function (/** @type {{data: any[]|null, error: {message: string}|null}} */ result) {
-        if (result.error) {
-          console.warn('Supabase loot query failed.', result.error.message);
-          return null;
-        }
-        var rows = result.data || [];
-        var all = acc.concat(rows);
-        if (rows.length < PAGE) return all.length ? all : null;
-        return fetchPage(from + PAGE, all);
-      });
+    // Promise.resolve() unwraps the query builder's PromiseLike into a real
+    // Promise (same resolution, no behavior change) -- needed here since
+    // this return type is declared Promise<any[]|null> above and the call
+    // site chains .catch() on it.
+    return Promise.resolve(
+      supabaseClient
+        .from('rclc_loot')
+        .select('track, season, awarded_at, items(name), players(name_realm)')
+        .eq('team_id', _teamCfg.supabaseTeamId)
+        .order('awarded_at', { ascending: false })
+        .order('id', { ascending: false })
+        .range(from, from + PAGE - 1)
+        .then(function (/** @type {{data: any[]|null, error: {message: string}|null}} */ result) {
+          if (result.error) {
+            console.warn('Supabase loot query failed.', result.error.message);
+            return null;
+          }
+          var rows = result.data || [];
+          var all = acc.concat(rows);
+          if (rows.length < PAGE) return all.length ? all : null;
+          return fetchPage(from + PAGE, all);
+        })
+    );
   }
   var query = fetchPage(0, []).catch(function (err) {
     console.warn('Supabase loot query failed.', err);
@@ -1380,17 +1401,19 @@ function fetchSupabaseBisItems() {
       'player_id, item_id, obtained, slot, season, items(name, slot, is_placeholder), players!inner(name_realm, team_id)'
     )
     .eq('players.team_id', _teamCfg.supabaseTeamId)
-    .then(function (result) {
-      if (result.error) {
-        console.warn('Supabase BiS items query failed.', result.error.message);
+    .then(
+      function (result) {
+        if (result.error) {
+          console.warn('Supabase BiS items query failed.', result.error.message);
+          return null;
+        }
+        return result.data && result.data.length ? result.data : null;
+      },
+      function (err) {
+        console.warn('Supabase BiS items query failed.', err);
         return null;
       }
-      return result.data && result.data.length ? result.data : null;
-    })
-    .catch(function (err) {
-      console.warn('Supabase BiS items query failed.', err);
-      return null;
-    });
+    );
   var timeout = new Promise(function (resolve) {
     setTimeout(function () {
       resolve(null);
@@ -1459,17 +1482,19 @@ function fetchSupabaseSelfReceived() {
     .select('track, source, players(name_realm), items(name, slot)')
     .eq('team_id', _teamCfg.supabaseTeamId)
     .eq('status', 'approved')
-    .then(function (result) {
-      if (result.error) {
-        console.warn('Supabase self-received query failed.', result.error.message);
+    .then(
+      function (result) {
+        if (result.error) {
+          console.warn('Supabase self-received query failed.', result.error.message);
+          return null;
+        }
+        return result.data && result.data.length ? result.data : null;
+      },
+      function (err) {
+        console.warn('Supabase self-received query failed.', err);
         return null;
       }
-      return result.data && result.data.length ? result.data : null;
-    })
-    .catch(function (err) {
-      console.warn('Supabase self-received query failed.', err);
-      return null;
-    });
+    );
   var timeout = new Promise(function (resolve) {
     setTimeout(function () {
       resolve(null);
@@ -1491,17 +1516,19 @@ function fetchSupabaseStreamers() {
     .select(
       'id, team_id, player_id, twitch_channel, schedule_note, guild_wide_opt_out, is_live, players(name_realm, nickname)'
     )
-    .then(function (result) {
-      if (result.error) {
-        console.warn('Supabase streamers query failed.', result.error.message);
+    .then(
+      function (result) {
+        if (result.error) {
+          console.warn('Supabase streamers query failed.', result.error.message);
+          return null;
+        }
+        return result.data && result.data.length ? result.data : null;
+      },
+      function (err) {
+        console.warn('Supabase streamers query failed.', err);
         return null;
       }
-      return result.data && result.data.length ? result.data : null;
-    })
-    .catch(function (err) {
-      console.warn('Supabase streamers query failed.', err);
-      return null;
-    });
+    );
   var timeout = new Promise(function (resolve) {
     setTimeout(function () {
       resolve(null);
@@ -1557,17 +1584,19 @@ function fetchSupabaseRaidProgress() {
         'raid_encounters(name, wcl_encounter_id, raid_zones(wcl_zone_id))'
     )
     .eq('team_id', _teamCfg.supabaseTeamId)
-    .then(function (result) {
-      if (result.error) {
-        console.warn('Supabase team_raid_progress query failed.', result.error.message);
+    .then(
+      function (result) {
+        if (result.error) {
+          console.warn('Supabase team_raid_progress query failed.', result.error.message);
+          return null;
+        }
+        return result.data && result.data.length ? result.data : null;
+      },
+      function (err) {
+        console.warn('Supabase team_raid_progress query failed.', err);
         return null;
       }
-      return result.data && result.data.length ? result.data : null;
-    })
-    .catch(function (err) {
-      console.warn('Supabase team_raid_progress query failed.', err);
-      return null;
-    });
+    );
   var timeout = new Promise(function (resolve) {
     setTimeout(function () {
       resolve(null);
@@ -1655,17 +1684,19 @@ function fetchSupabasePriorityStaleAfterHeroic() {
     .from('priority_order_stale_after_heroic')
     .select('*')
     .eq('team_id', _teamCfg.supabaseTeamId)
-    .then(function (result) {
-      if (result.error) {
-        console.warn('Supabase priority_order_stale_after_heroic query failed.', result.error.message);
+    .then(
+      function (result) {
+        if (result.error) {
+          console.warn('Supabase priority_order_stale_after_heroic query failed.', result.error.message);
+          return [];
+        }
+        return result.data || [];
+      },
+      function (err) {
+        console.warn('Supabase priority_order_stale_after_heroic query failed.', err);
         return [];
       }
-      return result.data || [];
-    })
-    .catch(function (err) {
-      console.warn('Supabase priority_order_stale_after_heroic query failed.', err);
-      return [];
-    });
+    );
 }
 
 // Team-wide "who currently holds a live #1" rows -- the same source the
@@ -1684,17 +1715,19 @@ function fetchSupabasePriorityLiveFirstPrios() {
     .from('priority_order_live_first_prios')
     .select('season, player_id, name_realm, item_id, item_name, track, boss')
     .eq('team_id', _teamCfg.supabaseTeamId)
-    .then(function (result) {
-      if (result.error) {
-        console.warn('Supabase priority_order_live_first_prios query failed.', result.error.message);
+    .then(
+      function (result) {
+        if (result.error) {
+          console.warn('Supabase priority_order_live_first_prios query failed.', result.error.message);
+          return [];
+        }
+        return result.data || [];
+      },
+      function (err) {
+        console.warn('Supabase priority_order_live_first_prios query failed.', err);
         return [];
       }
-      return result.data || [];
-    })
-    .catch(function (err) {
-      console.warn('Supabase priority_order_live_first_prios query failed.', err);
-      return [];
-    });
+    );
 }
 
 function fetchSupabasePriorityOrder() {
@@ -1703,17 +1736,19 @@ function fetchSupabasePriorityOrder() {
     .from('priority_order')
     .select('item_id, track, rank, season, items(name), players(name_realm)')
     .eq('team_id', _teamCfg.supabaseTeamId)
-    .then(function (result) {
-      if (result.error) {
-        console.warn('Supabase priority_order query failed.', result.error.message);
+    .then(
+      function (result) {
+        if (result.error) {
+          console.warn('Supabase priority_order query failed.', result.error.message);
+          return null;
+        }
+        return result.data && result.data.length ? result.data : null;
+      },
+      function (err) {
+        console.warn('Supabase priority_order query failed.', err);
         return null;
       }
-      return result.data && result.data.length ? result.data : null;
-    })
-    .catch(function (err) {
-      console.warn('Supabase priority_order query failed.', err);
-      return null;
-    });
+    );
   var timeout = new Promise(function (resolve) {
     setTimeout(function () {
       resolve(null);
@@ -1775,17 +1810,19 @@ function fetchSupabaseSettings() {
     .select('config')
     .eq('team_id', _teamCfg.supabaseTeamId)
     .maybeSingle()
-    .then(function (result) {
-      if (result.error) {
-        console.warn('Supabase team_settings query failed.', result.error.message);
+    .then(
+      function (result) {
+        if (result.error) {
+          console.warn('Supabase team_settings query failed.', result.error.message);
+          return null;
+        }
+        return result.data ? result.data.config : null;
+      },
+      function (err) {
+        console.warn('Supabase team_settings query failed.', err);
         return null;
       }
-      return result.data ? result.data.config : null;
-    })
-    .catch(function (err) {
-      console.warn('Supabase team_settings query failed.', err);
-      return null;
-    });
+    );
   var timeout = new Promise(function (resolve) {
     setTimeout(function () {
       resolve(null);
@@ -1881,16 +1918,21 @@ function featureEnabled(key) {
  * @returns {Promise<Object>}
  */
 function saveTeamSetting(updates, skipAudit) {
-  return supabaseClient
-    .rpc('set_team_setting', {
-      p_team_id: _teamCfg.supabaseTeamId,
-      p_updates: updates,
-      p_skip_audit: !!skipAudit
-    })
-    .then(function (result) {
-      if (result.error) throw new Error(result.error.message);
-      return result.data;
-    });
+  // Promise.resolve() unwraps the builder's PromiseLike into a real Promise
+  // (same resolution, no behavior change) -- needed since callers across
+  // js/tabs/ chain .catch() onto this.
+  return Promise.resolve(
+    supabaseClient
+      .rpc('set_team_setting', {
+        p_team_id: _teamCfg.supabaseTeamId,
+        p_updates: updates,
+        p_skip_audit: !!skipAudit
+      })
+      .then(function (result) {
+        if (result.error) throw new Error(result.error.message);
+        return result.data;
+      })
+  );
 }
 
 // raid_zones.wcl_zone_id <-> season mapping (#285, #549) -- the same
@@ -1903,19 +1945,21 @@ function fetchSupabaseRaidZones() {
   return supabaseClient
     .from('raid_zones')
     .select('wcl_zone_id, season')
-    .then(function (result) {
-      if (result.error) {
-        console.warn('Supabase raid_zones query failed.', result.error.message);
+    .then(
+      function (result) {
+        if (result.error) {
+          console.warn('Supabase raid_zones query failed.', result.error.message);
+          return [];
+        }
+        return (result.data || []).map(function (row) {
+          return { wclZoneId: row.wcl_zone_id, season: row.season };
+        });
+      },
+      function (err) {
+        console.warn('Supabase raid_zones query failed.', err);
         return [];
       }
-      return (result.data || []).map(function (row) {
-        return { wclZoneId: row.wcl_zone_id, season: row.season };
-      });
-    })
-    .catch(function (err) {
-      console.warn('Supabase raid_zones query failed.', err);
-      return [];
-    });
+    );
 }
 
 // Item catalog reads come exclusively from Supabase (#391): the GAS "Item
@@ -1931,17 +1975,19 @@ function fetchSupabaseItems() {
   var query = supabaseClient
     .from('items')
     .select('id, wow_item_id, name, slot, armor_type, is_placeholder, icon, wcl_zone_id, secondary_stats, is_ptr')
-    .then(function (result) {
-      if (result.error) {
-        console.warn('Supabase items query failed.', result.error.message);
+    .then(
+      function (result) {
+        if (result.error) {
+          console.warn('Supabase items query failed.', result.error.message);
+          return null;
+        }
+        return result.data && result.data.length ? result.data : null;
+      },
+      function (err) {
+        console.warn('Supabase items query failed.', err);
         return null;
       }
-      return result.data && result.data.length ? result.data : null;
-    })
-    .catch(function (err) {
-      console.warn('Supabase items query failed.', err);
-      return null;
-    });
+    );
   var timeout = new Promise(function (resolve) {
     setTimeout(function () {
       resolve(null);
@@ -1958,17 +2004,19 @@ function fetchSupabaseItemBosses() {
   var query = supabaseClient
     .from('item_bosses')
     .select('boss, items(name)')
-    .then(function (result) {
-      if (result.error) {
-        console.warn('Supabase item_bosses query failed.', result.error.message);
+    .then(
+      function (result) {
+        if (result.error) {
+          console.warn('Supabase item_bosses query failed.', result.error.message);
+          return null;
+        }
+        return result.data && result.data.length ? result.data : null;
+      },
+      function (err) {
+        console.warn('Supabase item_bosses query failed.', err);
         return null;
       }
-      return result.data && result.data.length ? result.data : null;
-    })
-    .catch(function (err) {
-      console.warn('Supabase item_bosses query failed.', err);
-      return null;
-    });
+    );
   var timeout = new Promise(function (resolve) {
     setTimeout(function () {
       resolve(null);
@@ -5084,12 +5132,17 @@ function addAttendanceNight(firstName) {
     ind.style.color = 'var(--text-muted)';
   }
 
-  supabaseClient
-    .from('attendance')
-    .upsert(
-      { team_id: _teamCfg.supabaseTeamId, player_id: player.id, raid_date: date, status: status },
-      { onConflict: 'team_id,player_id,raid_date' }
-    )
+  // Promise.resolve() unwraps the builder's PromiseLike into a real Promise
+  // (same resolution, no behavior change) -- needed for the chained
+  // .then().then().catch() below, since PromiseLike itself has no .catch().
+  Promise.resolve(
+    supabaseClient
+      .from('attendance')
+      .upsert(
+        { team_id: _teamCfg.supabaseTeamId, player_id: player.id, raid_date: date, status: status },
+        { onConflict: 'team_id,player_id,raid_date' }
+      )
+  )
     .then(function (result) {
       if (result.error) throw new Error(result.error.message);
       return writeAuditLog('Attendance Status Set', 'players', player.id, '(none) -> ' + status + ' (' + date + ')');
@@ -5170,12 +5223,17 @@ function saveAttendanceFromCard(selectEl) {
     indicator.style.color = 'var(--text-muted)';
   }
 
-  supabaseClient
-    .from('attendance')
-    .upsert(
-      { team_id: _teamCfg.supabaseTeamId, player_id: player.id, raid_date: date, status: status },
-      { onConflict: 'team_id,player_id,raid_date' }
-    )
+  // Promise.resolve() unwraps the builder's PromiseLike into a real Promise
+  // (same resolution, no behavior change) -- needed for the chained
+  // .then().then().catch() below, since PromiseLike itself has no .catch().
+  Promise.resolve(
+    supabaseClient
+      .from('attendance')
+      .upsert(
+        { team_id: _teamCfg.supabaseTeamId, player_id: player.id, raid_date: date, status: status },
+        { onConflict: 'team_id,player_id,raid_date' }
+      )
+  )
     .then(function (result) {
       if (result.error) throw new Error(result.error.message);
       return writeAuditLog('Attendance Status Set', 'players', player.id, (oldStatus || '(none)') + ' -> ' + status);
