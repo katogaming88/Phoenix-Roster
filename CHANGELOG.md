@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.25] - 2026-07-28
+
+### Frontend
+
+- **Added a Wishlists Completed officer stat card and an All/Hero/Myth difficulty selector** -- the officer stats bar now has a fifth card tracking how many roster members have every wishlist slot tagged (or covered by the officer BiS list), sourced from `getIncompleteWishlists()` (now roster-overridable so the card can pass the full roster). It shows `-` until `_teamItemPreferences` finishes loading rather than flashing a misleading "all complete". The Items Distributed card's single cycling difficulty badge is replaced with an All/Hero/Myth button group, color-matched to the existing rank-pill colors. "Raiders" and "BiS List" (renamed from "BiS Submitted") now count the full roster including bench, since gear prep isn't limited to active raiders.
+
 ## [3.49.24] - 2026-07-28
 
 ### Frontend

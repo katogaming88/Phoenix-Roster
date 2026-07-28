@@ -105,6 +105,15 @@ function updateRosterFieldSupabase(nameRealm, field, value) {
 
 var statItemsDiff = 'all';
 
+// Same colors as RANK_PILL_DIFF_COLORS (js/common.js) -- reused here instead
+// of inventing a new pair, so "Heroic = green, Mythic = purple" reads the
+// same everywhere it shows up (rank pills, BiS-received badges, this).
+var STAT_DIFF_BUTTONS = [
+  { value: 'all', label: 'All', c: 'var(--gold-light)', bg: 'rgba(214,163,68,0.18)', bd: 'var(--gold-dim)' },
+  { value: 'heroic', label: 'Hero', c: 'var(--heal)', bg: 'rgba(72,187,120,0.18)', bd: 'rgba(72,187,120,0.4)' },
+  { value: 'mythic', label: 'Myth', c: 'var(--ranged)', bg: 'rgba(191,140,255,0.18)', bd: 'rgba(191,140,255,0.4)' }
+];
+
 function setStatItemsDiff(diff) {
   statItemsDiff = diff;
   buildStatsBar();
@@ -125,7 +134,12 @@ function buildStatsBar() {
       totalAttend += pct;
       attendCount++;
     }
-    if (p.bisLink) bisCount++;
+  }
+  // BiS List and Wishlists Completed count the full roster (bench included)
+  // -- unlike Raiders/Avg Attendance/Items Distributed, which are about
+  // active raid participation, gear prep is something bench players do too.
+  for (var k = 0; k < roster.length; k++) {
+    if (roster[k].bisLink) bisCount++;
   }
   var avgAttend = attendCount ? Math.round(totalAttend / attendCount) : 0;
   var avgColor = attendColor(avgAttend);
@@ -136,20 +150,54 @@ function buildStatsBar() {
   for (var j = 0; j < lootKeys.length; j++) {
     if (lootMap[lootKeys[j]]) totalItems += lootMap[lootKeys[j]][countField] || 0;
   }
-  var nextDiff = statItemsDiff === 'all' ? 'heroic' : statItemsDiff === 'heroic' ? 'mythic' : 'all';
-  var diffLabel = statItemsDiff === 'heroic' ? 'Heroic' : statItemsDiff === 'mythic' ? 'Mythic' : 'All';
   var diffTip =
     statItemsDiff === 'heroic'
       ? 'Heroic loot entries tracked'
       : statItemsDiff === 'mythic'
         ? 'Mythic loot entries tracked'
         : 'Total loot entries tracked across all difficulties';
-  var cycleBadge =
-    '<button class="stat-diff-cycle" onclick="setStatItemsDiff(\'' + nextDiff + '\')">' + diffLabel + '</button>';
+  var diffButtonsHtml =
+    '<div class="stat-diff-buttons">' +
+    STAT_DIFF_BUTTONS.map(function (d) {
+      var active = statItemsDiff === d.value;
+      var style = active
+        ? 'color:' + d.c + ';background:' + d.bg + ';border-color:' + d.bd + ';'
+        : 'border-color:' + d.bd + ';';
+      return (
+        '<button class="stat-diff-btn" style="' +
+        style +
+        '" onclick="setStatItemsDiff(\'' +
+        d.value +
+        '\')">' +
+        d.label +
+        '</button>'
+      );
+    }).join('') +
+    '</div>';
+
+  // _teamItemPreferences (tab-priority.js) loads separately from the rest of
+  // DATA -- null means its fetch hasn't resolved yet, not "zero incomplete".
+  // Showing "-" until then avoids a misleading "all complete" flash, same
+  // race #604/#605 fixed for the trial promo alert. renderWishlistIncomplete
+  // Banner() (called from buildOfficerDashboard(), same as this) triggers
+  // that fetch and re-calls buildStatsBar() once it resolves.
+  var wishlistHtml;
+  if (typeof _teamItemPreferences === 'undefined' || _teamItemPreferences === null) {
+    wishlistHtml = '<div class="stat-value">-</div>';
+  } else {
+    var incomplete = getIncompleteWishlists(roster).count;
+    var wishlistCompleted = roster.length - incomplete;
+    wishlistHtml =
+      '<div class="stat-value">' +
+      wishlistCompleted +
+      '<span style="font-size:1.2rem;color:var(--text-muted);">/' +
+      roster.length +
+      '</span></div>';
+  }
 
   document.getElementById('officerStats').innerHTML =
-    '<div class="stat-card" data-tip="Active roster members — bench players excluded"><div class="stat-value">' +
-    raiders.length +
+    '<div class="stat-card" data-tip="Full roster, including bench"><div class="stat-value">' +
+    roster.length +
     '</div><div class="stat-label">Raiders</div></div>' +
     '<div class="stat-card" data-tip="Average attendance % across active raiders this season"><div class="stat-value" style="color:' +
     avgColor +
@@ -159,15 +207,18 @@ function buildStatsBar() {
     '<div class="stat-card" style="position:relative;" data-tip="' +
     diffTip +
     '">' +
-    cycleBadge +
+    diffButtonsHtml +
     '<div class="stat-value">' +
     totalItems +
     '</div><div class="stat-label">Items Distributed</div></div>' +
-    '<div class="stat-card" data-tip="Raiders with an approved BiS list link on file"><div class="stat-value">' +
+    '<div class="stat-card" data-tip="Roster members (incl. bench) with an approved BiS list link on file"><div class="stat-value">' +
     bisCount +
     '<span style="font-size:1.2rem;color:var(--text-muted);">/' +
-    raiders.length +
-    '</span></div><div class="stat-label">BiS Submitted</div></div>';
+    roster.length +
+    '</span></div><div class="stat-label">BiS List</div></div>' +
+    '<div class="stat-card" data-tip="Roster members (incl. bench) with every wishlist slot tagged (or covered by the officer BiS list)">' +
+    wishlistHtml +
+    '<div class="stat-label">Wishlists Completed</div></div>';
 }
 
 function toggleFilter(name) {

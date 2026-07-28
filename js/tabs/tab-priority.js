@@ -353,7 +353,9 @@ function _priorityWishlistMissingRows(prefs, idToName, itemSlots, officerBuckets
   });
 }
 
-function getIncompleteWishlists() {
+// roster override (js/tabs/tab-roster.js's Wishlists Completed stat card):
+// defaults to the full DATA.roster, same as every other caller here.
+function getIncompleteWishlists(roster) {
   if ((typeof featureEnabled === 'function' && !featureEnabled('bis')) || _teamItemPreferences === null) {
     return { count: 0, raiders: [] };
   }
@@ -369,7 +371,7 @@ function getIncompleteWishlists() {
     (prefsByPlayer[p.player_id] = prefsByPlayer[p.player_id] || []).push(p);
   });
 
-  var roster = DATA.roster || [];
+  roster = roster || DATA.roster || [];
   var raiders = [];
   roster.forEach(function (player) {
     var officerBuckets =
@@ -427,6 +429,9 @@ function renderWishlistIncompleteBanner() {
       if (typeof buildBisListsTab === 'function' && document.getElementById('bis-lists-container')) {
         buildBisListsTab();
       }
+      // Wishlists Completed stat card (js/tabs/tab-roster.js) shows "-" until
+      // this fetch resolves -- refresh it now that real data's in.
+      if (typeof buildStatsBar === 'function') buildStatsBar();
     });
     return;
   }
