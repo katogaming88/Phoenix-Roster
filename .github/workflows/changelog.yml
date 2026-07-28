@@ -92,7 +92,7 @@ jobs:
       # gets removed again once news.json is added or the chore exemption
       # applies on a later push, not just added and left stale.
       - name: Nudge for a missing news.json entry
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           NEEDS_NUDGE: >-
             ${{
