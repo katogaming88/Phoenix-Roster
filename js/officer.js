@@ -532,6 +532,10 @@ checkMaintenanceMode().then(function (maint) {
         buildStatsBar();
         buildRosterTable();
         updatePriorityBadges();
+        // Attendance-driven, so it can't run correctly until DATA.rawAttendanceData
+        // lands here -- the onCoreReady pass above always sees 0% (getDisplayAttendancePct's
+        // fallback before heavy data arrives), so a trial past threshold never showed.
+        buildTrialPromoAlert();
         reopenSelectedPlayer();
       }
     );

@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.23] - 2026-07-28
+
+### Frontend
+
+- **Fixed the trial promotion alert never showing a player past both thresholds** -- `buildTrialPromoAlert()` only ran from the officer dashboard's core-data callback, before `DATA.rawAttendanceData` was loaded; at that point every player's computed attendance falls back to `0%`, which always failed the attendance threshold check regardless of their real attendance. Now also re-runs once heavy data (attendance included) arrives, at all three call sites that reload the dashboard (initial officer.html load, after a player rename, after archiving a season).
+
 ## [3.49.22] - 2026-07-27
 
 ### Frontend
