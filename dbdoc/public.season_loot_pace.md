@@ -47,7 +47,7 @@ CREATE VIEW season_loot_pace AS (
 | ---- | ------- | ------- | ---- |
 | [public.rclc_loot](public.rclc_loot.md) | 10 |  | BASE TABLE |
 | [rl.awarded_at](rl.awarded_at.md) | 0 |  |  |
-| [public.items](public.items.md) | 11 |  | BASE TABLE |
+| [public.items](public.items.md) | 12 |  | BASE TABLE |
 
 ## Relations
 

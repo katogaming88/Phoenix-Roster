@@ -105,6 +105,12 @@ var WISHLIST_UNIVERSAL_ROWS = {
   'Off Hand': true
 };
 
+// Trinket/Weapon/Off Hand carry a main stat (Strength/Agility/Intellect)
+// even without an armor_type -- Neck/Back/Wrist/Finger never roll one in
+// this expansion's itemization, so they're intentionally left out here and
+// stay fully unfiltered (WISHLIST_UNIVERSAL_ROWS above).
+var WISHLIST_MAIN_STAT_ROWS = { 'Trinket 1': true, 'Trinket 2': true, Weapon: true, 'Off Hand': true };
+
 // The 5 slots with a real tier-set catalog item (matches
 // scripts/fetch-items.js's TOKEN_SLOT_KEYWORDS). Catalyzed gear now keeps its
 // original secondary stats and any on-use/cantrip effect, so the tier-token
@@ -208,12 +214,16 @@ function wishlistPrefFor(itemId, slot) {
 // every matching catalog item is listed so a raider can tag several options
 // per slot. Scoped to the raider's own armor type (#515 follow-up) -- a
 // warlock (Cloth) never sees Plate/Mail/Leather armor rows, just the
-// universal rows (jewelry/cloaks/weapons) plus their own armor type.
-function wishlistBucketRealItems(playerArmorType) {
+// universal rows (jewelry/cloaks/weapons) plus their own armor type. Also
+// scoped to the raider's main stat on Trinket/Weapon/Off Hand (items.main_stats,
+// scripts/fetch-item-stats.js) -- those rows have no armor_type to filter on,
+// so a Strength main stat still hid nothing there until this.
+function wishlistBucketRealItems(playerArmorType, playerMainStat) {
   var itemSlots = (DATA && DATA.itemSlots) || {};
   var itemPlaceholders = (DATA && DATA.itemPlaceholders) || {};
   var itemIds = (DATA && DATA.itemIds) || {};
   var itemArmorTypes = (DATA && DATA.itemArmorTypes) || {};
+  var itemMainStats = (DATA && DATA.itemMainStats) || {};
   var buckets = {};
   WISHLIST_SLOTS.forEach(function (s) {
     buckets[s] = [];
@@ -225,12 +235,20 @@ function wishlistBucketRealItems(playerArmorType) {
     var catalogSlot = itemSlots[name] || '';
     var rows = WISHLIST_CATALOG_SLOT_TO_ROWS[catalogSlot] || [];
     var armorType = itemArmorTypes[name] || '';
+    var mainStats = itemMainStats[name] || [];
     rows.forEach(function (row) {
       if (
         playerArmorType &&
         WISHLIST_ARMOR_TYPES[armorType] &&
         !WISHLIST_UNIVERSAL_ROWS[row] &&
         armorType !== playerArmorType
+      )
+        return;
+      if (
+        playerMainStat &&
+        WISHLIST_MAIN_STAT_ROWS[row] &&
+        mainStats.length &&
+        mainStats.indexOf(playerMainStat) === -1
       )
         return;
       buckets[row].push({ name: name, itemId: itemIds[name] });
@@ -616,7 +634,8 @@ function wishlistOtherSourcesSectionHTML() {
 
 function wishlistSectionBodyHTML(player) {
   var playerArmorType = (CLASS_ARMOR_TYPE || {})[player && player.class] || null;
-  var buckets = wishlistBucketRealItems(playerArmorType);
+  var playerMainStat = specMainStat(player && player.class, player && player.spec);
+  var buckets = wishlistBucketRealItems(playerArmorType, playerMainStat);
 
   var html =
     '<div class="profile-section"><div class="section-label">My Wishlist ' +

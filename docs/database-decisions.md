@@ -8,6 +8,16 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-07-29 -- `items.main_stats`: array, spec-scoped filtering, Trinket/Weapon/Off Hand only
+
+Decided directly in conversation (no tracking issue): filter Wishlist/BiS-grid Trinket/Weapon/Off Hand rows by whether the raider's spec can use the item's main stat, same as `items.armor_type` already gates the armor rows.
+
+- **Array, not a single value** -- nullable jsonb, e.g. `["AGILITY","INTELLECT"]`, mirroring `secondary_stats`'s shape/semantics (`null` = not yet backfilled, `[]` = confirmed stat-less/universal). Necessary because this expansion's itemization lets one item roll several usable main stats at once (e.g. a Mail shoulder both a Hunter and an Elemental Shaman can use).
+- **Backfilled by `scripts/fetch-item-stats.js`** (extended, not a new script) -- Blizzard's `preview_item.stats[].type.type` already yields clean `STRENGTH`/`AGILITY`/`INTELLECT` values; the Wowhead PTR fallback needed a second parsing path since Wowhead marks primary stats with numeric comment codes (`<!--stat5-->` etc), not the plain-text stat names secondary stats use.
+- **Falls back to the item's Equip:/Use: effect text when there's no raw stat entry at all** -- many raid trinkets (procs/on-use effects) carry their stat restriction only in the effect description (e.g. Hex Lord's Dooming Idol drains/restores Intellect via its proc, with no stat line on the tooltip). Blizzard consistently names the exact stat(s) in that text when a trinket is genuinely restricted, and uses generic phrasing or lists all three when a trinket is meant to be universal -- confirmed empirically against several current-tier trinkets, so this only ever narrows `main_stats`, never over-filters a universal proc.
+- **Filter scoped to Trinket 1/2, Weapon, Off Hand only** -- Neck/Back/Wrist/Finger never roll a main stat in this expansion's itemization, so they're intentionally left unfiltered rather than gated on data that will always be absent.
+- **Keyed by spec, not class, for the lookup** -- `specMainStat(class, spec)` in `js/common.js`, not a flat `spec -> stat` map -- because Death Knight's "Frost" spec (Strength) and Mage's "Frost" spec (Intellect) are the same string with different meanings. Druid/Monk/Paladin/Shaman (main stat varies across all their specs) and Demon Hunter's Devourer tank spec (Intellect, unlike Havoc/Vengeance's Agility) get per-spec overrides; every other class/spec resolves from a flat per-class stat.
+
 ## 2026-07-26 -- `players.is_backup_tank`/`is_backup_healer`: independent, non-exclusive, always-on flags
 
 Decided directly in conversation (no tracking issue): a way for officers to mark designated backup tanks/healers on the roster.

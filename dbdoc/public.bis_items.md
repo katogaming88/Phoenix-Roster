@@ -82,6 +82,7 @@ erDiagram
   jsonb secondary_stats
   integer wcl_zone_id
   boolean is_ptr
+  jsonb main_stats
 }
 ```
 

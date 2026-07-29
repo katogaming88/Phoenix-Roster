@@ -459,6 +459,11 @@ var BIS_UNIVERSAL_ROWS = {
   'Off Hand': true
 };
 
+// Mirrors js/wishlist.js's WISHLIST_MAIN_STAT_ROWS -- Trinket/Weapon/Off Hand
+// carry a main stat (Strength/Agility/Intellect) even without an armor_type;
+// Neck/Back/Wrist/Finger never roll one in this expansion's itemization.
+var BIS_MAIN_STAT_ROWS = { 'Trinket 1': true, 'Trinket 2': true, Weapon: true, 'Off Hand': true };
+
 // bis_items keys on (player_id, item_id); items aren't looked up by id
 // anywhere on the client yet, so resolve by exact name match (items.name has
 // a unique index) the same way #216 resolved classes_specs.
@@ -910,10 +915,12 @@ function bisSlotOnInput() {
 
   var itemSlots = DATA.itemSlots || {};
   var itemArmorTypes = DATA.itemArmorTypes || {};
+  var itemMainStats = DATA.itemMainStats || {};
   var itemPlaceholders = DATA.itemPlaceholders || {};
   var allItems = Object.keys(itemSlots);
 
   var playerArmorType = null;
+  var playerMainStat = null;
   var existingRealItems = {};
   if (_bisListEditor) {
     var roster = DATA.roster || [];
@@ -921,6 +928,7 @@ function bisSlotOnInput() {
     for (var pi = 0; pi < roster.length; pi++) {
       if (normalise(roster[pi].nameRealm) === edNorm) {
         playerArmorType = (CLASS_ARMOR_TYPE || {})[roster[pi].class] || null;
+        playerMainStat = specMainStat(roster[pi].class, roster[pi].spec);
         break;
       }
     }
@@ -954,6 +962,16 @@ function bisSlotOnInput() {
       BIS_ARMOR_TYPES[armorType] &&
       !BIS_UNIVERSAL_ROWS[slotName] &&
       armorType !== playerArmorType
+    )
+      continue;
+
+    var mainStats = itemMainStats[name] || [];
+    if (
+      !isPlaceholder &&
+      playerMainStat &&
+      BIS_MAIN_STAT_ROWS[slotName] &&
+      mainStats.length &&
+      mainStats.indexOf(playerMainStat) === -1
     )
       continue;
 
