@@ -681,6 +681,11 @@
           "type": "boolean",
           "nullable": false,
           "default": "false"
+        },
+        {
+          "name": "main_stats",
+          "type": "jsonb",
+          "nullable": true
         }
       ],
       "indexes": [

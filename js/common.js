@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.49.25';
+var VERSION = '3.49.26';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -836,6 +836,50 @@ var CLASS_ARMOR_TYPE = {
   Warlock: 'Cloth',
   Warrior: 'Plate'
 };
+
+// Every spec of these classes shares one main stat. Used by specMainStat()
+// below as the fallback for any spec not listed in SPEC_MAIN_STAT_OVERRIDE.
+var CLASS_MAIN_STAT = {
+  'Death Knight': 'STRENGTH',
+  'Demon Hunter': 'AGILITY',
+  Evoker: 'INTELLECT',
+  Hunter: 'AGILITY',
+  Mage: 'INTELLECT',
+  Priest: 'INTELLECT',
+  Rogue: 'AGILITY',
+  Warlock: 'INTELLECT',
+  Warrior: 'STRENGTH'
+};
+
+// The classes whose main stat actually varies by spec (Druid, Monk, Paladin,
+// Shaman, and Demon Hunter's Devourer tank spec) -- everything else comes
+// from CLASS_MAIN_STAT above. Keyed by spec name alone, not class+spec: none
+// of these spec names carry a different meaning for another class
+// (Restoration/Protection/Holy also appear on Shaman/Warrior/Priest
+// respectively, but resolve to the same stat there too, and those classes
+// don't need an override entry at all). Note this can't be a flat
+// spec->stat map covering every class, though -- "Frost" is a spec name for
+// both Death Knight (Strength) and Mage (Intellect), so single-stat classes
+// must resolve via CLASS_MAIN_STAT, not a shared spec-keyed table.
+var SPEC_MAIN_STAT_OVERRIDE = {
+  Balance: 'INTELLECT',
+  Feral: 'AGILITY',
+  Guardian: 'AGILITY',
+  Restoration: 'INTELLECT',
+  Brewmaster: 'AGILITY',
+  Mistweaver: 'INTELLECT',
+  Windwalker: 'AGILITY',
+  Holy: 'INTELLECT',
+  Protection: 'STRENGTH',
+  Retribution: 'STRENGTH',
+  Elemental: 'INTELLECT',
+  Enhancement: 'AGILITY',
+  Devourer: 'INTELLECT'
+};
+
+function specMainStat(className, specName) {
+  return SPEC_MAIN_STAT_OVERRIDE[specName] || CLASS_MAIN_STAT[className] || null;
+}
 
 var CLASS_COLORS = {
   'Death Knight': '#C41E3A',
@@ -1974,7 +2018,9 @@ function fetchSupabaseItems() {
   if (!supabaseClient) return Promise.resolve(null);
   var query = supabaseClient
     .from('items')
-    .select('id, wow_item_id, name, slot, armor_type, is_placeholder, icon, wcl_zone_id, secondary_stats, is_ptr')
+    .select(
+      'id, wow_item_id, name, slot, armor_type, is_placeholder, icon, wcl_zone_id, secondary_stats, main_stats, is_ptr'
+    )
     .then(
       function (result) {
         if (result.error) {
@@ -2040,6 +2086,7 @@ function buildItemMaps(rows) {
   var itemIcons = {};
   var itemZones = {};
   var itemSecondaryStats = {};
+  var itemMainStats = {};
   var itemIsPtr = {};
   (rows || []).forEach(function (row) {
     var name = String(row.name || '').trim();
@@ -2052,6 +2099,7 @@ function buildItemMaps(rows) {
     if (row.icon) itemIcons[name] = row.icon;
     if (row.wcl_zone_id != null) itemZones[name] = row.wcl_zone_id;
     if (row.secondary_stats) itemSecondaryStats[name] = row.secondary_stats;
+    if (row.main_stats) itemMainStats[name] = row.main_stats;
     if (row.is_ptr) itemIsPtr[name] = true;
   });
   return {
@@ -2063,6 +2111,7 @@ function buildItemMaps(rows) {
     itemIcons: itemIcons,
     itemZones: itemZones,
     itemSecondaryStats: itemSecondaryStats,
+    itemMainStats: itemMainStats,
     itemIsPtr: itemIsPtr
   };
 }
@@ -2548,6 +2597,7 @@ function loadData(onCoreReady, onHeavyReady) {
       DATA.itemIcons = itemMaps.itemIcons;
       DATA.itemZones = itemMaps.itemZones;
       DATA.itemSecondaryStats = itemMaps.itemSecondaryStats;
+      DATA.itemMainStats = itemMaps.itemMainStats;
       DATA.itemIsPtr = itemMaps.itemIsPtr;
       DATA.itemBosses = mapSupabaseItemBosses(itemBossRows);
       var mappedSelfReceived = selfReceivedRows ? mapSupabaseSelfReceived(selfReceivedRows) : null;

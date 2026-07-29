@@ -82,15 +82,17 @@ This writes `items_insert.sql` -- a ready-to-paste `insert into items (...)` sta
 
 `items.csv` columns match the `items` table (`wow_item_id, name, slot, armor_type, sort_id, icon, wcl_zone_id`) -- `sort_id` is left blank and needs manual fill-in per issue #132's guidance. `wcl_zone_id` is filled in automatically from the `WCL_ZONE_ID` constant (#535) -- not `ZONE_ID`, which is Wowhead's own zone numbering -- it scopes the item to this tier so old-season loot stops showing up in the Priority tab, BiS grid, and Wishlist once a newer tier's items are imported. Import via the Supabase SQL Editor, not the CLI (per project convention, DB writes are manual): first `items_insert.sql` (see above), then the `item_bosses` inserts. `item_bosses_raw.csv` uses `wow_item_id` as a placeholder key -- swap it for the DB-assigned `id` after `items.csv` is imported, same as noted in the script's header comment; once `items_insert.sql` has run, `item_bosses_raw.csv` itself can be discarded (it's not tracked in git, and it's fully superseded by `item-bosses-sql.js`'s output plus any manual in-game boss verification).
 
-## Fetching secondary stats (#560)
+## Fetching secondary stats and main stats (#560)
 
-Once the new tier's rows exist in `items`, run `scripts/fetch-item-stats.js` to backfill `secondary_stats` (which of Crit/Haste/Mastery/Vers the item rolls, used by the Priority tab):
+Once the new tier's rows exist in `items`, run `scripts/fetch-item-stats.js` to backfill both `secondary_stats` (which of Crit/Haste/Mastery/Vers the item rolls, used by the Priority tab) and `main_stats` (which of Strength/Agility/Intellect the item scales with, used by the Wishlist/BiS-grid Trinket/Weapon/Off Hand filter):
 
 1. In the Supabase SQL Editor, run `select wow_item_id from items where wow_item_id is not null` and export the result as `item_ids.csv`.
 2. `node scripts/fetch-item-stats.js` -- requires `BLIZZARD_CLIENT_ID`/`BLIZZARD_CLIENT_SECRET` in `.env` (see #559).
 3. Paste the generated `item_stats_update.sql` into the Supabase SQL Editor.
 
 **A new tier's items 404 against Blizzard's API for as long as the tier is still PTR-only** -- Blizzard's static item database lags PTR. The script automatically falls back to Wowhead's tooltip API (`nether.wowhead.com/tooltip/item/<id>?dataEnv=2&locale=0`) for anything Blizzard 404s on -- `dataEnv=2` is Wowhead's PTR/beta data environment, confirmed live to return full stats where `dataEnv=1` (used by `fetch-items.js`'s icon lookup, which only needs the icon slug and doesn't care about live-vs-PTR stat values) comes back empty. Found by inspecting the actual network requests of a similar tool (Viserio, on wowutils.com), which uses this same param. Only an item missing from *both* sources gets logged as not-found and left untouched.
+
+**`main_stats` can hold more than one value** -- this expansion's itemization lets a single item scale with several main stats at once (e.g. a Mail shoulder piece both a Hunter and an Elemental Shaman can use), shown on Wowhead/Blizzard as e.g. "Agility or Intellect". Wowhead marks these with numeric comment codes on the tooltip (`<!--stat73-->` = Agility or Intellect, etc -- see `WOWHEAD_STAT_ID_TO_MAIN_STATS` in the script) rather than plain stat-name text the way secondary stats are marked. Some trinkets (procs/on-use effects) have no raw stat entry at all and only imply their restriction in the Equip:/Use: effect description -- the script falls back to scanning that text for an explicit Strength/Agility/Intellect mention (`extractMainStatsFromEffectText`) when the raw stat list comes back empty, since Blizzard consistently names the exact stat when a proc is genuinely restricted and uses generic/all-three phrasing for universal trinkets.
 
 ## `items.is_ptr` (#561 follow-up)
 

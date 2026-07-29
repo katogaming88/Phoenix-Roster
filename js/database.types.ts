@@ -371,6 +371,7 @@ export type Database = {
           id: number
           is_placeholder: boolean
           is_ptr: boolean
+          main_stats: Json | null
           name: string
           secondary_stats: Json | null
           slot: string
@@ -384,6 +385,7 @@ export type Database = {
           id?: number
           is_placeholder?: boolean
           is_ptr?: boolean
+          main_stats?: Json | null
           name: string
           secondary_stats?: Json | null
           slot: string
@@ -397,6 +399,7 @@ export type Database = {
           id?: number
           is_placeholder?: boolean
           is_ptr?: boolean
+          main_stats?: Json | null
           name?: string
           secondary_stats?: Json | null
           slot?: string
@@ -1581,14 +1584,14 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "priority_order_item_id_fkey"
-            columns: ["other_item_id"]
+            columns: ["item_id"]
             isOneToOne: false
             referencedRelation: "items"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "priority_order_item_id_fkey"
-            columns: ["item_id"]
+            columns: ["other_item_id"]
             isOneToOne: false
             referencedRelation: "items"
             referencedColumns: ["id"]
@@ -2132,3 +2135,4 @@ export const Constants = {
     Enums: {},
   },
 } as const
+

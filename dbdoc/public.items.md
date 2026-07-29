@@ -15,6 +15,7 @@
 | secondary_stats | jsonb |  | true |  |  |  |
 | wcl_zone_id | integer |  | true |  |  |  |
 | is_ptr | boolean | false | false |  |  |  |
+| main_stats | jsonb |  | true |  |  |  |
 
 ## Constraints
 
@@ -55,6 +56,7 @@ erDiagram
   jsonb secondary_stats
   integer wcl_zone_id
   boolean is_ptr
+  jsonb main_stats
 }
 "public.bis_items" {
   integer id

@@ -8,6 +8,16 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.26] - 2026-07-29
+
+### Frontend
+
+- **Filtered Trinket/Weapon/Off Hand wishlist and BiS-grid rows by main stat** -- those rows had no `armor_type` to scope on, so every class saw every item regardless of Strength/Agility/Intellect. Added `items.main_stats` (jsonb array, mirrors `secondary_stats`) and a `specMainStat(class, spec)` lookup in `js/common.js` (spec-keyed, not class-keyed, since e.g. Death Knight Frost and Mage Frost share a spec name but not a stat), applied in `wishlistBucketRealItems()` and `bisSlotOnInput()` the same way the existing armor-type filter works. Neck/Back/Wrist/Finger are left unfiltered -- they never roll a main stat in this expansion's itemization.
+
+### Backend
+
+- **`scripts/fetch-item-stats.js` now backfills `main_stats`** alongside `secondary_stats` in the same pass, from Blizzard's Game Data API and a Wowhead PTR fallback (including a new effect-text fallback for trinkets whose stat restriction only shows up in their Equip:/Use: description, not a raw stat entry).
+
 ## [3.49.25] - 2026-07-28
 
 ### Frontend
