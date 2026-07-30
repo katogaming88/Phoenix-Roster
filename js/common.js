@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.49.28';
+var VERSION = '3.49.29';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -1021,7 +1021,7 @@ function fetchSupabaseRoster() {
   var query = supabaseClient
     .from('players')
     .select(
-      'id, name_realm, nickname, is_trial, is_bench, is_backup_tank, is_backup_healer, bis_link, bis_allowed, m_plus_excluded, m_plus_note, join_date, officer_notes, classes_specs(class, spec, role)'
+      'id, name_realm, nickname, is_trial, is_bench, is_backup_tank, is_backup_healer, bis_link, bis_allowed, wishlist_allowed, m_plus_excluded, m_plus_note, join_date, officer_notes, classes_specs(class, spec, role)'
     )
     .eq('team_id', _teamCfg.supabaseTeamId)
     .is('archived_at', null)
@@ -1191,6 +1191,7 @@ function mapSupabaseRoster(rows, jsonpRoster, mplusRejections) {
       role: cs.role,
       bisLink: row.bis_link || '',
       bisAllowed: !!row.bis_allowed,
+      wishlistAllowed: !!row.wishlist_allowed,
       joinDate: row.join_date || '',
       mPlusExcluded: mPlusExcluded,
       mPlusNote: row.m_plus_note || '',
@@ -2863,6 +2864,141 @@ function bisDisplaySortKey(entry, itemSlots) {
   return idx === -1 ? BIS_DISPLAY_SLOT_ORDER.length : idx;
 }
 
+// Read-only officer view of a raider's Wishlist, shown whenever the profile
+// viewer isn't its owner (renderProfile()'s isOwnWishlistView below) --
+// distinct from ownWishlistSectionHTML() (js/wishlist.js), which only ever
+// renders for the owner and isn't loaded on officer.html at all. Lives here
+// rather than tab-priority.js since an officer can reach another raider's
+// profile two ways: officer.html's Roster tab (backTo === 'officer', where
+// tab-priority.js's _teamItemPreferences is already loaded team-wide) and
+// index.html's hash-based lookup (js/roster.js's _resolveHashProfile,
+// backTo === 'landing' but viewer isn't the owner) -- only common.js is
+// guaranteed loaded on both. Own copy of the status label/color map for the
+// same reason (mirrors WISHLIST_LABEL_DEFAULTS/WISHLIST_TIER_COLORS
+// elsewhere), and reuses BIS_DISPLAY_SLOT_ORDER/bisDisplaySortKey above --
+// also built specifically to be usable from either page.
+var PROFILE_WISHLIST_STATUS_LABELS = [
+  { value: 'bis', label: 'BiS', color: 'var(--gold)', rgb: '214,163,68' },
+  { value: 'good', label: 'Good', color: 'var(--heal)', rgb: '61,220,132' },
+  { value: 'ok', label: 'OK', color: 'var(--tank)', rgb: '74,158,255' },
+  { value: 'catalyst', label: 'Catalyst Only', color: 'var(--ranged)', rgb: '191,140,255' },
+  { value: 'pass', label: 'Pass', color: 'var(--melee)', rgb: '255,124,92' }
+];
+
+// Keyed by player_id -- avoids re-fetching on every profile re-render when
+// tab-priority.js's team-wide _teamItemPreferences isn't loaded (index.html
+// never loads it at all; officer.html loads it lazily on dashboard boot).
+var _profileWishlistPrefsCache = {};
+
+function fetchPlayerItemPreferences(playerId) {
+  if (!supabaseClient) return Promise.resolve(null);
+  // Promise.resolve() unwraps the builder's PromiseLike into a real Promise
+  // -- needed for the chained .then().catch() below, since PromiseLike
+  // itself has no .catch() (same reason as addAttendanceNight() above).
+  var query = Promise.resolve(
+    supabaseClient.from('item_preferences').select('player_id, item_id, status, slot, note').eq('player_id', playerId)
+  )
+    .then(function (result) {
+      if (result.error) {
+        console.warn('Supabase item_preferences query failed.', result.error.message);
+        return null;
+      }
+      return result.data || [];
+    })
+    .catch(function (err) {
+      console.warn('Supabase item_preferences query failed.', err);
+      return null;
+    });
+  var timeout = new Promise(function (resolve) {
+    setTimeout(function () {
+      resolve(null);
+    }, 10000);
+  });
+  return Promise.race([query, timeout]);
+}
+
+function officerWishlistRowHTML(name, slot, pref, labelOverrides) {
+  var tier = PROFILE_WISHLIST_STATUS_LABELS.filter(function (t) {
+    return t.value === pref.status;
+  })[0];
+  var rowBorder = tier ? tier.color : 'var(--border)';
+  var rowBackground = tier ? 'rgba(' + tier.rgb + ',0.08)' : 'var(--bg-card)';
+  var label = (tier && labelOverrides[tier.value]) || (tier && tier.label) || pref.status;
+  return (
+    '<div style="padding:0.4rem 0.6rem;border-radius:4px;border:1px solid ' +
+    rowBorder +
+    ';background:' +
+    rowBackground +
+    ';margin-bottom:2px;">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;flex-wrap:wrap;">' +
+    itemNameBlockHtml(name, slot) +
+    '<span style="font-size:0.85rem;font-weight:600;color:' +
+    rowBorder +
+    ';text-transform:uppercase;letter-spacing:0.04em;">' +
+    escHtml(label) +
+    '</span>' +
+    '</div>' +
+    (pref.note
+      ? '<div style="font-size:0.92rem;color:var(--text-muted);font-style:italic;margin-top:0.25rem;">"' +
+        escHtml(pref.note) +
+        '"</div>'
+      : '') +
+    '</div>'
+  );
+}
+
+function officerWishlistSectionHTML(player, backTo) {
+  if (!player) return '';
+  if (typeof featureEnabled === 'function' && !featureEnabled('bis')) return '';
+
+  var html = '<div class="profile-section"><div class="section-label">Wishlist</div>';
+
+  var teamPrefs = typeof _teamItemPreferences !== 'undefined' ? _teamItemPreferences : undefined;
+  var prefs;
+  if (teamPrefs !== undefined && teamPrefs !== null) {
+    prefs = teamPrefs.filter(function (p) {
+      return p.player_id === player.id;
+    });
+  } else if (_profileWishlistPrefsCache[player.id]) {
+    prefs = _profileWishlistPrefsCache[player.id];
+  } else {
+    fetchPlayerItemPreferences(player.id).then(function (rows) {
+      _profileWishlistPrefsCache[player.id] = rows || [];
+      if (typeof reopenSelectedPlayer === 'function') reopenSelectedPlayer();
+      else if (typeof renderProfile === 'function') renderProfile(player.firstName, backTo);
+    });
+    return html + '<p style="color:var(--text-muted);padding:0.5rem 0;">Loading...</p></div>';
+  }
+
+  if (!prefs.length) {
+    return html + '<p style="color:var(--text-muted);padding:0.5rem 0;">No wishlist tags yet.</p></div>';
+  }
+
+  var itemIds = DATA.itemIds || {};
+  var idToName = {};
+  Object.keys(itemIds).forEach(function (name) {
+    idToName[itemIds[name]] = name;
+  });
+  var itemSlots = DATA.itemSlots || {};
+  var labelOverrides = (DATA && DATA.wishlistStatusLabels) || {};
+
+  var entries = [];
+  prefs.forEach(function (p) {
+    var name = idToName[p.item_id];
+    if (!name) return;
+    entries.push({ item: name, slot: p.slot || itemSlots[name] || '', dbSlot: p.slot || '', pref: p });
+  });
+  entries.sort(function (a, b) {
+    return bisDisplaySortKey(a, itemSlots) - bisDisplaySortKey(b, itemSlots);
+  });
+
+  entries.forEach(function (e) {
+    html += officerWishlistRowHTML(e.item, e.dbSlot || itemSlots[e.item] || '', e.pref, labelOverrides);
+  });
+
+  return html + '</div>';
+}
+
 function getSelfReceivedItems(firstName) {
   var map = DATA.selfReceived || {};
   var norm = normalise(firstName);
@@ -3287,6 +3423,13 @@ function bisAllowedFor(nameRealm) {
   return !!(player && player.bisAllowed);
 }
 
+// Same shape as bis_allowed/bisAllowedFor above -- the per-raider exception
+// to Wishlist Editing being closed team-wide (#610/#611 follow-up).
+function wishlistAllowedFor(nameRealm) {
+  var player = findRosterPlayerByNameRealm(nameRealm);
+  return !!(player && player.wishlistAllowed);
+}
+
 // -- BiS form actions (used from profile on both pages) --------------------
 function toggleBisForm(firstName) {
   var form = document.getElementById('bisForm-' + firstName);
@@ -3403,14 +3546,56 @@ function submitBiSForm(nameRealm, firstName) {
 }
 
 // -- "My list changed (same link)" flag (#278) ------------------------------
-function toggleBisFlagForm(firstName) {
-  var form = document.getElementById('bisFlagForm-' + firstName);
+// Shared by the BiS tab and, via idSuffix, the Wishlist tab's own copy (#610
+// follow-up) -- a raider shouldn't have to switch tabs to find this. Both
+// tabs render into the DOM at once (only display:none toggles between them,
+// see profileTabBis/profileTabWishlist in renderProfile()), so the two
+// copies need distinct element ids or getElementById would only ever find
+// the first one.
+function bisFlagButtonHTML(player, idSuffix) {
+  var suffix = idSuffix || '';
+  return (
+    '<div style="margin-top:0.75rem;">' +
+    '<button class="btn btn-muted" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="toggleBisFlagForm(\'' +
+    player.firstName.replace(/'/g, "\\'") +
+    "','" +
+    suffix +
+    '\')">My BiS Changed (Same Link)</button>' +
+    '<div id="bisFlagForm-' +
+    player.firstName +
+    suffix +
+    '" style="display:none;margin-top:0.75rem;">' +
+    '<textarea id="bisFlagNotes-' +
+    player.firstName +
+    suffix +
+    '" placeholder="Notes (optional)" rows="2" class="self-received-notes" style="max-width:100%;"></textarea>' +
+    '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
+    '<button class="btn btn-gold" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="submitBisFlag(\'' +
+    player.nameRealm.replace(/'/g, "\\'") +
+    "','" +
+    player.firstName.replace(/'/g, "\\'") +
+    "','" +
+    suffix +
+    '\')">Flag for Review</button>' +
+    '<button class="btn btn-muted" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="document.getElementById(\'bisFlagForm-' +
+    player.firstName +
+    suffix +
+    "').style.display='none'\">Cancel</button>" +
+    '</div>' +
+    '<p class="self-received-note">Use this when the link on file hasn\'t changed but the list behind it has. An officer will recheck your tracked items.</p>' +
+    '</div>' +
+    '</div>'
+  );
+}
+function toggleBisFlagForm(firstName, idSuffix) {
+  var form = document.getElementById('bisFlagForm-' + firstName + (idSuffix || ''));
   if (form) form.style.display = form.style.display === 'none' ? 'block' : 'none';
 }
 
-function submitBisFlag(nameRealm, firstName) {
-  var notesEl = /** @type {HTMLTextAreaElement} */ (document.getElementById('bisFlagNotes-' + firstName));
-  var formEl = document.getElementById('bisFlagForm-' + firstName);
+function submitBisFlag(nameRealm, firstName, idSuffix) {
+  var suffix = idSuffix || '';
+  var notesEl = /** @type {HTMLTextAreaElement} */ (document.getElementById('bisFlagNotes-' + firstName + suffix));
+  var formEl = document.getElementById('bisFlagForm-' + firstName + suffix);
   if (formEl)
     formEl.innerHTML = '<p style="font-size:1.07rem;color:var(--text-muted);padding:0.5rem 0;">Submitting...</p>';
 
@@ -3550,6 +3735,73 @@ function allowBisForPlayer(nameRealm, firstName) {
 
 function revokeBisForPlayer(nameRealm, firstName) {
   setBisAllowedForPlayer(nameRealm, firstName, false);
+}
+
+// Per-raider Wishlist Editing exception (#610/#611 follow-up) -- same shape
+// as the bis_allowed toggle above, so an officer can reopen just one
+// raider's Wishlist without reopening it for the whole team.
+function updateWishlistAllowDiv(nameRealm, firstName) {
+  var divEl = document.getElementById('wishlistAllowDiv-' + firstName);
+  if (!divEl) return;
+  var allowed = wishlistAllowedFor(nameRealm);
+  divEl.innerHTML = '';
+  var btn = document.createElement('button');
+  btn.className = 'btn btn-muted';
+  btn.style.cssText = 'font-size:1.04rem;padding:0.25rem 0.75rem;';
+  if (allowed) {
+    btn.textContent = 'Revoke Wishlist Access';
+    btn.onclick = function () {
+      revokeWishlistForPlayer(nameRealm, firstName);
+    };
+    var badge = document.createElement('span');
+    badge.style.cssText = 'font-size:1.02rem;color:var(--heal);margin-left:0.5rem;';
+    badge.textContent = 'Editing open';
+    divEl.appendChild(btn);
+    divEl.appendChild(badge);
+  } else {
+    btn.textContent = 'Allow Wishlist Edit';
+    btn.onclick = function () {
+      allowWishlistForPlayer(nameRealm, firstName);
+    };
+    divEl.appendChild(btn);
+  }
+}
+
+function setWishlistAllowedForPlayer(nameRealm, firstName, allowed) {
+  var divEl = document.getElementById('wishlistAllowDiv-' + firstName);
+  if (divEl) divEl.innerHTML = '<span style="font-size:1.07rem;color:var(--text-muted);">Saving...</span>';
+
+  if (!supabaseClient) {
+    updateWishlistAllowDiv(nameRealm, firstName);
+    return;
+  }
+
+  var player = findRosterPlayerByNameRealm(nameRealm);
+  supabaseClient
+    .from('players')
+    .update({ wishlist_allowed: allowed })
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .eq('name_realm', nameRealm)
+    .then(function (result) {
+      if (!result.error && player) player.wishlistAllowed = allowed;
+      if (!result.error) {
+        writeAuditLog(
+          allowed ? 'Wishlist Edit Enabled' : 'Wishlist Edit Revoked',
+          'players',
+          player ? player.id : null,
+          null
+        );
+      }
+      updateWishlistAllowDiv(nameRealm, firstName);
+    });
+}
+
+function allowWishlistForPlayer(nameRealm, firstName) {
+  setWishlistAllowedForPlayer(nameRealm, firstName, true);
+}
+
+function revokeWishlistForPlayer(nameRealm, firstName) {
+  setWishlistAllowedForPlayer(nameRealm, firstName, false);
 }
 
 // -- Self-received (raider marks item from profile) ------------------------
@@ -3951,6 +4203,9 @@ function renderProfile(firstName, backTo, container) {
       '</div>' +
       '<div id="bisAllowDiv-' +
       player.firstName +
+      '" style="margin-top:0.5rem;"></div>' +
+      '<div id="wishlistAllowDiv-' +
+      player.firstName +
       '" style="margin-top:0.5rem;"></div>';
   } else {
     bisActionHTML = '';
@@ -3991,30 +4246,7 @@ function renderProfile(firstName, backTo, container) {
     // it just re-queues it so an officer knows to recheck items behind it
     // (#278). Only makes sense once there's a link to flag.
     if (player.bisLink) {
-      bisActionHTML +=
-        '<div style="margin-top:0.75rem;">' +
-        '<button class="btn btn-muted" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="toggleBisFlagForm(\'' +
-        player.firstName.replace(/'/g, "\\'") +
-        '\')">My List Changed (Same Link)</button>' +
-        '<div id="bisFlagForm-' +
-        player.firstName +
-        '" style="display:none;margin-top:0.75rem;">' +
-        '<textarea id="bisFlagNotes-' +
-        player.firstName +
-        '" placeholder="Notes (optional)" rows="2" class="self-received-notes" style="max-width:100%;"></textarea>' +
-        '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
-        '<button class="btn btn-gold" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="submitBisFlag(\'' +
-        player.nameRealm.replace(/'/g, "\\'") +
-        "','" +
-        player.firstName.replace(/'/g, "\\'") +
-        '\')">Flag for Review</button>' +
-        '<button class="btn btn-muted" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="document.getElementById(\'bisFlagForm-' +
-        player.firstName +
-        "').style.display='none'\">Cancel</button>" +
-        '</div>' +
-        '<p class="self-received-note">Use this when the link on file hasn\'t changed but the list behind it has. An officer will recheck your tracked items.</p>' +
-        '</div>' +
-        '</div>';
+      bisActionHTML += bisFlagButtonHTML(player, '');
     }
   }
   var bisHTML = bisStatusHTML + bisActionHTML;
@@ -4172,7 +4404,29 @@ function renderProfile(firstName, backTo, container) {
   // Computed here (rather than down where streamSectionHTML is) so
   // _wishlistPrefs is already populated by the time the BiS List merge below
   // reads it -- ownWishlistSectionHTML() is what triggers/caches that fetch.
-  var wishlistSectionHTML = typeof ownWishlistSectionHTML === 'function' ? ownWishlistSectionHTML(player, backTo) : '';
+  //
+  // Branches on actual ownership, not backTo -- an officer can reach
+  // someone else's profile with backTo either value (officer.html's Roster
+  // tab passes 'officer'; index.html's hash-based lookup in js/roster.js's
+  // _resolveHashProfile() passes 'landing' even for an officer viewer, since
+  // that's also the raider-self value). ownWishlistSectionHTML() itself
+  // isn't loaded at all on officer.html and would silently no-op for a
+  // non-owner anyway, but checking ownership up front is what actually
+  // decides which section (editable vs read-only) to show, not just which
+  // one happens to be safe to call.
+  var _profileSession = typeof getDiscordSession === 'function' ? getDiscordSession() : null;
+  var isOwnWishlistView = !!(
+    _profileSession &&
+    _profileSession.nameRealm &&
+    normalise(_profileSession.nameRealm) === normalise(player.nameRealm)
+  );
+  var wishlistSectionHTML = isOwnWishlistView
+    ? typeof ownWishlistSectionHTML === 'function'
+      ? ownWishlistSectionHTML(player, backTo)
+      : ''
+    : typeof officerWishlistSectionHTML === 'function'
+      ? officerWishlistSectionHTML(player, backTo)
+      : '';
 
   // Priority list
   var bisItems = getBisItems(player.nameRealm).filter(function (e) {
@@ -4752,7 +5006,7 @@ function renderProfile(firstName, backTo, container) {
 
   var bisTabIntroHTML =
     backTo !== 'officer'
-      ? '<p style="color:var(--text-muted);font-size:0.95rem;margin:0;padding:0.75rem 1.25rem 0;">This is your Best-in-Slot list -- one target item per slot, either set by officers from your submitted BiS link or tagged as BiS on your Wishlist tab. For backups, sidegrades, or items you don\'t want, use the Wishlist tab instead.</p>'
+      ? '<p style="color:var(--text-muted);font-size:1.02rem;margin:0;padding:0.75rem 1.25rem 0;">This is your Best-in-Slot list -- one target item per slot. The link you provide here is the source of truth for what you\'re considering BiS, and each slot is either set by officers from that list, or tagged as BiS on your Wishlist tab, where you can also mark items Good, OK, Catalyst Only, or Pass.</p>'
       : '';
 
   var bisSectionHTML = featureEnabled('bis')
@@ -4767,7 +5021,7 @@ function renderProfile(firstName, backTo, container) {
       (backTo !== 'officer'
         ? '<div id="help-bislink-' +
           player.firstName +
-          '" class="help-tip">Submit a link to your Best-in-Slot list (e.g. a wowhead or raidbots URL) so officers know what you\'re targeting. An officer reviews new submissions before they show here. If the link stays the same but the list behind it changes, use "My List Changed (Same Link)" to have it rechecked.</div>'
+          '" class="help-tip">Submit a link to your Best-in-Slot list (e.g. a wowhead or raidbots URL) so officers know what you\'re targeting. An officer reviews new submissions before they show here. If the link stays the same but the list behind it changes, use "My BiS Changed (Same Link)" to have it rechecked.</div>'
         : '') +
       bisHTML +
       '</div>' +
@@ -4890,7 +5144,10 @@ function renderProfile(firstName, backTo, container) {
   } else {
     document.getElementById('profileView').innerHTML = html;
   }
-  if (backTo === 'officer') updateBisAllowDiv(player.nameRealm, player.firstName);
+  if (backTo === 'officer') {
+    updateBisAllowDiv(player.nameRealm, player.firstName);
+    updateWishlistAllowDiv(player.nameRealm, player.firstName);
+  }
   // Defensive re-apply: the inline display:none above already gets this
   // right on first paint, but ownWishlistSectionHTML()'s async reload and
   // every wishlistUpsert() write call renderProfile() again, and this keeps

@@ -22,6 +22,7 @@
 | officer_notes | text |  | true |  |  |  |
 | is_backup_tank | boolean | false | false |  |  |  |
 | is_backup_healer | boolean | false | false |  |  |  |
+| wishlist_allowed | boolean | false | false |  |  |  |
 
 ## Constraints
 
@@ -87,6 +88,7 @@ erDiagram
   text officer_notes
   boolean is_backup_tank
   boolean is_backup_healer
+  boolean wishlist_allowed
 }
 "public.attendance" {
   integer id
