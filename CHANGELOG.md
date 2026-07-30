@@ -8,6 +8,13 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.27] - 2026-07-29
+
+### Frontend
+
+- **Added a Notes sub-tab to the officer Priority tab** -- surfaces every item that has a raider-written wishlist note (`item_preferences.note`) and who wrote it, e.g. a pure-DPS raider explaining why an off-spec item is tagged "Good" instead of "BiS". Previously the note only ever rendered back on the raider's own wishlist editor; officers had no way to see it. Styled to match the raider wishlist card itself (icon/name/stat-pill header via the shared `itemNameBlockHtml()`, status-tier-colored row, class/spec badge, note in the same box style as the wishlist's own note field). A gold count badge on the sub-tab button flags that notes exist, deliberately kept off the main Priority nav badge since a note is context, not something needing action. Read-only: doesn't feed `generate_priority_order()`'s weighting, meant purely to inform officer discretion on sequencing calls.
+- **Priority List now flags a ranked player who already received a different item in the same slot this season** -- e.g. a raider ranked for the Destro belt who already has the Aff/Demo belt. Read live from `DATA.lootCounts` at render time (not baked into `generate_priority_order()`, which only reflects reality whenever that item's list is next regenerated -- this stays current regardless of generation cadence).
+
 ## [3.49.26] - 2026-07-29
 
 ### Frontend

@@ -11,8 +11,8 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=3.49.26">
-  <link rel="stylesheet" href="css/officer.css?v=3.49.26">
+  <link rel="stylesheet" href="css/styles.css?v=3.49.27">
+  <link rel="stylesheet" href="css/officer.css?v=3.49.27">
   <!-- Hover tooltips for Buff Coverage's spell links (#491) and item links
        (Priority tab/BiS grid, itemNameBlockHtml(), #567). Auto-attaches to
        any <a class="wowhead">. whTooltips must be set before power.js loads
@@ -225,6 +225,9 @@
               <button class="filter-chip" id="prio-subtab-btn-unmanaged"
                 onclick="switchPrioritySubTab('unmanaged', this)">Unmanaged Items <span class="nav-notif"
                   id="prioSubBadge" style="display:none;"></span></button>
+              <button class="filter-chip" id="prio-subtab-btn-notes"
+                onclick="switchPrioritySubTab('notes', this)">Notes <span class="nav-notif nav-notif-gold"
+                  id="prioNotesBadge" style="display:none;"></span></button>
               <button class="help-btn" onclick="toggleHelp('help-priority')" title="Show help">?</button>
             </div>
             <div id="help-priority" class="help-tip" style="margin-bottom:0.75rem;">
@@ -232,6 +235,7 @@
               <strong>Priority List</strong> -- read-only view of every item's ranked priority order as set in the Priority Order sheet. Use the search box to jump to a specific item. The badge count shows stale-after-Heroic #1s, same-boss #1 conflicts, and players holding 2+ #1s team-wide.<br>
               <strong>Unmanaged Items</strong> -- items that appear in players' BiS lists but have no priority order assigned yet in the sheet. The badge count shows how many need attention.<br>
               <strong>Contested Items</strong> -- items wanted by multiple players, showing current priority assignments and flagging any player holding 1st priority on more than one item.<br>
+              <strong>Notes</strong> -- every item with a raider-written wishlist note, and who wrote it (e.g. a pure-DPS raider explaining an off-spec BiS want). The gold badge is just a "something's here" flag, not a problem to fix. Read-only context for sequencing calls -- doesn't affect the generated priority order itself.<br>
               <strong>Incomplete Wishlists</strong> -- raiders who haven't tagged a status for every gear slot yet. Worth checking before generating a suggested priority order; see the BiS Manager &gt; BiS Lists sub-tab for which slots each raider is missing.
             </div>
             <div id="prio-sub-list">
@@ -263,6 +267,11 @@
             </div>
             <div id="prio-sub-conflicts" style="display:none;">
               <div id="conflictsContent"></div>
+            </div>
+            <div id="prio-sub-notes" style="display:none;">
+              <input type="text" id="prioNotesSearch" class="roster-search-input" placeholder="Search items..."
+                oninput="buildPriorityNotesTab()" style="margin-bottom:1rem;">
+              <div id="priorityNotesContent"></div>
             </div>
           </div>
 
@@ -1149,27 +1158,27 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/common.js?v=3.49.26"></script>
-  <script src="js/discord.js?v=3.49.26"></script>
-  <script src="js/officer.js?v=3.49.26"></script>
-  <script src="js/tabs/tab-roster.js?v=3.49.26"></script>
-  <script src="js/tabs/tab-conflicts.js?v=3.49.26"></script>
-  <script src="js/tabs/tab-fairness.js?v=3.49.26"></script>
-  <script src="js/tabs/tab-attendance.js?v=3.49.26"></script>
-  <script src="js/tabs/tab-bench-fairness.js?v=3.49.26"></script>
-  <script src="js/tabs/tab-signups.js?v=3.49.26"></script>
-  <script src="js/tabs/tab-requests.js?v=3.49.26"></script>
-  <script src="js/tabs/tab-bis.js?v=3.49.26"></script>
-  <script src="js/tabs/tab-pending-roster.js?v=3.49.26"></script>
-  <script src="js/tabs/tab-mplus.js?v=3.49.26"></script>
-  <script src="js/tabs/tab-priority.js?v=3.49.26"></script>
-  <script src="js/tabs/tab-audit.js?v=3.49.26"></script>
-  <script src="js/tabs/tab-reports.js?v=3.49.26"></script>
-  <script src="js/tabs/tab-season.js?v=3.49.26"></script>
-  <script src="js/tabs/tab-bios.js?v=3.49.26"></script>
-  <script src="js/tabs/tab-loot-import.js?v=3.49.26"></script>
-  <script src="js/tabs/tab-scoring.js?v=3.49.26"></script>
-  <script src="js/tabs/tab-admin.js?v=3.49.26"></script>
+  <script src="js/common.js?v=3.49.27"></script>
+  <script src="js/discord.js?v=3.49.27"></script>
+  <script src="js/officer.js?v=3.49.27"></script>
+  <script src="js/tabs/tab-roster.js?v=3.49.27"></script>
+  <script src="js/tabs/tab-conflicts.js?v=3.49.27"></script>
+  <script src="js/tabs/tab-fairness.js?v=3.49.27"></script>
+  <script src="js/tabs/tab-attendance.js?v=3.49.27"></script>
+  <script src="js/tabs/tab-bench-fairness.js?v=3.49.27"></script>
+  <script src="js/tabs/tab-signups.js?v=3.49.27"></script>
+  <script src="js/tabs/tab-requests.js?v=3.49.27"></script>
+  <script src="js/tabs/tab-bis.js?v=3.49.27"></script>
+  <script src="js/tabs/tab-pending-roster.js?v=3.49.27"></script>
+  <script src="js/tabs/tab-mplus.js?v=3.49.27"></script>
+  <script src="js/tabs/tab-priority.js?v=3.49.27"></script>
+  <script src="js/tabs/tab-audit.js?v=3.49.27"></script>
+  <script src="js/tabs/tab-reports.js?v=3.49.27"></script>
+  <script src="js/tabs/tab-season.js?v=3.49.27"></script>
+  <script src="js/tabs/tab-bios.js?v=3.49.27"></script>
+  <script src="js/tabs/tab-loot-import.js?v=3.49.27"></script>
+  <script src="js/tabs/tab-scoring.js?v=3.49.27"></script>
+  <script src="js/tabs/tab-admin.js?v=3.49.27"></script>
   <script>
 renderSiteNav('officer');
 document.getElementById('versionNum').textContent = VERSION;

@@ -326,6 +326,7 @@ select#playerSelect option { background:#1a1d27; }
 .nav-item:hover { background:var(--bg-elevated); color:var(--text); border-left-color:var(--border-mid); }
 .nav-item.active { background:rgba(214,163,68,0.08); color:var(--gold-light); border-left-color:var(--gold); }
 .nav-notif { display:inline-flex; align-items:center; justify-content:center; background:#c0392b; color:#fff; font-size:0.82rem; font-weight:700; min-width:16px; height:16px; border-radius:8px; padding:0 4px; line-height:1; vertical-align:middle; margin-left:4px; }
+.nav-notif-gold { background:var(--gold); color:#1a1410; }
 .nav-notif-abs { position:absolute; top:5px; right:6px; margin:0; }
 .nav-notif-dot { min-width:8px; width:8px; height:8px; padding:0; border-radius:50%; vertical-align:top; margin-left:3px; }
 

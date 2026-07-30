@@ -256,6 +256,127 @@ function buildPriorityConflictsBannerHtml(conflicts) {
   return html;
 }
 
+// Own copy of js/wishlist.js's WISHLIST_TIER_COLORS -- officer.html doesn't
+// load wishlist.js, same bundle-boundary reason as WISHLIST_LABEL_DEFAULTS
+// in tab-admin.js (whose dotColor values these .css fields match).
+var PRIO_NOTES_TIER_COLORS = {
+  bis: { css: 'var(--gold)', rgb: '214,163,68' },
+  good: { css: 'var(--heal)', rgb: '61,220,132' },
+  ok: { css: 'var(--tank)', rgb: '74,158,255' },
+  catalyst: { css: 'var(--ranged)', rgb: '191,140,255' },
+  pass: { css: 'var(--melee)', rgb: '255,124,92' }
+};
+
+// Notes sub-tab (#607 follow-up): raiders can explain a status choice via
+// item_preferences.note (e.g. a pure-DPS spec-swapper tagging a slot's
+// off-spec item "Good" with "BiS for Destro"), but that note only ever
+// rendered back on the raider's own wishlist editor -- officers had no way
+// to see it. This is read-only and deliberately doesn't feed
+// generate_priority_order()'s weighting (20260720165552_priority_wishlist_ranking.sql
+// already scores 'good' uniformly at 0.90x for everyone); surfacing the
+// reasoning here is meant to inform officer discretion on sequencing calls,
+// not to auto-rank one player's "good" above another's.
+// Uses WISHLIST_LABEL_DEFAULTS (tab-admin.js) for status labels/overrides --
+// officer.html doesn't load js/wishlist.js, same reasoning as the
+// BIS_SLOTS/WISHLIST_SLOTS duplication elsewhere in this file.
+function buildPriorityNotesTab() {
+  var el = document.getElementById('priorityNotesContent');
+  if (!el) return;
+  if (_teamItemPreferences === null) {
+    el.innerHTML = '<p style="color:var(--text-muted);padding:1rem;">Loading...</p>';
+    fetchTeamItemPreferences().then(function (rows) {
+      _teamItemPreferences = rows || [];
+      buildPriorityNotesTab();
+    });
+    return;
+  }
+
+  var itemIds = DATA.itemIds || {};
+  var idToName = {};
+  Object.keys(itemIds).forEach(function (name) {
+    idToName[itemIds[name]] = name;
+  });
+  var itemSlots = DATA.itemSlots || {};
+  var rosterById = {};
+  (DATA.roster || []).forEach(function (p) {
+    rosterById[p.id] = p;
+  });
+  var labelOverrides = (DATA && DATA.wishlistStatusLabels) || {};
+  var statusLabels = {};
+  (typeof WISHLIST_LABEL_DEFAULTS !== 'undefined' ? WISHLIST_LABEL_DEFAULTS : []).forEach(function (t) {
+    statusLabels[t.value] = labelOverrides[t.value] || t.label;
+  });
+
+  var searchTerm = normalise((document.getElementById('prioNotesSearch') || {}).value || '');
+
+  var byItem = {};
+  _teamItemPreferences.forEach(function (p) {
+    if (!p.note || !p.note.trim()) return;
+    if (p.slot) return; // Other Sources placeholder rows aren't a real catalog item to group under
+    var name = idToName[p.item_id];
+    if (!name) return;
+    if (searchTerm && normalise(name).indexOf(searchTerm) === -1) return;
+    (byItem[name] = byItem[name] || []).push(p);
+  });
+
+  var itemNames = Object.keys(byItem).sort(function (a, b) {
+    return a.localeCompare(b);
+  });
+
+  if (!itemNames.length) {
+    el.innerHTML = '<p style="color:var(--text);padding:1rem;">No wishlist notes yet.</p>';
+    return;
+  }
+
+  var html = '';
+  itemNames.forEach(function (name) {
+    var slot = itemSlots[name] || '';
+    html +=
+      '<div style="border:1px solid var(--border);border-radius:4px;margin-bottom:0.5rem;padding:0.6rem 0.75rem;">';
+    html += itemNameBlockHtml(name, slot);
+    html += '<div style="margin-top:0.5rem;display:flex;flex-direction:column;gap:2px;">';
+    byItem[name].forEach(function (p) {
+      var player = rosterById[p.player_id];
+      var display = player ? player.nick || player.firstName : 'Player #' + p.player_id;
+      var color = PRIO_NOTES_TIER_COLORS[p.status];
+      var rowBackground = color ? 'rgba(' + color.rgb + ',0.08)' : 'var(--bg-card)';
+      var rowBorder = color ? color.css : 'var(--border)';
+      html +=
+        '<div style="padding:0.4rem 0.6rem;border-radius:4px;border:1px solid ' +
+        rowBorder +
+        ';background:' +
+        rowBackground +
+        ';">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;flex-wrap:wrap;">' +
+        '<span style="display:flex;align-items:center;gap:0.5rem;">' +
+        '<span style="color:var(--text);font-weight:600;">' +
+        escHtml(display) +
+        '</span>' +
+        (player && player.class
+          ? '<span class="badge badge-class" style="' +
+            classBadgeStyle(player.class) +
+            ';">' +
+            escHtml(player.spec || player.class) +
+            '</span>'
+          : '') +
+        '</span>' +
+        '<span style="font-size:0.85rem;font-weight:600;color:' +
+        rowBorder +
+        ';text-transform:uppercase;letter-spacing:0.04em;">' +
+        escHtml(statusLabels[p.status] || p.status) +
+        '</span>' +
+        '</div>' +
+        '<div class="self-received-source" style="width:100%;box-sizing:border-box;font-size:0.92rem;margin-top:0.25rem;">' +
+        escHtml(p.note) +
+        '</div>' +
+        '</div>';
+    });
+    html += '</div></div>';
+  });
+
+  el.innerHTML = html;
+}
+
 function updatePriorityBadges() {
   var unmanagedCount = getUnmanagedItems().length;
   var conflicts = getPriorityListConflicts();
@@ -293,7 +414,7 @@ function fetchTeamItemPreferences() {
   if (!supabaseClient) return Promise.resolve(null);
   var query = supabaseClient
     .from('item_preferences')
-    .select('player_id, item_id, status, slot')
+    .select('player_id, item_id, status, slot, note')
     .eq('team_id', _teamCfg.supabaseTeamId)
     .then(function (result) {
       if (result.error) {
@@ -436,6 +557,27 @@ function renderWishlistIncompleteBanner() {
     return;
   }
   if (compactEl) compactEl.innerHTML = buildWishlistIncompleteCompactHtml(getIncompleteWishlists());
+  updatePriorityNotesBadge();
+}
+
+// Gold rather than the red .nav-notif used for unmanaged/conflicts counts --
+// this isn't a problem to fix, just a "something's here, go take a look"
+// flag so an officer knows to glance at the Notes sub-tab. Deliberately kept
+// off the top-level Priority nav badge (updatePriorityBadges()'s total) --
+// that badge means "needs attention/action"; a note is just context, not an
+// actionable item on its own.
+function updatePriorityNotesBadge() {
+  var badge = document.getElementById('prioNotesBadge');
+  if (!badge) return;
+  if (_teamItemPreferences === null) {
+    badge.style.display = 'none';
+    return;
+  }
+  var count = _teamItemPreferences.filter(function (p) {
+    return p.note && p.note.trim() && !p.slot;
+  }).length;
+  badge.textContent = count;
+  badge.style.display = count > 0 ? '' : 'none';
 }
 
 // Re-fetches the fairness/health checks and refreshes the nav + sub-tab
@@ -589,6 +731,33 @@ function togglePrioSection(id) {
   if (chevron) chevron.textContent = collapsed ? '-' : '+';
 }
 
+// Same-slot "already got one" flag (#607 follow-up): generate_priority_order()
+// only excludes/derates a player for the exact item_id they already received
+// (has_myth/has_hero/has_champ in 20260720165552_priority_wishlist_ranking.sql)
+// -- a player who already has this season's belt from a *different* item
+// shows up on another belt's ranked list with no signal at all. Rather than
+// bake a slot-level penalty into the generator (which only reflects reality
+// whenever that item's list is next regenerated -- could go stale for a
+// while if an officer doesn't revisit it), this reads DATA.lootCounts live
+// at render time so it's always current regardless of generation cadence.
+// Client-side only, informational -- doesn't change ranking, just tells the
+// officer to weigh it themselves before awarding.
+function playerOtherSlotItems(player, slot, currentItem, itemSlots) {
+  if (!player || !slot) return [];
+  var seasonItems = getSeasonLootItems(player.firstName);
+  var seen = {};
+  var out = [];
+  seasonItems.forEach(function (it) {
+    var name = typeof it === 'string' ? it : it.name;
+    if (!name || name === currentItem) return;
+    if ((itemSlots[name] || '') !== slot) return;
+    if (seen[name]) return;
+    seen[name] = true;
+    out.push(name);
+  });
+  return out;
+}
+
 function getItemGroup(slot) {
   var s = (slot || '').toUpperCase();
   if (s === 'TRINKET' || s === 'TRINKET 1' || s === 'TRINKET 2') return 'Trinket';
@@ -702,10 +871,19 @@ function buildPriorityTab() {
                 : role === 'Melee'
                   ? 'var(--melee)'
                   : 'var(--text)';
+        var otherSlotItems = playerOtherSlotItems(player, slot, item, itemSlots);
         out += '<div class="prio-rank-row">';
         out += '<span class="prio-rank-num">' + (j + 1) + '</span>';
         out += '<span class="prio-rank-name" style="color:' + roleColor + ';">' + display + '</span>';
         if (role) out += '<span class="prio-role-badge prio-role-' + role + '">' + role.toUpperCase() + '</span>';
+        if (otherSlotItems.length) {
+          out +=
+            '<span style="margin-left:0.5rem;font-size:0.85em;color:var(--melee);" title="Already received ' +
+            escHtml(otherSlotItems.join(', ')) +
+            ' this season -- same slot">Already has this slot (' +
+            escHtml(otherSlotItems.join(', ')) +
+            ')</span>';
+        }
         out += '</div>';
       }
       out += '</div></div>';
