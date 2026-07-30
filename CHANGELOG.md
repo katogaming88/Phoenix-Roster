@@ -8,6 +8,16 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.30] - 2026-07-30
+
+### Frontend
+
+- **Added a "Guild Officer" access tier for cross-team officer dashboard access** -- a standalone, site-admin-granted role (new "Guild Officers" tab on the site admin dashboard, granted/revoked by Discord ID) for people with guild-wide authority who aren't necessarily an officer/team_leader on any one team's own roster. On a team a guild officer isn't natively an officer of, they get full view+edit access to that team's Roster (players, attendance) and can add/edit Guild Officer Bios; read-only access to Reports, Audit Log, and Priority Order (no edit/regenerate); and no access at all to Approvals (M+ Exclusions, Signups, BiS link requests), Season Settings, Priority generation/editing, Loot Import, or the Admin tab.
+
+### Backend
+
+- New `guild_officers` table (mirrors `site_admins`) and `is_guild_officer()`, OR'd into the `players`/`attendance` write policies, the `audit_log`/`team_members` read policies, and the `write_audit_log()`/`set_guild_officer_bios()` function gates. Deliberately not OR'd into `bis_requests`, `mplus_exclusion_requests`, `season_signups`, `self_received_requests`, `team_settings`, or the `priority_order`/`rclc_loot` write policies, so those stay RLS-blocked for a guild-officer-only caller regardless of what the frontend renders.
+
 ## [3.49.29] - 2026-07-30
 
 ### Frontend

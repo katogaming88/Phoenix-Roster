@@ -1,9 +1,9 @@
 table_name,policy_name,roles,operation,permissive,using_expression,with_check_expression
 attendance,Claude readers read attendance,claude_readers,SELECT,PERMISSIVE,true,
-attendance,Officers write attendance,public,ALL,PERMISSIVE,"(my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text]))","(my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text]))"
+attendance,Officers write attendance,public,ALL,PERMISSIVE,"((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_guild_officer())","((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_guild_officer())"
 attendance,Public read attendance,public,SELECT,PERMISSIVE,true,
 audit_log,Claude readers read audit_log,claude_readers,SELECT,PERMISSIVE,true,
-audit_log,Officers read audit_log,public,SELECT,PERMISSIVE,"((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())",
+audit_log,Officers read audit_log,public,SELECT,PERMISSIVE,"((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin() OR is_guild_officer())",
 bis_items,Claude readers read bis_items,claude_readers,SELECT,PERMISSIVE,true,
 bis_items,Officers write bis_items,public,ALL,PERMISSIVE,"(my_team_role(( SELECT players.team_id
    FROM players
@@ -16,6 +16,9 @@ bis_requests,Officers read bis_requests,public,SELECT,PERMISSIVE,"((my_team_role
 bis_requests,Officers update bis_requests,public,UPDATE,PERMISSIVE,"((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())","((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())"
 classes_specs,Claude readers read classes_specs,claude_readers,SELECT,PERMISSIVE,true,
 classes_specs,Public read classes_specs,public,SELECT,PERMISSIVE,true,
+guild_officers,Claude readers read guild_officers,claude_readers,SELECT,PERMISSIVE,true,
+guild_officers,Site Admins read guild_officers,public,SELECT,PERMISSIVE,is_site_admin(),
+guild_officers,Site Admins write guild_officers,public,ALL,PERMISSIVE,is_site_admin(),is_site_admin()
 item_bosses,Claude readers read item_bosses,claude_readers,SELECT,PERMISSIVE,true,
 item_bosses,Public read item_bosses,public,SELECT,PERMISSIVE,true,
 item_preferences,Claude readers read item_preferences,claude_readers,SELECT,PERMISSIVE,true,
@@ -33,7 +36,7 @@ player_wcl_season_perf,Claude readers read player_wcl_season_perf,claude_readers
 player_wcl_season_perf,Officers write player_wcl_season_perf,public,ALL,PERMISSIVE,"(my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text]))","(my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text]))"
 player_wcl_season_perf,Public read player_wcl_season_perf,public,SELECT,PERMISSIVE,true,
 players,Claude readers read players,claude_readers,SELECT,PERMISSIVE,true,
-players,Officers write players,public,ALL,PERMISSIVE,"(my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text]))","(my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text]))"
+players,Officers write players,public,ALL,PERMISSIVE,"((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_guild_officer())","((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_guild_officer())"
 players,Public read players,public,SELECT,PERMISSIVE,true,
 priority_order,Claude readers read priority_order,claude_readers,SELECT,PERMISSIVE,true,
 priority_order,Officers write priority_order,public,ALL,PERMISSIVE,"(my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text]))","(my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text]))"
@@ -69,7 +72,7 @@ streamers,Public read streamers,public,SELECT,PERMISSIVE,true,
 streamers,Raiders manage own streamer,public,ALL,PERMISSIVE,is_own_player(player_id),is_own_player(player_id)
 team_members,Claude readers read team_members,claude_readers,SELECT,PERMISSIVE,true,
 team_members,Members read own team_members,public,SELECT,PERMISSIVE,(auth_user_id = auth.uid()),
-team_members,Officers read own team_members,public,SELECT,PERMISSIVE,"((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())",
+team_members,Officers read own team_members,public,SELECT,PERMISSIVE,"((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin() OR is_guild_officer())",
 team_members,Team leaders write team_members,public,ALL,PERMISSIVE,((my_team_role(team_id) = 'team_leader'::text) OR is_site_admin()),((my_team_role(team_id) = 'team_leader'::text) OR is_site_admin())
 team_raid_progress,Claude readers read team_raid_progress,claude_readers,SELECT,PERMISSIVE,true,
 team_raid_progress,Officers write team_raid_progress,public,ALL,PERMISSIVE,"(my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text]))","(my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text]))"

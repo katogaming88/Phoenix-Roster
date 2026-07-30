@@ -164,18 +164,21 @@ function renderBisSubmissions(submissions) {
           s.notes +
           '</div>'
         : '') +
-      '<div style="display:flex;gap:0.5rem;margin-top:0.75rem;">' +
-      '<button class="btn request-approve-btn" onclick="approveBisSubmission(' +
-      s.id +
-      ",'" +
-      s.nameRealm.replace(/'/g, "\\'") +
-      '\', this)">Approve</button>' +
-      '<button class="btn request-reject-btn" onclick="rejectBisSubmission(' +
-      s.id +
-      ",'" +
-      s.nameRealm.replace(/'/g, "\\'") +
-      '\', this)">Reject</button>' +
-      '</div>' +
+      // #607: BiS approvals stay excluded for a guild-officer-only visitor.
+      (window._guildOfficerAccessLevel === 'guild'
+        ? ''
+        : '<div style="display:flex;gap:0.5rem;margin-top:0.75rem;">' +
+          '<button class="btn request-approve-btn" onclick="approveBisSubmission(' +
+          s.id +
+          ",'" +
+          s.nameRealm.replace(/'/g, "\\'") +
+          '\', this)">Approve</button>' +
+          '<button class="btn request-reject-btn" onclick="rejectBisSubmission(' +
+          s.id +
+          ",'" +
+          s.nameRealm.replace(/'/g, "\\'") +
+          '\', this)">Reject</button>' +
+          '</div>') +
       '</div>';
   });
   container.innerHTML = html + '</div>';
@@ -185,6 +188,11 @@ function renderBisSubmissions(submissions) {
 // pair for an inline optional note field before confirming, same as
 // rejectBisSubmission below.
 function approveBisSubmission(requestId, nameRealm, btnEl) {
+  // #607: BiS link request approvals are excluded for a guild-officer-only
+  // visitor -- the BiS Manager tab itself stays visible (lists/notes are
+  // fine), but this approval sub-surface is not (RLS blocks the underlying
+  // bis_requests write regardless).
+  if (window._guildOfficerAccessLevel === 'guild') return;
   var actionsDiv = btnEl.parentNode;
   var noteId = '_bisApproveNote' + requestId;
   var nrSafe = nameRealm.replace(/'/g, "\\'");
@@ -278,6 +286,8 @@ function confirmApproveBisSubmission(requestId, nameRealm, note, btnEl) {
 // swaps the Approve/Reject pair for an inline note field so an officer can
 // leave a reason before confirming, rather than rejecting blind.
 function rejectBisSubmission(requestId, nameRealm, btnEl) {
+  // #607: see approveBisSubmission above.
+  if (window._guildOfficerAccessLevel === 'guild') return;
   var actionsDiv = btnEl.parentNode;
   var noteId = '_bisRejectNote' + requestId;
   var nrSafe = nameRealm.replace(/'/g, "\\'");

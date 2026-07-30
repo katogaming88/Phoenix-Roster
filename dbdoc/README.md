@@ -41,6 +41,7 @@
 | [public.item_preferences](public.item_preferences.md) | 10 |  | BASE TABLE |
 | [public.site_settings](public.site_settings.md) | 5 |  | BASE TABLE |
 | [public.incoming_roster](public.incoming_roster.md) | 7 |  | VIEW |
+| [public.guild_officers](public.guild_officers.md) | 3 |  | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -88,6 +89,10 @@
 | public.update_own_signup | int4 | p_signup_id integer, p_name_realm text, p_class text, p_spec text, p_off_specs text DEFAULT ''::text, p_main_swap boolean DEFAULT false, p_player_note text DEFAULT NULL::text, p_swap_from_name_realm text DEFAULT NULL::text | FUNCTION |
 | public.add_signup_to_roster | int4 | p_signup_id integer, p_is_trial boolean DEFAULT true, p_archive_player_id integer DEFAULT NULL::integer, p_is_backup_tank boolean DEFAULT false, p_is_backup_healer boolean DEFAULT false | FUNCTION |
 | public.set_team_setting | jsonb | p_team_id integer, p_updates jsonb, p_skip_audit boolean DEFAULT false | FUNCTION |
+| public.is_guild_officer | bool |  | FUNCTION |
+| public.admin_list_guild_officers | record |  | FUNCTION |
+| public.admin_grant_guild_officer | int4 | p_discord_id text | FUNCTION |
+| public.admin_revoke_guild_officer | void | p_discord_id text | FUNCTION |
 
 ## Enums
 
@@ -525,6 +530,11 @@ erDiagram
   text spec
   text role
   text swap_from_name_realm
+}
+"public.guild_officers" {
+  integer id
+  text discord_id
+  uuid auth_user_id FK
 }
 ```
 

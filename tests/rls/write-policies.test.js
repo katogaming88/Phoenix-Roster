@@ -4,7 +4,18 @@
 // a rejection can only come from RLS. Every statement runs in a rolled-back
 // transaction.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, queryAs, RLS_DENIED, OFFICER_T1, TEAM_LEADER_T1, RAIDER_T1, SITE_ADMIN, OFFICER_T2 } from './helpers.js';
+import {
+  pool,
+  queryAs,
+  withRole,
+  RLS_DENIED,
+  OFFICER_T1,
+  TEAM_LEADER_T1,
+  RAIDER_T1,
+  SITE_ADMIN,
+  OFFICER_T2,
+  GUILD_OFFICER
+} from './helpers.js';
 
 async function expectDenied(role, uid, sql, params) {
   await expect(queryAs(role, uid, sql, params)).rejects.toMatchObject({ code: RLS_DENIED });
@@ -172,6 +183,76 @@ describe('add_signup_to_roster is officer-gated through RLS', () => {
   });
 });
 
+describe('guild officer tier (#607)', () => {
+  // A standalone grant (guild_officers), not derived from any team_members
+  // role -- GUILD_OFFICER is a plain raider on team 1 with no officer/
+  // team_leader role anywhere. Full access: players/attendance, on a team
+  // they hold no team-officer role on. Everything else stays a DENY, same
+  // as a raider, since is_guild_officer() is deliberately never OR'd into
+  // those policies.
+  const FULL_ACCESS_INSERTS = {
+    players: DIRECT_TEAM_INSERTS.players,
+    attendance: DIRECT_TEAM_INSERTS.attendance
+  };
+  const EXCLUDED_INSERTS = {
+    priority_order: DIRECT_TEAM_INSERTS.priority_order,
+    rclc_loot: DIRECT_TEAM_INSERTS.rclc_loot,
+    player_wcl_season_perf: DIRECT_TEAM_INSERTS.player_wcl_season_perf
+  };
+
+  for (const [table, sql] of Object.entries(FULL_ACCESS_INSERTS)) {
+    it(`guild officer can insert into ${table} on a team with no officer role there`, async () => {
+      const res = await queryAs('authenticated', GUILD_OFFICER, sql);
+      expect(res.rowCount).toBe(1);
+    });
+  }
+
+  for (const [table, sql] of Object.entries(EXCLUDED_INSERTS)) {
+    it(`guild officer cannot insert into ${table} (excluded from the tier)`, async () => {
+      await expectDenied('authenticated', GUILD_OFFICER, sql);
+    });
+  }
+
+  it('guild officer cannot write team_members', async () => {
+    await expectDenied(
+      'authenticated',
+      GUILD_OFFICER,
+      "insert into public.team_members (team_id, discord_id, role) values (1, 'discord-guild-officer-write-test', 'raider')"
+    );
+  });
+
+  it('guild officer cannot update team_settings', async () => {
+    const res = await queryAs(
+      'authenticated',
+      GUILD_OFFICER,
+      `update public.team_settings set config = '{"seeded": false}' where team_id = 1`
+    );
+    expect(res.rowCount).toBe(0);
+  });
+
+  it('guild officer cannot update a bis_requests row (approvals stay excluded)', async () => {
+    const res = await queryAs(
+      'authenticated',
+      GUILD_OFFICER,
+      "update public.bis_requests set status = 'approved' where id = 1"
+    );
+    expect(res.rowCount).toBe(0);
+  });
+
+  it('write_audit_log admits a guild officer', async () => {
+    const res = await queryAs(
+      'authenticated',
+      GUILD_OFFICER,
+      "select public.write_audit_log(1, 'guild officer test action') as id"
+    );
+    expect(res.rows[0].id).toBeGreaterThan(0);
+  });
+
+  it('a plain raider (no guild_officers grant) still cannot write players -- regression guard', async () => {
+    await expectDenied('authenticated', RAIDER_T1, DIRECT_TEAM_INSERTS.players);
+  });
+});
+
 describe('audit_log has no client write path', () => {
   const sql = "insert into public.audit_log (team_id, action) values (1, 'test-action')";
   it('team 1 officer cannot insert', async () => {
@@ -179,6 +260,50 @@ describe('audit_log has no client write path', () => {
   });
   it('site admin cannot insert', async () => {
     await expectDenied('authenticated', SITE_ADMIN, sql);
+  });
+});
+
+describe('set_guild_officer_bios admits site admins and guild officers (#607)', () => {
+  const sql = "select public.set_guild_officer_bios('[]'::jsonb) as bios";
+  it('site admin can call it', async () => {
+    const res = await queryAs('authenticated', SITE_ADMIN, sql);
+    expect(res.rows[0].bios).toEqual([]);
+  });
+  it('guild officer can call it', async () => {
+    const res = await queryAs('authenticated', GUILD_OFFICER, sql);
+    expect(res.rows[0].bios).toEqual([]);
+  });
+  it('a team 1 officer with no guild_officers grant cannot call it', async () => {
+    await expect(queryAs('authenticated', OFFICER_T1, sql)).rejects.toThrow(/Not authorized/);
+  });
+  it('a plain raider cannot call it', async () => {
+    await expect(queryAs('authenticated', RAIDER_T1, sql)).rejects.toThrow(/Not authorized/);
+  });
+});
+
+describe('guild officer grant/revoke/list is site-admin only (#607)', () => {
+  it('site admin can grant, list, and revoke', async () => {
+    // Grant/list/revoke must run in the same transaction -- queryAs() rolls
+    // back after each call, so a separate call would never see the insert.
+    await withRole('authenticated', SITE_ADMIN, async (q) => {
+      const grant = await q("select public.admin_grant_guild_officer('discord-test-grant') as id");
+      expect(grant.rows[0].id).toBeGreaterThan(0);
+      const list = await q('select * from public.admin_list_guild_officers()');
+      expect(list.rows.some((r) => r.discord_id === 'discord-test-grant')).toBe(true);
+      await q("select public.admin_revoke_guild_officer('discord-test-grant')");
+      const listAfter = await q('select * from public.admin_list_guild_officers()');
+      expect(listAfter.rows.some((r) => r.discord_id === 'discord-test-grant')).toBe(false);
+    });
+  });
+  it('a guild officer cannot grant guild officer access to someone else', async () => {
+    await expect(
+      queryAs('authenticated', GUILD_OFFICER, "select public.admin_grant_guild_officer('discord-test-grant-2')")
+    ).rejects.toThrow(/Not authorized/);
+  });
+  it('a team leader cannot grant guild officer access', async () => {
+    await expect(
+      queryAs('authenticated', TEAM_LEADER_T1, "select public.admin_grant_guild_officer('discord-test-grant-3')")
+    ).rejects.toThrow(/Not authorized/);
   });
 });
 

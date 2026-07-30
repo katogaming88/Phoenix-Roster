@@ -16,6 +16,15 @@ function buildLootImportForm() {
   var el = document.getElementById('loot-sub-import');
   if (!el) return;
 
+  // #607: loot import is excluded for a guild-officer-only visitor (the
+  // RCLC dedupe key is per-team and a mixed-team paste can't be caught by
+  // it, so this stays blocked even for otherwise-full-access surfaces).
+  if (window._guildOfficerAccessLevel === 'guild') {
+    el.innerHTML =
+      '<p class="signup-officer-note">Loot import is not available for guild officer access on a team you are not an officer of.</p>';
+    return;
+  }
+
   var seasonName = window.DATA && DATA.seasonName ? DATA.seasonName.trim() : '';
 
   var html = '<div class="signup-officer-panel">';

@@ -338,6 +338,10 @@ function renderSignupHistory(signups) {
 // reviewed_by (+ optional signup_officer_note) via the "Officers update
 // signups" RLS policy -- no RPC needed for approve/reject.
 function reviewSignup(signupId, status, btnEl) {
+  // #607: signup approvals are excluded for a guild-officer-only visitor --
+  // the nav tab is already hidden for them, this is a second checkpoint
+  // (RLS blocks the underlying write regardless).
+  if (window._guildOfficerAccessLevel === 'guild') return Promise.resolve();
   var card = btnEl.closest('.signup-response-card');
   var noteEl = card ? card.querySelector('.signup-officer-note-input') : null;
   var note = noteEl ? noteEl.value.trim() : '';

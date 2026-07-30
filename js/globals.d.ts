@@ -23,5 +23,9 @@ declare global {
     // live on window.
     _rosterCoreCallback?: (data: any) => void;
     _rosterHeavyCallback?: (heavy: any) => void;
+    // Guild officer access level for the currently viewed team (#607), set
+    // by officer.html's applyGuildOfficerNavVisibility(). 'full'/'guild'/
+    // false -- see guildOfficerAccessLevel() in js/discord.js.
+    _guildOfficerAccessLevel?: 'full' | 'guild' | false;
   }
 }

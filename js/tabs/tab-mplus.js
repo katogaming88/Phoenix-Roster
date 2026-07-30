@@ -189,6 +189,10 @@ function renderMPlusSubmissions(submissions) {
 }
 
 function approveMPlusExclusion(rowIndex, nameRealm, btnEl) {
+  // #607: M+ exclusion approvals are excluded for a guild-officer-only
+  // visitor -- the nav tab is already hidden for them, this is a second
+  // checkpoint (RLS blocks the underlying write regardless).
+  if (window._guildOfficerAccessLevel === 'guild') return;
   var actionsDiv = btnEl.parentNode;
   var noteId = '_mplusNote' + rowIndex;
   actionsDiv.innerHTML =
@@ -289,6 +293,8 @@ function confirmApproveMPlusExclusion(requestId, nameRealm, note, btnEl) {
 }
 
 function rejectMPlusExclusion(rowIndex, nameRealm, btnEl) {
+  // #607: see approveMPlusExclusion above.
+  if (window._guildOfficerAccessLevel === 'guild') return;
   var actionsDiv = btnEl.parentNode;
   var noteId = '_mplusRejectNote' + rowIndex;
   var nrSafe = nameRealm.replace(/'/g, "\\'");

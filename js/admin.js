@@ -52,6 +52,7 @@ function switchTab(name) {
   document.getElementById('tab-' + name).classList.add('active');
   if (name === 'teams') loadTeams();
   if (name === 'siteadmins') loadSiteAdmins();
+  if (name === 'guildofficers') loadGuildOfficers();
   if (name === 'flags') loadTeams().then(loadFeatureFlags);
   if (name === 'audit') loadAuditLog();
   if (name === 'maintenance') loadMaintenanceStatus();
@@ -85,6 +86,7 @@ function checkAdminAccess() {
         loadAuditLog();
       });
       loadSiteAdmins();
+      loadGuildOfficers();
       loadMaintenanceStatus();
     });
   });
@@ -281,6 +283,75 @@ function submitRevokeSiteAdmin(discordId) {
       return;
     }
     loadSiteAdmins();
+  });
+}
+
+// ── Guild Officers (#607) ─────────────────────────────────────────────────
+
+var _adminGuildOfficers = [];
+
+function loadGuildOfficers() {
+  supabaseClient.rpc('admin_list_guild_officers').then(function (result) {
+    _adminGuildOfficers = result.data || [];
+    renderGuildOfficerRows();
+  });
+}
+
+function renderGuildOfficerRows() {
+  var tbody = document.getElementById('adminGuildOfficerRows');
+  tbody.innerHTML = _adminGuildOfficers
+    .map(function (go) {
+      return (
+        '<tr>' +
+        '<td>' +
+        escapeHtml(go.display_name || '(not yet logged in)') +
+        '</td>' +
+        '<td class="admin-discord-id">' +
+        escapeHtml(go.discord_id) +
+        '</td>' +
+        '<td class="admin-row-actions">' +
+        '<button class="btn btn-danger" onclick="submitRevokeGuildOfficer(\'' +
+        escapeHtml(go.discord_id) +
+        '\')">Revoke</button>' +
+        '</td>' +
+        '</tr>'
+      );
+    })
+    .join('');
+}
+
+function submitGrantGuildOfficer() {
+  var input = document.getElementById('grantGuildOfficerDiscordId');
+  var discordId = input.value.trim();
+  var errorEl = document.getElementById('grantGuildOfficerError');
+  errorEl.style.display = 'none';
+
+  if (!discordId) {
+    errorEl.textContent = 'Discord user ID is required.';
+    errorEl.style.display = '';
+    return;
+  }
+
+  supabaseClient.rpc('admin_grant_guild_officer', { p_discord_id: discordId }).then(function (result) {
+    if (result.error) {
+      errorEl.textContent = result.error.message;
+      errorEl.style.display = '';
+      return;
+    }
+    input.value = '';
+    loadGuildOfficers();
+  });
+}
+
+function submitRevokeGuildOfficer(discordId) {
+  if (!confirm('Revoke guild officer access for this Discord account?')) return;
+
+  supabaseClient.rpc('admin_revoke_guild_officer', { p_discord_id: discordId }).then(function (result) {
+    if (result.error) {
+      alert(result.error.message);
+      return;
+    }
+    loadGuildOfficers();
   });
 }
 

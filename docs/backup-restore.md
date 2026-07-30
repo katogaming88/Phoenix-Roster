@@ -89,13 +89,13 @@ The order matters; each step exists because a later one depends on it.
 
 1. **Create a new Supabase project.** `anon`, `authenticated`, and `service_role` already exist on a real project.
 2. **Create the custom roles**: run `supabase/roles.sql`, then the read-only roles per `docs/claude-readonly-db-access.md`.
-3. **Restore the newest public dump**: `pg_restore --no-owner -d "<new project's connection string>" wga-<date>.dump`. The "expected errors" list in `db-backup.yml`'s verify step is specific to its bare container -- a real project has an `auth` schema, so most auth-referencing DDL applies cleanly. What WILL fail here: the four FK constraints pointing at `auth.users` (`audit_log.actor_id`, `site_admins.auth_user_id`, `team_members.auth_user_id`, `season_signups.auth_user_id`), because the restored rows hold ids from the old project's now-gone `auth.users`. `pg_restore` skips the failed constraints and keeps the data; see step 9 for putting them back.
+3. **Restore the newest public dump**: `pg_restore --no-owner -d "<new project's connection string>" wga-<date>.dump`. The "expected errors" list in `db-backup.yml`'s verify step is specific to its bare container -- a real project has an `auth` schema, so most auth-referencing DDL applies cleanly. What WILL fail here: the five FK constraints pointing at `auth.users` (`audit_log.actor_id`, `site_admins.auth_user_id`, `team_members.auth_user_id`, `season_signups.auth_user_id`, `guild_officers.auth_user_id`), because the restored rows hold ids from the old project's now-gone `auth.users`. `pg_restore` skips the failed constraints and keeps the data; see step 9 for putting them back.
 4. **Repair migration history.** The dump does not carry `supabase_migrations.schema_migrations`, so the new project believes no migration ever ran and the next `supabase db push` would replay all of them onto the restored schema. Link the project (`supabase link`) and mark every file in `supabase/migrations/` applied: `supabase migration list` shows the discrepancy, `supabase migration repair --status applied <version>` clears it.
 5. **Re-create the pg_cron jobs** from `supabase/migrations/20260713234553_pg_cron_edge_function_scheduling.sql` -- cron jobs live in the `cron` schema, outside the dump. Step 4 already marked that migration applied, so run its statements directly in the SQL editor.
 6. **Redeploy Edge Functions** (`supabase functions deploy`) and re-enter their secrets (Project Settings > Edge Functions).
 7. **Repoint the frontend**: new project ref and anon key in the js config; re-register the Discord OAuth redirect for the new auth callback URL.
 8. **Update the `SUPABASE_DB_URL` repo secret** to the new project's session pooler string so the nightly backup resumes against the new project.
-9. **Auth relink.** The new project's `auth.users` starts empty, so every login is a first login; `link_auth_user_to_member()` re-links members by `discord_id` and overwrites the stale `auth_user_id`. Recreate the four FKs from step 3 as `not valid` (their definitions are in the migrations) so historical `audit_log.actor_id` values survive, then `validate constraint` once relinks settle or stale ids are nulled. `wga-auth-<date>.dump` is the reference copy of the old ids and Discord identities if anything needs untangling by hand.
+9. **Auth relink.** The new project's `auth.users` starts empty, so every login is a first login; `link_auth_user_to_member()` re-links members by `discord_id` and overwrites the stale `auth_user_id`. Recreate the five FKs from step 3 as `not valid` (their definitions are in the migrations) so historical `audit_log.actor_id` values survive, then `validate constraint` once relinks settle or stale ids are nulled. `wga-auth-<date>.dump` is the reference copy of the old ids and Discord identities if anything needs untangling by hand.
 
 ## Restore drill
 
@@ -132,8 +132,8 @@ Several parts of this doc and `db-backup.yml`'s verify step encode assumptions a
 What's schema-tied:
 
 - **Expected-error list** in `db-backup.yml`'s verify step and the drill section above -- 9 ignored errors as of the 2026-07-23 drill (#544): the container's pre-existing `public` schema, everything referencing the absent `auth` schema, and `supabase_admin` default-privilege statements.
-- **Table-count floor of 20** in the same verify step -- real count was 26 when written.
-- **The four `auth.users` FKs** in the full-rebuild runbook (steps 3 and 9) -- `audit_log.actor_id`, `site_admins.auth_user_id`, `team_members.auth_user_id`, `season_signups.auth_user_id`.
+- **Table-count floor of 20** in the same verify step -- real count was 26 when written, now 27 as of [#607](https://github.com/katogaming88/WGA-Raid-Hub/issues/607)'s `guild_officers` table -- still well clear of the floor, no re-check needed.
+- **The five `auth.users` FKs** in the full-rebuild runbook (steps 3 and 9) -- `audit_log.actor_id`, `site_admins.auth_user_id`, `team_members.auth_user_id`, `season_signups.auth_user_id`, `guild_officers.auth_user_id` ([#607](https://github.com/katogaming88/WGA-Raid-Hub/issues/607)).
 - **Sequence-name guidance** in the selective-restore runbook -- only as good as the tables it was checked against (`season_signups` resolving to `signups_id_seq` was the drill's find).
 - **Drill-log row counts** -- meaningful only while the tables they name still exist under that name.
 
@@ -146,7 +146,7 @@ Re-check when a migration:
 
 **CI nudge**: `schema-docs.yml` fails a PR that adds an `auth.users` FK or renames something in `supabase/migrations/` without also touching this file, mirroring the existing `docs/RLS.md` check in the same workflow. It can't catch the table-count or RLS-policy cases above -- those still rely on this checklist at review time.
 
-As of 2026-07-28 the table count (26 base tables) and the FK list still match the 2026-07-23 drill baseline exactly, so no re-drill is due yet.
+As of 2026-07-28 the table count (26 base tables) and the FK list still matched the 2026-07-23 drill baseline exactly. [#607](https://github.com/katogaming88/WGA-Raid-Hub/issues/607) (2026-07-30) added `guild_officers` (27 tables, 5th `auth.users` FK) -- updated above per this section's own checklist rather than a full re-drill, since neither the table-count floor nor the expected-error list needed touching. No re-drill due yet.
 
 ## Ops notes
 

@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.49.29';
+var VERSION = '3.49.30';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -1963,6 +1963,16 @@ function featureEnabled(key) {
  * @returns {Promise<Object>}
  */
 function saveTeamSetting(updates, skipAudit) {
+  // #607: team_settings (season settings, per-team bios, and every
+  // open/close toggle that rides this same path) stays excluded for a
+  // guild-officer-only visitor -- the "Team leaders write settings" RLS
+  // policy deliberately never gets is_guild_officer() OR'd in, so this
+  // would fail server-side ('Not authorized') regardless; this is just a
+  // clean client-side no-op instead of a round trip that's guaranteed to
+  // error, and it's a single choke point for every caller of this function.
+  if (window._guildOfficerAccessLevel === 'guild') {
+    return Promise.reject(new Error('Not authorized'));
+  }
   // Promise.resolve() unwraps the builder's PromiseLike into a real Promise
   // (same resolution, no behavior change) -- needed since callers across
   // js/tabs/ chain .catch() onto this.
