@@ -12,6 +12,8 @@ with each release split into `### Frontend` (drives the version number) and
 
 ### Frontend
 
+- **Officers can now see a raider's full Wishlist from the Roster tab's inline profile card** -- previously the raider's own Wishlist section only ever rendered on their self-view; an officer opening someone else's profile saw nothing beyond whatever wishlist-tagged BiS items were already folded into the "BiS List" merge. Now shows every tagged item (Good/OK/Catalyst Only/Pass included, with notes) grouped by gear slot. Read-only, reuses the Priority tab's already-loaded wishlist data rather than a second per-profile fetch.
+
 - **Added a per-raider "Allow Wishlist Edit" exception** -- mirrors the existing "Allow BiS Submit" toggle. Wishlist Editing was previously an all-or-nothing team-wide toggle; there was no way to reopen just one raider's Wishlist while it's closed for everyone else. New toggle on a raider's officer-view profile card, checked alongside the team-wide toggle in every Wishlist editing gate (`js/wishlist.js`).
 - Also synced the raider and officer walkthrough docs with several changes since their last full pass (v3.48.0): the "Bios" nav rename to "About" (Team/Guild/About/Contact sub-tabs, including the previously-undocumented Contact form), Backup Tank/Backup Healer profile badges, per-character WarcraftLogs/Raider.IO/Armory quick-links, the signup capacity nudge, the Recent Loot search box, and a clearer explanation of how the profile's "BiS List" is a live merge of the officer's BiS Manager grid and a raider's own Wishlist BiS tags.
 

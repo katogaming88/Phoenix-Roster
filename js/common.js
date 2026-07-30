@@ -4250,7 +4250,14 @@ function renderProfile(firstName, backTo, container) {
   // Computed here (rather than down where streamSectionHTML is) so
   // _wishlistPrefs is already populated by the time the BiS List merge below
   // reads it -- ownWishlistSectionHTML() is what triggers/caches that fetch.
-  var wishlistSectionHTML = typeof ownWishlistSectionHTML === 'function' ? ownWishlistSectionHTML(player, backTo) : '';
+  var wishlistSectionHTML =
+    backTo === 'officer'
+      ? typeof officerWishlistSectionHTML === 'function'
+        ? officerWishlistSectionHTML(player)
+        : ''
+      : typeof ownWishlistSectionHTML === 'function'
+        ? ownWishlistSectionHTML(player, backTo)
+        : '';
 
   // Priority list
   var bisItems = getBisItems(player.nameRealm).filter(function (e) {
