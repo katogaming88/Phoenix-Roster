@@ -212,7 +212,7 @@ Two sub-tabs:
 - **Submissions** -- open/close toggle controls whether raiders see the BiS submit form.
   Approving updates the player's BiS link on the Roster automatically; Rejecting discards the
   submission with no change. A single player can be allowed to submit even while the window is
-  closed, via the "Allow BiS Submit" toggle on their Roster profile card. **My List Changed (Same
+  closed, via the "Allow BiS Submit" toggle on their Roster profile card. **My BiS Changed (Same
   Link)** lands in this same queue -- a raider flagging that their link's *contents* changed, not
   the URL. Approving one of those doesn't update anything by itself (the link's already on file);
   it's just an acknowledgment that you've seen it and are about to act -- either edit their pick(s)
@@ -229,7 +229,7 @@ Two sub-tabs:
   tagged **BiS** in their own Wishlist overrides this grid's pick for that slot on their profile
   display (and in Loot Priority) without touching what's actually stored here -- so their profile
   can show something different from this grid without either side being wrong. When a raider
-  flags "My List Changed" or a Wishlist note points at a real BiS change, editing their pick here
+  flags "My BiS Changed" or a Wishlist note points at a real BiS change, editing their pick here
   works regardless of Wishlist Editing's open/closed state (it's the thing Loot Priority actually
   reads for slots the raider hasn't tagged themselves) -- or flip their "Allow Wishlist Edit"
   toggle (Submissions sub-tab above) if you'd rather they make the change themselves.

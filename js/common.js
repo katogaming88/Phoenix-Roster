@@ -3546,14 +3546,56 @@ function submitBiSForm(nameRealm, firstName) {
 }
 
 // -- "My list changed (same link)" flag (#278) ------------------------------
-function toggleBisFlagForm(firstName) {
-  var form = document.getElementById('bisFlagForm-' + firstName);
+// Shared by the BiS tab and, via idSuffix, the Wishlist tab's own copy (#610
+// follow-up) -- a raider shouldn't have to switch tabs to find this. Both
+// tabs render into the DOM at once (only display:none toggles between them,
+// see profileTabBis/profileTabWishlist in renderProfile()), so the two
+// copies need distinct element ids or getElementById would only ever find
+// the first one.
+function bisFlagButtonHTML(player, idSuffix) {
+  var suffix = idSuffix || '';
+  return (
+    '<div style="margin-top:0.75rem;">' +
+    '<button class="btn btn-muted" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="toggleBisFlagForm(\'' +
+    player.firstName.replace(/'/g, "\\'") +
+    "','" +
+    suffix +
+    '\')">My BiS Changed (Same Link)</button>' +
+    '<div id="bisFlagForm-' +
+    player.firstName +
+    suffix +
+    '" style="display:none;margin-top:0.75rem;">' +
+    '<textarea id="bisFlagNotes-' +
+    player.firstName +
+    suffix +
+    '" placeholder="Notes (optional)" rows="2" class="self-received-notes" style="max-width:100%;"></textarea>' +
+    '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
+    '<button class="btn btn-gold" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="submitBisFlag(\'' +
+    player.nameRealm.replace(/'/g, "\\'") +
+    "','" +
+    player.firstName.replace(/'/g, "\\'") +
+    "','" +
+    suffix +
+    '\')">Flag for Review</button>' +
+    '<button class="btn btn-muted" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="document.getElementById(\'bisFlagForm-' +
+    player.firstName +
+    suffix +
+    "').style.display='none'\">Cancel</button>" +
+    '</div>' +
+    '<p class="self-received-note">Use this when the link on file hasn\'t changed but the list behind it has. An officer will recheck your tracked items.</p>' +
+    '</div>' +
+    '</div>'
+  );
+}
+function toggleBisFlagForm(firstName, idSuffix) {
+  var form = document.getElementById('bisFlagForm-' + firstName + (idSuffix || ''));
   if (form) form.style.display = form.style.display === 'none' ? 'block' : 'none';
 }
 
-function submitBisFlag(nameRealm, firstName) {
-  var notesEl = /** @type {HTMLTextAreaElement} */ (document.getElementById('bisFlagNotes-' + firstName));
-  var formEl = document.getElementById('bisFlagForm-' + firstName);
+function submitBisFlag(nameRealm, firstName, idSuffix) {
+  var suffix = idSuffix || '';
+  var notesEl = /** @type {HTMLTextAreaElement} */ (document.getElementById('bisFlagNotes-' + firstName + suffix));
+  var formEl = document.getElementById('bisFlagForm-' + firstName + suffix);
   if (formEl)
     formEl.innerHTML = '<p style="font-size:1.07rem;color:var(--text-muted);padding:0.5rem 0;">Submitting...</p>';
 
@@ -4204,30 +4246,7 @@ function renderProfile(firstName, backTo, container) {
     // it just re-queues it so an officer knows to recheck items behind it
     // (#278). Only makes sense once there's a link to flag.
     if (player.bisLink) {
-      bisActionHTML +=
-        '<div style="margin-top:0.75rem;">' +
-        '<button class="btn btn-muted" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="toggleBisFlagForm(\'' +
-        player.firstName.replace(/'/g, "\\'") +
-        '\')">My List Changed (Same Link)</button>' +
-        '<div id="bisFlagForm-' +
-        player.firstName +
-        '" style="display:none;margin-top:0.75rem;">' +
-        '<textarea id="bisFlagNotes-' +
-        player.firstName +
-        '" placeholder="Notes (optional)" rows="2" class="self-received-notes" style="max-width:100%;"></textarea>' +
-        '<div style="display:flex;gap:0.5rem;margin-top:0.5rem;">' +
-        '<button class="btn btn-gold" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="submitBisFlag(\'' +
-        player.nameRealm.replace(/'/g, "\\'") +
-        "','" +
-        player.firstName.replace(/'/g, "\\'") +
-        '\')">Flag for Review</button>' +
-        '<button class="btn btn-muted" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="document.getElementById(\'bisFlagForm-' +
-        player.firstName +
-        "').style.display='none'\">Cancel</button>" +
-        '</div>' +
-        '<p class="self-received-note">Use this when the link on file hasn\'t changed but the list behind it has. An officer will recheck your tracked items.</p>' +
-        '</div>' +
-        '</div>';
+      bisActionHTML += bisFlagButtonHTML(player, '');
     }
   }
   var bisHTML = bisStatusHTML + bisActionHTML;
@@ -5002,7 +5021,7 @@ function renderProfile(firstName, backTo, container) {
       (backTo !== 'officer'
         ? '<div id="help-bislink-' +
           player.firstName +
-          '" class="help-tip">Submit a link to your Best-in-Slot list (e.g. a wowhead or raidbots URL) so officers know what you\'re targeting. An officer reviews new submissions before they show here. If the link stays the same but the list behind it changes, use "My List Changed (Same Link)" to have it rechecked.</div>'
+          '" class="help-tip">Submit a link to your Best-in-Slot list (e.g. a wowhead or raidbots URL) so officers know what you\'re targeting. An officer reviews new submissions before they show here. If the link stays the same but the list behind it changes, use "My BiS Changed (Same Link)" to have it rechecked.</div>'
         : '') +
       bisHTML +
       '</div>' +

@@ -680,6 +680,16 @@ function wishlistSectionBodyHTML(player) {
     ? ''
     : '<p style="font-size:1.04rem;color:var(--melee);margin:0.25rem 0 0.75rem;">Wishlist editing is currently closed -- your tags below are read-only. Contact an officer if something needs to change.</p>';
 
+  // Same "My BiS Changed (Same Link)" flag as the BiS tab (js/common.js's
+  // bisFlagButtonHTML()) -- surfaced here too so a raider whose considered-
+  // BiS changed doesn't have to switch tabs to flag it, whether they're
+  // stuck read-only above or just prefer using this flow. '-wishlist' id
+  // suffix keeps this copy's form/textarea ids distinct from the BiS tab's,
+  // since both tabs stay in the DOM at once (display:none, not removed).
+  if (player.bisLink && typeof bisFlagButtonHTML === 'function') {
+    html += bisFlagButtonHTML(player, '-wishlist');
+  }
+
   html += wishlistOtherSourcesSectionHTML();
 
   var slotCards = '';
