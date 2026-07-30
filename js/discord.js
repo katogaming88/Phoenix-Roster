@@ -219,9 +219,14 @@ function resolveDiscordSession(session) {
             .limit(1)
             .maybeSingle()
         : Promise.resolve({ data: null });
-      return Promise.all([linkedPromise, supabaseClient.rpc('is_site_admin')]).then(function (results) {
+      return Promise.all([
+        linkedPromise,
+        supabaseClient.rpc('is_site_admin'),
+        supabaseClient.rpc('is_guild_officer')
+      ]).then(function (results) {
         var linked = results[0].data;
         var adminResult = results[1];
+        var guildOfficerResult = results[2];
         var nameRealm = (linked && linked.name_realm) || (member && member.name_realm) || null;
         var mapped = {
           authUserId: session.user.id,
@@ -235,7 +240,12 @@ function resolveDiscordSession(session) {
           nameRealm: nameRealm,
           isOfficer: !!member && (member.role === 'officer' || member.role === 'team_leader'),
           isTeamLeader: !!member && member.role === 'team_leader',
-          isAdmin: !!adminResult.data
+          isAdmin: !!adminResult.data,
+          // Guild-wide tier (#607): a standalone grant (guild_officers table),
+          // not derived from team_members.role -- true for someone with
+          // guild-wide authority (e.g. a Guild Master) even with no officer
+          // role on any team's own roster.
+          isGuildOfficer: !!guildOfficerResult.data
         };
         if (nameRealm) return mapped;
         return findClaimElsewhere(session.user.id).then(function (elsewhere) {
@@ -473,6 +483,20 @@ function adminAccessLevel(session) {
   if (!session) return false;
   if (session.isAdmin) return true;
   if (session.isTeamLeader) return 'team_leader';
+  return false;
+}
+
+// Guild-officer access level for the currently viewed team (#607): 'full'
+// when the session already has native officer/team_leader/admin access here
+// (no extra gating needed -- callers should keep using isOfficer/isAdmin as
+// before), 'guild' when the session only reaches this team through the
+// guild-wide grant, false otherwise (raider or logged out). Deliberately
+// separate from adminAccessLevel() -- the Admin tab must stay hidden for
+// 'guild', unlike the true/'team_leader' values that function returns.
+function guildOfficerAccessLevel(session) {
+  if (!session) return false;
+  if (session.isOfficer || session.isAdmin) return 'full';
+  if (session.isGuildOfficer) return 'guild';
   return false;
 }
 

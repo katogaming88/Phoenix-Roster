@@ -530,6 +530,10 @@ checkMaintenanceMode().then(function (maint) {
           // fail closed rather than granting Admin tab access if it does.
           showAdminTab(ds ? adminAccessLevel(ds) : false);
         }
+        if (typeof applyGuildOfficerNavVisibility === 'function') {
+          var gds = typeof getDiscordSession === 'function' ? getDiscordSession() : null;
+          applyGuildOfficerNavVisibility(gds ? guildOfficerAccessLevel(gds) : false);
+        }
         document.getElementById('officerViewWrap').classList.add('active');
         document.getElementById('loadingMsg').style.display = 'none';
       },

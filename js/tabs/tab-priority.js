@@ -704,20 +704,23 @@ function renderUnmanagedItem(item, slot) {
     (!hasHeroic && !hasMythic ? 'No rankings' : 'Incomplete') +
     '</span>';
   out += '<span style="margin-left:auto;display:flex;gap:6px;">';
-  if (!hasHeroic)
-    out +=
-      '<button class="btn btn-muted" style="font-size:0.93rem;padding:2px 10px;" onclick="openPrioEditModal(decodeURIComponent(\'' +
-      itemEnc +
-      "'),'" +
-      (slot || '') +
-      "',true,'heroic')\">Set Heroic</button>";
-  if (!hasMythic)
-    out +=
-      '<button class="btn btn-muted" style="font-size:0.93rem;padding:2px 10px;" onclick="openPrioEditModal(decodeURIComponent(\'' +
-      itemEnc +
-      "'),'" +
-      (slot || '') +
-      "',true,'mythic')\">Set Mythic</button>";
+  // #607: view-only for a guild-officer-only visitor -- no edit affordances.
+  if (window._guildOfficerAccessLevel !== 'guild') {
+    if (!hasHeroic)
+      out +=
+        '<button class="btn btn-muted" style="font-size:0.93rem;padding:2px 10px;" onclick="openPrioEditModal(decodeURIComponent(\'' +
+        itemEnc +
+        "'),'" +
+        (slot || '') +
+        "',true,'heroic')\">Set Heroic</button>";
+    if (!hasMythic)
+      out +=
+        '<button class="btn btn-muted" style="font-size:0.93rem;padding:2px 10px;" onclick="openPrioEditModal(decodeURIComponent(\'' +
+        itemEnc +
+        "'),'" +
+        (slot || '') +
+        "',true,'mythic')\">Set Mythic</button>";
+  }
   out += '</span>';
   out += '</div></div>';
   return out;
@@ -832,9 +835,25 @@ function buildPriorityTab() {
       out += '<div class="prio-item-header">';
       out += itemNameBlockHtml(item, slot);
       out += '<span class="prio-diff-badge prio-diff-' + diff + '">' + diffLabel + '</span>';
+      // #607: view-only for a guild-officer-only visitor -- no Edit button.
+      var canEditPrio = window._guildOfficerAccessLevel !== 'guild';
       if (!ranked.length) {
         out +=
           '<span class="prio-item-count" style="color:var(--text-muted);font-style:italic;">Nobody assigned</span>';
+        if (canEditPrio)
+          out +=
+            '<button class="btn btn-muted" style="margin-left:auto;font-size:0.93rem;padding:2px 10px;" onclick="openPrioEditModal(decodeURIComponent(\'' +
+            itemEnc +
+            "'),'" +
+            (slot || '') +
+            "',false,'" +
+            diff +
+            '\')">Edit</button>';
+        out += '</div></div>';
+        continue;
+      }
+      out += '<span class="prio-item-count">' + ranked.length + ' ranked</span>';
+      if (canEditPrio)
         out +=
           '<button class="btn btn-muted" style="margin-left:auto;font-size:0.93rem;padding:2px 10px;" onclick="openPrioEditModal(decodeURIComponent(\'' +
           itemEnc +
@@ -843,18 +862,6 @@ function buildPriorityTab() {
           "',false,'" +
           diff +
           '\')">Edit</button>';
-        out += '</div></div>';
-        continue;
-      }
-      out += '<span class="prio-item-count">' + ranked.length + ' ranked</span>';
-      out +=
-        '<button class="btn btn-muted" style="margin-left:auto;font-size:0.93rem;padding:2px 10px;" onclick="openPrioEditModal(decodeURIComponent(\'' +
-        itemEnc +
-        "'),'" +
-        (slot || '') +
-        "',false,'" +
-        diff +
-        '\')">Edit</button>';
       out += '</div><div class="prio-ranked-list">';
       for (var j = 0; j < ranked.length; j++) {
         var nameRealm = ranked[j];
@@ -965,6 +972,11 @@ var PRIO_EDIT = {
 };
 
 function openPrioEditModal(item, slot, autoGenerate, difficulty) {
+  // #607: priority order is view-only for a guild-officer-only visitor;
+  // RLS already blocks the underlying write, this is just a clean no-op
+  // instead of a broken modal (the Edit/Set Heroic/Set Mythic buttons that
+  // trigger this are also hidden for the same access level).
+  if (window._guildOfficerAccessLevel === 'guild') return;
   var diff = (difficulty || 'heroic').toLowerCase();
   var diffCap = diff === 'mythic' ? 'Mythic' : 'Heroic';
   var entry = (DATA.priorityOrder || {})[item] || {};
@@ -1389,6 +1401,10 @@ function prioEditDragEnd(e) {
 // -- Generate suggested order --
 
 function prioEditGenerate() {
+  // #607: priority generation is excluded for a guild-officer-only visitor
+  // (the modal that hosts this button never opens for them -- see the same
+  // guard in openPrioEditModal -- but keep this too as a second checkpoint).
+  if (window._guildOfficerAccessLevel === 'guild') return;
   var btn = document.getElementById('prioEditGenBtn');
   var status = document.getElementById('prioEditStatus');
   btn.disabled = true;

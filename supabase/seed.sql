@@ -13,6 +13,9 @@
 --   ...0005  officer on team 2
 --   ...0006  a season_signups.auth_user_id owner, no team_members/players row
 --            (get_own_signup()/update_own_signup() never touch those tables)
+--   ...0007  guild officer (#607): a plain raider on team 1, no officer/
+--            team_leader role anywhere, but granted guild_officers -- models
+--            a Guild Master raiding on one team with no team-leadership role
 
 insert into auth.users (id) values
   ('00000000-0000-0000-0000-000000000001'),
@@ -20,7 +23,8 @@ insert into auth.users (id) values
   ('00000000-0000-0000-0000-000000000003'),
   ('00000000-0000-0000-0000-000000000004'),
   ('00000000-0000-0000-0000-000000000005'),
-  ('00000000-0000-0000-0000-000000000006');
+  ('00000000-0000-0000-0000-000000000006'),
+  ('00000000-0000-0000-0000-000000000007');
 
 insert into public.teams (id, name, slug) values
   (1, 'Team Phoenix', 'phoenix'),
@@ -30,10 +34,14 @@ insert into public.team_members (id, team_id, discord_id, auth_user_id, role, na
   (1, 1, 'discord-officer-1', '00000000-0000-0000-0000-000000000001', 'officer', 'Seedofficer-Illidan'),
   (2, 1, 'discord-leader-1',  '00000000-0000-0000-0000-000000000002', 'team_leader', 'Seedleader-Illidan'),
   (3, 1, 'discord-raider-1',  '00000000-0000-0000-0000-000000000003', 'raider',  'Seedraider-Illidan'),
-  (4, 2, 'discord-officer-2', '00000000-0000-0000-0000-000000000005', 'officer', 'Seedofficertwo-Illidan');
+  (4, 2, 'discord-officer-2', '00000000-0000-0000-0000-000000000005', 'officer', 'Seedofficertwo-Illidan'),
+  (5, 1, 'discord-guildofficer-1', '00000000-0000-0000-0000-000000000007', 'raider', 'Seedguildofficer-Illidan');
 
 insert into public.site_admins (id, discord_id, auth_user_id) values
   (1, 'discord-site-admin', '00000000-0000-0000-0000-000000000004');
+
+insert into public.guild_officers (id, discord_id, auth_user_id) values
+  (1, 'discord-guildofficer-1', '00000000-0000-0000-0000-000000000007');
 
 insert into public.classes_specs (id, class, spec, role) values
   (1, 'Mage', 'Frost', 'Ranged');
@@ -101,6 +109,7 @@ insert into public.item_bosses (item_id, boss) values
 select setval('public.teams_id_seq', 10);
 select setval('public.team_members_id_seq', 10);
 select setval('public.site_admins_id_seq', 10);
+select setval('public.guild_officers_id_seq', 10);
 select setval('public.classes_specs_id_seq', 10);
 select setval('public.items_id_seq', 10);
 select setval('public.players_id_seq', 10);

@@ -325,7 +325,8 @@ describe('resolveDiscordSession', () => {
       nameRealm: 'Linked-Illidan',
       isOfficer: false,
       isTeamLeader: false,
-      isAdmin: false
+      isAdmin: false,
+      isGuildOfficer: false
     });
     const q = captured.byTable.players;
     expect(q.eq).toEqual([['team_member_id', 5]]);
@@ -544,9 +545,9 @@ describe('_renderClaimPromptLoading', () => {
 });
 
 // #371: the gap between a SIGNED_IN event and resolveDiscordSession() resolving
-// (a team_members lookup, then a players lookup + is_site_admin in parallel) had
-// no visual feedback, so a backgrounded tab deferring those requests looked like
-// login had silently failed.
+// (a team_members lookup, then a players lookup + is_site_admin/is_guild_officer
+// in parallel) had no visual feedback, so a backgrounded tab deferring those
+// requests looked like login had silently failed.
 describe('renderDiscordNavLoading (#371)', () => {
   function setupInitLogin(storedSession) {
     const { client } = makeClient({

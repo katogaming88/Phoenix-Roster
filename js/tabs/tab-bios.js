@@ -253,18 +253,19 @@ function saveBios() {
 
 var GUILD_OFFICER_BIOS = [];
 // Guild Officer Bios are guild-wide (site_settings, not team_settings) --
-// only a site admin can save them, since it isn't any one team's content to
-// own. A non-admin officer still sees the current list, read-only.
-var _guildBiosIsAdmin = false;
+// only a site admin or a guild officer (#607) can save them, since it isn't
+// any one team's content to own. Any other officer still sees the current
+// list, read-only.
+var _guildBiosCanEdit = false;
 
 function buildGuildBioCards() {
   GUILD_OFFICER_BIOS = JSON.parse(JSON.stringify((DATA && DATA.guildOfficerBios) || []));
   var session = typeof getDiscordSession === 'function' ? getDiscordSession() : null;
-  _guildBiosIsAdmin = !!(session && session.isAdmin);
+  _guildBiosCanEdit = !!(session && (session.isAdmin || session.isGuildOfficer));
   var note = document.getElementById('guildBiosAdminNote');
   var controls = document.getElementById('guildBiosControls');
-  if (note) note.style.display = _guildBiosIsAdmin ? 'none' : '';
-  if (controls) controls.style.display = _guildBiosIsAdmin ? 'flex' : 'none';
+  if (note) note.style.display = _guildBiosCanEdit ? 'none' : '';
+  if (controls) controls.style.display = _guildBiosCanEdit ? 'flex' : 'none';
   populateGuildBioRosterPicker();
   renderGuildBioCards();
 }
@@ -367,12 +368,12 @@ function renderGuildBioCards() {
   if (!GUILD_OFFICER_BIOS.length) {
     wrap.innerHTML =
       '<p style="font-size:1rem;color:var(--text-muted);">No guild officer bios added yet.' +
-      (_guildBiosIsAdmin ? ' Click "+ Add Guild Officer" to start.' : '') +
+      (_guildBiosCanEdit ? ' Click "+ Add Guild Officer" to start.' : '') +
       '</p>';
     return;
   }
   var classKeys = Object.keys(CLASS_SPECS).sort();
-  var ro = !_guildBiosIsAdmin;
+  var ro = !_guildBiosCanEdit;
   var disabledAttr = ro ? ' disabled' : '';
   var html = '';
   for (var i = 0; i < GUILD_OFFICER_BIOS.length; i++) {

@@ -3663,6 +3663,81 @@
         "public.team_settings",
         "public.classes_specs"
       ]
+    },
+    {
+      "name": "public.guild_officers",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('guild_officers_id_seq'::regclass)"
+        },
+        {
+          "name": "discord_id",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "auth_user_id",
+          "type": "uuid",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "guild_officers_pkey",
+          "def": "CREATE UNIQUE INDEX guild_officers_pkey ON public.guild_officers USING btree (id)",
+          "table": "public.guild_officers",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "guild_officers_discord_id_key",
+          "def": "CREATE UNIQUE INDEX guild_officers_discord_id_key ON public.guild_officers USING btree (discord_id)",
+          "table": "public.guild_officers",
+          "columns": [
+            "discord_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "guild_officers_auth_user_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (auth_user_id) REFERENCES auth.users(id) ON DELETE SET NULL",
+          "table": "public.guild_officers",
+          "referenced_table": "auth.users",
+          "columns": [
+            "auth_user_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "guild_officers_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.guild_officers",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "guild_officers_discord_id_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (discord_id)",
+          "table": "public.guild_officers",
+          "referenced_table": "",
+          "columns": [
+            "discord_id"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -4464,6 +4539,30 @@
       "name": "public.set_team_setting",
       "return_type": "jsonb",
       "arguments": "p_team_id integer, p_updates jsonb, p_skip_audit boolean DEFAULT false",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.is_guild_officer",
+      "return_type": "bool",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.admin_list_guild_officers",
+      "return_type": "record",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.admin_grant_guild_officer",
+      "return_type": "int4",
+      "arguments": "p_discord_id text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.admin_revoke_guild_officer",
+      "return_type": "void",
+      "arguments": "p_discord_id text",
       "type": "FUNCTION"
     }
   ],

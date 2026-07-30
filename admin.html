@@ -11,8 +11,8 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=3.49.29">
-  <link rel="stylesheet" href="css/admin.css?v=3.49.29">
+  <link rel="stylesheet" href="css/styles.css?v=3.49.30">
+  <link rel="stylesheet" href="css/admin.css?v=3.49.30">
 </head>
 
 <body>
@@ -52,6 +52,7 @@
       <nav class="officer-sidebar">
         <button class="nav-item active" onclick="switchTab('teams')">Teams</button>
         <button class="nav-item" onclick="switchTab('siteadmins')">Site Admins</button>
+        <button class="nav-item" onclick="switchTab('guildofficers')">Guild Officers</button>
         <button class="nav-item" onclick="switchTab('flags')">Feature Flags</button>
         <button class="nav-item" onclick="switchTab('audit')">Audit Log</button>
         <button class="nav-item" onclick="switchTab('maintenance')">Maintenance</button>
@@ -89,6 +90,27 @@
               </tr>
             </thead>
             <tbody id="adminSiteAdminRows"></tbody>
+          </table>
+        </div>
+
+        <div id="tab-guildofficers" class="tab-panel">
+          <p class="admin-hint">Guild-wide access (#607): view + player/attendance/bio edits on every team's officer
+            dashboard, without site-admin-level write access. Grant by Discord user ID -- enable Developer Mode in
+            Discord (User Settings &rarr; Advanced), then right-click the account and choose "Copy User ID".</p>
+          <div class="admin-grant-row">
+            <input type="text" id="grantGuildOfficerDiscordId" placeholder="Discord user ID">
+            <button class="btn btn-gold" onclick="submitGrantGuildOfficer()">Grant</button>
+          </div>
+          <p id="grantGuildOfficerError" style="display:none;font-size:0.88rem;color:var(--melee);"></p>
+          <table class="roster-table admin-team-table">
+            <thead>
+              <tr>
+                <th>Discord Account</th>
+                <th>Discord ID</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="adminGuildOfficerRows"></tbody>
           </table>
         </div>
 
@@ -168,7 +190,7 @@
       rel="noopener">Changelog</a></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/admin.js?v=3.49.29"></script>
+  <script src="js/admin.js?v=3.49.30"></script>
 
 </body>
 

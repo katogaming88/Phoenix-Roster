@@ -2,7 +2,16 @@
 // in docs/RLS.md. If a table is added or a read policy changes, this file
 // and that matrix move together.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, countAs, OFFICER_T1, OFFICER_T2, RAIDER_T1, SITE_ADMIN, TEAM_LEADER_T1 } from './helpers.js';
+import {
+  pool,
+  countAs,
+  OFFICER_T1,
+  OFFICER_T2,
+  RAIDER_T1,
+  SITE_ADMIN,
+  TEAM_LEADER_T1,
+  GUILD_OFFICER
+} from './helpers.js';
 
 // Matrix: tables with a `using (true)` public SELECT policy.
 const PUBLIC_READ = [
@@ -26,6 +35,7 @@ const PUBLIC_READ = [
 const GATED = [
   'audit_log',
   'bis_requests',
+  'guild_officers',
   'mplus_exclusion_requests',
   'season_signups',
   'self_received_requests',
@@ -33,9 +43,9 @@ const GATED = [
   'team_members'
 ];
 
-// Gated tables an officer can read for their own team (site_admins is the
-// exception: site admins only).
-const OFFICER_READABLE = GATED.filter((t) => t !== 'site_admins');
+// Gated tables an officer can read for their own team (site_admins and
+// guild_officers are the exception: site admins only, [#607](https://github.com/katogaming88/WGA-Raid-Hub/issues/607)).
+const OFFICER_READABLE = GATED.filter((t) => t !== 'site_admins' && t !== 'guild_officers');
 
 describe('public-read tables are visible to everyone', () => {
   for (const table of PUBLIC_READ) {
@@ -124,6 +134,27 @@ describe('site admin visibility', () => {
   }
   it('site admin sees season_signups rows on team 2 too', async () => {
     expect(await countAs('authenticated', SITE_ADMIN, 'season_signups', 'team_id = 2')).toBeGreaterThan(0);
+  });
+});
+
+describe('guild officer visibility (#607)', () => {
+  // GUILD_OFFICER holds no team_members role on team 1 beyond a plain
+  // raider row -- seeing team 1's audit_log/team_members rows here proves
+  // the cross-team grant, same shape as the site-admin block above.
+  it('guild officer sees team 1 audit_log rows', async () => {
+    expect(await countAs('authenticated', GUILD_OFFICER, 'audit_log', 'team_id = 1')).toBeGreaterThan(0);
+  });
+  it('guild officer sees team 1 team_members rows beyond their own', async () => {
+    expect(await countAs('authenticated', GUILD_OFFICER, 'team_members', 'team_id = 1')).toBeGreaterThan(0);
+  });
+  it('guild officer cannot see guild_officers (site-admin only, like site_admins)', async () => {
+    expect(await countAs('authenticated', GUILD_OFFICER, 'guild_officers')).toBe(0);
+  });
+  it('site admin sees guild_officers', async () => {
+    expect(await countAs('authenticated', SITE_ADMIN, 'guild_officers')).toBeGreaterThan(0);
+  });
+  it('team 1 team leader cannot see guild_officers', async () => {
+    expect(await countAs('authenticated', TEAM_LEADER_T1, 'guild_officers')).toBe(0);
   });
 });
 

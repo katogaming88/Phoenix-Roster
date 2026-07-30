@@ -12,6 +12,9 @@ export const RAIDER_T1 = '00000000-0000-0000-0000-000000000003';
 export const SITE_ADMIN = '00000000-0000-0000-0000-000000000004';
 export const OFFICER_T2 = '00000000-0000-0000-0000-000000000005';
 export const SIGNUP_OWNER_T1 = '00000000-0000-0000-0000-000000000006';
+// #607: raider on team 1, no officer/team_leader role anywhere, granted
+// via guild_officers (not derived from any team_members role).
+export const GUILD_OFFICER = '00000000-0000-0000-0000-000000000007';
 
 // SQLSTATE for "new row violates row-level security policy".
 export const RLS_DENIED = '42501';

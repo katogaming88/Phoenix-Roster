@@ -11,8 +11,8 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=3.49.29">
-  <link rel="stylesheet" href="css/officer.css?v=3.49.29">
+  <link rel="stylesheet" href="css/styles.css?v=3.49.30">
+  <link rel="stylesheet" href="css/officer.css?v=3.49.30">
   <!-- Hover tooltips for Buff Coverage's spell links (#491) and item links
        (Priority tab/BiS grid, itemNameBlockHtml(), #567). Auto-attaches to
        any <a class="wowhead">. whTooltips must be set before power.js loads
@@ -99,14 +99,14 @@
               class="nav-notif nav-notif-abs" id="bisNavBadge" style="display:none;"></span></button>
           <button class="nav-item" id="navTab-attendance" onclick="switchTab('attendance')">Attendance</button>
           <button class="nav-item" id="navTab-scoring" onclick="switchTab('scoring')">Scoring</button>
-          <button class="nav-item" onclick="switchTab('signups')">Signups<span class="nav-notif nav-notif-abs"
+          <button class="nav-item" id="navTab-signups" onclick="switchTab('signups')">Signups<span class="nav-notif nav-notif-abs"
               id="signupsNavBadge" style="display:none;"></span></button>
           <button class="nav-item" id="navTab-mplus" onclick="switchTab('mplus')">M+ Exclusions<span
               class="nav-notif nav-notif-abs" id="mplusNavBadge" style="display:none;"></span></button>
           <button class="nav-item" id="navTab-requests" onclick="switchTab('requests')">Received Item Requests<span
               class="nav-notif nav-notif-abs" id="requestsNavBadge" style="display:none;"></span></button>
           <div class="nav-admin-divider"></div>
-          <button class="nav-item" onclick="switchTab('season')">Season Settings</button>
+          <button class="nav-item" id="navTab-season" onclick="switchTab('season')">Season Settings</button>
           <button class="nav-item" onclick="switchTab('bios')">Officer Bios</button>
           <button class="nav-item" onclick="switchTab('audit')">Audit Log</button>
           <button class="nav-item" onclick="switchTab('reports')">Reports</button>
@@ -1158,27 +1158,27 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/common.js?v=3.49.29"></script>
-  <script src="js/discord.js?v=3.49.29"></script>
-  <script src="js/officer.js?v=3.49.29"></script>
-  <script src="js/tabs/tab-roster.js?v=3.49.29"></script>
-  <script src="js/tabs/tab-conflicts.js?v=3.49.29"></script>
-  <script src="js/tabs/tab-fairness.js?v=3.49.29"></script>
-  <script src="js/tabs/tab-attendance.js?v=3.49.29"></script>
-  <script src="js/tabs/tab-bench-fairness.js?v=3.49.29"></script>
-  <script src="js/tabs/tab-signups.js?v=3.49.29"></script>
-  <script src="js/tabs/tab-requests.js?v=3.49.29"></script>
-  <script src="js/tabs/tab-bis.js?v=3.49.29"></script>
-  <script src="js/tabs/tab-pending-roster.js?v=3.49.29"></script>
-  <script src="js/tabs/tab-mplus.js?v=3.49.29"></script>
-  <script src="js/tabs/tab-priority.js?v=3.49.29"></script>
-  <script src="js/tabs/tab-audit.js?v=3.49.29"></script>
-  <script src="js/tabs/tab-reports.js?v=3.49.29"></script>
-  <script src="js/tabs/tab-season.js?v=3.49.29"></script>
-  <script src="js/tabs/tab-bios.js?v=3.49.29"></script>
-  <script src="js/tabs/tab-loot-import.js?v=3.49.29"></script>
-  <script src="js/tabs/tab-scoring.js?v=3.49.29"></script>
-  <script src="js/tabs/tab-admin.js?v=3.49.29"></script>
+  <script src="js/common.js?v=3.49.30"></script>
+  <script src="js/discord.js?v=3.49.30"></script>
+  <script src="js/officer.js?v=3.49.30"></script>
+  <script src="js/tabs/tab-roster.js?v=3.49.30"></script>
+  <script src="js/tabs/tab-conflicts.js?v=3.49.30"></script>
+  <script src="js/tabs/tab-fairness.js?v=3.49.30"></script>
+  <script src="js/tabs/tab-attendance.js?v=3.49.30"></script>
+  <script src="js/tabs/tab-bench-fairness.js?v=3.49.30"></script>
+  <script src="js/tabs/tab-signups.js?v=3.49.30"></script>
+  <script src="js/tabs/tab-requests.js?v=3.49.30"></script>
+  <script src="js/tabs/tab-bis.js?v=3.49.30"></script>
+  <script src="js/tabs/tab-pending-roster.js?v=3.49.30"></script>
+  <script src="js/tabs/tab-mplus.js?v=3.49.30"></script>
+  <script src="js/tabs/tab-priority.js?v=3.49.30"></script>
+  <script src="js/tabs/tab-audit.js?v=3.49.30"></script>
+  <script src="js/tabs/tab-reports.js?v=3.49.30"></script>
+  <script src="js/tabs/tab-season.js?v=3.49.30"></script>
+  <script src="js/tabs/tab-bios.js?v=3.49.30"></script>
+  <script src="js/tabs/tab-loot-import.js?v=3.49.30"></script>
+  <script src="js/tabs/tab-scoring.js?v=3.49.30"></script>
+  <script src="js/tabs/tab-admin.js?v=3.49.30"></script>
   <script>
 renderSiteNav('officer');
 document.getElementById('versionNum').textContent = VERSION;
@@ -1205,7 +1205,7 @@ initTeamUI();
 
 // Called by discord.js after a successful Discord login popup completes.
 function onDiscordLoginComplete(session) {
-  if (session.isOfficer || session.isAdmin) {
+  if (session.isOfficer || session.isAdmin || session.isGuildOfficer) {
     _grantOfficerAccessViaDiscord(session);
   } else {
     // showOfficerPrompt() resets (and hides) #officerError, so it must run
@@ -1221,7 +1221,7 @@ function onDiscordLoginComplete(session) {
 
 // Called by discord.js when a stored session is validated on page load.
 function onDiscordSessionRestored(session) {
-  if ((session.isOfficer || session.isAdmin) && !isOfficerSessionValid()) {
+  if ((session.isOfficer || session.isAdmin || session.isGuildOfficer) && !isOfficerSessionValid()) {
     _grantOfficerAccessViaDiscord(session);
   } else if (!isOfficerSessionValid()) {
     // Discord auth succeeded but the character is not an officer.
@@ -1280,6 +1280,22 @@ function showAdminTab(access) {
   });
 }
 
+// #607: hide the nav entries for surfaces a guild-officer-only visitor must
+// never reach (approvals, season settings) -- native officers/team_leaders/
+// site admins ('full', or false for a logged-out/raider view) see the
+// normal nav. Loot Import and BiS approvals live inside otherwise-visible
+// tabs (Loot, BiS Manager) and are gated at the sub-surface level in their
+// own tab files instead of hidden here.
+var GUILD_ONLY_HIDDEN_NAV_IDS = ['navTab-mplus', 'navTab-signups', 'navTab-season'];
+function applyGuildOfficerNavVisibility(level) {
+  window._guildOfficerAccessLevel = level;
+  var hide = level === 'guild';
+  GUILD_ONLY_HIDDEN_NAV_IDS.forEach(function (id) {
+    var btn = document.getElementById(id);
+    if (btn) btn.style.display = hide ? 'none' : '';
+  });
+}
+
 function _grantOfficerAccessViaDiscord(session) {
   // Sets the same sessionStorage flag isOfficerSessionValid() checks
   // throughout officer.js, so the rest of that file doesn't need to know
@@ -1292,6 +1308,7 @@ function _grantOfficerAccessViaDiscord(session) {
     function() {
       buildOfficerDashboard();
       showAdminTab(session ? adminAccessLevel(session) : false);
+      applyGuildOfficerNavVisibility(session ? guildOfficerAccessLevel(session) : false);
       document.getElementById('officerViewWrap').classList.add('active');
       document.getElementById('loadingMsg').style.display = 'none';
     },
