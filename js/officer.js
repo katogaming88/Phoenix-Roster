@@ -162,9 +162,11 @@ function resetPrioritySubTab() {
   var subList = document.getElementById('prio-sub-list');
   var subUnmanaged = document.getElementById('prio-sub-unmanaged');
   var subConflicts = document.getElementById('prio-sub-conflicts');
+  var subNotes = document.getElementById('prio-sub-notes');
   if (subList) subList.style.display = '';
   if (subUnmanaged) subUnmanaged.style.display = 'none';
   if (subConflicts) subConflicts.style.display = 'none';
+  if (subNotes) subNotes.style.display = 'none';
 }
 
 function switchPrioritySubTab(name, btnEl) {
@@ -175,12 +177,15 @@ function switchPrioritySubTab(name, btnEl) {
   var subList = document.getElementById('prio-sub-list');
   var subUnmanaged = document.getElementById('prio-sub-unmanaged');
   var subConflicts = document.getElementById('prio-sub-conflicts');
+  var subNotes = document.getElementById('prio-sub-notes');
   if (subList) subList.style.display = name === 'list' ? '' : 'none';
   if (subUnmanaged) subUnmanaged.style.display = name === 'unmanaged' ? '' : 'none';
   if (subConflicts) subConflicts.style.display = name === 'conflicts' ? '' : 'none';
+  if (subNotes) subNotes.style.display = name === 'notes' ? '' : 'none';
   if (name === 'list') buildPriorityTab();
   if (name === 'unmanaged') buildUnmanagedTab();
   if (name === 'conflicts') buildConflicts();
+  if (name === 'notes') buildPriorityNotesTab();
 }
 
 function resetReportsSubTab() {
