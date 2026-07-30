@@ -687,7 +687,7 @@ function wishlistSectionBodyHTML(player) {
   // suffix keeps this copy's form/textarea ids distinct from the BiS tab's,
   // since both tabs stay in the DOM at once (display:none, not removed).
   if (player.bisLink && typeof bisFlagButtonHTML === 'function') {
-    html += bisFlagButtonHTML(player, '-wishlist');
+    html += '<div style="margin-bottom:0.75rem;">' + bisFlagButtonHTML(player, '-wishlist') + '</div>';
   }
 
   html += wishlistOtherSourcesSectionHTML();
