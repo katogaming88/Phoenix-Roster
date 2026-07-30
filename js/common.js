@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.49.28';
+var VERSION = '3.49.29';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -1021,7 +1021,7 @@ function fetchSupabaseRoster() {
   var query = supabaseClient
     .from('players')
     .select(
-      'id, name_realm, nickname, is_trial, is_bench, is_backup_tank, is_backup_healer, bis_link, bis_allowed, m_plus_excluded, m_plus_note, join_date, officer_notes, classes_specs(class, spec, role)'
+      'id, name_realm, nickname, is_trial, is_bench, is_backup_tank, is_backup_healer, bis_link, bis_allowed, wishlist_allowed, m_plus_excluded, m_plus_note, join_date, officer_notes, classes_specs(class, spec, role)'
     )
     .eq('team_id', _teamCfg.supabaseTeamId)
     .is('archived_at', null)
@@ -1191,6 +1191,7 @@ function mapSupabaseRoster(rows, jsonpRoster, mplusRejections) {
       role: cs.role,
       bisLink: row.bis_link || '',
       bisAllowed: !!row.bis_allowed,
+      wishlistAllowed: !!row.wishlist_allowed,
       joinDate: row.join_date || '',
       mPlusExcluded: mPlusExcluded,
       mPlusNote: row.m_plus_note || '',
@@ -3287,6 +3288,13 @@ function bisAllowedFor(nameRealm) {
   return !!(player && player.bisAllowed);
 }
 
+// Same shape as bis_allowed/bisAllowedFor above -- the per-raider exception
+// to Wishlist Editing being closed team-wide (#610/#611 follow-up).
+function wishlistAllowedFor(nameRealm) {
+  var player = findRosterPlayerByNameRealm(nameRealm);
+  return !!(player && player.wishlistAllowed);
+}
+
 // -- BiS form actions (used from profile on both pages) --------------------
 function toggleBisForm(firstName) {
   var form = document.getElementById('bisForm-' + firstName);
@@ -3550,6 +3558,73 @@ function allowBisForPlayer(nameRealm, firstName) {
 
 function revokeBisForPlayer(nameRealm, firstName) {
   setBisAllowedForPlayer(nameRealm, firstName, false);
+}
+
+// Per-raider Wishlist Editing exception (#610/#611 follow-up) -- same shape
+// as the bis_allowed toggle above, so an officer can reopen just one
+// raider's Wishlist without reopening it for the whole team.
+function updateWishlistAllowDiv(nameRealm, firstName) {
+  var divEl = document.getElementById('wishlistAllowDiv-' + firstName);
+  if (!divEl) return;
+  var allowed = wishlistAllowedFor(nameRealm);
+  divEl.innerHTML = '';
+  var btn = document.createElement('button');
+  btn.className = 'btn btn-muted';
+  btn.style.cssText = 'font-size:1.04rem;padding:0.25rem 0.75rem;';
+  if (allowed) {
+    btn.textContent = 'Revoke Wishlist Access';
+    btn.onclick = function () {
+      revokeWishlistForPlayer(nameRealm, firstName);
+    };
+    var badge = document.createElement('span');
+    badge.style.cssText = 'font-size:1.02rem;color:var(--heal);margin-left:0.5rem;';
+    badge.textContent = 'Editing open';
+    divEl.appendChild(btn);
+    divEl.appendChild(badge);
+  } else {
+    btn.textContent = 'Allow Wishlist Edit';
+    btn.onclick = function () {
+      allowWishlistForPlayer(nameRealm, firstName);
+    };
+    divEl.appendChild(btn);
+  }
+}
+
+function setWishlistAllowedForPlayer(nameRealm, firstName, allowed) {
+  var divEl = document.getElementById('wishlistAllowDiv-' + firstName);
+  if (divEl) divEl.innerHTML = '<span style="font-size:1.07rem;color:var(--text-muted);">Saving...</span>';
+
+  if (!supabaseClient) {
+    updateWishlistAllowDiv(nameRealm, firstName);
+    return;
+  }
+
+  var player = findRosterPlayerByNameRealm(nameRealm);
+  supabaseClient
+    .from('players')
+    .update({ wishlist_allowed: allowed })
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .eq('name_realm', nameRealm)
+    .then(function (result) {
+      if (!result.error && player) player.wishlistAllowed = allowed;
+      if (!result.error) {
+        writeAuditLog(
+          allowed ? 'Wishlist Edit Enabled' : 'Wishlist Edit Revoked',
+          'players',
+          player ? player.id : null,
+          null
+        );
+      }
+      updateWishlistAllowDiv(nameRealm, firstName);
+    });
+}
+
+function allowWishlistForPlayer(nameRealm, firstName) {
+  setWishlistAllowedForPlayer(nameRealm, firstName, true);
+}
+
+function revokeWishlistForPlayer(nameRealm, firstName) {
+  setWishlistAllowedForPlayer(nameRealm, firstName, false);
 }
 
 // -- Self-received (raider marks item from profile) ------------------------
@@ -3950,6 +4025,9 @@ function renderProfile(firstName, backTo, container) {
       '</div>' +
       '</div>' +
       '<div id="bisAllowDiv-' +
+      player.firstName +
+      '" style="margin-top:0.5rem;"></div>' +
+      '<div id="wishlistAllowDiv-' +
       player.firstName +
       '" style="margin-top:0.5rem;"></div>';
   } else {
@@ -4752,7 +4830,7 @@ function renderProfile(firstName, backTo, container) {
 
   var bisTabIntroHTML =
     backTo !== 'officer'
-      ? '<p style="color:var(--text-muted);font-size:0.95rem;margin:0;padding:0.75rem 1.25rem 0;">This is your Best-in-Slot list -- one target item per slot, either set by officers from your submitted BiS link or tagged as BiS on your Wishlist tab. For backups, sidegrades, or items you don\'t want, use the Wishlist tab instead.</p>'
+      ? '<p style="color:var(--text-muted);font-size:1.02rem;margin:0;padding:0.75rem 1.25rem 0;">This is your Best-in-Slot list -- one target item per slot. The link you provide here is the source of truth for what you\'re considering BiS, and each slot is either set by officers from that list, or tagged as BiS on your Wishlist tab, where you can also mark items Good, OK, Catalyst Only, or Pass.</p>'
       : '';
 
   var bisSectionHTML = featureEnabled('bis')
@@ -4890,7 +4968,10 @@ function renderProfile(firstName, backTo, container) {
   } else {
     document.getElementById('profileView').innerHTML = html;
   }
-  if (backTo === 'officer') updateBisAllowDiv(player.nameRealm, player.firstName);
+  if (backTo === 'officer') {
+    updateBisAllowDiv(player.nameRealm, player.firstName);
+    updateWishlistAllowDiv(player.nameRealm, player.firstName);
+  }
   // Defensive re-apply: the inline display:none above already gets this
   // right on first paint, but ownWishlistSectionHTML()'s async reload and
   // every wishlistUpsert() write call renderProfile() again, and this keeps

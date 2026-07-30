@@ -327,6 +327,18 @@ function wishlistSlotSummaryDotsHTML(items) {
   return dots;
 }
 
+// Whether the raider currently viewing their own Wishlist can edit it --
+// the team-wide wishlistOpen() toggle, OR their own wishlist_allowed
+// per-raider exception (same shape as bis_allowed's "Allow BiS Submit",
+// #610/#611 follow-up: there was no way to reopen just one raider's
+// Wishlist while it's closed team-wide). Every editing gate in this file
+// should check this instead of wishlistOpen() directly -- tab-bis.js's own
+// wishlistOpen() calls are the team-wide toggle's own display and
+// deliberately stay as-is.
+function wishlistEditableNow() {
+  return wishlistOpen() || (!!_wishlistPlayerNameRealm && wishlistAllowedFor(_wishlistPlayerNameRealm));
+}
+
 // lockOnceSet (Other Sources rows only, #515 follow-up): once a status is
 // set, every button on that row -- including the active one -- goes
 // permanently disabled. Regular gear-slot rows never pass this, and stay
@@ -335,7 +347,7 @@ function wishlistStatusButtonsHTML(itemId, slot, lockOnceSet) {
   var current = wishlistCurrentStatus(itemId, slot);
   var savingKey = itemId + '|' + (slot || '');
   var locked = !!(lockOnceSet && current);
-  var disabled = _wishlistSaving[savingKey] || !wishlistOpen() || locked ? ' disabled' : '';
+  var disabled = _wishlistSaving[savingKey] || !wishlistEditableNow() || locked ? ' disabled' : '';
   // Officer-overridable per team (#515 Phase 2), stored in
   // team_settings.config.wishlistStatusLabels via the officer admin panel --
   // WISHLIST_STATUSES's own .label stays the default text for teams that
@@ -382,7 +394,7 @@ function wishlistNoteHTML(itemId, slot) {
     '<input type="text" id="' +
     noteId +
     '" class="self-received-source" style="width:100%;box-sizing:border-box;font-size:0.92rem;margin-top:0.25rem;" ' +
-    (wishlistOpen() ? '' : 'readonly ') +
+    (wishlistEditableNow() ? '' : 'readonly ') +
     'placeholder="Note (optional)" value="' +
     note.replace(/"/g, '&quot;') +
     '" onchange="wishlistSetNote(' +
@@ -420,7 +432,7 @@ function wishlistRowHTML(name, itemId, slot, rowIndex, lockOnceSet) {
   // out of a mis-tagged slot. Regular gear-slot rows stay freely
   // re-taggable via the status buttons themselves, so they don't need one.
   var removeHTML =
-    lockOnceSet && wishlistOpen()
+    lockOnceSet && wishlistEditableNow()
       ? '<button type="button" class="btn btn-danger" style="font-size:0.85rem;padding:2px 8px;" ' +
         (_wishlistSaving[itemId + '|' + (slot || '')] ? 'disabled ' : '') +
         'onclick="wishlistRemovePreference(' +
@@ -557,7 +569,7 @@ function wishlistOtherSourceHTML(name, globallyTaggedSlots) {
   var availableSlots = candidateSlots.filter(function (s) {
     return shownSlots.indexOf(s) === -1 && !globallyTaggedSlots[s];
   });
-  if (availableSlots.length && wishlistOpen()) {
+  if (availableSlots.length && wishlistEditableNow()) {
     var selectId = 'wishlistAddSlotSelect_' + name.replace(/[^a-zA-Z0-9]/g, '');
     html +=
       '<div style="display:flex;gap:0.4rem;align-items:center;margin-top:0.3rem;">' +
@@ -664,7 +676,7 @@ function wishlistSectionBodyHTML(player) {
       completeness.totalRequired +
       ' slots tagged.</p>';
 
-  html += wishlistOpen()
+  html += wishlistEditableNow()
     ? ''
     : '<p style="font-size:1.04rem;color:var(--melee);margin:0.25rem 0 0.75rem;">Wishlist editing is currently closed -- your tags below are read-only. Contact an officer if something needs to change.</p>';
 
@@ -709,7 +721,7 @@ function wishlistSectionBodyHTML(player) {
 // does a plain insert rather than upserting). Filters an update the same way
 // bisSlotFilter() does: .eq('slot', slot) when set, .is('slot', null) when not.
 function wishlistUpsert(itemId, slot, patch) {
-  if (!_wishlistPlayerId || !wishlistOpen()) return;
+  if (!_wishlistPlayerId || !wishlistEditableNow()) return;
   var savingKey = itemId + '|' + (slot || '');
   _wishlistSaving[savingKey] = true;
   var msgEl = document.getElementById('wishlistSaveMsg-' + _wishlistPlayerFirstName);
@@ -916,7 +928,7 @@ function wishlistSetNote(itemId, slot, note) {
 // fixing it in the DB. This deletes the row outright (not just clearing
 // status) so the slot's "+ Add" dropdown offers it again.
 function wishlistRemovePreference(itemId, slot) {
-  if (!_wishlistPlayerId || !wishlistOpen()) return;
+  if (!_wishlistPlayerId || !wishlistEditableNow()) return;
   var pref = wishlistPrefFor(itemId, slot || null);
   if (!pref) return;
   var savingKey = itemId + '|' + (slot || '');

@@ -86,6 +86,7 @@ erDiagram
   text officer_notes
   boolean is_backup_tank
   boolean is_backup_healer
+  boolean wishlist_allowed
 }
 "public.items" {
   integer id

@@ -8,6 +8,17 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.29] - 2026-07-30
+
+### Frontend
+
+- **Added a per-raider "Allow Wishlist Edit" exception** -- mirrors the existing "Allow BiS Submit" toggle. Wishlist Editing was previously an all-or-nothing team-wide toggle; there was no way to reopen just one raider's Wishlist while it's closed for everyone else. New toggle on a raider's officer-view profile card, checked alongside the team-wide toggle in every Wishlist editing gate (`js/wishlist.js`).
+- Also synced the raider and officer walkthrough docs with several changes since their last full pass (v3.48.0): the "Bios" nav rename to "About" (Team/Guild/About/Contact sub-tabs, including the previously-undocumented Contact form), Backup Tank/Backup Healer profile badges, per-character WarcraftLogs/Raider.IO/Armory quick-links, the signup capacity nudge, the Recent Loot search box, and a clearer explanation of how the profile's "BiS List" is a live merge of the officer's BiS Manager grid and a raider's own Wishlist BiS tags.
+
+### Backend
+
+- Added `players.wishlist_allowed` (boolean, default false) -- same officer-write RLS rule already covering `players` gates the toggle, no new RPC needed since (unlike BiS Submission, which runs unauthenticated on the public roster page) Wishlist editing only ever happens for an already-authenticated, already-claimed raider.
+
 ## [3.49.28] - 2026-07-29
 
 ### Frontend
