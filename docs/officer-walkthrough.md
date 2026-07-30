@@ -141,17 +141,28 @@ At the top: **RCLootCouncil Export String** -- Generate/Regenerate pulls an alre
 string built from the current priority order and roster. Copy it into RCLootCouncil in-game
 to sync priorities to the council.
 
-Three sub-tabs:
+Four sub-tabs:
 
 - **Priority List** (default) -- read-only full ranked order per item; filter by boss, search by
   name, or hide empty entries. Its badge counts stale-after-Heroic Mythic #1s, same-boss #1
   conflicts, and players holding 2+ #1s team-wide; a banner also flags incomplete raider
-  Wishlists (see BiS Manager -> BiS Lists for who's missing what)
+  Wishlists (see BiS Manager -> BiS Lists for who's missing what). Each ranked player also flags
+  if they already received a *different* item in the same slot this season (e.g. already has one
+  ring, ranked for another) -- read live off this season's loot, not just whatever the list
+  looked like when it was last generated
 - **Contested Items** -- items wanted by multiple players; flags any player holding 1st priority
   on more than one item so over-allocation gets caught before loot decisions
 - **Unmanaged Items** -- BiS items with no priority order set yet; badge shows the count
+- **Notes** -- every item with a raider-written Wishlist note, and who wrote it. This is where a
+  raider's "BiS for Destro"-style notes actually surface (see the raider walkthrough's
+  "Fill out their Wishlist" section) -- gold badge on the tab flags when notes exist. Read-only
+  context for judgment calls, e.g. deciding whether to award a second item in a slot to someone
+  who's already tagged a note explaining why a different item is their real BiS for another spec;
+  doesn't feed the Suggest Order scoring itself. Worth checking that the note is actually about a
+  spec swapped between regularly mid-raid (same role, same primary stat) -- not someone's M+-only
+  or different-role off-spec, which isn't what this is meant to cover
 
-All three sub-tabs (and the BiS item-search pool) are scoped to the Season Settings -> Settings
+All four sub-tabs (and the BiS item-search pool) are scoped to the Season Settings -> Settings
 -> **Season View** picker -- items outside the season you're currently viewing won't appear.
 
 Clicking Edit (or Set Heroic/Set Mythic on an unmanaged item) opens the priority editor:

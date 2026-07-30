@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.28] - 2026-07-29
+
+### Frontend
+
+- **Wishlist help tip now covers multi-spec raiders** -- explains that only one item per slot can be BiS, so a raider playing multiple specs with different stat priorities (e.g. a warlock swapping Aff/Demo/Destro) should tag their main spec's item BiS and any other spec's different pick Good/OK with a note saying which spec it's for. Pairs with #610's officer-side Notes tab, which is where those notes actually surface.
+
 ## [3.49.27] - 2026-07-29
 
 ### Frontend

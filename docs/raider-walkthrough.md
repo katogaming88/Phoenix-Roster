@@ -82,6 +82,7 @@ Reference notes for walking a raider through the site -- not published to raider
 - **Other Sources -- BiS Not From Raid (M+ / Crafted)** card covers slots whose real BiS comes from outside raid drops
 - A completeness counter shows how many required slots are tagged (or already covered by the officer's BiS pick); a **Show all seasons** checkbox lifts the current-tier-only item filter
 - Read-only whenever wishlist editing is closed
+- Raiders who swap specs regularly in raid, per boss fight (e.g. a warlock alternating Aff/Demo/Destro; Frost/Unholy DK; Devastation/Augmentation Evoker; any pure-DPS class): only one item per slot can be BiS, even if a different item is genuinely BiS for another spec they play. In-app help tip tells them to tag their most-played spec's item BiS, tag the other spec's item with whichever tier actually fits (Good/OK/Catalyst Only), and use the Note field to say it's really BiS for that spec -- officers can see wishlist notes via BiS Manager > Priority > Notes (see [officer-walkthrough.md](officer-walkthrough.md)). Doesn't apply to an off-spec only played outside raid or in a different role (e.g. an Elemental Shaman tagging a Restoration item) -- only specs actually swapped between mid-raid that share the same role and primary stat
 
 ### Link their Twitch stream
 - From the **Your Stream** section on their own profile, enter their Twitch channel name and an optional schedule note, then Save

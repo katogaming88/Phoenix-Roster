@@ -646,7 +646,8 @@ function wishlistSectionBodyHTML(player) {
     '</div>' +
     '<div id="help-wishlist-' +
     player.firstName +
-    '" class="help-tip">Tag every item you\'d want per slot, not just one pick: backups, sidegrades, or drops to pass on. BiS choices marked here save to your BiS List. Slots below are raid drops; use Other Sources for gear you\'ll get elsewhere.</div>';
+    '" class="help-tip">Tag every item you\'d want per slot, not just one pick: backups, sidegrades, or drops to pass on. BiS choices marked here save to your BiS List. Slots below are raid drops; use Other Sources for gear you\'ll get elsewhere.' +
+    '<br><br>Swap specs per boss fight (e.g. a warlock alternating Aff/Demo/Destro -- not an off-spec you only play in M+ or a different role)? Only one item per slot can be BiS. Tag your other spec\'s item with whichever tier actually fits (Good/OK/Catalyst Only), and use the note to say it\'s really BiS for that spec, e.g. "BiS for Destro". Officers can see wishlist notes.</div>';
 
   var completeness = wishlistCompleteness();
   html += completeness.missingRows.length
