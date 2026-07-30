@@ -13,7 +13,7 @@ Reference notes for walking a raider through the site -- not published to raider
 ## Finding their profile
 
 - Open the link (share this in Discord)
-- Top nav: **Home**, **Roster**, **Streams**, **Sign Up**, **History**, **Bios**, **News**, **Help**
+- Top nav: **Home**, **Roster**, **Streams**, **Sign Up**, **History**, **About**, **News**, **Help**
 - **History** only appears once the team has archived at least one season; **News** shows a notification dot when there's an unread entry
 - Click **Login with Discord** in the top nav and authorize
 - First time logging in, they'll be asked to claim their character from the roster
@@ -44,6 +44,8 @@ Reference notes for walking a raider through the site -- not published to raider
 - **My Wishlist** -- only shown to the raider viewing their own profile; per-slot cards where they tag every item they'd want (BiS/Good/OK/Catalyst Only/Pass), not just their one BiS pick -- see "Fill out their Wishlist" below
 - **M+ Exclusion** -- shows Excluded/Rejected status if they've ever requested one, or the request button if exclusions are open
 - **Your Stream** -- only shown to the raider viewing their own profile; lets them link a Twitch channel
+- **Backup Tank / Backup Healer badges** -- shown publicly on the profile if an officer has flagged them as either; purely an officer-set designation, nothing for the raider to do here
+- **Quick-link icons** (WarcraftLogs / Raider.IO / Armory) -- next to their name, built automatically from their character name and realm, no submission needed; visible on anyone's profile, not just their own
 - Every section above has a small **?** button next to its heading with a short explanation -- point raiders at those instead of re-explaining a section from scratch
 
 ---
@@ -67,6 +69,7 @@ Reference notes for walking a raider through the site -- not published to raider
 - Multi-step form -- character/realm, class, spec, role, Discord tag, notes
 - If they're switching mains this season, check the "I'm switching mains" box and enter the old main -- this records the swap for officers
 - If they're logged in with Discord and the name/class entered doesn't match their claimed character, they'll see a warning and have to confirm before submitting (this catches typos and wrong-class clicks)
+- Step 3 (Spec/Role) shows who else already plays the class they picked; hybrid classes picking Tank or Healer also see a capacity nudge once the team's officer-set target for that role is already met -- they can still submit either way, it's just a heads-up to consider DPS/backup or talk to an officer first
 - Officers review applications
 
 ### M+ exclusion request
@@ -94,7 +97,7 @@ Reference notes for walking a raider through the site -- not published to raider
 ## The landing page
 
 - Shows current raider count and total items distributed this tier
-- Recent loot feed -- last 10 items given out across the roster
+- Recent loot feed -- last 10 items given out across the roster; a search box lets them type an item name to see every match for the current season instead of just the last 10
 - Raid progression -- current season's raids showing how many bosses are down out of the total (e.g. 3/8 Mythic) with a first-kill date for each downed boss
 
 ---
@@ -121,10 +124,14 @@ Reference notes for walking a raider through the site -- not published to raider
 
 ---
 
-## The Bios tab
+## The About tab
 
-- Public, no login needed -- officer-curated cards introducing the team's raid officers (name, title, pronouns, class/spec, photo or initials, short bio)
-- Content is entirely set by officers from the **Officer Bios** tab on the dashboard; raiders can't edit or add anything here
+- Public, no login needed -- renamed from "Bios"; up to 4 sub-tabs, pill bar only shows once 2+ are populated (a team with only one populated section just shows that content directly)
+- **Team** -- officer-curated cards introducing this team's raid officers (name, title, pronouns, class/spec, photo or initials, short bio)
+- **Guild** -- same card format, but for the guild's own leadership (separate from Team since not every team officer holds a guild rank and vice versa)
+- **About** -- static copy on what WGA Raid Hub is and who built it; always present
+- **Contact** -- a form (name optional, message required) that posts straight to a Discord channel the admins watch; if they're logged in with Discord their username rides along so a reply is easy
+- Team/Guild content is entirely set by officers from the dashboard; raiders can't edit or add anything here
 
 ---
 
