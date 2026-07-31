@@ -8,6 +8,16 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.36] - 2026-07-31
+
+### Frontend
+
+- **Starting a new season now also clears every player's submitted BiS link**, alongside the existing real-item BiS list wipe. A BiS link points at a specific tier's loot table, and there's no way to tell whether the site behind it happens to update in place for a new tier -- so it's cleared unconditionally rather than left for a raider to notice it's stale. Updated the archive confirmation dialog and the Officer Guide's "Season reset workflow" card to say so.
+
+### Backend
+
+- `archive_current_season()` now also nulls `players.bis_link` for the whole active roster, alongside its existing real-item `bis_items` wipe and `m_plus_excluded`/`is_bench` resets. Not added to the historical `bis_items` snapshot -- this is "clear it going forward," not "start preserving a historical record of it" -- and `bis_requests` (the submission/approval queue) stays untouched, same as its existing precedent of staying intact independent of season resets.
+
 ## [3.49.35] - 2026-07-31
 
 ### Frontend
