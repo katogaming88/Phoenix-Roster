@@ -15,9 +15,11 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const COMMON_JS = readFileSync(path.join(HERE, '../../js/common.js'), 'utf8');
 const ROSTER_JS = readFileSync(path.join(HERE, '../../js/tabs/tab-roster.js'), 'utf8');
 
-function makeSandbox() {
+function makeSandbox(supabase) {
+  const windowObj = {};
+  if (supabase) windowObj.supabase = supabase;
   const sandbox = {
-    window: {},
+    window: windowObj,
     location: { search: '', pathname: '/' },
     sessionStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
     localStorage: { getItem: () => null, setItem: () => {} },
@@ -30,6 +32,45 @@ function makeSandbox() {
   vm.runInContext(COMMON_JS, sandbox, { filename: 'common.js' });
   vm.runInContext(ROSTER_JS, sandbox, { filename: 'tab-roster.js' });
   return sandbox;
+}
+
+// Chainable stand-in for .from('scoring').select(...).in(...).eq(...).then(...),
+// capturing every call so the query shape itself can be asserted -- this is
+// exactly what would have caught the scoring.team_id bug (that column
+// doesn't exist; scoring is scoped by player_id/season only, and "Public
+// read scoring" has no team restriction at the RLS level either, so
+// team-scoping has to happen via .in('player_id', ...) against the roster
+// already in DATA, not a filter column that isn't there).
+function mockScoringSupabase(result) {
+  const calls = { from: null, select: null, in: [], eq: [] };
+  const builder = {
+    select(cols) {
+      calls.select = cols;
+      return builder;
+    },
+    in(col, vals) {
+      calls.in.push([col, vals]);
+      return builder;
+    },
+    eq(col, val) {
+      calls.eq.push([col, val]);
+      return builder;
+    },
+    then(onFulfilled, onRejected) {
+      return Promise.resolve()
+        .then(() => result())
+        .then(onFulfilled, onRejected);
+    }
+  };
+  const supabase = {
+    createClient: () => ({
+      from(table) {
+        calls.from = table;
+        return builder;
+      }
+    })
+  };
+  return { calls, supabase };
 }
 
 describe('_rosterScoreCellHtml', () => {
@@ -85,5 +126,58 @@ describe('_rosterScoreCellHtml', () => {
     sandbox._teamScoringCache = null;
     const html = sandbox._rosterScoreCellHtml({ id: 7, role: 'Melee' });
     expect(html).toContain('No committed score yet this season');
+  });
+});
+
+describe('_fetchTeamScoringIfNeeded', () => {
+  it('scopes by player_id (from the roster already in DATA) and season -- never by a team_id column', async () => {
+    const { calls, supabase } = mockScoringSupabase(() => ({
+      data: [{ player_id: 1, performance_score: 8.4 }],
+      error: null
+    }));
+    const sandbox = makeSandbox(supabase);
+    sandbox.DATA = sandbox.window.DATA = {
+      seasonName: 'Midnight Season 1',
+      roster: [{ id: 1 }, { id: 2 }, { id: null }]
+    };
+    // The real success handler redraws the table; buildRosterTable() itself
+    // needs DOM/filter globals this minimal sandbox doesn't set up and isn't
+    // what's under test here, so it's stubbed out.
+    sandbox.buildRosterTable = function () {};
+
+    sandbox._fetchTeamScoringIfNeeded();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(calls.from).toBe('scoring');
+    expect(calls.select).toBe('player_id, performance_score');
+    // Filtered to this team's own roster ids (nulls dropped) -- not a
+    // scoring.team_id column, which doesn't exist on this table at all.
+    expect(calls.in).toEqual([['player_id', [1, 2]]]);
+    expect(calls.eq).toEqual([['season', 'MID1']]);
+    expect(sandbox._teamScoringCache).toEqual({ season: 'MID1', byPlayerId: { 1: 8.4 } });
+  });
+
+  it('does not query at all when the roster is empty', async () => {
+    const { calls, supabase } = mockScoringSupabase(() => ({ data: [], error: null }));
+    const sandbox = makeSandbox(supabase);
+    sandbox.DATA = sandbox.window.DATA = { seasonName: 'Midnight Season 1', roster: [] };
+
+    sandbox._fetchTeamScoringIfNeeded();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(calls.from).toBeNull();
+    expect(sandbox._teamScoringCache).toBeNull();
+  });
+
+  it('does not re-query once the cache already matches the current season', async () => {
+    const { calls, supabase } = mockScoringSupabase(() => ({ data: [], error: null }));
+    const sandbox = makeSandbox(supabase);
+    sandbox.DATA = sandbox.window.DATA = { seasonName: 'Midnight Season 1', roster: [{ id: 1 }] };
+    sandbox._teamScoringCache = { season: 'MID1', byPlayerId: { 1: 5 } };
+
+    sandbox._fetchTeamScoringIfNeeded();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(calls.from).toBeNull();
   });
 });
