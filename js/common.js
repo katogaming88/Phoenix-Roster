@@ -1802,6 +1802,33 @@ function fetchSupabasePriorityOrder() {
   return Promise.race([query, timeout]);
 }
 
+// Top-3 saved-vs-current mismatches after a scoring change, so a saved
+// priority order doesn't silently go stale once a player's performance
+// moves. Unlike the other
+// priority_* fetches above, this isn't part of the initial parallel DATA
+// load -- it's officer-only, only relevant once a scoring commit has
+// happened, and needs an explicit season (the RPC has no unfiltered "give
+// me everything" mode the way the plain-table/view fetches do). Called from
+// tab-priority.js's refreshPriorityDriftBadge(), same lazy-fetch-then-cache
+// shape as fetchTeamItemPreferences(). Resolves to [] on any failure so the
+// badge just shows nothing rather than erroring.
+function fetchSupabasePriorityDrift(teamId, season) {
+  if (!supabaseClient) return Promise.resolve([]);
+  return supabaseClient.rpc('check_priority_order_drift', { p_team_id: teamId, p_season: season }).then(
+    function (result) {
+      if (result.error) {
+        console.warn('Supabase check_priority_order_drift query failed.', result.error.message);
+        return [];
+      }
+      return result.data || [];
+    },
+    function (err) {
+      console.warn('Supabase check_priority_order_drift query failed.', err);
+      return [];
+    }
+  );
+}
+
 /**
  * Maps priority_order rows (filtered to the current season) to the
  * DATA.priorityOrder shape the Apps Script heavy chunk emits:

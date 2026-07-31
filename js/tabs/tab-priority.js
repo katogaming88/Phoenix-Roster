@@ -177,6 +177,7 @@ function populateBossFilters() {
 // the actual items instead of just a number.
 function getPriorityListConflicts() {
   var staleEntries = DATA.priorityStaleAfterHeroic || [];
+  var driftEntries = DATA.priorityDrift || [];
   var byPlayer = {};
   (DATA.priorityLiveFirstPrios || []).forEach(function (r) {
     var entry = byPlayer[r.player_id] || { nameRealm: r.name_realm, items: [] };
@@ -210,10 +211,11 @@ function getPriorityListConflicts() {
   });
 
   return {
-    count: staleEntries.length + sameBossGroups.length + duplicateGroups.length,
+    count: staleEntries.length + sameBossGroups.length + duplicateGroups.length + driftEntries.length,
     staleEntries: staleEntries,
     sameBossGroups: sameBossGroups,
-    duplicateGroups: duplicateGroups
+    duplicateGroups: duplicateGroups,
+    driftEntries: driftEntries
   };
 }
 
@@ -251,9 +253,54 @@ function buildPriorityConflictsBannerHtml(conflicts) {
       g.itemNames.length +
       ' #1 priorities</span></span></div>';
   });
+  (conflicts.driftEntries || []).forEach(function (d) {
+    html +=
+      '<div class="prio-overalloc-player"><span class="prio-overalloc-name">' +
+      escHtml(d.item_name) +
+      ' (' +
+      escHtml(d.track === 'Myth' ? 'Mythic' : 'Heroic') +
+      ')</span><span class="prio-overalloc-item">' +
+      ' <span class="prio-overalloc-diff">saved: ' +
+      escHtml((d.saved_top3 || []).join(', ') || 'none') +
+      ' -- now: ' +
+      escHtml((d.current_top3 || []).join(', ') || 'none') +
+      '</span></span></div>';
+  });
 
   html += '</div></div>';
   return html;
+}
+
+// Re-fetches the top-3 saved-vs-current drift check and refreshes the nav +
+// sub-tab badges -- called on demand (the "Check for Drift" button) and
+// automatically right after a scoring commit (tab-scoring.js
+// executeCommitPerformance()), same cross-tab refresh shape as
+// refreshPriorityStaleBadge() below.
+function refreshPriorityDriftBadge() {
+  var teamId = _teamCfg && _teamCfg.supabaseTeamId;
+  if (!teamId) return Promise.resolve();
+  var season = resolveSeasonViewCode();
+  return fetchSupabasePriorityDrift(teamId, season).then(function (rows) {
+    DATA.priorityDrift = rows || [];
+    updatePriorityBadges();
+  });
+}
+
+function checkPriorityDrift() {
+  var btn = document.getElementById('checkPriorityDriftBtn');
+  var status = document.getElementById('checkPriorityDriftStatus');
+  if (btn) btn.disabled = true;
+  if (status) {
+    status.textContent = 'Checking...';
+    status.style.color = 'var(--text-muted)';
+  }
+  refreshPriorityDriftBadge().then(function () {
+    if (btn) btn.disabled = false;
+    if (!status) return;
+    var count = (DATA.priorityDrift || []).length;
+    status.textContent = count ? count + ' item(s) drifted from their saved order.' : 'No drift from saved orders.';
+    status.style.color = count ? 'var(--gold)' : 'var(--heal)';
+  });
 }
 
 // Own copy of js/wishlist.js's WISHLIST_TIER_COLORS -- officer.html doesn't

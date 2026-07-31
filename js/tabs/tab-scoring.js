@@ -342,6 +342,11 @@ function executeCommitPerformance() {
       });
       _saveScoresCache(allScores, cached.status);
       renderScoresTable(allScores);
+      // A committed performance change can move a player in or out of a
+      // saved priority order's top 3 -- check now so the Priority nav badge
+      // reflects it immediately, same reasoning as tab-loot-import.js's
+      // post-import refreshPriorityStaleBadge() call.
+      if (typeof refreshPriorityDriftBadge === 'function') refreshPriorityDriftBadge();
     })
     .catch(function (err) {
       if (btn) btn.disabled = false;
