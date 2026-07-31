@@ -116,7 +116,9 @@ describe('archive_current_season', () => {
   // means "doesn't need gear right now," which a new tier invalidates, so it
   // resets for the whole active roster too. Bench resets the same way; trial
   // status is deliberately left alone (still a Trial Promotions call).
-  it('snapshots bis_items (placeholders included) into history, wipes real items only, and resets m+ exclusion and bench', async () => {
+  // A submitted BiS link is cleared unconditionally too (20260731135713) --
+  // it's effectively per-tier regardless of which site it points to.
+  it('snapshots bis_items (placeholders included) into history, wipes real items and BiS link, and resets m+ exclusion and bench', async () => {
     await withActors(async (client, as) => {
       // items has no authenticated write policy (read-only shared catalog) --
       // seed as the unrestricted connection before dropping to a PostgREST role.
@@ -129,7 +131,7 @@ describe('archive_current_season', () => {
            (900, 1, 900, true, 'ring1')`
       );
       await client.query(
-        `update public.players set m_plus_excluded = true, m_plus_note = 'needs a break', is_bench = true, is_trial = true where id = 1`
+        `update public.players set m_plus_excluded = true, m_plus_note = 'needs a break', is_bench = true, is_trial = true, bis_link = 'https://example.com/old-sim' where id = 1`
       );
 
       await as('authenticated', TEAM_LEADER_T1);
@@ -160,25 +162,28 @@ describe('archive_current_season', () => {
       expect(remaining.rows.map((r) => r.item_id)).toEqual([900]);
 
       const player = await client.query(
-        `select m_plus_excluded, m_plus_note, is_bench, is_trial from public.players where id = 1`
+        `select m_plus_excluded, m_plus_note, is_bench, is_trial, bis_link from public.players where id = 1`
       );
       expect(player.rows[0]).toEqual({
         m_plus_excluded: false,
         m_plus_note: null,
         is_bench: false,
-        is_trial: true
+        is_trial: true,
+        bis_link: null
       });
     });
   });
 
-  it('does not touch bis_items, m+ exclusion, or bench for a different team', async () => {
+  it('does not touch bis_items, m+ exclusion, bench, or bis_link for a different team', async () => {
     await withActors(async (client, as) => {
       await client.query(
         `insert into public.items (id, wow_item_id, name, slot, armor_type, is_placeholder) values
            (901, null, 'Seed Team 2 Item', 'Head', null, false)`
       );
       await client.query(`insert into public.bis_items (id, player_id, item_id, obtained) values (901, 3, 901, false)`);
-      await client.query(`update public.players set m_plus_excluded = true, is_bench = true where id = 3`);
+      await client.query(
+        `update public.players set m_plus_excluded = true, is_bench = true, bis_link = 'https://example.com/team2-sim' where id = 3`
+      );
 
       await as('authenticated', TEAM_LEADER_T1);
       await client.query(`select public.set_team_setting(1, '{"seasonName":"Archive Me 3"}'::jsonb)`);
@@ -187,8 +192,12 @@ describe('archive_current_season', () => {
       const remaining = await client.query(`select item_id from public.bis_items where player_id = 3`);
       expect(remaining.rows.map((r) => r.item_id)).toEqual([901]);
 
-      const player = await client.query(`select m_plus_excluded, is_bench from public.players where id = 3`);
-      expect(player.rows[0]).toEqual({ m_plus_excluded: true, is_bench: true });
+      const player = await client.query(`select m_plus_excluded, is_bench, bis_link from public.players where id = 3`);
+      expect(player.rows[0]).toEqual({
+        m_plus_excluded: true,
+        is_bench: true,
+        bis_link: 'https://example.com/team2-sim'
+      });
     });
   });
 });

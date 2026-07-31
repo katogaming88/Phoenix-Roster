@@ -66,10 +66,11 @@ directly once they've seen it walked through once.
 2. **Season Settings -> History -> Start New Season** (formerly "Archive Current Season") --
    pushes the current Season Name/Start/End into history so it shows up in the season selector
    dropdown going forward, and does a lot more in the same click: wipes every player's
-   real-item BiS list (placeholder M+/Crafted/Catalyst rows survive), resets M+ exclusion for
-   the whole active roster, resets Bench status for the whole active roster (Trial status is
-   left alone), and auto-fills the new Season Name from the current tier constant. See the
-   Season Settings section below for the full behavior.
+   real-item BiS list (placeholder M+/Crafted/Catalyst rows survive) and their submitted BiS
+   link (a link is effectively per-tier; cleared unconditionally rather than left for a raider
+   to notice it's stale), resets M+ exclusion for the whole active roster, resets Bench status
+   for the whole active roster (Trial status is left alone), and auto-fills the new Season Name
+   from the current tier constant. See the Season Settings section below for the full behavior.
 3. Still in Season History, run the just-archived season's **WCL Performance Baseline**
    fetch (#264) -- the "Fetch WCL Performance" row only appears next to the *newest* history
    entry, so this is the only chance to run it; once another season is archived, the entry
@@ -371,8 +372,10 @@ Three sub-tabs: **Settings**, **Raid Progression**, **History**.
 - **Start New Season** (renamed from "Archive Current Season") -- pushes the current Season
   Name/Start/End into history so it appears in the season selector going forward, same as
   before, but now does considerably more in the same click: wipes every player's real-item BiS
-  list (placeholder M+/Crafted/Catalyst rows survive), resets M+ exclusion for the whole active
-  roster, resets Bench status for the whole active roster (Trial status is untouched), and
+  list (placeholder M+/Crafted/Catalyst rows survive) and clears their submitted BiS link
+  unconditionally (it's effectively per-tier, regardless of which site it points to), resets M+
+  exclusion for the whole active roster, resets Bench status for the whole active roster (Trial
+  status is untouched), and
   auto-fills the new Season Name from the current tier constant instead of requiring it typed
   in manually. See the Rollover workflow above.
 - **Season History** -- past archived seasons, with an **Unarchive** option to restore one as
