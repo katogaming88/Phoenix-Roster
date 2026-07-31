@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.49.33';
+var VERSION = '3.49.34';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -3267,6 +3267,28 @@ function attendTrendMonthColor(avg) {
   return '#e05252';
 }
 
+// Distinct raid dates per calendar month across the whole team, from
+// DATA.rawAttendanceData.raidDates -- mapSupabaseAttendanceRaw() already
+// builds this exact list once (excluded reports never added, see its own
+// comment), so this reuses it rather than re-deriving the same thing a
+// second way from raw.players. This is deliberately the team-wide count,
+// not this player's own row count -- a player's own rows already exclude
+// nights they weren't on roster for (see computeSeasonAttendancePct's
+// comment on why that's intentional), so showing their count alone can't
+// answer "how many raid nights did the team actually have this month" --
+// e.g. a mid-month roster join, or a genuinely unrecorded night for this
+// player specifically.
+function _teamRaidNightsByMonth() {
+  var raw = DATA && DATA.rawAttendanceData;
+  var counts = {};
+  if (!raw || !raw.raidDates) return counts;
+  raw.raidDates.forEach(function (date) {
+    var key = date.substring(0, 7);
+    counts[key] = (counts[key] || 0) + 1;
+  });
+  return counts;
+}
+
 function renderAttendTrend(firstName) {
   var trend = (DATA.recentAttendanceTrend || {})[firstName];
   if (!trend || !trend.length) return '';
@@ -3347,15 +3369,27 @@ function renderAttendTrend(firstName) {
     return '<div style="overflow-x:auto;overflow-y:hidden;margin-top:0.75rem;">' + svg + '</div>';
   }
 
+  var raidNightsByMonth = _teamRaidNightsByMonth();
   var months = monthOrder.map(function (key) {
     var entries = monthMap[key];
     var sum = 0;
-    for (var j = 0; j < entries.length; j++) sum += attendTrendValue(entries[j].status);
+    var attended = 0;
+    for (var j = 0; j < entries.length; j++) {
+      sum += attendTrendValue(entries[j].status);
+      // "Attended" for the X/Y tooltip -- physically at the raid that night.
+      // Excused/Medical Leave/Extended Leave/No Show don't count, even
+      // though some of those still carry partial weight in avg/pct above.
+      if (entries[j].status === 'Present' || entries[j].status === 'Bench') attended++;
+    }
     var avg = sum / entries.length;
     var parts = key.split('-');
     var label = MONTH_NAMES[parseInt(parts[1], 10) - 1] + ' ' + parts[0];
     var pct = Math.round(avg * 100);
-    return { key: key, label: label, avg: avg, count: entries.length, pct: pct };
+    // Team-wide total for the month, falling back to this player's own
+    // record count if team-wide data isn't available (e.g. rawAttendanceData
+    // failed to load) -- never shown smaller than their own attended count.
+    var total = Math.max(raidNightsByMonth[key] || 0, entries.length, attended);
+    return { key: key, label: label, avg: avg, attended: attended, total: total, pct: pct };
   });
 
   var n = months.length;
@@ -3395,7 +3429,17 @@ function renderAttendTrend(firstName) {
   for (var i = 0; i < points.length; i++) {
     var p = points[i];
     var col = attendTrendMonthColor(p.m.avg);
-    var tip = p.m.label + ': ' + p.m.pct + '% (' + p.m.count + ' raid' + (p.m.count !== 1 ? 's' : '') + ')';
+    var tip =
+      p.m.label +
+      ': ' +
+      p.m.pct +
+      '% (' +
+      p.m.attended +
+      '/' +
+      p.m.total +
+      ' raid' +
+      (p.m.total !== 1 ? 's' : '') +
+      ')';
     svg +=
       '<g style="cursor:default;" onmouseover="showAttendTip(event,' +
       "'" +
