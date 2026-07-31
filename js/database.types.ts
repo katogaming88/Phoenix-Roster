@@ -5,6 +5,11 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: '14.5';
+  };
   public: {
     Tables: {
       attendance: {
@@ -252,6 +257,24 @@ export type Database = {
           id?: number;
           role?: string | null;
           spec?: string;
+        };
+        Relationships: [];
+      };
+      guild_officers: {
+        Row: {
+          auth_user_id: string | null;
+          discord_id: string;
+          id: number;
+        };
+        Insert: {
+          auth_user_id?: string | null;
+          discord_id: string;
+          id?: number;
+        };
+        Update: {
+          auth_user_id?: string | null;
+          discord_id?: string;
+          id?: number;
         };
         Relationships: [];
       };
@@ -1576,14 +1599,14 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: 'priority_order_item_id_fkey';
-            columns: ['item_id'];
+            columns: ['other_item_id'];
             isOneToOne: false;
             referencedRelation: 'items';
             referencedColumns: ['id'];
           },
           {
             foreignKeyName: 'priority_order_item_id_fkey';
-            columns: ['other_item_id'];
+            columns: ['item_id'];
             isOneToOne: false;
             referencedRelation: 'items';
             referencedColumns: ['id'];
@@ -1771,9 +1794,22 @@ export type Database = {
         Args: { p_name: string; p_slug: string };
         Returns: number;
       };
+      admin_grant_guild_officer: {
+        Args: { p_discord_id: string };
+        Returns: number;
+      };
       admin_grant_site_admin: {
         Args: { p_discord_id: string };
         Returns: number;
+      };
+      admin_list_guild_officers: {
+        Args: never;
+        Returns: {
+          auth_user_id: string;
+          discord_id: string;
+          display_name: string;
+          id: number;
+        }[];
       };
       admin_list_site_admins: {
         Args: never;
@@ -1783,6 +1819,10 @@ export type Database = {
           display_name: string;
           id: number;
         }[];
+      };
+      admin_revoke_guild_officer: {
+        Args: { p_discord_id: string };
+        Returns: undefined;
       };
       admin_revoke_site_admin: {
         Args: { p_discord_id: string };
@@ -1807,6 +1847,16 @@ export type Database = {
       build_rclc_export: {
         Args: { p_season: string; p_team_id: number };
         Returns: Json;
+      };
+      check_priority_order_drift: {
+        Args: { p_season: string; p_team_id: number };
+        Returns: {
+          current_top3: string[];
+          item_id: number;
+          item_name: string;
+          saved_top3: string[];
+          track: string;
+        }[];
       };
       claim_character: {
         Args: { p_name_realm: string; p_team_id: number };
@@ -1892,6 +1942,7 @@ export type Database = {
         Args: { p_rows: Json; p_season: string; p_team_id: number };
         Returns: Json;
       };
+      is_guild_officer: { Args: never; Returns: boolean };
       is_own_player: { Args: { p_player_id: number }; Returns: boolean };
       is_site_admin: { Args: never; Returns: boolean };
       my_team_role: { Args: { p_team_id: number }; Returns: string };
