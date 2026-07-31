@@ -254,7 +254,60 @@ function toggleSort(key) {
   buildRosterTable();
 }
 
+// Committed scoring.performance_score per player for the roster's Recent
+// Score column -- the exact number generate_priority_order() reads for DPS
+// priority, not the live/uncommitted WCL preview the Scoring tab's own
+// "Refresh from WCL" shows. Officer-only, so (like _teamItemPreferences in
+// tab-priority.js) this stays out of the core DATA load and is fetched here
+// instead, once per season per session.
+var _teamScoringCache = null; // { season, byPlayerId: { [player_id]: performance_score } }
+
+function _fetchTeamScoringIfNeeded() {
+  if (!supabaseClient) return;
+  var seasonCode = window.DATA && DATA.seasonName ? seasonCodeForDisplay(DATA.seasonName.trim()) : '';
+  if (!seasonCode || (_teamScoringCache && _teamScoringCache.season === seasonCode)) return;
+
+  supabaseClient
+    .from('scoring')
+    .select('player_id, performance_score')
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .eq('season', seasonCode)
+    .then(function (result) {
+      if (result.error) {
+        console.warn('Supabase scoring query failed.', result.error.message);
+        return;
+      }
+      var byPlayerId = {};
+      (result.data || []).forEach(function (row) {
+        if (row.performance_score !== null && row.performance_score !== undefined) {
+          byPlayerId[row.player_id] = row.performance_score;
+        }
+      });
+      _teamScoringCache = { season: seasonCode, byPlayerId: byPlayerId };
+      buildRosterTable();
+    });
+}
+
+// Same color thresholds as the Scoring tab's own Recent Score column
+// (tab-scoring.js renderScoresTable()), so a number means the same thing in
+// both places. Tank/Heal roles are excluded from generate_priority_order()'s
+// performance blend entirely (it reads Attendance only for them), so a
+// stored column value for those roles isn't what Priority actually uses --
+// shown as "--" rather than a possibly-misleading number.
+function _rosterScoreCellHtml(p) {
+  if (p.role === 'Tank' || p.role === 'Heal') {
+    return '<span style="color:var(--text-dim);" title="Priority uses Attendance only for this role">-</span>';
+  }
+  var score = _teamScoringCache ? _teamScoringCache.byPlayerId[p.id] : undefined;
+  if (score === null || score === undefined) {
+    return '<span style="color:var(--text-dim);" title="No committed score yet this season">-</span>';
+  }
+  var color = score >= 7 ? 'var(--heal)' : score >= 5 ? 'var(--gold)' : 'var(--text-dim)';
+  return '<span style="color:' + color + ';font-weight:600;">' + score.toFixed(2) + '</span>';
+}
+
 function buildRosterTable() {
+  _fetchTeamScoringIfNeeded();
   var order = ['Tank', 'Heal', 'Melee', 'Ranged', 'Bench'];
   var labels = { Tank: 'Tanks', Heal: 'Healers', Melee: 'Melee', Ranged: 'Ranged', Bench: 'Bench' };
   var groups = { Tank: [], Heal: [], Melee: [], Ranged: [], Bench: [] };
@@ -317,14 +370,14 @@ function buildRosterTable() {
   }
 
   var html =
-    '<thead><tr><th>Player</th><th>Attendance</th><th>Items</th><th>BiS Link</th><th>M+ Excl.</th><th>Status</th><th><button class="btn btn-gold" style="font-size:0.95rem;padding:0.25rem 0.75rem;white-space:nowrap;" onclick="showAddPlayerModal()">+ Add Player</button></th></tr></thead><tbody>';
+    '<thead><tr><th>Player</th><th>Attendance</th><th title="The committed value generate_priority_order() reads for DPS priority. Tank/Heal roles use Attendance only.">Recent Score</th><th>Items</th><th>BiS Link</th><th>M+ Excl.</th><th>Status</th><th><button class="btn btn-gold" style="font-size:0.95rem;padding:0.25rem 0.75rem;white-space:nowrap;" onclick="showAddPlayerModal()">+ Add Player</button></th></tr></thead><tbody>';
   var totalRows = 0;
 
   for (var r = 0; r < order.length; r++) {
     var role = order[r];
     var players = groups[role];
     if (!players.length) continue;
-    html += '<tr class="group-header"><td colspan="7">' + labels[role] + '</td></tr>';
+    html += '<tr class="group-header"><td colspan="8">' + labels[role] + '</td></tr>';
     for (var j = 0; j < players.length; j++) {
       var p = players[j];
       var name = p.nick || p.firstName;
@@ -401,6 +454,9 @@ function buildRosterTable() {
           : '') +
         '</div></td>' +
         '<td>' +
+        _rosterScoreCellHtml(p) +
+        '</td>' +
+        '<td>' +
         lootCount +
         '</td>' +
         '<td>' +
@@ -423,7 +479,7 @@ function buildRosterTable() {
   }
   if (totalRows === 0)
     html +=
-      '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:2rem;">No players match the current filters.</td></tr>';
+      '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:2rem;">No players match the current filters.</td></tr>';
   html += '</tbody>';
   document.getElementById('rosterTable').innerHTML = html;
 
@@ -455,7 +511,7 @@ function officerSelectPlayer(firstName) {
   var inlineRow = document.createElement('tr');
   inlineRow.id = 'inlineProfileRow';
   var inlineCell = document.createElement('td');
-  inlineCell.colSpan = 7;
+  inlineCell.colSpan = 8;
   inlineCell.style.padding = '0';
   inlineCell.style.border = 'none';
   inlineRow.appendChild(inlineCell);
@@ -475,7 +531,7 @@ function reopenSelectedPlayer() {
   var inlineRow = document.createElement('tr');
   inlineRow.id = 'inlineProfileRow';
   var inlineCell = document.createElement('td');
-  inlineCell.colSpan = 7;
+  inlineCell.colSpan = 8;
   inlineCell.style.padding = '0';
   inlineCell.style.border = 'none';
   inlineRow.appendChild(inlineCell);

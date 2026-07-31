@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.33] - 2026-07-31
+
+### Frontend
+
+- **Added a "Recent Score" column to the officer Roster tab** -- the exact committed `scoring.performance_score` value `generate_priority_order()` reads for DPS priority, previously only visible on the Scoring tab. Color-coded with the same thresholds the Scoring tab already uses. Tank/Heal roles show `--` (Priority uses Attendance only for them, regardless of whatever's stored in that column) instead of a number that isn't actually what their priority is based on.
+
 ## [3.49.32] - 2026-07-31
 
 ### Frontend
