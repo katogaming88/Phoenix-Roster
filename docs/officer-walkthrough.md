@@ -70,17 +70,25 @@ directly once they've seen it walked through once.
    the whole active roster, resets Bench status for the whole active roster (Trial status is
    left alone), and auto-fills the new Season Name from the current tier constant. See the
    Season Settings section below for the full behavior.
-3. Set the new **Start Date** for the upcoming season (Season Name is now auto-filled by step 2).
-4. Re-import the new season's loot via **Loot -> Import** (entries auto-tag with the new season
+3. Still in Season History, run the just-archived season's **WCL Performance Baseline**
+   fetch (#264) -- the "Fetch WCL Performance" row only appears next to the *newest* history
+   entry, so this is the only chance to run it; once another season is archived, the entry
+   drops off the list with no way back. Seeds the Heroic priority baseline
+   (`player_wcl_season_perf`) before the new season has raid reports of its own, and seeds
+   `scoring.performance_score` for the new season too (without ever overwriting a real
+   Commit Performance Scores). A live status label on the row shows whether it's already
+   been done for that season.
+4. Set the new **Start Date** for the upcoming season (Season Name is now auto-filled by step 2).
+5. Re-import the new season's loot via **Loot -> Import** (entries auto-tag with the new season
    name). Old loot history doesn't need clearing -- entries stay tagged by season and the
    season selector already filters by it; there is no "Clear All Loot History" action (see the
    Loot tab section below).
-5. Nothing special needed for Attendance -- there's no rollover-specific action here. Once the
+6. Nothing special needed for Attendance -- there's no rollover-specific action here. Once the
    new season's first raid night happens, the normal after-raid-night **Attendance -> Refresh
    from WCL** (see the Weekly Workflow above) picks it up like any other night, since it's
    already scoped to raids on/after the new Season Start Date. Until then, players will show
    the roster's default "no data yet" 100% for the new season, which is expected, not a bug.
-6. M+ exclusions are already reset team-wide by step 2's Start New Season. **M+ Exclusions ->
+7. M+ exclusions are already reset team-wide by step 2's Start New Season. **M+ Exclusions ->
    Clear All Exclusions** is still useful mid-season if you need to reset exclusions without a
    full season rollover -- it only flips the live exclusion flag, it does not touch or relabel
    request history. **Do not** use Admin -> Danger Zone -> "Clear M+ Exclusion Requests" for
