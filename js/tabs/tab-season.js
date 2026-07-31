@@ -112,6 +112,12 @@ function renderSeasonHistory() {
   list.innerHTML = html;
   var confirmEl = document.getElementById('seasonUnarchiveConfirm');
   if (confirmEl) confirmEl.style.display = 'none';
+
+  var newest = history[history.length - 1];
+  if (newest) {
+    var newestSeasonCode = seasonCodeForDisplay((newest.name || '').trim());
+    _checkSeasonPerfFetchedStatus(history.length - 1, _teamCfg.supabaseTeamId, newestSeasonCode);
+  }
 }
 
 // #264: only raids with a WCL zone ID recorded can be fetched from.
@@ -186,8 +192,48 @@ function _renderSeasonPerfFetchRow(season, historyIndex) {
     historyIndex +
     ')">Fetch WCL Performance</button>';
   html += '<span id="seasonPerfFetchStatus-' + historyIndex + '" style="font-size:0.97rem;"></span>';
+  // Live "already done or not" indicator (Kat couldn't remember this step
+  // existed at all) -- filled in by _checkSeasonPerfFetchedStatus(), fired
+  // from renderSeasonHistory() below and re-fired after a successful fetch,
+  // so this is visible every time an officer opens Season Settings, not
+  // just in the few seconds right after archiving.
+  html +=
+    '<span id="seasonPerfFetchedStatus-' +
+    historyIndex +
+    '" style="font-size:0.92rem;color:var(--text-muted);">Checking...</span>';
   html += '</div>';
   return html;
+}
+
+// Pure so it's testable without DOM (tests/frontend). count is the number of
+// player_wcl_season_perf rows already on file for this team/season.
+function _seasonPerfStatusLabel(count) {
+  return count > 0
+    ? {
+        text: 'Already fetched (' + count + ' player' + (count === 1 ? '' : 's') + ').',
+        color: 'var(--heal)'
+      }
+    : { text: 'Not fetched yet -- do this before generating Heroic priority.', color: 'var(--gold)' };
+}
+
+// player_wcl_season_perf has a public-read RLS policy (same as streamers/
+// team_raid_progress -- see docs/rls_policies.csv), so this is a plain
+// client-side count query, no RPC needed.
+function _checkSeasonPerfFetchedStatus(historyIndex, teamId, seasonCode) {
+  var el = document.getElementById('seasonPerfFetchedStatus-' + historyIndex);
+  if (!el || !supabaseClient || !seasonCode) return;
+  supabaseClient
+    .from('player_wcl_season_perf')
+    .select('player_id', { count: 'exact', head: true })
+    .eq('team_id', teamId)
+    .eq('season', seasonCode)
+    .then(function (result) {
+      var target = document.getElementById('seasonPerfFetchedStatus-' + historyIndex);
+      if (!target || result.error) return;
+      var label = _seasonPerfStatusLabel(result.count || 0);
+      target.textContent = label.text;
+      target.style.color = label.color;
+    });
 }
 
 // #264: officer-triggered, once-per-season fetch of the just-archived
@@ -243,6 +289,7 @@ function fetchSeasonPerf(historyIndex) {
         status.style.color = 'var(--heal)';
       }
       _seedScoringFromSeasonPerf(result.players);
+      _checkSeasonPerfFetchedStatus(historyIndex, _teamCfg.supabaseTeamId, seasonCode);
     });
 }
 

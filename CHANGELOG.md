@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.32] - 2026-07-31
+
+### Frontend
+
+- **Season History now shows whether the WCL Performance Baseline fetch has already been run** for the newest archived season -- a live "Already fetched (N players)" / "Not fetched yet -- do this before generating Heroic priority" label next to the existing "Fetch WCL Performance" row, since nothing previously indicated this one-time step was outstanding, or reminded an officer it only stays available for the *newest* history entry. Also added the missing step to both the in-app "Season reset workflow" reference card (Officer Guide tab) and `docs/officer-walkthrough.md`'s rollover checklist, neither of which mentioned this step before.
+
 ## [3.49.31] - 2026-07-31
 
 ### Frontend
