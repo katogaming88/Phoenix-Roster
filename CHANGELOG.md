@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.34] - 2026-07-31
+
+### Frontend
+
+- **The attendance trend chart's monthly tooltip now shows "attended/total" raids for that month** -- previously it showed only this player's own recorded-night count (e.g. "88% (8 raids)"), which silently excludes any night they have no row for at all (a mid-month roster join, or a genuinely unrecorded night), with no way to tell that apart from "the team only raided 8 times." The total now comes from the distinct raid dates across every player that month, not just this one; the attended count is Present/Bench nights specifically (Excused/Medical Leave/Extended Leave/No Show don't count as attended, even though they still factor into the displayed percentage).
+
 ## [3.49.33] - 2026-07-31
 
 ### Frontend
