@@ -266,11 +266,22 @@ function _fetchTeamScoringIfNeeded() {
   if (!supabaseClient) return;
   var seasonCode = window.DATA && DATA.seasonName ? seasonCodeForDisplay(DATA.seasonName.trim()) : '';
   if (!seasonCode || (_teamScoringCache && _teamScoringCache.season === seasonCode)) return;
+  // scoring has no team_id column (it's scoped by player_id only, and
+  // "Public read scoring" has no team restriction at the RLS level either)
+  // -- team-scoping has to happen here, against this team's own roster ids.
+  var playerIds = (DATA.roster || [])
+    .map(function (p) {
+      return p.id;
+    })
+    .filter(function (id) {
+      return id != null;
+    });
+  if (!playerIds.length) return;
 
   supabaseClient
     .from('scoring')
     .select('player_id, performance_score')
-    .eq('team_id', _teamCfg.supabaseTeamId)
+    .in('player_id', playerIds)
     .eq('season', seasonCode)
     .then(function (result) {
       if (result.error) {

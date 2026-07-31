@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.35] - 2026-07-31
+
+### Frontend
+
+- **Fixed the Roster tab's Recent Score column throwing repeatedly in production** (`column scoring.team_id does not exist`) -- #616 added a `.eq('team_id', ...)` filter against the `scoring` table, but that table has no `team_id` column at all (it's scoped by `player_id`/`season` only, and "Public read scoring" has no team restriction at the RLS level either). Fixed to scope by `.in('player_id', ...)` against the roster already loaded in `DATA`, which is what should have been there from the start.
+
 ## [3.49.34] - 2026-07-31
 
 ### Frontend
