@@ -8,6 +8,16 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.31] - 2026-07-31
+
+### Frontend
+
+- **Priority List now flags when a saved item's top 3 has drifted from a scoring update** -- previously a saved priority order was a frozen snapshot with nothing checking it against current performance/attendance, so a player tailing off or spiking could sit stale in a saved order indefinitely. Folds into the existing Priority List conflicts banner/badge; runs automatically right after committing Scoring tab performance updates, plus a new "Check for Drift" button for on-demand checks. Non-blocking -- nothing is auto-reordered, resolving a flag is still a deliberate re-save through the Priority Edit modal.
+
+### Backend
+
+- New `check_priority_order_drift(team_id, season)` function -- compares each saved `priority_order` item/track's top 3 against a live `generate_priority_order()` call (reusing that function rather than re-implementing its weighting) and returns only the ones that changed. Same non-blocking, security-invoker pattern as the existing fairness warning views (`20260713150512_priority_order_fairness_warnings.sql`).
+
 ## [3.49.30] - 2026-07-30
 
 ### Frontend

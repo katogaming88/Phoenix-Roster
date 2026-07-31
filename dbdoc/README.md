@@ -93,6 +93,7 @@
 | public.admin_list_guild_officers | record |  | FUNCTION |
 | public.admin_grant_guild_officer | int4 | p_discord_id text | FUNCTION |
 | public.admin_revoke_guild_officer | void | p_discord_id text | FUNCTION |
+| public.check_priority_order_drift | record | p_team_id integer, p_season text | FUNCTION |
 
 ## Enums
 

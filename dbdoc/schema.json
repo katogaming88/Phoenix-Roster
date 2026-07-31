@@ -4564,6 +4564,12 @@
       "return_type": "void",
       "arguments": "p_discord_id text",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.check_priority_order_drift",
+      "return_type": "record",
+      "arguments": "p_team_id integer, p_season text",
+      "type": "FUNCTION"
     }
   ],
   "enums": [
