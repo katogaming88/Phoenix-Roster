@@ -381,7 +381,7 @@ function buildRosterTable() {
   }
 
   var html =
-    '<thead><tr><th>Player</th><th>Attendance</th><th title="The committed value generate_priority_order() reads for DPS priority. Tank/Heal roles use Attendance only.">Recent Score</th><th>Items</th><th>BiS Link</th><th>M+ Excl.</th><th>Status</th><th><button class="btn btn-gold" style="font-size:0.95rem;padding:0.25rem 0.75rem;white-space:nowrap;" onclick="showAddPlayerModal()">+ Add Player</button></th></tr></thead><tbody>';
+    '<thead><tr><th>Player</th><th>Attendance</th><th title="The committed value generate_priority_order() reads for DPS priority. Tank/Heal roles use Attendance only.">Recent Score</th><th>Items</th><th>BiS Source</th><th>M+ Excl.</th><th>Status</th><th><button class="btn btn-gold" style="font-size:0.95rem;padding:0.25rem 0.75rem;white-space:nowrap;" onclick="showAddPlayerModal()">+ Add Player</button></th></tr></thead><tbody>';
   var totalRows = 0;
 
   for (var r = 0; r < order.length; r++) {

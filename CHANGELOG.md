@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.40] - 2026-08-01
+
+### Frontend
+
+- **Renamed "BiS Link" to "BiS Source"** (#627) -- "BiS Link" and "BiS List" were one word apart and easy to conflate in conversation, and "BiS Link" didn't read as what it actually does: a reference URL an officer reads and manually reflects into the BiS Manager grid, not a live-updating list. Updated the profile section label, the raider's "Submit/Update BiS List" button (now "Submit/Update BiS Source" -- it was itself a case of this exact confusion), the officer's update button, the save confirmation and audit log entry, the roster table column, the officer "No BiS Source" filter chip, and the "My BiS Changed (Same Link)" flag button (now "Same Source"). "BiS List" and "Wishlist" are unchanged. `players.bis_link` and `bis_link_requests` are left as-is -- whether the DB-level naming should follow is an open follow-up decision, not made here.
+
 ## [3.49.39] - 2026-08-01
 
 ### Frontend

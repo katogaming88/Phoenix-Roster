@@ -530,7 +530,7 @@ function confirmArchiveSeason() {
       msg.textContent =
         'Archive "' +
         name +
-        '"? The current season name, start date, and end date will be moved to history and cleared. Every player\'s BiS list (real items -- M+/Crafted/Catalyst entries are kept) will be snapshotted into history, then wiped, their submitted BiS link will be cleared, and M+ exclusion and Bench status will reset for the whole roster (Trial status is left alone). The new season name will be applied automatically as "' +
+        '"? The current season name, start date, and end date will be moved to history and cleared. Every player\'s BiS list (real items -- M+/Crafted/Catalyst entries are kept) will be snapshotted into history, then wiped, their submitted BiS source will be cleared, and M+ exclusion and Bench status will reset for the whole roster (Trial status is left alone). The new season name will be applied automatically as "' +
         CURRENT_SEASON.displayName +
         '". Set a new Season Start Date for it afterward.';
       document.getElementById('seasonArchiveExecBtn').style.display = '';

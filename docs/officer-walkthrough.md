@@ -103,7 +103,7 @@ directly once they've seen it walked through once.
 
 Two sub-tabs: **Roster**, **Discord Claims**.
 
-- Search box, plus filter chips: Low Attendance (<95%), No BiS Link, Trials Only, Bench Only
+- Search box, plus filter chips: Low Attendance (<95%), No BiS Source, Trials Only, Bench Only
 - Role filter chips (Tank/Heal/Melee/Ranged) and sort (Name/Attendance/Items)
 - **Buff Coverage** panel -- read-only, checks Raid Buffs/Boss Debuffs/Utility across the
   active (non-bench) roster and flags anything under-covered
@@ -115,7 +115,7 @@ Two sub-tabs: **Roster**, **Discord Claims**.
   - Rename a player via the Name/Realm field (character or realm change) -- this also updates
     their name on the Attendance and Loot sheets
   - Add a private officer note (only visible on the dashboard)
-  - Update a player's BiS link directly without waiting for a submission
+  - Update a player's BiS source directly without waiting for a submission
   - Allow a player to submit a BiS update even when submissions are closed
   - Toggle their M+ exclusion directly, without a request
   - Mark an item as received directly (skips the approval queue)
@@ -219,11 +219,11 @@ doesn't rewrite lists that were already saved.
 Two sub-tabs:
 
 - **Submissions** -- open/close toggle controls whether raiders see the BiS submit form.
-  Approving updates the player's BiS link on the Roster automatically; Rejecting discards the
+  Approving updates the player's BiS source on the Roster automatically; Rejecting discards the
   submission with no change. A single player can be allowed to submit even while the window is
   closed, via the "Allow BiS Submit" toggle on their Roster profile card. **My BiS Changed (Same
-  Link)** lands in this same queue -- a raider flagging that their link's *contents* changed, not
-  the URL. Approving one of those doesn't update anything by itself (the link's already on file);
+  Source)** lands in this same queue -- a raider flagging that their source's *contents* changed, not
+  the URL. Approving one of those doesn't update anything by itself (the source is already on file);
   it's just an acknowledgment that you've seen it and are about to act -- either edit their pick(s)
   in the BiS Lists grid below to match, or let them do it themselves via the separate **Wishlist
   Editing** open/close toggle in this same panel. Same per-raider exception shape as BiS Submit:
@@ -372,7 +372,7 @@ Three sub-tabs: **Settings**, **Raid Progression**, **History**.
 - **Start New Season** (renamed from "Archive Current Season") -- pushes the current Season
   Name/Start/End into history so it appears in the season selector going forward, same as
   before, but now does considerably more in the same click: wipes every player's real-item BiS
-  list (placeholder M+/Crafted/Catalyst rows survive) and clears their submitted BiS link
+  list (placeholder M+/Crafted/Catalyst rows survive) and clears their submitted BiS source
   unconditionally (it's effectively per-tier, regardless of which site it points to), resets M+
   exclusion for the whole active roster, resets Bench status for the whole active roster (Trial
   status is untouched), and
@@ -475,7 +475,7 @@ the tab at all. In practice this is usually one or two people per team. Five sub
   History; the sheet wipes below it are site-admin only:
   - Clear Season History -- deletes all archived seasons
   - Clear Loot Data -- wipes imported RCLootCouncil loot entries
-  - Clear BiS Submissions -- wipes pending BiS link submissions
+  - Clear BiS Submissions -- wipes pending BiS source submissions
   - Clear Signups -- wipes all signup applications
   - Clear M+ Exclusion Requests -- permanently deletes every row of the M+ exclusion request
     history. Does **not** clear who's currently excluded -- that stays untouched. Not the same

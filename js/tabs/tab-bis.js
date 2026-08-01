@@ -34,7 +34,7 @@ function setBisSubmissionsOpen(open) {
 }
 
 // Distinct from the 'bis' feature flag (whole tab hidden vs. just editing
-// paused) and from bisSubmissionsOpen (that gates the BiS Link submit form,
+// paused) and from bisSubmissionsOpen (that gates the BiS Source submit form,
 // this gates the wishlist's own status buttons/notes) -- same toggle shape
 // as both, just its own team_settings.config key.
 function renderWishlistToggle() {
