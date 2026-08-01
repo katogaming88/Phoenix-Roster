@@ -4291,7 +4291,7 @@ function renderProfile(firstName, backTo, container) {
   } else {
     bisActionHTML = '';
     if (bisSubmissionsOpen() || bisAllowedFor(player.nameRealm)) {
-      var bisBtnLabel = player.bisLink ? 'Update BiS List' : 'Submit BiS List';
+      var bisBtnLabel = player.bisLink ? 'Update BiS Source' : 'Submit BiS Source';
       bisActionHTML +=
         '<div style="margin-top:0.75rem;">' +
         '<button class="btn btn-muted" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="toggleBisForm(\'' +
