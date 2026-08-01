@@ -92,11 +92,14 @@ var CATALYST_SOURCE_SLOTS = ['Back', 'Wrist', 'Waist', 'Feet'];
 // Same armor-type scoping as tab-bis.js's search (bisSlotOnInput): rows for
 // which armor type doesn't apply (jewelry, cloaks, weapons) skip the filter,
 // so a warlock still sees every neck/trinket/weapon option, not just cloth.
+// Wrist is deliberately NOT here -- bracers are real armor (Cloth/Leather/
+// Mail/Plate) like Chest/Legs/etc., not jewelry -- confirmed every Wrist row
+// in the catalog carries a real armor_type. Including it here was a bug: it
+// showed every armor type's bracers to every class.
 var WISHLIST_ARMOR_TYPES = { Plate: true, Mail: true, Leather: true, Cloth: true };
 var WISHLIST_UNIVERSAL_ROWS = {
   Neck: true,
   Back: true,
-  Wrist: true,
   'Finger 1': true,
   'Finger 2': true,
   'Trinket 1': true,
