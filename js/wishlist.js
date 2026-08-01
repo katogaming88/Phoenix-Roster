@@ -680,6 +680,14 @@ function wishlistSectionBodyHTML(player) {
     ? ''
     : '<p style="font-size:1.04rem;color:var(--melee);margin:0.25rem 0 0.75rem;">Wishlist editing is currently closed -- your tags below are read-only. Contact an officer if something needs to change.</p>';
 
+  var hasAnyTags = !!(_wishlistPrefs && _wishlistPrefs.length);
+  html +=
+    '<button type="button" class="btn btn-danger" style="font-size:0.9rem;padding:2px 10px;margin-bottom:0.75rem;"' +
+    (wishlistEditableNow() && hasAnyTags ? '' : ' disabled') +
+    ' onclick="clearMyWishlist(\'' +
+    player.firstName.replace(/'/g, "\\'") +
+    '\')">Clear My Wishlist</button>';
+
   // Same "My BiS Changed (Same Link)" flag as the BiS tab (js/common.js's
   // bisFlagButtonHTML()) -- surfaced here too so a raider whose considered-
   // BiS changed doesn't have to switch tabs to flag it, whether they're
@@ -966,4 +974,42 @@ function wishlistRemovePreference(itemId, slot) {
       renderProfile(_wishlistPlayerFirstName, 'landing');
     }
   });
+}
+
+// Resets everything at once -- every gear-slot tag and every Other Sources
+// pick -- rather than making a raider remove each one individually. Same
+// "confirm(), then a direct delete, then update local state and re-render"
+// shape as removeOwnStreamer() (js/streamers.js), the existing precedent
+// for a raider deleting their own data. No item_id/slot filter, unlike
+// wishlistRemovePreference() above, so this removes every row in one call --
+// item_preferences' own "Raiders manage own item_preferences" RLS policy
+// (is_own_player(player_id)) is what actually scopes this to just their rows.
+function clearMyWishlist(firstName) {
+  if (!_wishlistPlayerId || !wishlistEditableNow()) return;
+  if (!_wishlistPrefs || !_wishlistPrefs.length) return;
+  if (
+    !confirm(
+      "Clear your entire wishlist? This removes every tag you've set, including Other Sources picks. This cannot be undone."
+    )
+  )
+    return;
+
+  var msgEl = document.getElementById('wishlistSaveMsg-' + firstName);
+  if (msgEl) msgEl.textContent = 'Clearing...';
+
+  supabaseClient
+    .from('item_preferences')
+    .delete()
+    .eq('player_id', _wishlistPlayerId)
+    .then(function (result) {
+      if (result.error) {
+        var msg = document.getElementById('wishlistSaveMsg-' + firstName);
+        if (msg) msg.textContent = 'Failed: ' + result.error.message;
+        return;
+      }
+      _wishlistPrefs = [];
+      if (typeof renderProfile === 'function' && _wishlistPlayerFirstName) {
+        renderProfile(_wishlistPlayerFirstName, 'landing');
+      }
+    });
 }

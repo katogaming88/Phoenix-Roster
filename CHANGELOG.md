@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.37] - 2026-07-31
+
+### Frontend
+
+- **Added a "Clear My Wishlist" button** to a raider's own Wishlist tab -- previously the only way to reset a wishlist was removing every gear-slot tag and Other Sources pick one at a time. Clears everything in one action (with a confirmation prompt first), gated by the same wishlist-editing-open rule as every other edit on that tab.
+
 ## [3.49.36] - 2026-07-31
 
 ### Frontend
