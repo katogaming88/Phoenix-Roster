@@ -14,6 +14,10 @@ with each release split into `### Frontend` (drives the version number) and
 
 - **Fixed Wrist showing every armor type's bracers instead of just yours** -- both the raider Wishlist tab and the officer's BiS search picker had `Wrist` wrongly listed alongside genuinely armor-agnostic slots (Neck/Back/Finger/Trinket/Weapon), so it skipped armor-type filtering entirely. Bracers are real armor (Cloth/Leather/Mail/Plate) like Chest/Legs/etc., confirmed every Wrist item in the catalog carries a real armor type -- it's now filtered the same as every other gear slot.
 
+### Backend
+
+- **`generate_priority_order()` now sorts bench/trial raiders by tier instead of discounting their score** -- previously a trial or bench raider's `weighted_total` was shrunk by a second status multiplier stacked on top of their role weight, and a flat 0.85 for trial Ranged/Melee turned out to be higher than a full-status healer's own role weight (0.75), letting a trial DPS outrank a permanent healer for the same item. Status now only decides which tier (full/trial/bench) a raider sorts into -- no bench/trial raider of any role can outrank a full-status raider regardless of score -- and `weighted_total` is `raw_score * role_mult` for everyone, so officers see a bench/trial raider's real score instead of an artificially discounted one. See `docs/database-decisions.md`'s 2026-07-31 entry.
+
 ## [3.49.37] - 2026-07-31
 
 ### Frontend
