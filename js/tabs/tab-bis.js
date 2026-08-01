@@ -457,10 +457,14 @@ var BIS_CATALOG_SLOT_TO_ROWS = {
 var BIS_ARMOR_TYPES = { Plate: true, Mail: true, Leather: true, Cloth: true };
 // Rows for which armor-type filtering doesn't apply -- trinkets/jewelry/
 // cloaks have no armor type, and both weapon rows accept any class' gear.
+// Wrist is deliberately NOT here -- bracers are real armor (Cloth/Leather/
+// Mail/Plate) like Chest/Legs/etc., not jewelry -- confirmed every Wrist row
+// in the catalog carries a real armor_type. Including it here was a bug: it
+// showed every armor type's bracers to every class. Mirrors
+// js/wishlist.js's WISHLIST_UNIVERSAL_ROWS.
 var BIS_UNIVERSAL_ROWS = {
   Neck: true,
   Back: true,
-  Wrist: true,
   'Finger 1': true,
   'Finger 2': true,
   'Trinket 1': true,

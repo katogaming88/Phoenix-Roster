@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.38] - 2026-07-31
+
+### Frontend
+
+- **Fixed Wrist showing every armor type's bracers instead of just yours** -- both the raider Wishlist tab and the officer's BiS search picker had `Wrist` wrongly listed alongside genuinely armor-agnostic slots (Neck/Back/Finger/Trinket/Weapon), so it skipped armor-type filtering entirely. Bracers are real armor (Cloth/Leather/Mail/Plate) like Chest/Legs/etc., confirmed every Wrist item in the catalog carries a real armor type -- it's now filtered the same as every other gear slot.
+
 ## [3.49.37] - 2026-07-31
 
 ### Frontend
