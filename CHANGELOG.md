@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.41] - 2026-08-01
+
+### Frontend
+
+- **Fixed the claim modal's "wrong team" hint leading with the wrong likely cause** -- the hint told a raider who doesn't see their character to check whether they're on the wrong team, but the far more common reason is that an officer hasn't added them to the roster yet (the dropdown only lists unclaimed active players on the current team). Now leads with "ask an officer to add you" and mentions the wrong-team possibility second.
+
 ## [3.49.40] - 2026-08-01
 
 ### Frontend
