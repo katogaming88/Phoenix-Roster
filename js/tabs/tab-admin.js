@@ -131,7 +131,7 @@ var DANGER_OPS = [
   {
     key: 'clearBisSubs',
     label: 'Clear BiS Submissions',
-    desc: 'Wipes all pending BiS link submissions for this team.',
+    desc: 'Wipes all pending BiS source submissions for this team.',
     supabase: true,
     supabaseFn: clearBisRequestsSupabase
   },

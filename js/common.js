@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.49.39';
+var VERSION = '3.49.40';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -3626,7 +3626,7 @@ function submitBiSForm(nameRealm, firstName) {
     });
 }
 
-// -- "My list changed (same link)" flag (#278) ------------------------------
+// -- "My list changed (same source)" flag (#278) ----------------------------
 // Shared by the BiS tab and, via idSuffix, the Wishlist tab's own copy (#610
 // follow-up) -- a raider shouldn't have to switch tabs to find this. Both
 // tabs render into the DOM at once (only display:none toggles between them,
@@ -3641,7 +3641,7 @@ function bisFlagButtonHTML(player, idSuffix) {
     player.firstName.replace(/'/g, "\\'") +
     "','" +
     suffix +
-    '\')">My BiS Changed (Same Link)</button>' +
+    '\')">My BiS Changed (Same Source)</button>' +
     '<div id="bisFlagForm-' +
     player.firstName +
     suffix +
@@ -3749,8 +3749,8 @@ function officerUpdateBisLink(nameRealm, firstName) {
       }
       if (formEl)
         formEl.innerHTML =
-          '<p style="font-size:1.07rem;color:var(--text-muted);padding:0.5rem 0;">BiS link updated. Clear cache to refresh.</p>';
-      writeAuditLog('BiS Link Updated', 'players', player ? player.id : null, url);
+          '<p style="font-size:1.07rem;color:var(--text-muted);padding:0.5rem 0;">BiS source updated. Clear cache to refresh.</p>';
+      writeAuditLog('BiS Source Updated', 'players', player ? player.id : null, url);
     });
 }
 
@@ -4249,7 +4249,7 @@ function renderProfile(firstName, backTo, container) {
     }
   }
 
-  // BiS link
+  // BiS source
   var bisStatusHTML = player.bisLink
     ? '<div class="bis-row"><div class="bis-dot yes"></div><a class="bis-link" href="' +
       player.bisLink +
@@ -4263,7 +4263,7 @@ function renderProfile(firstName, backTo, container) {
       '<div style="margin-top:0.75rem;">' +
       '<button class="btn btn-muted" style="font-size:1.04rem;padding:0.3rem 0.8rem;" onclick="toggleBisForm(\'' +
       player.firstName.replace(/'/g, "\\'") +
-      '\')">Update BiS Link</button>' +
+      '\')">Update BiS Source</button>' +
       '<div id="bisForm-' +
       player.firstName +
       '" style="display:none;margin-top:0.75rem;">' +
@@ -5092,7 +5092,7 @@ function renderProfile(firstName, backTo, container) {
 
   var bisSectionHTML = featureEnabled('bis')
     ? bisTabIntroHTML +
-      '<div class="profile-section"><div class="section-label">BiS Link' +
+      '<div class="profile-section"><div class="section-label">BiS Source' +
       (backTo !== 'officer'
         ? '<button class="help-btn" onclick="toggleHelp(\'help-bislink-' +
           player.firstName +
@@ -5102,7 +5102,7 @@ function renderProfile(firstName, backTo, container) {
       (backTo !== 'officer'
         ? '<div id="help-bislink-' +
           player.firstName +
-          '" class="help-tip">Submit a link to your Best-in-Slot list (e.g. a wowhead or raidbots URL) so officers know what you\'re targeting. An officer reviews new submissions before they show here. If the link stays the same but the list behind it changes, use "My BiS Changed (Same Link)" to have it rechecked.</div>'
+          '" class="help-tip">Submit a link to your Best-in-Slot list (e.g. a wowhead or raidbots URL) so officers know what you\'re targeting. An officer reviews new submissions before they show here. If the source stays the same but the list behind it changes, use "My BiS Changed (Same Source)" to have it rechecked.</div>'
         : '') +
       bisHTML +
       '</div>' +

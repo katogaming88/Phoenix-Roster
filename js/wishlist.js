@@ -760,7 +760,7 @@ function wishlistSectionBodyHTML(player) {
     player.firstName.replace(/'/g, "\\'") +
     '\')">Clear My Wishlist</button>';
 
-  // Same "My BiS Changed (Same Link)" flag as the BiS tab (js/common.js's
+  // Same "My BiS Changed (Same Source)" flag as the BiS tab (js/common.js's
   // bisFlagButtonHTML()) -- surfaced here too so a raider whose considered-
   // BiS changed doesn't have to switch tabs to flag it, whether they're
   // stuck read-only above or just prefer using this flow. '-wishlist' id

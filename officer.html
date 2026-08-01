@@ -130,7 +130,7 @@
                 <span class="section-label" style="margin-bottom:0;">Roster<button class="help-btn" onclick="toggleHelp('help-roster')" title="Show help">?</button></span>
               </div>
               <div id="help-roster" class="help-tip" style="margin-top:0;margin-bottom:0.75rem;">
-                Click a player row to open their <strong>profile card</strong> below the table. From there you can edit class, spec, role, trial/bench status, join date, BiS link, nickname, M+ exclusion, and officer notes.<br>
+                Click a player row to open their <strong>profile card</strong> below the table. From there you can edit class, spec, role, trial/bench status, join date, BiS source, nickname, M+ exclusion, and officer notes.<br>
                 To rename a player (character name or realm change), use the <strong>Name/Realm</strong> field in their profile card and click Save. This also updates their name in the Attendance and Loot sheets.<br>
                 <strong>+ Add Player</strong> button in the top-right of the roster table header adds a new player directly to the Roster sheet.<br>
                 The <strong>trial promotion banner</strong> appears automatically when a trial has been on the roster long enough with sufficient attendance to warrant a promotion review.
@@ -148,7 +148,7 @@
                 <span style="font-size:0.78rem;color:var(--text);margin-right:0.25rem;">Filter:</span>
                 <button class="filter-chip" onclick="toggleFilter('lowAttend')" id="chip-lowAttend">Low Attendance
                   (&lt;95%)</button>
-                <button class="filter-chip" onclick="toggleFilter('noBis')" id="chip-noBis">No BiS Link</button>
+                <button class="filter-chip" onclick="toggleFilter('noBis')" id="chip-noBis">No BiS Source</button>
                 <button class="filter-chip" onclick="toggleFilter('trial')" id="chip-trial">Trials Only</button>
                 <button class="filter-chip" onclick="toggleFilter('bench')" id="chip-bench">Bench Only</button>
               </div>
@@ -297,7 +297,7 @@
                   updates.<br>
                   To let a specific player submit outside of an open window, use the per-player <strong>Allow BiS
                     Submit</strong> toggle in their officer profile card on the Roster tab.<br>
-                  <strong>Approve</strong> updates the player's BiS link in the Roster sheet. <strong>Reject</strong>
+                  <strong>Approve</strong> updates the player's BiS source in the Roster sheet. <strong>Reject</strong>
                   discards the submission without changing anything.
                 </div>
                 <div style="margin-top:1rem;">
@@ -931,7 +931,7 @@
               <div class="help-ref-card">
                 <h4 class="help-ref-title">Season reset workflow</h4>
                 <ol class="help-ref-steps">
-                  <li>Go to <a href="#" onclick="switchTab('season');return false;">Season Settings</a> and click <strong>Start New Season</strong> (History sub-tab). This archives the current season, auto-fills the new Season Name, and resets every player's real-item BiS list, submitted BiS link, M+ exclusion, and Bench status team-wide.</li>
+                  <li>Go to <a href="#" onclick="switchTab('season');return false;">Season Settings</a> and click <strong>Start New Season</strong> (History sub-tab). This archives the current season, auto-fills the new Season Name, and resets every player's real-item BiS list, submitted BiS source, M+ exclusion, and Bench status team-wide.</li>
                   <li>Still in Season History, run the just-archived season's <strong>WCL Performance Baseline</strong> fetch -- the row only appears next to the newest history entry, so do it now or you won't get another chance once another season archives. This seeds the Heroic priority baseline before the new season has raid reports of its own; a status label on the row shows whether it's already been done.</li>
                   <li>Set the new <strong>Season Start Date</strong> to the new season's first raid day.</li>
                   <li>Re-import this season's loot via <strong>Loot &gt; Import</strong> -- old loot history doesn't need clearing, it stays tagged by season.</li>
