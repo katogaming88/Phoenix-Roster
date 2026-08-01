@@ -1,5 +1,12 @@
 [
   {
+    "date": "2026-07-31",
+    "category": "Feature",
+    "version": "3.49.37",
+    "title": "Clear My Wishlist button",
+    "body": "Your Wishlist tab now has a Clear My Wishlist button that resets everything in one go -- every gear-slot tag and Other Sources pick -- instead of removing each one by hand. It asks you to confirm first, and only works while wishlist editing is open."
+  },
+  {
     "date": "2026-07-25",
     "category": "Feature",
     "version": "3.49.13",
