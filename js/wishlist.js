@@ -89,6 +89,28 @@ var WISHLIST_CATALOG_SLOT_TO_ROWS = {
 // input item -- see wishlistOtherSourcesSectionHTML's comment.
 var CATALYST_SOURCE_SLOTS = ['Back', 'Wrist', 'Waist', 'Feet'];
 
+// Finger/Trinket are the only WISHLIST_SLOTS rows that share a catalog slot
+// with a sibling row (Finger 1/2 both come from 'Finger', Trinket 1/2 both
+// from 'Trinket' -- see WISHLIST_CATALOG_SLOT_TO_ROWS above). Tagging a real
+// item from one of these cards needs to record *which* row was clicked
+// (slot: 'Trinket 1', not null) or wishlistSetStatus's overlap check treats
+// every ring/trinket as claiming both rows at once, so picking a BiS for the
+// second ring/trinket demotes whatever was just tagged BiS for the first.
+// Every other row already maps 1:1 to its catalog slot, so null (falling
+// back to the item's own catalog slot) stays unambiguous there.
+var WISHLIST_DISAMBIGUATE_SLOTS = { 'Finger 1': true, 'Finger 2': true, 'Trinket 1': true, 'Trinket 2': true };
+
+// The other numbered row for a disambiguated slot -- since the same physical
+// item now shows up under both cards (a ring/trinket isn't restricted to one
+// specific finger), this flags a row already claimed as BiS on its sibling
+// row so a raider doesn't tag the same item BiS in both slots by mistake.
+var WISHLIST_SIBLING_SLOT = {
+  'Finger 1': 'Finger 2',
+  'Finger 2': 'Finger 1',
+  'Trinket 1': 'Trinket 2',
+  'Trinket 2': 'Trinket 1'
+};
+
 // Same armor-type scoping as tab-bis.js's search (bisSlotOnInput): rows for
 // which armor type doesn't apply (jewelry, cloaks, weapons) skip the filter,
 // so a warlock still sees every neck/trinket/weapon option, not just cloth.
@@ -277,6 +299,34 @@ function wishlistCurrentStatus(itemId, slot) {
   return pref ? pref.status : null;
 }
 
+// A placeholder (M+/Crafted/Catalyst) is intentionally allowed to hold BiS
+// in more than one row at once (it names a source, not a specific item), so
+// wishlistLockedBySibling below must not treat it like a real ring/trinket.
+function wishlistIsPlaceholderItem(itemId) {
+  var itemIds = (DATA && DATA.itemIds) || {};
+  var itemPlaceholders = (DATA && DATA.itemPlaceholders) || {};
+  var name = null;
+  Object.keys(itemIds).forEach(function (n) {
+    if (itemIds[n] === itemId) name = n;
+  });
+  return !!(name && itemPlaceholders[name]);
+}
+
+// Returns the sibling slot name (Finger 1<->Finger 2, Trinket 1<->Trinket 2)
+// when a real ring/trinket item is already tagged BiS there -- meaning this
+// row is locked: same physical item, already spoken for by the other slot,
+// so it can't take on a status of its own here. The lock only lifts once a
+// *different* item is promoted to BiS in the sibling slot (the demote logic
+// in wishlistSetStatus), which is the only thing that can knock this item
+// off BiS duty there in the first place. Returns null (unlocked) for
+// placeholders and non-disambiguated slots.
+function wishlistLockedBySibling(itemId, slot) {
+  if (wishlistIsPlaceholderItem(itemId)) return null;
+  var siblingSlot = WISHLIST_SIBLING_SLOT[slot];
+  if (!siblingSlot) return null;
+  return wishlistCurrentStatus(itemId, siblingSlot) === 'bis' ? siblingSlot : null;
+}
+
 // Rings/trinkets/weapons are the one case where comparing two related slots
 // side by side is actually useful (Finger 1 vs Finger 2, Weapon vs Off
 // Hand), so they're exempt from the accordion collapse within their own pair.
@@ -347,10 +397,17 @@ function wishlistEditableNow() {
 // permanently disabled. Regular gear-slot rows never pass this, and stay
 // freely re-taggable.
 function wishlistStatusButtonsHTML(itemId, slot, lockOnceSet) {
-  var current = wishlistCurrentStatus(itemId, slot);
+  // A real ring/trinket already BiS on its sibling row shows (and locks in)
+  // as BiS here too -- see wishlistLockedBySibling. Every button, not just
+  // BiS, is blocked: it's the same physical item, already spoken for by the
+  // other slot, so no independent status here makes sense until the sibling
+  // slot's BiS pick changes to something else.
+  var lockedSibling = wishlistLockedBySibling(itemId, slot);
+  var current = lockedSibling ? 'bis' : wishlistCurrentStatus(itemId, slot);
   var savingKey = itemId + '|' + (slot || '');
-  var locked = !!(lockOnceSet && current);
+  var locked = !!(lockOnceSet && current) || !!lockedSibling;
   var disabled = _wishlistSaving[savingKey] || !wishlistEditableNow() || locked ? ' disabled' : '';
+  var titleAttr = lockedSibling ? ' title="Already your ' + lockedSibling + ' BiS pick"' : '';
   // Officer-overridable per team (#515 Phase 2), stored in
   // team_settings.config.wishlistStatusLabels via the officer admin panel --
   // WISHLIST_STATUSES's own .label stays the default text for teams that
@@ -376,6 +433,7 @@ function wishlistStatusButtonsHTML(itemId, slot, lockOnceSet) {
       style +
       '" ' +
       disabled +
+      titleAttr +
       ' onclick="wishlistSetStatus(' +
       itemId +
       ",'" +
@@ -421,7 +479,12 @@ function wishlistNoteHTML(itemId, slot) {
 // gives M+/Crafted/Catalyst rows.
 function wishlistRowHTML(name, itemId, slot, rowIndex, lockOnceSet) {
   if (itemId == null) return '';
-  var current = wishlistCurrentStatus(itemId, slot);
+  // Flags (and visually treats as BiS) a row already tagged BiS on its
+  // sibling row (Finger 1<->Finger 2, Trinket 1<->Trinket 2) -- the same
+  // catalog item lists under both cards, so without this a raider has no
+  // way to tell they're looking at their already-locked-in pick.
+  var lockedSibling = wishlistLockedBySibling(itemId, slot);
+  var current = lockedSibling ? 'bis' : wishlistCurrentStatus(itemId, slot);
   var color = current && WISHLIST_TIER_COLORS[current];
   var rowBackground = color ? 'rgba(' + color.rgb + ',0.08)' : rowIndex % 2 ? 'var(--bg-elevated)' : 'var(--bg-card)';
   var rowBorder = color ? color.css : 'var(--border)';
@@ -430,6 +493,11 @@ function wishlistRowHTML(name, itemId, slot, rowIndex, lockOnceSet) {
       ? getRank(_wishlistPlayerNameRealm, name)
       : [];
   var rankHTML = lockOnceSet ? '' : typeof rankPillHTML === 'function' ? rankPillHTML(rank) : '';
+  var siblingNoteHTML = lockedSibling
+    ? '<div style="font-size:0.85rem;color:var(--gold);margin-top:0.2rem;">Already your ' +
+      lockedSibling +
+      ' BiS pick</div>'
+    : '';
   // Remove button: only for Other Sources rows (lockOnceSet) -- their status
   // buttons are permanently disabled once set, so this is the only way back
   // out of a mis-tagged slot. Regular gear-slot rows stay freely
@@ -460,6 +528,7 @@ function wishlistRowHTML(name, itemId, slot, rowIndex, lockOnceSet) {
     '</div>' +
     '</div>' +
     '</div>' +
+    siblingNoteHTML +
     wishlistNoteHTML(itemId, slot) +
     '</div>'
   );
@@ -708,6 +777,7 @@ function wishlistSectionBodyHTML(player) {
     var slotName = WISHLIST_SLOTS[s];
     var items = buckets[slotName] || [];
     if (!items.length) continue;
+    var rowSlot = WISHLIST_DISAMBIGUATE_SLOTS[slotName] ? slotName : null;
 
     var tierNote =
       WISHLIST_TIER_SET_SLOTS.indexOf(slotName) !== -1
@@ -717,11 +787,11 @@ function wishlistSectionBodyHTML(player) {
       tierNote +
       items
         .map(function (item, i) {
-          return wishlistRowHTML(item.name, item.itemId, null, i);
+          return wishlistRowHTML(item.name, item.itemId, rowSlot, i);
         })
         .join('');
     var summaryItems = items.map(function (item) {
-      return { itemId: item.itemId, slot: null };
+      return { itemId: item.itemId, slot: rowSlot };
     });
     var officerCovered = !!completeness.officerBuckets[slotName];
     slotCards += wishlistCollapsibleCardHTML(slotName, slotName, summaryItems, body, officerCovered);
@@ -910,13 +980,21 @@ function wishlistCompleteness() {
 // Only one item can be BiS per slot at a time: tagging a new one
 // auto-demotes whatever was previously BiS in an overlapping row to Good,
 // so it stays tracked as a backup instead of two items both claiming BiS.
-// Other Sources placeholders (M+/Crafted/Catalyst, identified by their
-// explicit p.slot -- real catalog items always carry slot: null) don't get
-// demoted like that: they're not a real backup item, just a stand-in for
-// "something not from raid," so once a real raid drop claims the slot as
-// BiS the placeholder is removed outright rather than left behind as a
-// locked, un-editable "Good" row.
+// Other Sources placeholders (M+/Crafted/Catalyst, identified via
+// wishlistIsPlaceholderItem -- real catalog items can carry an explicit slot
+// too now, e.g. 'Trinket 1', so p.slot truthiness alone no longer tells them
+// apart) don't get demoted like that: they're not a real backup item, just a
+// stand-in for "something not from raid," so once a real raid drop claims
+// the slot as BiS the placeholder is removed outright rather than left
+// behind as a locked, un-editable "Good" row.
 function wishlistSetStatus(itemId, slot, status) {
+  // A real ring/trinket already BiS on its sibling row can't take on any
+  // status here -- see wishlistLockedBySibling. The only way out is
+  // demoting/replacing its BiS pick in the sibling slot itself, which is
+  // exactly what the demote loop below does for whichever item currently
+  // holds that row.
+  if (wishlistLockedBySibling(itemId, slot)) return;
+
   if (status === 'bis') {
     var rows = wishlistItemRows(itemId, slot || null);
     if (rows.length) {
@@ -928,13 +1006,29 @@ function wishlistSetStatus(itemId, slot, status) {
           return rows.indexOf(r) !== -1;
         });
         if (!overlaps) return;
-        if (p.slot) {
+        if (wishlistIsPlaceholderItem(p.item_id)) {
           wishlistRemovePreference(p.item_id, p.slot);
         } else {
-          wishlistUpsert(p.item_id, p.slot || null, { status: 'good' });
+          // Routed through wishlistSetStatus (not a raw upsert) so a
+          // demoted ring/trinket picks up the same Good/OK mirroring into
+          // its sibling slot that any other backup tag gets below -- once
+          // it's no longer anyone's dedicated BiS, it's a backup for
+          // either numbered slot equally.
+          wishlistSetStatus(p.item_id, p.slot || null, 'good');
         }
       });
     }
+    wishlistUpsert(itemId, slot || null, { status: status });
+    return;
+  }
+
+  // A non-BiS tag on a real ring/trinket mirrors into its sibling slot too:
+  // once neither numbered slot is this item's dedicated BiS pick, it
+  // doesn't matter which one it's "for" -- it's a backup for both, so both
+  // rows should read the same tier instead of drifting independently.
+  var siblingSlot = wishlistIsPlaceholderItem(itemId) ? null : WISHLIST_SIBLING_SLOT[slot];
+  if (siblingSlot) {
+    wishlistUpsert(itemId, siblingSlot, { status: status });
   }
   wishlistUpsert(itemId, slot || null, { status: status });
 }
