@@ -8,6 +8,15 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-07-31 -- `generate_priority_order()`: bench/trial sort by tier, not by a second score multiplier
+
+Decided directly in conversation (no tracking issue): an officer flagged that a trial DPS could outrank a long-term healer for the same item, which felt wrong even though nothing stops an officer from manually reordering the generated list afterward.
+
+- **Root cause was structural, not a bad constant.** The old design multiplied `role_mult` (Tank 0.50 / Heal 0.75 / Ranged-Melee 1.0) by a second status multiplier (flat 0.85 trial / 0.45 bench for Ranged-Melee, `role_mult * 0.80`/`0.65` for Tank/Heal) to push bench/trial below full-status raiders. A flat 0.85 for trial DPS is higher than a full-status healer's own 0.75, so trial DPS could beat full heal outright. Retuning the constants to fix that (and the analogous trial-vs-full-tank case) while also preserving trial-lighter-than-bench and dps>heal>tank ordering within each tier turned out to have no solution wider than a razor-thin band -- one shared multiplicative score can't encode two independent orderings (status tier, and role-within-tier) at once.
+- **Sort by tier first, role/score second, instead.** `status_tier` (0 full / 1 trial / 2 bench, bench taking precedence if a player is somehow both) is now a pure `order by` key, not a score input. No bench/trial raider of any role can outrank a full-status raider by construction, regardless of role weights -- no constant-tuning needed.
+- **Status no longer discounts `weighted_total` at all.** A bench/trial raider's score is `raw_score * role_mult` (plus the existing item-ownership and wishlist multipliers), identical math to a full-status raider. Officers now see a trial/bench raider's real weighted score; status only changes which tier they sort into. This removed the old `BENCH_ROLE_MULTIPLIER`/`TRIAL_ROLE_MULTIPLIER`/flat bench/trial constants entirely -- one less set of magic numbers to retune later.
+- Implemented in `20260801032445_priority_tier_bench_trial.sql`, replacing `generate_priority_order()` from `20260710130000_priority_generator.sql`/`20260720165552_priority_wishlist_ranking.sql`. No RLS or schema change -- function body only.
+
 ## 2026-07-30 -- Guild Officer access tier (#607): standalone grant (`guild_officers`), full on players/attendance/bios, view-only elsewhere, approvals/settings/priority-gen/loot-import stay blocked
 
 Implements [#607](https://github.com/katogaming88/WGA-Raid-Hub/issues/607): elevated (not full) cross-team access for people with genuine guild-wide authority -- e.g. a Guild Master who raids on one team but isn't part of that team's own officer/team_leader roster and may still need to step in and resolve issues on any team.
