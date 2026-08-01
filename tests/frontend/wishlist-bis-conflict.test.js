@@ -13,7 +13,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const COMMON_JS = readFileSync(path.join(HERE, '../../js/common.js'), 'utf8');
 const WISHLIST_JS = readFileSync(path.join(HERE, '../../js/wishlist.js'), 'utf8');
 
-function makeSandbox(itemSlots, itemIds, existingPrefs) {
+function makeSandbox(itemSlots, itemIds, existingPrefs, itemPlaceholders) {
   const requests = []; // { type: 'insert' | 'update', table, row/patch, eqs }
   const sandbox = {
     window: {},
@@ -39,7 +39,7 @@ function makeSandbox(itemSlots, itemIds, existingPrefs) {
   vm.runInContext(COMMON_JS, sandbox, { filename: 'common.js' });
   vm.runInContext(WISHLIST_JS, sandbox, { filename: 'wishlist.js' });
 
-  sandbox.DATA = { itemSlots, itemPlaceholders: {}, itemIds, wishlistOpen: true, roster: [] };
+  sandbox.DATA = { itemSlots, itemPlaceholders: itemPlaceholders || {}, itemIds, wishlistOpen: true, roster: [] };
   sandbox._wishlistPlayerId = 11;
   sandbox._wishlistPlayerFirstName = 'Kat';
   sandbox._wishlistPrefs = existingPrefs;
@@ -116,6 +116,26 @@ describe('wishlistSetStatus BiS-per-slot conflict resolution', () => {
     expect(newInsert.row).toMatchObject({ item_id: 2, status: 'bis' });
   });
 
+  // The UI now passes an explicit 'Finger 1'/'Finger 2' (or 'Trinket 1'/
+  // 'Trinket 2') slot per card so the two rows are tracked independently --
+  // only calls with slot: null (the legacy/ambiguous shape) should still
+  // collapse the pair together, per the test above.
+  it('does not demote a BiS ring in Finger 1 when tagging a different ring BiS in Finger 2', () => {
+    const { sandbox, requests } = makeSandbox(
+      { 'Ring A': 'Finger', 'Ring B': 'Finger' },
+      { 'Ring A': 1, 'Ring B': 2 },
+      [{ id: 1, item_id: 1, status: 'bis', note: null, slot: 'Finger 1' }]
+    );
+
+    sandbox.wishlistSetStatus(2, 'Finger 2', 'bis');
+
+    const demote = requests.find((r) => r.type === 'update' && r.patch.status === 'good');
+    expect(demote).toBeFalsy();
+
+    const newInsert = requests.find((r) => r.type === 'insert');
+    expect(newInsert.row).toMatchObject({ item_id: 2, slot: 'Finger 2', status: 'bis' });
+  });
+
   it('does not touch a BiS item in a different slot', () => {
     const { sandbox, requests } = makeSandbox({ Helm: 'Head', Cloak: 'Back' }, { Helm: 1, Cloak: 2 }, [
       { id: 1, item_id: 1, status: 'bis', note: null, slot: null }
@@ -155,9 +175,12 @@ describe('wishlistSetStatus BiS-per-slot conflict resolution', () => {
   });
 
   it('removes (not demotes) an Other Sources placeholder occupying the same slot', async () => {
-    const { sandbox, requests } = makeSandbox({ 'New Helm': 'Head' }, { 'New Helm': 2, 'M+': 3 }, [
-      { id: 1, item_id: 3, status: 'bis', note: null, slot: 'Head' }
-    ]);
+    const { sandbox, requests } = makeSandbox(
+      { 'New Helm': 'Head' },
+      { 'New Helm': 2, 'M+': 3 },
+      [{ id: 1, item_id: 3, status: 'bis', note: null, slot: 'Head' }],
+      { 'M+': true }
+    );
 
     sandbox.wishlistSetStatus(2, null, 'bis');
     await new Promise((r) => setImmediate(r));
@@ -182,5 +205,55 @@ describe('wishlistSetStatus BiS-per-slot conflict resolution', () => {
 
     const demote = requests.find((r) => r.type === 'update');
     expect(demote).toBeFalsy();
+  });
+
+  it("mirrors a non-BiS status into a real ring/trinket item's sibling slot", () => {
+    const { sandbox, requests } = makeSandbox({ 'Ring A': 'Finger' }, { 'Ring A': 1 }, []);
+
+    sandbox.wishlistSetStatus(1, 'Finger 1', 'good');
+
+    const finger1Insert = requests.find((r) => r.type === 'insert' && r.row.slot === 'Finger 1');
+    const finger2Insert = requests.find((r) => r.type === 'insert' && r.row.slot === 'Finger 2');
+    expect(finger1Insert.row).toMatchObject({ item_id: 1, status: 'good' });
+    expect(finger2Insert.row).toMatchObject({ item_id: 1, status: 'good' });
+  });
+
+  it("does not mirror a placeholder's status into a sibling slot", () => {
+    const { sandbox, requests } = makeSandbox({}, { 'M+': 3 }, [], { 'M+': true });
+
+    sandbox.wishlistSetStatus(3, 'Finger 1', 'good');
+
+    const finger2Write = requests.find((r) => (r.row && r.row.slot) === 'Finger 2');
+    expect(finger2Write).toBeFalsy();
+  });
+
+  it('blocks any status change on a ring already BiS on its sibling slot', () => {
+    const { sandbox, requests } = makeSandbox({ 'Ring A': 'Finger' }, { 'Ring A': 1 }, [
+      { id: 1, item_id: 1, status: 'bis', note: null, slot: 'Finger 1' }
+    ]);
+
+    sandbox.wishlistSetStatus(1, 'Finger 2', 'good');
+
+    expect(requests).toHaveLength(0);
+  });
+
+  it('demoting a BiS ring off its slot mirrors the demotion into its sibling slot', () => {
+    const { sandbox, requests } = makeSandbox(
+      { 'Ring A': 'Finger', 'Ring B': 'Finger' },
+      { 'Ring A': 1, 'Ring B': 2 },
+      [{ id: 1, item_id: 1, status: 'bis', note: null, slot: 'Finger 1' }]
+    );
+
+    sandbox.wishlistSetStatus(2, 'Finger 1', 'bis');
+
+    const demoteFinger1 = requests.find(
+      (r) => r.type === 'update' && r.patch.status === 'good' && r.eqs.slot === 'Finger 1'
+    );
+    expect(demoteFinger1).toBeTruthy();
+    expect(demoteFinger1.eqs.item_id).toBe(1);
+
+    const mirrorInsert = requests.find((r) => r.type === 'insert' && r.row.slot === 'Finger 2' && r.row.item_id === 1);
+    expect(mirrorInsert).toBeTruthy();
+    expect(mirrorInsert.row.status).toBe('good');
   });
 });

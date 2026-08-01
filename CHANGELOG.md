@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.39] - 2026-08-01
+
+### Frontend
+
+- **Fixed setting a BiS ring/trinket removing the BiS tag from the other ring/trinket slot** -- the raider Wishlist tagged every ring/trinket item with `slot: null`, so tagging a BiS pick for Trinket 2 looked like a conflict with whatever was already BiS in Trinket 1 and silently demoted it. Finger 1/Finger 2 and Trinket 1/Trinket 2 now save with an explicit row so the two slots track independently. Since the same item now lists under both cards, a row already BiS on its sibling slot is now fully locked there (every status button disabled, not just BiS) with a note explaining why -- the only way to free it up is replacing it as the sibling slot's BiS pick. Tagging any other status (Good/OK/etc.) on a ring/trinket now mirrors into its sibling slot too, since a backup item doesn't care which numbered slot it ends up filling.
+
 ## [3.49.38] - 2026-07-31
 
 ### Frontend
