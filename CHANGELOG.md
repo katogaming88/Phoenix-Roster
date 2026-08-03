@@ -8,6 +8,17 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.43] - 2026-08-02
+
+### Frontend
+
+- **Added "Late (with notice)" and "Late (no notice)" attendance statuses** -- 90% and 50% attendance weight respectively, alongside the existing 7 statuses. Available in the officer attendance grid, the player profile card's history and "Add raid night" dropdowns, and reflected in the attendance trend chart, roster attendance %, and the below-threshold officer detail view. See [#633](https://github.com/katogaming88/WGA-Raid-Hub/issues/633) for the full decision writeup.
+- **Widened the attendance grid's source column** so "Auto (Bench)" no longer truncates to "Auto (Be..." ([#626](https://github.com/katogaming88/WGA-Raid-Hub/issues/626)).
+
+### Backend
+
+- New migration widens `attendance.status`'s CHECK constraint to allow the two new Late statuses.
+
 ## [3.49.42] - 2026-08-02
 
 ### Frontend

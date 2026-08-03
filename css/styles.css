@@ -461,7 +461,7 @@ select#playerSelect option { background:#1a1d27; }
 .attend-night-select:focus { border-color:var(--gold); }
 .attend-grid-info { font-size:1.04rem; color:var(--text-muted); margin-bottom:0.6rem; }
 .attend-grid-rows { display:flex; flex-direction:column; gap:0.3rem; }
-.attend-grid-row { display:grid; grid-template-columns:150px 70px 1fr 56px; align-items:center; gap:0.6rem; background:var(--bg-elevated); border:1px solid var(--border); border-radius:3px; padding:0.4rem 0.75rem; }
+.attend-grid-row { display:grid; grid-template-columns:150px 120px 1fr 56px; align-items:center; gap:0.6rem; background:var(--bg-elevated); border:1px solid var(--border); border-radius:3px; padding:0.4rem 0.75rem; }
 .attend-grid-name { font-size:1rem; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .attend-grid-source { font-size:1rem; color:var(--text-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .attend-status-wrap { position:relative; }

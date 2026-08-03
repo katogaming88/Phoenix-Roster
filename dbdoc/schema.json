@@ -89,7 +89,7 @@
         {
           "name": "attendance_status_check",
           "type": "CHECK",
-          "def": "CHECK ((status = ANY (ARRAY['Present'::text, 'Bench'::text, 'Medical Leave'::text, 'Excused'::text, 'Extended Leave'::text, 'No Show'::text, 'Not on Roster'::text])))",
+          "def": "CHECK ((status = ANY (ARRAY['Present'::text, 'Bench'::text, 'Medical Leave'::text, 'Excused'::text, 'Extended Leave'::text, 'Late (with notice)'::text, 'Late (no notice)'::text, 'No Show'::text, 'Not on Roster'::text])))",
           "table": "public.attendance",
           "referenced_table": "",
           "columns": [

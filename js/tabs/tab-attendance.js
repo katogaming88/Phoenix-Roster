@@ -233,10 +233,12 @@ function renderAttendanceGrid() {
 var ATTENDANCE_STATUSES = [
   'Present',
   'Bench',
-  'Medical Leave',
+  'Late (with notice)',
   'Excused',
-  'Extended Leave',
+  'Late (no notice)',
   'No Show',
+  'Extended Leave',
+  'Medical Leave',
   'Not on Roster'
 ];
 
