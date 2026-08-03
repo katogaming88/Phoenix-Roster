@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.46] - 2026-08-03
+
+### Frontend
+
+- **Fixed the public site's browser tab title staying stuck on "-- Roster"** -- index.html has several client-side views (Roster, Profile, Signup, History, ...) switched via `showView()` with no per-view title update, so the tab title went stale the moment a visitor navigated anywhere else. Now reads `WGA Raid Hub -- <Team>` regardless of view; officer.html's `-- Officer` title is unaffected since that page genuinely is always the officer dashboard.
+
 ## [3.49.45] - 2026-08-03
 
 ### Frontend
