@@ -679,12 +679,15 @@ function saveSeasonView() {
         btn.textContent = 'Save';
       }
       if (DATA) DATA.seasonView = val || null;
-      // Season View changes what counts as unmanaged/conflicted (isItemInSeasonScope),
-      // which the Priority nav badge (tab-priority.js's updatePriorityBadges) otherwise
-      // only recomputes on initial load or after a priority-list save/generate -- without
-      // this it stays stale until a full page reload even though the tab's own list
-      // rebuilds correctly on every switch.
-      if (typeof updatePriorityBadges === 'function') updatePriorityBadges();
+      // Season View changes both what counts as unmanaged/conflicted
+      // (isItemInSeasonScope) and which priority_order rows are in scope at
+      // all -- DATA.priorityOrder is otherwise locked to whichever season
+      // was active when applyHeavyData() first ran (common.js's
+      // remapPriorityDataForSeasonView() re-derives it from the cached raw
+      // rows). Without both calls, an already-open Priority tab shows
+      // stale/empty data until a full page reload.
+      if (typeof remapPriorityDataForSeasonView === 'function') remapPriorityDataForSeasonView();
+      if (typeof refreshVisiblePriorityTab === 'function') refreshVisiblePriorityTab();
       if (status) {
         status.textContent = val ? 'Saved!' : 'Cleared.';
         setTimeout(function () {

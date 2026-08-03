@@ -424,6 +424,28 @@ function buildPriorityNotesTab() {
   el.innerHTML = html;
 }
 
+// Re-renders whichever Priority sub-tab is currently visible, plus its boss
+// filters and nav badges. Two call sites, both because DATA.priorityOrder
+// can change out from under an already-rendered panel with nothing to
+// rebuild it: (1) js/officer.js's loadData() heavy-data callback -- the
+// boot sequence's onCoreReady pass can switchTab('priority') via a ?tab=
+// deep link and build the panel before heavy data (DATA.priorityOrder) has
+// landed, leaving it stuck on "No priority data found"; (2) tab-season.js's
+// saveSeasonView(), once it has re-derived DATA.priorityOrder via
+// common.js's remapPriorityDataForSeasonView() -- Season View changes both
+// what counts as unmanaged/conflicted and which priority_order rows are in
+// scope at all.
+function refreshVisiblePriorityTab() {
+  if (typeof populateBossFilters === 'function') populateBossFilters();
+  var subList = document.getElementById('prio-sub-list');
+  var subUnmanaged = document.getElementById('prio-sub-unmanaged');
+  var subConflicts = document.getElementById('prio-sub-conflicts');
+  if (subList && subList.style.display !== 'none') buildPriorityTab();
+  if (subUnmanaged && subUnmanaged.style.display !== 'none') buildUnmanagedTab();
+  if (subConflicts && subConflicts.style.display !== 'none') buildConflicts();
+  updatePriorityBadges();
+}
+
 function updatePriorityBadges() {
   var unmanagedCount = getUnmanagedItems().length;
   var conflicts = getPriorityListConflicts();
@@ -805,6 +827,11 @@ function playerOtherSlotItems(player, slot, currentItem, itemSlots) {
     seen[name] = true;
     out.push(name);
   });
+  // Trinket/Finger are dual-equip slots -- a player can hold two different
+  // ones at once, so receiving a single one this season doesn't "spend" the
+  // slot the way a single-equip slot does. Only flag once both are filled.
+  var isDualEquipSlot = ['TRINKET', 'FINGER'].indexOf((slot || '').toUpperCase()) >= 0;
+  if (isDualEquipSlot && out.length < 2) return [];
   return out;
 }
 
@@ -1343,7 +1370,7 @@ function prioEditRenderPool() {
     var player = rosterMap[normalise(nameRealm)];
     var display = player ? player.nick || player.firstName : nameRealm;
     var role = player ? player.role : '';
-    var nEnc = encodeURIComponent(nameRealm);
+    var nEnc = encodeURIComponent(nameRealm).replace(/'/g, '%27');
     var flags = prioEditLootFlags(nameRealm);
     // A mythic recipient can't go on either track's list -- they're done
     // with the item entirely (matches generate_priority_order()'s exclusion
@@ -1572,6 +1599,23 @@ function prioEditSave() {
       DATA.priorityOrder = DATA.priorityOrder || {};
       if (!DATA.priorityOrder[PRIO_EDIT.item]) DATA.priorityOrder[PRIO_EDIT.item] = {};
       DATA.priorityOrder[PRIO_EDIT.item][PRIO_EDIT.difficulty.toLowerCase()] = PRIO_EDIT.ranked.slice();
+      // Mirror into the raw-rows cache too (common.js's
+      // remapPriorityDataForSeasonView() rebuilds DATA.priorityOrder from
+      // this on every Season View change) -- otherwise this save would
+      // vanish from view the next time the officer switches Season View and
+      // back, even though it's already persisted server-side.
+      DATA._priorityOrderRawRows = (DATA._priorityOrderRawRows || []).filter(function (r) {
+        return !(r.season === season && r.track === track && r.items && r.items.name === PRIO_EDIT.item);
+      });
+      PRIO_EDIT.ranked.forEach(function (nameRealm, idx) {
+        DATA._priorityOrderRawRows.push({
+          season: season,
+          track: track,
+          rank: idx + 1,
+          items: { name: PRIO_EDIT.item },
+          players: { name_realm: nameRealm }
+        });
+      });
       buildPriorityTab();
       buildUnmanagedTab();
       updatePriorityBadges();
