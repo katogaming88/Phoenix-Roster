@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.49.44';
+var VERSION = '3.49.45';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -4002,7 +4002,8 @@ function showSelfReceivedForm(firstName, nameRealm, item, slot, rowId, defaultSo
     '<select id="diff-' +
     rowId +
     '" class="self-received-source" style="flex:0 0 auto;width:auto;">' +
-    '<option value="Mythic" selected>Mythic</option>' +
+    '<option value="" selected>-- Difficulty --</option>' +
+    '<option value="Mythic">Mythic</option>' +
     '<option value="Heroic">Heroic</option>' +
     '<option value="Champion">Champion (Normal)</option>' +
     '</select>' +
@@ -4039,7 +4040,11 @@ function submitSelfReceivedRequest(firstName, nameRealm, item, slot, rowId, dbSl
     if (sourceEl) sourceEl.style.borderColor = 'var(--melee)';
     return;
   }
-  var diff = diffEl ? diffEl.value : 'Mythic';
+  if (!diffEl || !diffEl.value) {
+    if (diffEl) diffEl.style.borderColor = 'var(--melee)';
+    return;
+  }
+  var diff = diffEl.value;
   var formEl = document.getElementById('form-' + rowId);
   if (formEl)
     formEl.innerHTML = '<p style="font-size:1.07rem;color:var(--text-muted);padding:0.5rem 0;">Submitting...</p>';
@@ -4112,7 +4117,11 @@ function submitDirectMarkReceived(firstName, nameRealm, item, slot, rowId, dbSlo
     if (sourceEl) sourceEl.style.borderColor = 'var(--melee)';
     return;
   }
-  var diff = diffEl ? diffEl.value : 'Mythic';
+  if (!diffEl || !diffEl.value) {
+    if (diffEl) diffEl.style.borderColor = 'var(--melee)';
+    return;
+  }
+  var diff = diffEl.value;
   var source = diff + ': ' + sourceEl.value;
   var formEl = document.getElementById('form-' + rowId);
   if (formEl) formEl.innerHTML = '<p style="font-size:1.07rem;color:var(--text-muted);padding:0.5rem 0;">Saving...</p>';
@@ -4616,6 +4625,11 @@ function renderProfile(firstName, backTo, container) {
           return r.difficulty === 'Heroic';
         })
       );
+    // A Heroic-only receive (in-raid or self-reported) shouldn't hide the
+    // button for going after the Mythic version of the same item -- only a
+    // Mythic receive should retire the row.
+    var hasMythicSelfReceived = !!(selfRec && /^Mythic:/.test(selfRec.source || ''));
+    var mythicAlreadyReceived = hasMythicReceived || hasMythicSelfReceived;
     var rowId = 'bisrow-' + player.firstName + '-' + bi;
     rows +=
       '<div class="priority-row' +
@@ -4659,6 +4673,12 @@ function renderProfile(firstName, backTo, container) {
       ",'" +
       dbSlot.replace(/'/g, "\\'") +
       '\')">Mark received</button>';
+    // The officer's own direct "Mark received" shortcut doesn't go through
+    // the approval queue at all (submitDirectMarkReceived, not
+    // submit_self_received), so it's unaffected by the requests flag -- only
+    // the raider-facing "Submit request" button is gated on it. Either way, a
+    // Mythic receive already on file retires the row for good.
+    var showMarkBtn = !mythicAlreadyReceived && (isOfficer || featureEnabled('requests'));
     if (received) {
       var badges = '';
       for (var rv = 0; rv < received.length; rv++) {
@@ -4682,21 +4702,17 @@ function renderProfile(firstName, backTo, container) {
       rows +=
         '<div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end;">' +
         badges +
-        (isOfficer ? markRecvBtn : '') +
+        (showMarkBtn ? markRecvBtn : '') +
         '</div>';
     } else if (selfRec) {
       rows +=
         '<div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end;"><span class="bis-self-received-badge">' +
         (selfRec.source || 'Self-reported') +
         '</span>' +
-        (isOfficer ? markRecvBtn : '') +
+        (showMarkBtn ? markRecvBtn : '') +
         '</div>';
     } else {
-      // The officer's own direct "Mark received" shortcut doesn't go through
-      // the approval queue at all (submitDirectMarkReceived, not
-      // submit_self_received), so it's unaffected by the requests flag --
-      // only the raider-facing "Submit request" button is gated on it.
-      rows += isOfficer || featureEnabled('requests') ? markRecvBtn : '';
+      rows += showMarkBtn ? markRecvBtn : '';
     }
     rows += '</div>';
     rows += '<div class="self-received-form" id="form-' + rowId + '" style="display:none;"></div>';

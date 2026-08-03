@@ -8,6 +8,13 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.45] - 2026-08-03
+
+### Frontend
+
+- **Fixed the BiS list's "Mark received" button disappearing after a Heroic-only receive** -- a Heroic receive (in-raid or self-reported) hid the button entirely, blocking a later Mythic mark-received for the same item. Only a Mythic receive now retires the row.
+- **The mark-received form's difficulty dropdown no longer defaults to Mythic** -- it opens blank and now requires an explicit choice, matching the existing validation on the source field.
+
 ## [3.49.44] - 2026-08-03
 
 ### Frontend
