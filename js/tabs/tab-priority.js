@@ -1343,7 +1343,7 @@ function prioEditRenderPool() {
     var player = rosterMap[normalise(nameRealm)];
     var display = player ? player.nick || player.firstName : nameRealm;
     var role = player ? player.role : '';
-    var nEnc = encodeURIComponent(nameRealm);
+    var nEnc = encodeURIComponent(nameRealm).replace(/'/g, '%27');
     var flags = prioEditLootFlags(nameRealm);
     // A mythic recipient can't go on either track's list -- they're done
     // with the item entirely (matches generate_priority_order()'s exclusion

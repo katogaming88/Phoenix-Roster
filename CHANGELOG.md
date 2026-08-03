@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.42] - 2026-08-02
+
+### Frontend
+
+- **Fixed a syntax error opening the Priority Edit modal's player pool for names/realms containing an apostrophe** -- the pool list's `onclick` handler encoded names with `encodeURIComponent`, which doesn't escape `'`, so an apostrophe broke out of the inline handler's string and threw "missing ) after argument list", breaking the entire page script. Now matches the existing item-name encoding fix and escapes apostrophes explicitly.
+
 ## [3.49.41] - 2026-08-01
 
 ### Frontend
