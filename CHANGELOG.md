@@ -14,6 +14,7 @@ with each release split into `### Frontend` (drives the version number) and
 
 - **Fixed wishlist item names wrapping mid-word on the Profile/Priority/BiS cards** -- the wider custom wishlist status labels (BIS/2ND CHOICE/SIDEGRADE/CATALYST ONLY/PASS, #515) pushed the shared item-name column below its intended minimum width, since its `flex:1` gave it an effective 0% flex-basis that the wrap calculation ignored. Now uses a matching flex-basis so the status-button row properly wraps onto its own line instead of squeezing the name. Also moved the priority-rank pill up next to the item icon/name (top-right) instead of sitting to the left of the status buttons, using the space freed up by that wrap fix.
 - **Wishlist now flags a raid-drop slot already covered by an Other Sources BiS pick** -- tagging M+/Crafted/Catalyst as BiS for a slot lives on a completely separate card from that slot's own raid-drop card, so there was no indication when opening the raid-drop card that the slot was already spoken for. It now shows a heads-up note naming the source (e.g. "You already have Crafted tagged as your Other Sources BiS for this slot").
+- **Linked the WGA Priority Loot addon from the Wishlist and officer Loot pages** -- officers running the Priority Order system need the addon in-game to see it; raiders can optionally install it too, to see their own Priority rank on items as they drop.
 
 ## [3.49.47] - 2026-08-03
 

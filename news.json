@@ -3,6 +3,13 @@
     "date": "2026-08-03",
     "category": "Feature",
     "version": "3.49.48",
+    "title": "WGA Priority Loot addon linked from Wishlist and Loot pages",
+    "body": "Your Wishlist tab now links the WGA Priority Loot addon -- install it in-game to see your Priority rank on items as they drop. Officers running the Priority Order system need it; it's optional for raiders."
+  },
+  {
+    "date": "2026-08-03",
+    "category": "Feature",
+    "version": "3.49.48",
     "title": "Heads up when a slot's BiS already comes from Other Sources",
     "body": "If you've tagged M+, Crafted, or Catalyst as your BiS for a slot under Other Sources, opening that slot's own raid-drop card now tells you so -- easy to miss otherwise, since the two picks live on separate cards."
   },
