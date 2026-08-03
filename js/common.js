@@ -2617,15 +2617,14 @@ function loadData(onCoreReady, onHeavyReady) {
       DATA.recentAttendanceTrend = mappedAttendance ? mapSupabaseAttendanceTrend(mappedAttendance.players) : {};
       var mappedBis = bisRows ? mapSupabaseBisItems(bisRows) : null;
       DATA.bisList = mappedBis || {};
-      var currentSeasonCode = resolveSeasonViewCode();
-      var mappedPriority = priorityRows ? mapSupabasePriorityOrder(priorityRows, currentSeasonCode) : null;
-      DATA.priorityOrder = mappedPriority || {};
-      DATA.priorityStaleAfterHeroic = (priorityStaleAfterHeroicRows || []).filter(function (r) {
-        return r.season === currentSeasonCode;
-      });
-      DATA.priorityLiveFirstPrios = (priorityLiveFirstPriosRows || []).filter(function (r) {
-        return r.season === currentSeasonCode;
-      });
+      // Raw rows aren't season-filtered by the query itself (see
+      // fetchSupabasePriorityOrder()'s comment) -- cached here so
+      // remapPriorityDataForSeasonView() can re-derive DATA.priorityOrder etc.
+      // after a later Season View change without a round-trip to Supabase.
+      DATA._priorityOrderRawRows = priorityRows || [];
+      DATA._priorityStaleAfterHeroicRawRows = priorityStaleAfterHeroicRows || [];
+      DATA._priorityLiveFirstPriosRawRows = priorityLiveFirstPriosRows || [];
+      remapPriorityDataForSeasonView();
       var itemMaps = buildItemMaps(itemRows);
       DATA.itemSlots = itemMaps.itemSlots;
       DATA.itemArmorTypes = itemMaps.itemArmorTypes;
@@ -2677,6 +2676,25 @@ function resolveSeasonView() {
 // so a team without a seasonView override still gets one.
 function resolveSeasonViewCode() {
   return (DATA && DATA.seasonView) || seasonCodeForDisplay((DATA && DATA.seasonName) || '');
+}
+
+// Re-derives DATA.priorityOrder/priorityStaleAfterHeroic/priorityLiveFirstPrios
+// for whatever Season View is active *right now*, from the raw unfiltered
+// rows applyHeavyData() cached at load time. Needed because these three
+// fields are otherwise computed once, filtered to the season code that was
+// active at that moment -- changing Season View afterward (tab-season.js's
+// saveSeasonView) left them locked to the old season, so an already-open
+// Priority tab showed stale or empty data until a full page reload.
+function remapPriorityDataForSeasonView() {
+  if (!DATA) return;
+  var seasonCode = resolveSeasonViewCode();
+  DATA.priorityOrder = mapSupabasePriorityOrder(DATA._priorityOrderRawRows, seasonCode);
+  DATA.priorityStaleAfterHeroic = (DATA._priorityStaleAfterHeroicRawRows || []).filter(function (r) {
+    return r.season === seasonCode;
+  });
+  DATA.priorityLiveFirstPrios = (DATA._priorityLiveFirstPriosRawRows || []).filter(function (r) {
+    return r.season === seasonCode;
+  });
 }
 
 // The set of raid zone IDs (#535, #549) the given season string covers, per

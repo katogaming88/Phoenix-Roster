@@ -13,6 +13,7 @@ with each release split into `### Frontend` (drives the version number) and
 ### Frontend
 
 - **Fixed a syntax error opening the Priority Edit modal's player pool for names/realms containing an apostrophe** -- the pool list's `onclick` handler encoded names with `encodeURIComponent`, which doesn't escape `'`, so an apostrophe broke out of the inline handler's string and threw "missing ) after argument list", breaking the entire page script. Now matches the existing item-name encoding fix and escapes apostrophes explicitly.
+- **Fixed the Priority tab showing stale or empty data after changing Season View** -- `DATA.priorityOrder` (and its fairness-warning companions) were filtered to a season code once at page load and never re-derived, so saving a new Season View on the Season Settings tab left an already-open Priority tab locked to the old season until a full page reload (switching Priority sub-tabs happened to mask this by rebuilding from whatever was cached). Season View changes now re-derive the priority data from cached raw rows and refresh the visible Priority sub-tab immediately.
 
 ## [3.49.41] - 2026-08-01
 
