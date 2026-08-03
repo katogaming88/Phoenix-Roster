@@ -687,7 +687,7 @@ function saveSeasonView() {
       // rows). Without both calls, an already-open Priority tab shows
       // stale/empty data until a full page reload.
       if (typeof remapPriorityDataForSeasonView === 'function') remapPriorityDataForSeasonView();
-      if (typeof refreshPriorityTabForSeasonView === 'function') refreshPriorityTabForSeasonView();
+      if (typeof refreshVisiblePriorityTab === 'function') refreshVisiblePriorityTab();
       if (status) {
         status.textContent = val ? 'Saved!' : 'Cleared.';
         setTimeout(function () {

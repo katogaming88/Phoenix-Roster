@@ -546,6 +546,14 @@ checkMaintenanceMode().then(function (maint) {
         // fallback before heavy data arrives), so a trial past threshold never showed.
         buildTrialPromoAlert();
         reopenSelectedPlayer();
+        // Same race as the attendance comment above, for the Priority tab:
+        // buildOfficerDashboard()'s deep-link handling (onCoreReady, above)
+        // can switchTab('priority') and build it before this heavy-data pass
+        // has landed, so DATA.priorityOrder is still {} at that point and the
+        // panel is stuck showing "No priority data found" forever -- nothing
+        // rebuilds it once the real data arrives a moment later. Re-run
+        // whichever Priority sub-tab is actually visible now that it has.
+        if (typeof refreshVisiblePriorityTab === 'function') refreshVisiblePriorityTab();
       }
     );
   }

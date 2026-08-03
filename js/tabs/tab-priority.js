@@ -424,14 +424,18 @@ function buildPriorityNotesTab() {
   el.innerHTML = html;
 }
 
-// Called after Season View changes (tab-season.js's saveSeasonView, once it
-// has re-derived DATA.priorityOrder via common.js's
-// remapPriorityDataForSeasonView) so an already-open Priority tab reflects
-// the new season immediately, instead of only after manually switching
-// sub-tabs (each sub-tab's build*() call happens to pick up fresh DATA on
-// its own, which is what made this look "fixed" by bouncing through
-// Unmanaged Items and back).
-function refreshPriorityTabForSeasonView() {
+// Re-renders whichever Priority sub-tab is currently visible, plus its boss
+// filters and nav badges. Two call sites, both because DATA.priorityOrder
+// can change out from under an already-rendered panel with nothing to
+// rebuild it: (1) js/officer.js's loadData() heavy-data callback -- the
+// boot sequence's onCoreReady pass can switchTab('priority') via a ?tab=
+// deep link and build the panel before heavy data (DATA.priorityOrder) has
+// landed, leaving it stuck on "No priority data found"; (2) tab-season.js's
+// saveSeasonView(), once it has re-derived DATA.priorityOrder via
+// common.js's remapPriorityDataForSeasonView() -- Season View changes both
+// what counts as unmanaged/conflicted and which priority_order rows are in
+// scope at all.
+function refreshVisiblePriorityTab() {
   if (typeof populateBossFilters === 'function') populateBossFilters();
   var subList = document.getElementById('prio-sub-list');
   var subUnmanaged = document.getElementById('prio-sub-unmanaged');
