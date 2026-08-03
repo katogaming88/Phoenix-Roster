@@ -15,12 +15,12 @@ function buildSeasonTab() {
   var startInput = document.getElementById('seasonStartInput');
   if (startInput) startInput.value = (DATA && DATA.seasonStart) || '';
   var nameInput = document.getElementById('seasonNameInput');
-  if (nameInput) nameInput.value = (DATA && DATA.seasonName) || '';
+  if (nameInput) nameInput.value = _seasonNumberFromName((DATA && DATA.seasonName) || '');
   var endInput = document.getElementById('seasonEndInput');
   if (endInput) endInput.value = (DATA && DATA.seasonEnd) || '';
   populateSeasonViewOptions();
   var signupSeasonInput = document.getElementById('signupSeasonInput');
-  if (signupSeasonInput) signupSeasonInput.value = (DATA && DATA.signupSeason) || '';
+  if (signupSeasonInput) signupSeasonInput.value = _seasonNumberFromName((DATA && DATA.signupSeason) || '');
   var trialWeeksInput = document.getElementById('trialWeeksInput');
   var trialAttendInput = document.getElementById('trialAttendInput');
   if (trialWeeksInput) trialWeeksInput.value = DATA && DATA.trialWeeks != null ? DATA.trialWeeks : 4;
@@ -31,10 +31,6 @@ function buildSeasonTab() {
     targetTankCountInput.value = DATA && DATA.targetTankCount != null ? DATA.targetTankCount : '';
   if (targetHealCountInput)
     targetHealCountInput.value = DATA && DATA.targetHealCount != null ? DATA.targetHealCount : '';
-  var codePrefixInput = document.getElementById('seasonCodePrefixInput');
-  var displayPrefixInput = document.getElementById('seasonDisplayPrefixInput');
-  if (codePrefixInput) codePrefixInput.value = (DATA && DATA.seasonCodePrefix) || 'MID';
-  if (displayPrefixInput) displayPrefixInput.value = (DATA && DATA.seasonDisplayPrefix) || 'Midnight Season';
   var wclUrlInput = document.getElementById('wclUrlInput');
   if (wclUrlInput) wclUrlInput.value = (DATA && DATA.externalLinks && DATA.externalLinks.warcraftLogsUrl) || '';
   SEASON_RAIDS = JSON.parse(JSON.stringify((DATA && DATA.raidProgression) || []));
@@ -706,12 +702,13 @@ function saveSeasonView() {
 
 function saveSignupSeason() {
   var input = document.getElementById('signupSeasonInput');
-  var val = input ? input.value.trim() : '';
+  var num = input ? input.value.trim() : '';
+  var val = num ? _seasonDisplayPrefix() + ' ' + num : '';
   var btn = document.getElementById('signupSeasonSaveBtn');
   var status = document.getElementById('signupSeasonStatus');
   if (!val) {
     if (status) {
-      status.textContent = 'Season name cannot be blank.';
+      status.textContent = 'Season number cannot be blank.';
       setTimeout(function () {
         if (status) status.textContent = '';
       }, 3000);
@@ -730,6 +727,7 @@ function saveSignupSeason() {
         btn.textContent = 'Save';
       }
       if (DATA) DATA.signupSeason = val;
+      if (input) input.value = num;
       if (status) {
         status.textContent = val ? 'Saved!' : 'Cleared.';
         setTimeout(function () {
@@ -746,9 +744,19 @@ function saveSignupSeason() {
     });
 }
 
+// Extracts the trailing number from a full season display name (e.g.
+// "Midnight Season 3" -> "3") so the number-only input can round-trip
+// DATA.seasonName without an officer ever typing the prefix (#341).
+function _seasonNumberFromName(name) {
+  var re = new RegExp('^' + _escapeRegExp(_seasonDisplayPrefix()) + ' (\\d+)$');
+  var m = re.exec((name || '').trim());
+  return m ? m[1] : '';
+}
+
 function saveSeasonName() {
   var input = document.getElementById('seasonNameInput');
-  var val = input ? input.value.trim() : '';
+  var num = input ? input.value.trim() : '';
+  var val = num ? _seasonDisplayPrefix() + ' ' + num : '';
   var btn = document.getElementById('seasonNameSaveBtn');
   var status = document.getElementById('seasonNameStatus');
   if (btn) {
@@ -763,58 +771,11 @@ function saveSeasonName() {
         btn.textContent = 'Save';
       }
       if (DATA) DATA.seasonName = val;
-      if (input) input.value = val;
+      if (input) input.value = num;
       populateSeasonSelector();
       writeAuditLog('Season Name Set', null, null, val);
       if (status) {
         status.textContent = val ? 'Saved!' : 'Cleared.';
-        setTimeout(function () {
-          if (status) status.textContent = '';
-        }, 2000);
-      }
-    })
-    .catch(function (err) {
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = 'Save';
-      }
-      if (status) status.textContent = err.message || 'Error saving.';
-    });
-}
-
-// Only needed once a season code stops matching the current
-// <codePrefix><N>/<displayPrefix> N pattern -- an expansion change, not a
-// routine new season within Midnight (js/common.js seasonDisplayName()/
-// seasonCodeForDisplay(), #341). Blank inputs fall back to the shipped
-// defaults ('MID'/'Midnight Season') rather than saving an empty prefix that
-// would match every season code.
-function saveSeasonCodePrefixes() {
-  var codeInput = document.getElementById('seasonCodePrefixInput');
-  var displayInput = document.getElementById('seasonDisplayPrefixInput');
-  var codeVal = (codeInput ? codeInput.value.trim() : '') || 'MID';
-  var displayVal = (displayInput ? displayInput.value.trim() : '') || 'Midnight Season';
-  var btn = document.getElementById('seasonCodePrefixSaveBtn');
-  var status = document.getElementById('seasonCodePrefixStatus');
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = 'Saving...';
-  }
-
-  saveTeamSetting({ seasonCodePrefix: codeVal, seasonDisplayPrefix: displayVal }, true)
-    .then(function () {
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = 'Save';
-      }
-      if (DATA) {
-        DATA.seasonCodePrefix = codeVal;
-        DATA.seasonDisplayPrefix = displayVal;
-      }
-      if (codeInput) codeInput.value = codeVal;
-      if (displayInput) displayInput.value = displayVal;
-      writeAuditLog('Season Code Prefix Changed', null, null, codeVal + ' / ' + displayVal);
-      if (status) {
-        status.textContent = 'Saved!';
         setTimeout(function () {
           if (status) status.textContent = '';
         }, 2000);

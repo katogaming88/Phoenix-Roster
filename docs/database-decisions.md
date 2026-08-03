@@ -125,6 +125,19 @@ Surfaced while importing Season 2 (The Venomous Abyss) items ahead of actually s
 
 ---
 
+## 2026-08-03 -- Season code/display prefix hardcoded, no longer a per-team setting (#643)
+
+`seasonCodePrefix`/`seasonDisplayPrefix` were an officer-editable per-team `team_settings.config` setting (#341), read at translation time by `_seasonCodePrefix()`/`_seasonDisplayPrefix()` in `js/common.js`. #537 already established that expansion boundaries require a manual code edit to `CURRENT_SEASON`, which made the per-team setting redundant with a step that already has to happen in code -- and, per #537's own decision log, a per-team value only risked two teams drifting to different prefixes for what's actually the same real-world expansion.
+
+- **Now hardcoded constants** (`SEASON_CODE_PREFIX`/`SEASON_DISPLAY_PREFIX` in `js/common.js`), Kat-updated in the same commit as `CURRENT_SEASON` at an expansion boundary. Removed from `SEASON_CONFIG_KEYS` and the Season Settings UI entirely.
+- **Verified no-op for existing data**: a read-only prod query confirmed no team had ever set a non-default value for either field, and every stored `seasonName` already matched the default `"Midnight Season N"` pattern -- no backfill/migration needed.
+- **Season Name and Signup Season inputs simplified to a number** (`seasonNameInput`/`signupSeasonInput`, now `type="number"`) since the prefix is no longer officer-typed; `saveSeasonName()`/`saveSignupSeason()` compose the full name from the number + `SEASON_DISPLAY_PREFIX`. A capped dropdown (1/2/3) was considered and rejected -- season counts occasionally exceed 3 within an expansion, and a number input has no ceiling to maintain.
+- **Follow-up filed separately, not addressed here**: #642, a "New Expansion" confirmation toggle on Start New Season as a safety net against forgetting to update `CURRENT_SEASON`/the prefix constants at the actual boundary.
+
+[Full discussion -> #643](https://github.com/katogaming88/WGA-Raid-Hub/issues/643)
+
+---
+
 ## 2026-07-16 -- Season signups now require a Discord login (reverses #403's anon-callable decision)
 
 `submit_season_signup` was deliberately granted to `anon` in the 2026-07-10 entry below, for prospective recruits with no Discord session yet. That's reversed: every signup must now be tied to a real account, so an anonymous submitter has no way in.

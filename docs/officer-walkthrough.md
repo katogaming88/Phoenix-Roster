@@ -341,7 +341,8 @@ Three sub-tabs: **Signups**, **Pending Roster**, **History**.
 
 Three sub-tabs: **Settings**, **Raid Progression**, **History**.
 
-- **Season Name** -- label applied to every loot entry imported through RCLootCouncil while
+- **Season** -- the season number, entered as a plain number and combined with the (hardcoded)
+  display prefix into the label applied to every loot entry imported through RCLootCouncil while
   it's set; also what the toolbar's Season dropdown filters by. Set before importing each
   season's loot.
 - **Signup Season** -- a *separate* label stamped on signup submissions, distinct from Season
@@ -358,9 +359,6 @@ Three sub-tabs: **Settings**, **Raid Progression**, **History**.
   already-approved incoming roster meets or exceeds a target, raiders signing up for that role
   see a nudge to consider DPS/backup instead or talk to an officer. Leave a field blank to skip
   the nudge for that role -- raiders still see the plain count either way.
-- **Season Code Prefix** -- the short code (e.g. `MID`) and display prefix (e.g. "Midnight
-  Season") used to auto-generate season names/codes from the current tier constant. Rarely
-  needs touching outside a new expansion.
 - **Season View** -- a forward-looking season picker, separate from the live Season Name, that
   scopes the item catalog / BiS lists / Wishlist prep to a season you're preparing for before
   it actually goes live.
