@@ -512,21 +512,23 @@ function wishlistRowHTML(name, itemId, slot, rowIndex, lockOnceSet) {
         (slot ? slot.replace(/'/g, "\\'") : '') +
         '\')">Remove</button>'
       : '';
+  // Rank pill sits top-right next to the icon/name, not inline with the
+  // status buttons -- keeps it out of the way of the wider custom status
+  // labels (see itemNameBlockHtml's flex-basis fix) and gives it a fixed
+  // home instead of drifting depending on how much the buttons wrap.
   return (
     '<div style="padding:0.4rem 0.6rem;border-radius:4px;border:1px solid ' +
     rowBorder +
     ';background:' +
     rowBackground +
     ';margin-bottom:2px;">' +
-    '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;flex-wrap:wrap;">' +
+    '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:0.5rem;">' +
     itemNameBlockHtml(name, slot) +
-    '<div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;">' +
     rankHTML +
-    '<div style="display:flex;gap:0.3rem;flex-wrap:wrap;">' +
+    '</div>' +
+    '<div style="display:flex;align-items:center;gap:0.3rem;flex-wrap:wrap;margin-top:0.35rem;">' +
     wishlistStatusButtonsHTML(itemId, slot, lockOnceSet) +
     removeHTML +
-    '</div>' +
-    '</div>' +
     '</div>' +
     siblingNoteHTML +
     wishlistNoteHTML(itemId, slot) +
@@ -674,6 +676,32 @@ function wishlistOtherSourceHTML(name, globallyTaggedSlots) {
 // stats when catalyzed, so tagging a source there stays meaningless -- the
 // real item is what should get tagged directly, using the "Catalyst Only"
 // status button on it.
+// slot -> source name ('M+'/'Crafted'/'Catalyst') for every slot currently
+// tagged BiS under Other Sources -- every placeholder row is BiS by
+// construction (wishlistRevealPlaceholderSlot always sets 'bis', and
+// lockOnceSet keeps it that way), so no status filter is needed here. Shared
+// by wishlistOtherSourcesSectionHTML (the "+ Add" dropdown's exclusion list)
+// and wishlistSectionBodyHTML (the raid-drop slot card's heads-up note,
+// #645 follow-up) so the two stay in sync off one source of truth.
+function wishlistOtherSourcesTaggedSlots() {
+  var placeholders = wishlistPlaceholderNames();
+  var itemIds = (DATA && DATA.itemIds) || {};
+  var placeholderItemIds = {};
+  var placeholderNameById = {};
+  placeholders.forEach(function (name) {
+    placeholderItemIds[itemIds[name]] = true;
+    placeholderNameById[itemIds[name]] = name;
+  });
+  var taggedSlots = {};
+  _wishlistPrefs.forEach(function (p) {
+    if (!placeholderItemIds[p.item_id] || !p.slot) return;
+    var name = placeholderNameById[p.item_id];
+    if (typeof isItemInSeasonScope === 'function' && !isItemInSeasonScope(name, p.season)) return;
+    taggedSlots[p.slot] = name;
+  });
+  return taggedSlots;
+}
+
 function wishlistOtherSourcesSectionHTML() {
   var placeholders = wishlistPlaceholderNames();
   if (!placeholders.length) return '';
@@ -694,10 +722,7 @@ function wishlistOtherSourcesSectionHTML() {
       return { itemId: p.item_id, slot: p.slot };
     });
 
-  var globallyTaggedSlots = {};
-  summaryItems.forEach(function (it) {
-    if (it.slot) globallyTaggedSlots[it.slot] = true;
-  });
+  var globallyTaggedSlots = wishlistOtherSourcesTaggedSlots();
 
   var intro =
     '<p style="font-size:1.04rem;color:var(--text);margin:0 0 0.6rem;">Use this only when a slot\'s actual <strong>BiS</strong> comes from M+, Crafted, or (for Back/Wrist/Waist/Feet) the Catalyst instead of a raid drop. Pick a slot and click + Add -- it saves and locks in as BiS immediately.</p>';
@@ -732,6 +757,10 @@ function wishlistSectionBodyHTML(player) {
     player.firstName +
     '" class="help-tip">Tag every item you\'d want per slot, not just one pick: backups, sidegrades, or drops to pass on. BiS choices marked here save to your BiS List. Slots below are raid drops; use Other Sources for gear you\'ll get elsewhere.' +
     '<br><br>Swap specs per boss fight (e.g. a warlock alternating Aff/Demo/Destro -- not an off-spec you only play in M+ or a different role)? Only one item per slot can be BiS. Tag your other spec\'s item with whichever tier actually fits (Good/OK/Catalyst Only), and use the note to say it\'s really BiS for that spec, e.g. "BiS for Destro". Officers can see wishlist notes.</div>';
+
+  html +=
+    '<p style="font-size:1.02rem;color:var(--text-muted);margin:0.25rem 0 0.75rem;">Want to see your Priority rank in-game as items drop? Install the ' +
+    '<a href="https://www.curseforge.com/wow/addons/wga-priority-loot" target="_blank" rel="noopener">WGA Priority Loot addon</a>.</p>';
 
   var completeness = wishlistCompleteness();
   html += completeness.missingRows.length
@@ -772,6 +801,7 @@ function wishlistSectionBodyHTML(player) {
 
   html += wishlistOtherSourcesSectionHTML();
 
+  var otherSourcesTaggedSlots = wishlistOtherSourcesTaggedSlots();
   var slotCards = '';
   for (var s = 0; s < WISHLIST_SLOTS.length; s++) {
     var slotName = WISHLIST_SLOTS[s];
@@ -779,11 +809,21 @@ function wishlistSectionBodyHTML(player) {
     if (!items.length) continue;
     var rowSlot = WISHLIST_DISAMBIGUATE_SLOTS[slotName] ? slotName : null;
 
+    // Heads-up when this slot's actual BiS is already covered by an Other
+    // Sources tag (M+/Crafted/Catalyst) -- easy to miss otherwise, since
+    // that pick lives in a completely separate card from this one (#645
+    // follow-up).
+    var otherSourceNote = otherSourcesTaggedSlots[slotName]
+      ? '<p style="font-size:1.04rem;color:var(--gold);margin:0 0 0.5rem;">You already have <strong>' +
+        otherSourcesTaggedSlots[slotName] +
+        '</strong> tagged as your Other Sources BiS for this slot -- see the Other Sources card above.</p>'
+      : '';
     var tierNote =
       WISHLIST_TIER_SET_SLOTS.indexOf(slotName) !== -1
         ? '<p style="font-size:1.04rem;color:var(--text);margin:0 0 0.5rem;">Catalyzing keeps an item\'s stats/cantrip -- tag whichever piece you actually want as BiS, tier or not.</p>'
         : '';
     var body =
+      otherSourceNote +
       tierNote +
       items
         .map(function (item, i) {

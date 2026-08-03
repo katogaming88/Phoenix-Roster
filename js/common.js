@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.49.47';
+var VERSION = '3.49.48';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -2240,7 +2240,13 @@ function itemNameBlockHtml(name, slot) {
     slotPillsLine +
     bossLine +
     '</span>';
-  var rowStyle = 'display:flex;align-items:center;gap:0.5rem;flex:1;min-width:10rem;';
+  // flex-basis matches min-width (rather than "flex:1"'s implicit 0%) so the
+  // wrap calculation actually accounts for this column's floor size instead
+  // of assuming it starts at zero width -- with a 0% basis, a wide sibling
+  // (e.g. a status-button row) never triggers a wrap onto its own line, so
+  // this column gets squeezed below min-width instead and the item name text
+  // wraps mid-word (exposed by #515's wider custom wishlist status labels).
+  var rowStyle = 'display:flex;align-items:center;gap:0.5rem;flex:1 1 12rem;min-width:12rem;';
   if (wowId == null) {
     return '<span style="' + rowStyle + '">' + iconImg + textStack + '</span>';
   }
