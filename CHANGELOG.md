@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.48] - 2026-08-03
+
+### Frontend
+
+- **Fixed wishlist item names wrapping mid-word on the Profile/Priority/BiS cards** -- the wider custom wishlist status labels (BIS/2ND CHOICE/SIDEGRADE/CATALYST ONLY/PASS, #515) pushed the shared item-name column below its intended minimum width, since its `flex:1` gave it an effective 0% flex-basis that the wrap calculation ignored. Now uses a matching flex-basis so the status-button row properly wraps onto its own line instead of squeezing the name. Also moved the priority-rank pill up next to the item icon/name (top-right) instead of sitting to the left of the status buttons, using the space freed up by that wrap fix.
+
 ## [3.49.47] - 2026-08-03
 
 ### Frontend

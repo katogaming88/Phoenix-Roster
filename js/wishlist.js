@@ -512,21 +512,23 @@ function wishlistRowHTML(name, itemId, slot, rowIndex, lockOnceSet) {
         (slot ? slot.replace(/'/g, "\\'") : '') +
         '\')">Remove</button>'
       : '';
+  // Rank pill sits top-right next to the icon/name, not inline with the
+  // status buttons -- keeps it out of the way of the wider custom status
+  // labels (see itemNameBlockHtml's flex-basis fix) and gives it a fixed
+  // home instead of drifting depending on how much the buttons wrap.
   return (
     '<div style="padding:0.4rem 0.6rem;border-radius:4px;border:1px solid ' +
     rowBorder +
     ';background:' +
     rowBackground +
     ';margin-bottom:2px;">' +
-    '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;flex-wrap:wrap;">' +
+    '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:0.5rem;">' +
     itemNameBlockHtml(name, slot) +
-    '<div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;">' +
     rankHTML +
-    '<div style="display:flex;gap:0.3rem;flex-wrap:wrap;">' +
+    '</div>' +
+    '<div style="display:flex;align-items:center;gap:0.3rem;flex-wrap:wrap;margin-top:0.35rem;">' +
     wishlistStatusButtonsHTML(itemId, slot, lockOnceSet) +
     removeHTML +
-    '</div>' +
-    '</div>' +
     '</div>' +
     siblingNoteHTML +
     wishlistNoteHTML(itemId, slot) +
