@@ -19,7 +19,7 @@
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | attendance_source_check | CHECK | CHECK ((source = ANY (ARRAY['WCL'::text, 'Officer'::text, 'Auto (Bench)'::text]))) |
-| attendance_status_check | CHECK | CHECK ((status = ANY (ARRAY['Present'::text, 'Bench'::text, 'Medical Leave'::text, 'Excused'::text, 'Extended Leave'::text, 'No Show'::text, 'Not on Roster'::text]))) |
+| attendance_status_check | CHECK | CHECK ((status = ANY (ARRAY['Present'::text, 'Bench'::text, 'Medical Leave'::text, 'Excused'::text, 'Extended Leave'::text, 'Late (with notice)'::text, 'Late (no notice)'::text, 'No Show'::text, 'Not on Roster'::text]))) |
 | attendance_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | attendance_team_id_player_id_raid_date_key | UNIQUE | UNIQUE (team_id, player_id, raid_date) |
 | attendance_player_id_fkey | FOREIGN KEY | FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL |

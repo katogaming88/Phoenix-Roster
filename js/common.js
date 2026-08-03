@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.49.42';
+var VERSION = '3.49.43';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -2382,7 +2382,12 @@ function mapSupabaseAttendanceDetails(rawPlayers) {
   var details = {};
   Object.keys(rawPlayers || {}).forEach(function (name) {
     var penalties = rawPlayers[name].filter(function (r) {
-      return r.status === 'No Show' || r.status === 'Excused';
+      return (
+        r.status === 'No Show' ||
+        r.status === 'Excused' ||
+        r.status === 'Late (with notice)' ||
+        r.status === 'Late (no notice)'
+      );
     });
     if (penalties.length) details[name] = penalties;
   });
@@ -2415,6 +2420,8 @@ var ATTENDANCE_WEIGHTS_JS = {
   'Medical Leave': 1.0,
   'Extended Leave': 1.0,
   Excused: 0.8,
+  'Late (with notice)': 0.9,
+  'Late (no notice)': 0.5,
   'No Show': 0.0
 };
 
@@ -3245,6 +3252,8 @@ function attendTrendColor(status) {
   if (status === 'Bench') return '#7EC8E3';
   if (status === 'Excused') return '#d4a843';
   if (status === 'Medical Leave') return '#A8DADC';
+  if (status === 'Late (with notice)') return '#e8a33d';
+  if (status === 'Late (no notice)') return '#e07b39';
   if (status === 'No Show') return '#e05252';
   return '#555';
 }
@@ -3253,7 +3262,9 @@ function attendTrendValue(status) {
   if (status === 'Present') return 1.0;
   if (status === 'Bench') return 0.85;
   if (status === 'Medical Leave') return 0.7;
+  if (status === 'Late (with notice)') return 0.65;
   if (status === 'Excused') return 0.5;
+  if (status === 'Late (no notice)') return 0.3;
   if (status === 'No Show') return 0.0;
   return 0.5;
 }
@@ -3394,10 +3405,17 @@ function renderAttendTrend(firstName) {
     var attended = 0;
     for (var j = 0; j < entries.length; j++) {
       sum += attendTrendValue(entries[j].status);
-      // "Attended" for the X/Y tooltip -- physically at the raid that night.
-      // Excused/Medical Leave/Extended Leave/No Show don't count, even
-      // though some of those still carry partial weight in avg/pct above.
-      if (entries[j].status === 'Present' || entries[j].status === 'Bench') attended++;
+      // "Attended" for the X/Y tooltip -- physically at the raid that night
+      // (Late counts, since they did show up, just not on time; Excused/
+      // Medical Leave/Extended Leave/No Show don't, even though some of
+      // those still carry partial weight in avg/pct above).
+      if (
+        entries[j].status === 'Present' ||
+        entries[j].status === 'Bench' ||
+        entries[j].status === 'Late (with notice)' ||
+        entries[j].status === 'Late (no notice)'
+      )
+        attended++;
     }
     var avg = sum / entries.length;
     var parts = key.split('-');
@@ -5360,7 +5378,8 @@ function renderAttendanceHistoryCard(firstName, content, history) {
 
   function statusColor(s) {
     if (s === 'Present') return 'var(--heal)';
-    if (s === 'Late') return 'var(--gold)';
+    if (s === 'Late (with notice)') return 'var(--gold)';
+    if (s === 'Late (no notice)') return 'var(--melee)';
     if (s === 'No Show') return 'var(--melee)';
     if (s === 'Medical Leave') return '#7EC8E3';
     if (s === 'Not on Roster') return 'var(--text-muted)';
@@ -5368,7 +5387,7 @@ function renderAttendanceHistoryCard(firstName, content, history) {
   }
 
   var summaryParts = [];
-  var order = ['Present', 'Late', 'No Show', 'Excused', 'Medical Leave'];
+  var order = ['Present', 'Late (with notice)', 'Late (no notice)', 'No Show', 'Excused', 'Medical Leave'];
   for (var oi = 0; oi < order.length; oi++) {
     var st = order[oi];
     if (counts[st])
@@ -5383,7 +5402,17 @@ function renderAttendanceHistoryCard(firstName, content, history) {
     );
   }
 
-  var CARD_STATUSES = ['Present', 'Bench', 'Medical Leave', 'Excused', 'Extended Leave', 'No Show', 'Not on Roster'];
+  var CARD_STATUSES = [
+    'Present',
+    'Bench',
+    'Late (with notice)',
+    'Excused',
+    'Late (no notice)',
+    'No Show',
+    'Extended Leave',
+    'Medical Leave',
+    'Not on Roster'
+  ];
 
   var html =
     '<div style="font-size:1rem;color:var(--text-muted);margin-bottom:0.6rem;display:flex;gap:0.5rem;flex-wrap:wrap;">' +
@@ -5469,10 +5498,12 @@ function renderAddAttendanceNightControl(firstName, history) {
       var CARD_STATUSES = [
         'Present',
         'Bench',
-        'Medical Leave',
+        'Late (with notice)',
         'Excused',
-        'Extended Leave',
+        'Late (no notice)',
         'No Show',
+        'Extended Leave',
+        'Medical Leave',
         'Not on Roster'
       ];
       var dateOptions = dates

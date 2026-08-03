@@ -607,3 +607,15 @@ Umbrella issue. Original scope, later split into #262 (nullability/duplicate gua
 - **Follow-up not included:** `getIncompleteWishlists()`'s completeness check (`js/tabs/tab-priority.js`) still counts a raider's own stale-season Other Sources tag as "covering" a slot -- only the *display* of these rows (BiS Lists editor, Wishlist's own Other Sources card) was season-scoped this pass.
 
 [Full discussion -> #580](https://github.com/katogaming88/WGA-Raid-Hub/issues/580)
+
+---
+
+## #633 -- attendance.status: Late (with notice) / Late (no notice), 90%/50% weight
+
+- Officers had no way to record a player showing up late without either marking them fully Present (overcounting) or as a harsher status like Excused/No Show that doesn't reflect "showed up, just not on time." Two new literal values were added to `attendance.status`'s CHECK constraint: `Late (with notice)` (90% weight) and `Late (no notice)` (50% weight) -- between `Present`/`Bench`/leave statuses (100%) and `Excused` (80%) on one side, and `No Show` (0%) on the other.
+- `attendance.status` is a plain `text` column gated by a CHECK constraint, not a Postgres enum, so this is additive (`DROP CONSTRAINT` + re-`ADD` with the two new literals) -- no backfill needed, no existing rows affected.
+- The weight/status list is duplicated client-side in ~6 places with no single source of truth (`ATTENDANCE_WEIGHTS_JS`, a separate and already-inconsistent `attendTrendValue`/`attendTrendColor` pair for the trend sparkline, `ATTENDANCE_STATUSES` in tab-attendance.js, two independently-declared `CARD_STATUSES` arrays in common.js for the profile card) -- all updated together this pass rather than consolidated, to keep the change additive and low-risk.
+- Both new statuses count as "attended" for the trend chart's physical-presence tooltip (they did show up) but as "penalizing" in `mapSupabaseAttendanceDetails`'s below-threshold officer view (neither is full credit), same treatment as `Excused` already gets.
+- **Follow-up not included** (tracked as a separate PR): tying the WCL attendance sync (`supabase/functions/wcl-sync`) into detecting probable lateness. Today the sync only determines report-wide presence/absence, not per-fight timing -- no raid-start-time-of-day is stored anywhere, and there's no "flag this row for officer review" concept in the schema. The agreed design for that follow-up: detect a player missing the raid's first logged pull but present in later ones, and flag the row via a new `source = 'WCL (Late?)'` value with `status` left empty (not set to `Present`), so it surfaces in the grid for an officer to manually classify -- the sync itself never guesses which of the two Late statuses applies.
+
+[Full discussion -> #633](https://github.com/katogaming88/WGA-Raid-Hub/issues/633)
