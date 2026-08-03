@@ -564,13 +564,24 @@ async function refreshAttendance(
   // gs/Attendance.gs's readExistingAttendance enforced via the sheet.
   const { data: existingStatusRows, error: existingStatusError } = await supabase
     .from('attendance')
-    .select('player_id, raid_date, source')
+    .select('player_id, raid_date, source, report_excluded')
     .eq('team_id', teamId);
   if (existingStatusError) throw new Error(existingStatusError.message);
   const officerLocked = new Set(
     (existingStatusRows || [])
       .filter((r: any) => r.source === 'Officer')
       .map((r: any) => `${r.raid_date}|${r.player_id}`)
+  );
+  // toggleReportExcluded marks a whole raid_date excluded team-wide, but a
+  // later sync run (e.g. a player added to the roster after the toggle, or
+  // any re-sync of that date) used to hardcode report_excluded: false on
+  // every row it upserted, silently un-excluding the night for just that
+  // row -- one straggler row with report_excluded: false was enough to make
+  // _teamRaidNightsByMonth() (js/common.js) still count the whole night.
+  // Any existing row with the flag set means an officer excluded this date,
+  // so new rows for that date must preserve it rather than default to false.
+  const excludedDates = new Set(
+    (existingStatusRows || []).filter((r: any) => r.report_excluded).map((r: any) => r.raid_date)
   );
 
   let mainNights = 0;
@@ -641,7 +652,7 @@ async function refreshAttendance(
         raid_date: date,
         report_id: report.code,
         report_title: report.title,
-        report_excluded: false
+        report_excluded: excludedDates.has(date)
       };
 
       const key = `${player.playerId}|${date}`;
