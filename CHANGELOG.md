@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.47] - 2026-08-03
+
+### Frontend
+
+- **Removed the Season Code Prefix setting and simplified Season Name/Signup Season to number inputs** -- the code/display prefix (e.g. `MID` / "Midnight Season") is now a hardcoded constant updated alongside the existing per-tier `CURRENT_SEASON` constant at an expansion boundary, instead of an officer-editable per-team setting that risked different teams drifting to different prefixes for the same real-world expansion. Both the Season Name and Signup Season boxes in Season Settings now take just the season number (e.g. `3`) and compose the full label automatically, removing the chance of a typo in the prefix wording. No effect on existing data -- every team's stored season name already matched the default pattern.
+
 ## [3.49.46] - 2026-08-03
 
 ### Frontend

@@ -11,8 +11,8 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=3.49.46">
-  <link rel="stylesheet" href="css/officer.css?v=3.49.46">
+  <link rel="stylesheet" href="css/styles.css?v=3.49.47">
+  <link rel="stylesheet" href="css/officer.css?v=3.49.47">
   <!-- Hover tooltips for Buff Coverage's spell links (#491) and item links
        (Priority tab/BiS grid, itemNameBlockHtml(), #567). Auto-attaches to
        any <a class="wowhead">. whTooltips must be set before power.js loads
@@ -611,34 +611,16 @@
 
               <!-- Season Name -->
               <div class="help-ref-card">
-                <h4 class="help-ref-title">Season Name<button class="help-btn" onclick="toggleHelp('help-season-name')" title="Show help">?</button></h4>
+                <h4 class="help-ref-title">Season<button class="help-btn" onclick="toggleHelp('help-season-name')" title="Show help">?</button></h4>
                 <div id="help-season-name" class="help-tip">
-                  This label is applied to every loot entry imported through RCLootCouncil while the name is set. It is used by the <strong>Season</strong> toolbar dropdown to let you filter loot, fairness, and attendance to a specific season. Set this before importing loot at the start of each season.
+                  The season number, applied to every loot entry imported through RCLootCouncil while it's set. It is used by the <strong>Season</strong> toolbar dropdown to let you filter loot, fairness, and attendance to a specific season. Set this before importing loot at the start of each season.
                 </div>
-                <p class="signup-officer-note" style="margin-top:0.25rem;">The current season label applied to all imported RCLootCouncil loot (e.g. Season 1).</p>
+                <p class="signup-officer-note" style="margin-top:0.25rem;">The current season number applied to all imported RCLootCouncil loot (e.g. 1).</p>
                 <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
-                  <input type="text" id="seasonNameInput" class="add-player-input" placeholder="e.g. Season 1"
-                    style="max-width:220px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+                  <input type="number" id="seasonNameInput" class="add-player-input" placeholder="1" min="1"
+                    style="max-width:100px;font-size:0.95rem;padding:0.35rem 0.6rem;">
                   <button class="btn btn-gold" id="seasonNameSaveBtn" onclick="saveSeasonName()">Save</button>
                   <span id="seasonNameStatus" style="font-size:0.92rem;color:var(--heal);"></span>
-                </div>
-              </div>
-
-              <!-- Season Code Prefix -->
-              <div class="help-ref-card">
-                <h4 class="help-ref-title">Season Code Prefix<button class="help-btn" onclick="toggleHelp('help-season-code-prefix')" title="Show help">?</button></h4>
-                <div id="help-season-code-prefix" class="help-tip">
-                  Controls how season codes (the compact keys stored with loot, priority, and scoring data, e.g. MID1) translate to and from the season names you type elsewhere on this page. Every season numbered under the current prefix translates automatically -- you only need to change this once, when a new expansion's season codes stop starting with the current prefix. Leave both fields blank to reset to the defaults (MID / Midnight Season).
-                </div>
-                <p class="signup-officer-note" style="margin-top:0.25rem;">Only change this at an expansion boundary -- not for a routine new season.</p>
-                <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
-                  <input type="text" id="seasonCodePrefixInput" class="add-player-input" placeholder="MID"
-                    style="max-width:100px;font-size:0.95rem;padding:0.35rem 0.6rem;">
-                  <span style="color:var(--text-muted);">&lt;-&gt;</span>
-                  <input type="text" id="seasonDisplayPrefixInput" class="add-player-input" placeholder="Midnight Season"
-                    style="max-width:220px;font-size:0.95rem;padding:0.35rem 0.6rem;">
-                  <button class="btn btn-gold" id="seasonCodePrefixSaveBtn" onclick="saveSeasonCodePrefixes()">Save</button>
-                  <span id="seasonCodePrefixStatus" style="font-size:0.92rem;color:var(--heal);"></span>
                 </div>
               </div>
 
@@ -664,10 +646,10 @@
                 <div id="help-signup-season" class="help-tip">
                   The season label stamped on every signup submission. Set this before opening signups so all responses are tagged correctly. If left blank, signups will be recorded with no season and will not appear in the Missing Signups list once a season is set. Independent of Season View above -- signups for the next tier routinely open while the current tier is still live, so this can point ahead of the live season without changing what raiders see on the Priority tab/BiS/Wishlist.
                 </div>
-                <p class="signup-officer-note" style="margin-top:0.25rem;">The season label applied to incoming signup submissions (e.g. MN Season 1).</p>
+                <p class="signup-officer-note" style="margin-top:0.25rem;">The season number applied to incoming signup submissions (e.g. 1).</p>
                 <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
-                  <input type="text" id="signupSeasonInput" class="add-player-input" placeholder="e.g. MN Season 1"
-                    style="max-width:220px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+                  <input type="number" id="signupSeasonInput" class="add-player-input" placeholder="1" min="1"
+                    style="max-width:100px;font-size:0.95rem;padding:0.35rem 0.6rem;">
                   <button class="btn btn-gold" id="signupSeasonSaveBtn" onclick="saveSignupSeason()">Save</button>
                   <span id="signupSeasonStatus" style="font-size:0.92rem;color:var(--heal);"></span>
                 </div>
@@ -1163,27 +1145,27 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/common.js?v=3.49.46"></script>
-  <script src="js/discord.js?v=3.49.46"></script>
-  <script src="js/officer.js?v=3.49.46"></script>
-  <script src="js/tabs/tab-roster.js?v=3.49.46"></script>
-  <script src="js/tabs/tab-conflicts.js?v=3.49.46"></script>
-  <script src="js/tabs/tab-fairness.js?v=3.49.46"></script>
-  <script src="js/tabs/tab-attendance.js?v=3.49.46"></script>
-  <script src="js/tabs/tab-bench-fairness.js?v=3.49.46"></script>
-  <script src="js/tabs/tab-signups.js?v=3.49.46"></script>
-  <script src="js/tabs/tab-requests.js?v=3.49.46"></script>
-  <script src="js/tabs/tab-bis.js?v=3.49.46"></script>
-  <script src="js/tabs/tab-pending-roster.js?v=3.49.46"></script>
-  <script src="js/tabs/tab-mplus.js?v=3.49.46"></script>
-  <script src="js/tabs/tab-priority.js?v=3.49.46"></script>
-  <script src="js/tabs/tab-audit.js?v=3.49.46"></script>
-  <script src="js/tabs/tab-reports.js?v=3.49.46"></script>
-  <script src="js/tabs/tab-season.js?v=3.49.46"></script>
-  <script src="js/tabs/tab-bios.js?v=3.49.46"></script>
-  <script src="js/tabs/tab-loot-import.js?v=3.49.46"></script>
-  <script src="js/tabs/tab-scoring.js?v=3.49.46"></script>
-  <script src="js/tabs/tab-admin.js?v=3.49.46"></script>
+  <script src="js/common.js?v=3.49.47"></script>
+  <script src="js/discord.js?v=3.49.47"></script>
+  <script src="js/officer.js?v=3.49.47"></script>
+  <script src="js/tabs/tab-roster.js?v=3.49.47"></script>
+  <script src="js/tabs/tab-conflicts.js?v=3.49.47"></script>
+  <script src="js/tabs/tab-fairness.js?v=3.49.47"></script>
+  <script src="js/tabs/tab-attendance.js?v=3.49.47"></script>
+  <script src="js/tabs/tab-bench-fairness.js?v=3.49.47"></script>
+  <script src="js/tabs/tab-signups.js?v=3.49.47"></script>
+  <script src="js/tabs/tab-requests.js?v=3.49.47"></script>
+  <script src="js/tabs/tab-bis.js?v=3.49.47"></script>
+  <script src="js/tabs/tab-pending-roster.js?v=3.49.47"></script>
+  <script src="js/tabs/tab-mplus.js?v=3.49.47"></script>
+  <script src="js/tabs/tab-priority.js?v=3.49.47"></script>
+  <script src="js/tabs/tab-audit.js?v=3.49.47"></script>
+  <script src="js/tabs/tab-reports.js?v=3.49.47"></script>
+  <script src="js/tabs/tab-season.js?v=3.49.47"></script>
+  <script src="js/tabs/tab-bios.js?v=3.49.47"></script>
+  <script src="js/tabs/tab-loot-import.js?v=3.49.47"></script>
+  <script src="js/tabs/tab-scoring.js?v=3.49.47"></script>
+  <script src="js/tabs/tab-admin.js?v=3.49.47"></script>
   <script>
 renderSiteNav('officer');
 document.getElementById('versionNum').textContent = VERSION;

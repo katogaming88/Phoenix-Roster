@@ -68,24 +68,20 @@ describe('seasonDisplayName / seasonCodeForDisplay (#341)', () => {
     expect(sandbox.seasonDisplayName('MID4')).toBe('Midnight Season 4');
   });
 
-  it('derives the pattern from DATA.seasonCodePrefix/seasonDisplayPrefix once set (a future expansion, no code change)', () => {
+  it('reads the prefix from the hardcoded SEASON_CODE_PREFIX/SEASON_DISPLAY_PREFIX constants, ignoring DATA', () => {
     const sandbox = loadCommonJs();
+    // A future expansion boundary updates the constants themselves (in the
+    // same commit as CURRENT_SEASON), not a per-team DATA setting -- setting
+    // DATA here must have no effect.
     sandbox.DATA = { seasonCodePrefix: 'DF', seasonDisplayPrefix: 'Dragonflight Season' };
-    expect(sandbox.seasonDisplayName('DF1')).toBe('Dragonflight Season 1');
-    expect(sandbox.seasonCodeForDisplay('Dragonflight Season 1')).toBe('DF1');
-    // The old MID pattern no longer matches once the prefix has moved on.
-    expect(sandbox.seasonDisplayName('MID9')).toBe('MID9');
-  });
-
-  it('treats a blank DATA.seasonCodePrefix/seasonDisplayPrefix as unset (falls back to defaults)', () => {
-    const sandbox = loadCommonJs();
-    sandbox.DATA = { seasonCodePrefix: '', seasonDisplayPrefix: '' };
-    expect(sandbox.seasonDisplayName('MID5')).toBe('Midnight Season 5');
+    expect(sandbox.seasonDisplayName('MID9')).toBe('Midnight Season 9');
+    expect(sandbox.seasonCodeForDisplay('Midnight Season 9')).toBe('MID9');
   });
 
   it('treats prefix values as literal text, not regex syntax', () => {
     const sandbox = loadCommonJs();
-    sandbox.DATA = { seasonCodePrefix: 'M.D', seasonDisplayPrefix: 'Mid+Season' };
+    sandbox.SEASON_CODE_PREFIX = 'M.D';
+    sandbox.SEASON_DISPLAY_PREFIX = 'Mid+Season';
     expect(sandbox.seasonDisplayName('M.D1')).toBe('Mid+Season 1');
     // A code that would match if the '.' were a real regex wildcard must not.
     expect(sandbox.seasonDisplayName('MXD1')).toBe('MXD1');

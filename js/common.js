@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.49.46';
+var VERSION = '3.49.47';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -1250,22 +1250,21 @@ function mapSupabaseIncomingRoster(rows) {
 //     boundary (the earlier version of this mechanism, a single hardcoded
 //     MID1 entry, would have silently mis-translated every season after
 //     the first until someone remembered to add it).
-//  3. The prefixes themselves come from team_settings.config
-//     (DATA.seasonCodePrefix/DATA.seasonDisplayPrefix, officer-editable in
-//     Season Settings, same saveTeamSetting() path as seasonName), defaulting
-//     to 'MID'/'Midnight Season' when unset -- so a future expansion whose
-//     codes don't start with 'MID' is a one-time settings edit, not a code
-//     change, either.
+//  3. The prefixes themselves are hardcoded constants (SEASON_CODE_PREFIX/
+//     SEASON_DISPLAY_PREFIX below), Kat-updated in the same commit as
+//     CURRENT_SEASON at an expansion boundary -- previously an
+//     officer-editable per-team setting, but every team plays the same
+//     real-world expansion timeline, so a per-team value only risked two
+//     teams drifting to different prefixes for what's actually the same
+//     expansion.
 // Falls through to the input unchanged if nothing matches.
-//
-// Per-team setting is an interim choice: every team plays the same
-// real-world expansion timeline, so this is really cross-team config that
-// belongs on the site admin dashboard once #232 exists, not something each
-// team's officers set independently (risk of two teams drifting to
-// different prefixes for what's actually the same expansion). Noted on
-// #232; keep this as the override mechanism even after that lands.
 /** @type {Object<string, string>} */
 var SEASON_LABELS = {};
+
+// Kat-updated in the same commit as CURRENT_SEASON below, at an expansion
+// boundary -- not for a routine new season within the same expansion (#341).
+var SEASON_CODE_PREFIX = 'MID';
+var SEASON_DISPLAY_PREFIX = 'Midnight Season';
 
 // The single source of truth for "what's the next season," Kat-updated once
 // per real-world tier (#537) -- same manual-per-tier-edit workflow already
@@ -1278,16 +1277,16 @@ var SEASON_LABELS = {};
 var CURRENT_SEASON = { code: 'MID2', displayName: 'Midnight Season 2' };
 if (seasonCodeForDisplay(CURRENT_SEASON.displayName) !== CURRENT_SEASON.code) {
   console.warn(
-    'CURRENT_SEASON.code does not match seasonCodeForDisplay(CURRENT_SEASON.displayName) -- check seasonCodePrefix/seasonDisplayPrefix against the new season name.'
+    'CURRENT_SEASON.code does not match seasonCodeForDisplay(CURRENT_SEASON.displayName) -- check SEASON_CODE_PREFIX/SEASON_DISPLAY_PREFIX against the new season name.'
   );
 }
 
 function _seasonCodePrefix() {
-  return (DATA && DATA.seasonCodePrefix) || 'MID';
+  return SEASON_CODE_PREFIX;
 }
 
 function _seasonDisplayPrefix() {
-  return (DATA && DATA.seasonDisplayPrefix) || 'Midnight Season';
+  return SEASON_DISPLAY_PREFIX;
 }
 
 function _escapeRegExp(str) {
@@ -1915,11 +1914,6 @@ var SEASON_CONFIG_KEYS = [
   'bisSubmissionsOpen',
   'mPlusExclusionsOpen',
   'wishlistOpen',
-  // Season code <-> display-name translation prefixes (#341); consumed by
-  // seasonDisplayName()/seasonCodeForDisplay() above, defaulting to
-  // 'MID'/'Midnight Season' when unset so existing teams need no backfill.
-  'seasonCodePrefix',
-  'seasonDisplayPrefix',
   // The season an officer is actively planning/prepping item catalog/BiS/
   // wishlist scope for (#549), separate from seasonName (the live raiding
   // season) and deliberately NOT shared with signups -- signup lead time and
