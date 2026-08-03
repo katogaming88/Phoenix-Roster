@@ -95,3 +95,42 @@ describe('wishlistOtherSourcesSectionHTML -- season scoping', () => {
     expect(html).toContain('0 tagged');
   });
 });
+
+// #645 follow-up: a raid-drop slot's own card lives entirely separately from
+// the Other Sources card, so a raider who tagged e.g. Crafted as BiS for
+// Head had no indication of that when looking at the Head slot's own raid-
+// drop card -- easy to think nothing was tagged for the slot at all.
+describe('wishlistOtherSourcesTaggedSlots', () => {
+  it('maps a tagged slot to its source name', () => {
+    const sandbox = makeSandbox({
+      itemIds: { Crafted: 2 },
+      itemPlaceholders: { Crafted: true },
+      seasonView: 'Midnight Season 2',
+      prefs: [{ id: 1, item_id: 2, status: 'bis', note: null, slot: 'Head', season: 'Midnight Season 2' }]
+    });
+
+    expect(sandbox.wishlistOtherSourcesTaggedSlots()).toEqual({ Head: 'Crafted' });
+  });
+
+  it('excludes a stale-season tag', () => {
+    const sandbox = makeSandbox({
+      itemIds: { Crafted: 2 },
+      itemPlaceholders: { Crafted: true },
+      seasonView: 'Midnight Season 2',
+      prefs: [{ id: 1, item_id: 2, status: 'bis', note: null, slot: 'Head', season: 'Midnight Season 1' }]
+    });
+
+    expect(sandbox.wishlistOtherSourcesTaggedSlots()).toEqual({});
+  });
+
+  it('returns an empty map when nothing is tagged', () => {
+    const sandbox = makeSandbox({
+      itemIds: { 'M+': 1 },
+      itemPlaceholders: { 'M+': true },
+      seasonView: 'Midnight Season 2',
+      prefs: []
+    });
+
+    expect(sandbox.wishlistOtherSourcesTaggedSlots()).toEqual({});
+  });
+});
