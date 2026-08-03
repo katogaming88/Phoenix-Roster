@@ -1,5 +1,12 @@
 [
   {
+    "date": "2026-08-03",
+    "category": "Feature",
+    "version": "3.49.48",
+    "title": "Heads up when a slot's BiS already comes from Other Sources",
+    "body": "If you've tagged M+, Crafted, or Catalyst as your BiS for a slot under Other Sources, opening that slot's own raid-drop card now tells you so -- easy to miss otherwise, since the two picks live on separate cards."
+  },
+  {
     "date": "2026-07-31",
     "category": "Feature",
     "version": "3.49.37",
