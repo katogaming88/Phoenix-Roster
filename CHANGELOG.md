@@ -8,6 +8,17 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.44] - 2026-08-03
+
+### Frontend
+
+- **Officer attendance grid now surfaces the WCL sync's "probable late arrival" flag** -- rows with the new `source = 'WCL (Late?)'` (unclassified, status left blank) render the source in gold so an officer notices it needs a manual Late (with notice) / Late (no notice) call. A pending flag no longer scores as a 0% miss in the meantime (`computeSeasonAttendancePct` now excludes unset-status rows the same as a night with no row at all).
+
+### Backend
+
+- `attendance.status` is now nullable (was `NOT NULL DEFAULT 'Present'`) and `attendance.source` gained a new allowed value, `'WCL (Late?)'`, to support the flag above.
+- `wcl-sync`'s `refreshAttendance()` now also detects whether a present player missed the raid's first logged pull (a new `fights`/`playerDetails` query per new report, separate from the existing kill-only `rankings` fetch so wipe-heavy progression nights don't skew the "first pull" baseline) and writes the flag instead of guessing which Late status applies. See [#633](https://github.com/katogaming88/WGA-Raid-Hub/issues/633) for the full decision writeup.
+
 ## [3.49.43] - 2026-08-02
 
 ### Frontend
