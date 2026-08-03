@@ -827,6 +827,11 @@ function playerOtherSlotItems(player, slot, currentItem, itemSlots) {
     seen[name] = true;
     out.push(name);
   });
+  // Trinket/Finger are dual-equip slots -- a player can hold two different
+  // ones at once, so receiving a single one this season doesn't "spend" the
+  // slot the way a single-equip slot does. Only flag once both are filled.
+  var isDualEquipSlot = ['TRINKET', 'FINGER'].indexOf((slot || '').toUpperCase()) >= 0;
+  if (isDualEquipSlot && out.length < 2) return [];
   return out;
 }
 
