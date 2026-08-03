@@ -440,6 +440,64 @@ async function getReportParticipants(token: string, reportCode: string): Promise
   return names;
 }
 
+// Late-arrival detection (#633 follow-up): who was present for the raid's
+// first actual boss pull of the night, as opposed to getReportParticipants'
+// report-wide "present at all" set. Deliberately a *separate* query rather
+// than reusing fetchReportFights' `rankings` data -- rankings only include
+// ranked kills, so a progression night that wipes repeatedly before its
+// first kill would make the first *ranked* fight far later than the raid
+// actually started, silently flagging on-time players as late. The raw
+// `fights` list includes wipes too and is already in chronological order by
+// fight ID, so the first difficulty-tagged (real pull, not trash) entry is
+// the actual first pull regardless of whether it was a kill.
+async function getFirstPullParticipants(token: string, reportCode: string): Promise<Set<string> | null> {
+  const fightsQuery = `
+    query {
+      reportData {
+        report(code: "${reportCode}") {
+          fights { id startTime difficulty }
+        }
+      }
+    }
+  `;
+  const fightsResult = await wclQuery(token, fightsQuery);
+  const fights = fightsResult?.data?.reportData?.report?.fights || [];
+  const firstPull = fights
+    .filter((f: any) => f.difficulty != null)
+    .sort((a: any, b: any) => a.startTime - b.startTime)[0];
+  if (!firstPull) return null;
+
+  const detailsQuery = `
+    query {
+      reportData {
+        report(code: "${reportCode}") {
+          playerDetails(fightIDs: [${firstPull.id}])
+        }
+      }
+    }
+  `;
+  const detailsResult = await wclQuery(token, detailsQuery);
+  const raw = detailsResult?.data?.reportData?.report?.playerDetails;
+  if (!raw) return null;
+  let details: any;
+  try {
+    details = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  } catch (err) {
+    console.error('Failed to parse playerDetails JSON:', err);
+    return null;
+  }
+
+  const roleGroups = details?.data?.playerDetails || {};
+  const names = new Set<string>();
+  for (const roleKey of ['dps', 'healers', 'tanks'] as const) {
+    const entries = roleGroups[roleKey] || [];
+    for (const character of entries) {
+      if (character.name) names.add(String(character.name).split('-')[0].trim().toLowerCase());
+    }
+  }
+  return names;
+}
+
 async function refreshAttendance(
   token: string,
   guildId: number,
@@ -568,6 +626,11 @@ async function refreshAttendance(
 
     mainNights++;
     const participants = await getReportParticipants(token, report.code);
+    // null (not an empty set) means detection failed/found no real pulls --
+    // fail open to the normal Present/WCL path rather than flagging anyone,
+    // same "don't let a detection gap silently penalize someone" principle
+    // as computeSeasonAttendancePct's treatment of an unset status.
+    const firstPullParticipants = await getFirstPullParticipants(token, report.code);
 
     for (const player of roster) {
       if (officerLocked.has(`${date}|${player.playerId}`)) continue;
@@ -583,7 +646,16 @@ async function refreshAttendance(
 
       const key = `${player.playerId}|${date}`;
       if (participants.has(player.firstName)) {
-        rowsToUpsert.set(key, { ...base, status: 'Present', source: 'WCL' });
+        const missedFirstPull = firstPullParticipants !== null && !firstPullParticipants.has(player.firstName);
+        if (missedFirstPull) {
+          // Flagged, not classified -- the sync doesn't know whether this
+          // was Late (with notice) or Late (no notice), only that they
+          // weren't there for the first pull but were present later. Status
+          // stays unset for an officer to fill in via the grid.
+          rowsToUpsert.set(key, { ...base, status: null, source: 'WCL (Late?)' });
+        } else {
+          rowsToUpsert.set(key, { ...base, status: 'Present', source: 'WCL' });
+        }
       } else if (player.isBench) {
         rowsToUpsert.set(key, { ...base, status: 'Bench', source: 'Auto (Bench)' });
       } else if (player.joinDate && date < player.joinDate) {

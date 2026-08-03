@@ -274,7 +274,18 @@ function renderNightGrid(index) {
     html += '<div class="attend-grid-row">';
     html += '<span class="attend-grid-name">' + escHtml(p.name) + '</span>';
     var hasStatus = !!p.status;
-    html += '<span class="attend-grid-source">' + escHtml(p.source || '') + '</span>';
+    // WCL sync flags a probable late arrival (missed the raid's first pull,
+    // present in later ones) by leaving status unset with this source value
+    // instead of guessing which Late status applies -- surfaced here so an
+    // officer notices it needs manual classification, same idea as the
+    // "(no status)" placeholder option below.
+    var isLateFlag = p.source === 'WCL (Late?)';
+    html +=
+      '<span class="attend-grid-source"' +
+      (isLateFlag ? ' style="color:var(--gold);font-weight:600;"' : '') +
+      '>' +
+      escHtml(p.source || '') +
+      '</span>';
     html += '<div class="attend-status-wrap">';
     html +=
       '<select class="attend-status-select" data-date="' +

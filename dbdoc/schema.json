@@ -29,7 +29,7 @@
         {
           "name": "status",
           "type": "text",
-          "nullable": false,
+          "nullable": true,
           "default": "'Present'::text"
         },
         {
@@ -79,7 +79,7 @@
         {
           "name": "attendance_source_check",
           "type": "CHECK",
-          "def": "CHECK ((source = ANY (ARRAY['WCL'::text, 'Officer'::text, 'Auto (Bench)'::text])))",
+          "def": "CHECK ((source = ANY (ARRAY['WCL'::text, 'Officer'::text, 'Auto (Bench)'::text, 'WCL (Late?)'::text])))",
           "table": "public.attendance",
           "referenced_table": "",
           "columns": [

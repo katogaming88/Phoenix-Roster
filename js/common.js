@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.49.43';
+var VERSION = '3.49.44';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -2472,7 +2472,12 @@ function computeSeasonAttendancePct(firstName) {
       (!effectiveStart || r.date >= effectiveStart) &&
       (!start || r.date >= start) &&
       (!end || r.date <= end) &&
-      r.status !== 'Not on Roster'
+      r.status !== 'Not on Roster' &&
+      // A row with no status yet (source 'WCL (Late?)' -- flagged as a
+      // probable late arrival, pending an officer's Late (with/no notice)
+      // classification) shouldn't silently score as a 0.0-weight miss while
+      // it sits unreviewed -- same treatment as a night with no row at all.
+      r.status
     );
   });
   // A player with zero recorded nights yet (brand-new roster add) hasn't
