@@ -250,12 +250,19 @@ function wishlistBucketRealItems(playerArmorType, playerMainStat, playerRole, pl
   var itemArmorTypes = (DATA && DATA.itemArmorTypes) || {};
   var itemMainStats = (DATA && DATA.itemMainStats) || {};
   var itemWeaponSubtypes = (DATA && DATA.itemWeaponSubtypes) || {};
+  var tierTokenMap = (DATA && DATA.tierTokenMap) || {};
+  var tierResolvedItemNames = (DATA && DATA.tierResolvedItemNames) || {};
   var buckets = {};
   WISHLIST_SLOTS.forEach(function (s) {
     buckets[s] = [];
   });
 
   Object.keys(itemSlots).forEach(function (name) {
+    // Resolved tier items (see mapSupabaseTierTokenMap, js/common.js) are
+    // only ever reachable by their token's substitution below -- listing
+    // them here too would show the same class piece twice (once as the
+    // substituted token row, once as its own real catalog row).
+    if (tierResolvedItemNames[name]) return;
     if (itemPlaceholders[name]) return;
     if (typeof isItemInSeasonScope === 'function' && !isItemInSeasonScope(name)) return;
     var catalogSlot = itemSlots[name] || '';
@@ -298,7 +305,21 @@ function wishlistBucketRealItems(playerArmorType, playerMainStat, playerRole, pl
         if (allowedWeaponTypes.indexOf(weaponSubtype) === -1) return;
       }
       if (playerClass && row === 'Off Hand' && weaponSubtype === 'Shield' && !CLASS_SHIELD_USERS[playerClass]) return;
-      buckets[row].push({ name: name, itemId: itemIds[name] });
+      // Tier tokens (Head/Shoulder/Chest/Hands/Legs) drop as a generic
+      // per-armor-type item (e.g. "Venomwoven Idol") shared by every class of
+      // that armor type -- tier_token_map resolves it to this raider's own
+      // named class piece for display (e.g. "Damned Necrolyte's Charred
+      // Grasps"). itemId stays on the token: item_preferences (and
+      // generate_priority_order, which reads the same table) need to match
+      // what rclc_loot actually logs, which is the token's own item_id, not
+      // whichever piece a raider redeems it for. Falls back to the raw token
+      // name if the map isn't loaded/populated yet, same "unknown shows
+      // everything" convention as every other filter above.
+      var displayName = name;
+      if (playerClass && tierTokenMap[name] && tierTokenMap[name][playerClass]) {
+        displayName = tierTokenMap[name][playerClass];
+      }
+      buckets[row].push({ name: displayName, itemId: itemIds[name], rankName: name });
     });
   });
 
@@ -499,7 +520,12 @@ function wishlistNoteHTML(itemId, slot) {
 // (lockOnceSet, e.g. "M+ - Head") since those aren't real raid-drop items
 // with a priority order to look up -- same isGen treatment the BiS list
 // gives M+/Crafted/Catalyst rows.
-function wishlistRowHTML(name, itemId, slot, rowIndex, lockOnceSet) {
+// rankName: the priority_order/DATA.priorityOrder lookup key, only different
+// from `name` for tier-token rows -- generate_priority_order() runs on the
+// token's own item (what rclc_loot logs), so its rank data is keyed to the
+// token's catalog name, not the resolved class item `name` displays here.
+// Defaults to `name` for every other row, where the two are the same thing.
+function wishlistRowHTML(name, itemId, slot, rowIndex, lockOnceSet, rankName) {
   if (itemId == null) return '';
   // Flags (and visually treats as BiS) a row already tagged BiS on its
   // sibling row (Finger 1<->Finger 2, Trinket 1<->Trinket 2) -- the same
@@ -512,7 +538,7 @@ function wishlistRowHTML(name, itemId, slot, rowIndex, lockOnceSet) {
   var rowBorder = color ? color.css : 'var(--border)';
   var rank =
     !lockOnceSet && typeof getRank === 'function' && _wishlistPlayerNameRealm
-      ? getRank(_wishlistPlayerNameRealm, name)
+      ? getRank(_wishlistPlayerNameRealm, rankName || name)
       : [];
   var rankHTML = lockOnceSet ? '' : typeof rankPillHTML === 'function' ? rankPillHTML(rank) : '';
   var siblingNoteHTML = lockedSibling
@@ -850,7 +876,7 @@ function wishlistSectionBodyHTML(player) {
       tierNote +
       items
         .map(function (item, i) {
-          return wishlistRowHTML(item.name, item.itemId, rowSlot, i);
+          return wishlistRowHTML(item.name, item.itemId, rowSlot, i, false, item.rankName);
         })
         .join('');
     var summaryItems = items.map(function (item) {

@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.49.49';
+var VERSION = '3.49.50';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -2179,6 +2179,71 @@ function fetchSupabaseItemBosses() {
   return Promise.race([query, timeout]);
 }
 
+// Midnight Season 2's tier gear doesn't drop as the wearable class piece --
+// bosses drop a generic per-armor-type token (e.g. "Venomwoven Idol"), which
+// resolves to a class's actual named tier item (e.g. "Damned Necrolyte's
+// Charred Grasps") only once redeemed via catalyst. tier_token_map (see
+// supabase/migrations/20260804013135_tier_token_map.sql) is the lookup the
+// Wishlist uses to display the resolved item instead of the token -- the
+// underlying item_preferences.item_id a raider tags stays on the token
+// throughout, matching what rclc_loot actually logs, so priority generation
+// needs no changes. Two FKs to items (token + resolved) need the `!<fkey>`
+// disambiguation hint since Postgrest can't otherwise tell which one a bare
+// `items(name)` embed refers to.
+function fetchSupabaseTierTokenMap() {
+  if (!supabaseClient) return Promise.resolve(null);
+  var query = supabaseClient
+    .from('tier_token_map')
+    .select(
+      'class, token:items!tier_token_map_token_item_id_fkey(name), resolved:items!tier_token_map_resolved_item_id_fkey(name)'
+    )
+    .then(
+      function (result) {
+        if (result.error) {
+          console.warn('Supabase tier_token_map query failed.', result.error.message);
+          return null;
+        }
+        return result.data && result.data.length ? result.data : null;
+      },
+      function (err) {
+        console.warn('Supabase tier_token_map query failed.', err);
+        return null;
+      }
+    );
+  var timeout = new Promise(function (resolve) {
+    setTimeout(function () {
+      resolve(null);
+    }, 10000);
+  });
+  return Promise.race([query, timeout]);
+}
+
+// { tokenItemName: { class: resolvedItemName } } -- wishlistBucketRealItems
+// (js/wishlist.js) looks up the viewing raider's class here to swap a token
+// row's displayed name for their class's resolved tier item.
+//
+// Also returns tierResolvedItemNames -- the 65 resolved items are real rows
+// in `items` (they need their own name/icon/stats for itemNameBlockHtml to
+// find), so without this they'd independently pass every wishlist/BiS
+// catalog filter and show up a *second* time as their own row, alongside the
+// token row that's been substituted to display the same name. Both
+// wishlistBucketRealItems and tab-bis.js's bisSlotOnInput skip any name in
+// this set when walking the full catalog -- a resolved item should only ever
+// be reachable by substitution through its token, never listed directly.
+function mapSupabaseTierTokenMap(rows) {
+  var map = {};
+  var resolvedNames = {};
+  (rows || []).forEach(function (row) {
+    var tokenName = row.token && row.token.name;
+    var resolvedName = row.resolved && row.resolved.name;
+    if (!tokenName || !resolvedName || !row.class) return;
+    if (!map[tokenName]) map[tokenName] = {};
+    map[tokenName][row.class] = resolvedName;
+    resolvedNames[resolvedName] = true;
+  });
+  return { map: map, resolvedNames: resolvedNames };
+}
+
 // Builds the DATA.itemSlots/itemArmorTypes maps (name -> slot / name ->
 // armor_type) straight from Supabase's items rows -- no GAS merge, per #391.
 // Placeholder rows (M+, Crafted, Catalyst -- items.slot is NOT NULL, so those
@@ -2284,6 +2349,7 @@ function itemNameBlockHtml(name, slot) {
   var boss = ((DATA && DATA.itemBosses) || {})[name];
   var stats = ((DATA && DATA.itemSecondaryStats) || {})[name];
   var armorType = ((DATA && DATA.itemArmorTypes) || {})[name];
+  var isTierItem = !!((DATA && DATA.tierResolvedItemNames) || {})[name];
   var iconImg = icon
     ? '<img src="https://wow.zamimg.com/images/wow/icons/large/' + icon + '.jpg" alt="" class="item-icon-lg">'
     : '';
@@ -2299,6 +2365,12 @@ function itemNameBlockHtml(name, slot) {
   // this only appears on rows where it's actually meaningful.
   if (armorType)
     slotPillsParts.push('<span style="color:' + getArmorTypeColor(armorType) + ';">' + armorType + '</span>');
+  // Flags a resolved tier-set class piece (see mapSupabaseTierTokenMap) --
+  // these are only ever reached via a token's substitution, so nothing else
+  // marks them as tier gear the way Wowhead/Viserio's own "Tier" badge does.
+  // Sits before the stat pills so it reads next to the slot/armor type, not
+  // buried after the Crit/Haste/etc badges.
+  if (isTierItem) slotPillsParts.push('<span class="tier-pill">TIER</span>');
   var pills = statPillListHtml(stats);
   if (pills) slotPillsParts.push(pills);
   var slotPillsLine = slotPillsParts.length
@@ -2607,6 +2679,8 @@ function loadData(onCoreReady, onHeavyReady) {
   var itemsPromise = fetchSupabaseItems();
   // Fired alongside; the heavy callback waits for it before setting itemBosses.
   var itemBossesPromise = fetchSupabaseItemBosses();
+  // Fired alongside; the heavy callback waits for it before setting tierTokenMap.
+  var tierTokenMapPromise = fetchSupabaseTierTokenMap();
   // Fired alongside; the heavy callback waits for it before setting priorityOrder.
   var priorityOrderPromise = fetchSupabasePriorityOrder();
   // Fired alongside; the heavy callback waits for it before setting priorityStaleAfterHeroic.
@@ -2674,6 +2748,7 @@ function loadData(onCoreReady, onHeavyReady) {
       bisItemsPromise,
       itemsPromise,
       itemBossesPromise,
+      tierTokenMapPromise,
       priorityOrderPromise,
       priorityStaleAfterHeroicPromise,
       priorityLiveFirstPriosPromise,
@@ -2689,16 +2764,17 @@ function loadData(onCoreReady, onHeavyReady) {
       var bisRows = results[1];
       var itemRows = results[2];
       var itemBossRows = results[3];
-      var priorityRows = results[4];
-      var priorityStaleAfterHeroicRows = results[5];
-      var priorityLiveFirstPriosRows = results[6];
-      var selfReceivedRows = results[7];
-      var attendanceRows = results[8];
-      var streamerRows = results[9];
-      var raidProgressRows = results[10];
-      var incomingRosterRows = results[11];
-      var raidZonesRows = results[12];
-      var guildOfficerBiosRows = results[13];
+      var tierTokenMapRows = results[4];
+      var priorityRows = results[5];
+      var priorityStaleAfterHeroicRows = results[6];
+      var priorityLiveFirstPriosRows = results[7];
+      var selfReceivedRows = results[8];
+      var attendanceRows = results[9];
+      var streamerRows = results[10];
+      var raidProgressRows = results[11];
+      var incomingRosterRows = results[12];
+      var raidZonesRows = results[13];
+      var guildOfficerBiosRows = results[14];
       DATA.raidZones = raidZonesRows || [];
       var mappedLoot = lootRows ? mapSupabaseLoot(lootRows) : null;
       DATA.lootCounts = mappedLoot || {};
@@ -2729,6 +2805,23 @@ function loadData(onCoreReady, onHeavyReady) {
       DATA.itemWeaponSubtypes = itemMaps.itemWeaponSubtypes;
       DATA.itemIsPtr = itemMaps.itemIsPtr;
       DATA.itemBosses = mapSupabaseItemBosses(itemBossRows);
+      var tierTokenMapResult = mapSupabaseTierTokenMap(tierTokenMapRows);
+      DATA.tierTokenMap = tierTokenMapResult.map;
+      DATA.tierResolvedItemNames = tierTokenMapResult.resolvedNames;
+      // A resolved tier item never has its own item_bosses row (it doesn't
+      // physically drop -- see mapSupabaseTierTokenMap's comment), so
+      // itemNameBlockHtml's boss line would otherwise show nothing for it.
+      // Backfills DATA.itemBosses[resolvedName] from its token's own boss,
+      // which is the boss that actually needs killing for this piece --
+      // itemNameBlockHtml needs no changes, it already reads this same map.
+      Object.keys(DATA.tierTokenMap).forEach(function (tokenName) {
+        var boss = DATA.itemBosses[tokenName];
+        if (!boss) return;
+        var byClass = DATA.tierTokenMap[tokenName];
+        Object.keys(byClass).forEach(function (className) {
+          DATA.itemBosses[byClass[className]] = boss;
+        });
+      });
       var mappedSelfReceived = selfReceivedRows ? mapSupabaseSelfReceived(selfReceivedRows) : null;
       DATA.selfReceived = mappedSelfReceived || {};
       DATA.streamers = mapSupabaseStreamers(streamerRows);

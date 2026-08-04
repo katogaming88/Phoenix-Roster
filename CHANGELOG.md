@@ -8,6 +8,17 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.49.50] - 2026-08-04
+
+### Frontend
+
+- **Wishlist and BiS grid now show the actual class tier piece instead of the generic drop token** -- Midnight Season 2's tier gear doesn't drop as the wearable item itself; bosses drop a generic per-armor-type token (e.g. "Venomwoven Idol"), which a raider manually converts into their class's named piece (e.g. "Damned Necrolyte's Charred Grasps") via an NPC. Both views now resolve and display the viewing raider's own class piece via a new token-to-class mapping, while the underlying wishlist tag/BiS pick still records the token itself -- matching what RCLootCouncil actually logs, so priority generation needed no changes.
+
+### Backend
+
+- Added `tier_token_map` (token_item_id, class, resolved_item_id) and seeded it for all 13 classes' 5 tier slots this season -- see `scripts/fetch-tier-resolved-items.js` and `scripts/generate-tier-token-map-sql.js`.
+- Imported the 65 class-specific resolved tier items into `items` (flagged `is_ptr = true`, matching the rest of this pre-release tier's catalog rows until 12.1 ships live) and backfilled their `secondary_stats`/`main_stats`/`weapon_subtype` via `scripts/fetch-item-stats.js`.
+
 ## [3.49.49] - 2026-08-03
 
 ### Frontend
