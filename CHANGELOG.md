@@ -18,6 +18,7 @@ with each release split into `### Frontend` (drives the version number) and
 ### Backend
 
 - Added `items.weapon_subtype` (nullable text, e.g. `'Sword'`/`'Staff'`/`'Shield'`), backfilled by `scripts/fetch-item-stats.js` in the same pass as `secondary_stats`/`main_stats` -- no extra API calls needed. See `docs/database-decisions.md` (#609) for the class-weapon-type table and its sourcing.
+- Fixed `add_signup_to_roster()` silently orphaning a raider's account link on a main-swap: archiving the old character never carried its `team_member_id` to the newly added character, leaving the account linked to an inactive, archived row. Now transfers the link forward. See `docs/database-decisions.md` for details.
 
 ### Frontend
 
