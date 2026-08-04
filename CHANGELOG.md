@@ -8,6 +8,16 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.51.1] - 2026-08-04
+
+### Frontend
+
+- **History tab now shows what the team was working on when a season ended** -- if a boss wasn't killed before archiving, its Mythic pull count and best % (as of the last WCL progression sync before archiving) now shows alongside the season's kill count, instead of that progress being silently lost.
+
+### Backend
+
+- `archive_current_season()` now folds each boss's `team_raid_progress` row (pulls/best %) into its `seasonHistory` snapshot at archive time -- the raw data was already durably stored, just never joined in. See `supabase/migrations/20260804140752_archive_season_boss_progress.sql`. Snapshot only, not a running history -- reflects progress as of the last sync before archiving.
+
 ## [3.51.0] - 2026-08-04
 
 ### Frontend
