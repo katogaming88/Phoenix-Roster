@@ -67,14 +67,23 @@ function _isFullyManaged(entry) {
 // Unmanaged Items list itself and updatePriorityBadges()'s nav/tab counts --
 // agrees on the same set, rather than each applying (or forgetting to apply)
 // its own filter afterward.
+//
+// Excludes DATA.tierResolvedItemNames (#650/#651) -- priority is generated
+// and matched against the token's own item_id (what rclc_loot actually
+// logs), never the resolved class piece, so a resolved item showing up here
+// alongside its token would just be duplicate, unmanageable information --
+// mirrors js/wishlist.js's wishlistBucketRealItems and tab-bis.js's
+// bisSlotOnInput skipping the same set for the same reason.
 function getUnmanagedItems() {
   var prioOrder = DATA.priorityOrder || {};
   var itemSlots = DATA.itemSlots || {};
   var itemPlaceholders = DATA.itemPlaceholders || {};
+  var tierResolvedItemNames = DATA.tierResolvedItemNames || {};
   var seen = {};
   var result = [];
   Object.keys(prioOrder).forEach(function (item) {
     if (itemPlaceholders[item]) return;
+    if (tierResolvedItemNames[item]) return;
     if ((itemSlots[item] || '').toLowerCase() === 'slot') return;
     if (!isItemInSeasonScope(item)) return;
     if (!_isFullyManaged(prioOrder[item])) {
@@ -85,6 +94,7 @@ function getUnmanagedItems() {
   Object.keys(itemSlots).forEach(function (item) {
     if (seen[item]) return;
     if (itemPlaceholders[item]) return;
+    if (tierResolvedItemNames[item]) return;
     if ((itemSlots[item] || '').toLowerCase() === 'slot') return;
     if (!isItemInSeasonScope(item)) return;
     if (!_isFullyManaged(prioOrder[item])) result.push(item);
@@ -922,8 +932,14 @@ function buildPriorityTab() {
   var prioSearchTerm = normalise((document.getElementById('prioSearch') || {}).value || '');
   var bossFilter = ((document.getElementById('prioBossFilter') || {}).value || '').toLowerCase();
   var hideEmpty = !!(document.getElementById('prioHideEmpty') || {}).checked;
+  // Excludes DATA.tierResolvedItemNames -- see getUnmanagedItems()'s comment
+  // above. Guards against a resolved item that somehow already has a
+  // prioOrder entry (stale data from before this filter existed, or a
+  // future import mistake) still leaking into the read-only list.
+  var tierResolvedItemNames = DATA.tierResolvedItemNames || {};
   var items = Object.keys(prioOrder)
     .filter(function (i) {
+      if (tierResolvedItemNames[i]) return false;
       if ((itemSlots[i] || '').toLowerCase() === 'slot') return false;
       if (!_hasAnyPriority(prioOrder[i])) return false;
       if (prioSearchTerm && normalise(i).indexOf(prioSearchTerm) === -1) return false;
