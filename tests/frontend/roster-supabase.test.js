@@ -129,7 +129,9 @@ describe('mapSupabaseRoster', () => {
         mPlusNote: 'weeknight scheduling',
         mPlusRejected: false,
         mPlusRejectionNote: '',
-        officerNote: ''
+        officerNote: '',
+        tierPiecesEquipped: undefined,
+        tierPiecesSyncedAt: ''
       }
     ]);
   });
@@ -175,7 +177,9 @@ describe('mapSupabaseRoster', () => {
         mPlusNote: '',
         mPlusRejected: false,
         mPlusRejectionNote: '',
-        officerNote: ''
+        officerNote: '',
+        tierPiecesEquipped: undefined,
+        tierPiecesSyncedAt: ''
       }
     ]);
   });

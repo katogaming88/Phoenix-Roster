@@ -417,6 +417,10 @@ function applyFeatureFlagVisibility() {
   setVisible('loot-subtab-btn-history', lootOn);
   setVisible('loot-subtab-btn-fairness', fairnessOn);
   setVisible('attend-subtab-btn-bench', fairnessOn);
+  // #651: tier-piece tracking rides on the 'bis' flag, same as the rest of
+  // the tier-substitution feature surface (wishlist/BiS grid) -- a team not
+  // using BiS isn't using tier tracking either.
+  setVisible('syncRosterTierBtn', bisOn);
 
   // If a tab the user is currently sitting on just got hidden, bounce to
   // Roster (always visible) instead of leaving a blank panel.

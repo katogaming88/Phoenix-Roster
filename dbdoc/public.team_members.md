@@ -73,6 +73,8 @@ erDiagram
   boolean is_backup_tank
   boolean is_backup_healer
   boolean wishlist_allowed
+  integer tier_pieces_equipped
+  timestamp_with_time_zone tier_pieces_synced_at
 }
 "public.season_signups" {
   integer id

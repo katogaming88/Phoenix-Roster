@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.50.0';
+var VERSION = '3.51.0';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -611,6 +611,65 @@ function applyRaiderIoTierSync(player, gearItems) {
   });
 }
 
+// Inverts DATA.tierTokenMap ({tokenName: {class: resolvedName}}) into
+// {slotName: resolvedName} for one class -- exactly 5 entries (Head/
+// Shoulder/Chest/Hands/Legs), one per tier token. tier_token_map's existing
+// shape already carries "what is this class's resolved piece for slot X",
+// just keyed the other way around (by token, then class) -- no second
+// lookup table needed.
+function classTierResolvedItemsBySlot(playerClass) {
+  var tierTokenMap = (DATA && DATA.tierTokenMap) || {};
+  var itemSlots = (DATA && DATA.itemSlots) || {};
+  var bySlot = {};
+  if (!playerClass) return bySlot;
+  Object.keys(tierTokenMap).forEach(function (tokenName) {
+    var resolvedName = tierTokenMap[tokenName][playerClass];
+    if (!resolvedName) return;
+    var slot = itemSlots[resolvedName] || itemSlots[tokenName];
+    if (slot) bySlot[slot] = resolvedName;
+  });
+  return bySlot;
+}
+
+// Raw "how many of this class's 5 tier pieces are currently equipped" count
+// (0-5) -- unlike applyRaiderIoTierSync above, this is NOT gated on the
+// player having a tagged BiS pick at all. This is the tier-set-progress
+// number #651 asked for: it feeds generate_priority_order()'s tier-token
+// weighting (see the tier_pieces_priority_weighting migration) via
+// players.tier_pieces_equipped, and shows on a raider's own profile.
+function countEquippedTierPieces(player, gearItems) {
+  var bySlot = classTierResolvedItemsBySlot(player.class);
+  var itemWowIds = (DATA && DATA.itemWowIds) || {};
+  var count = 0;
+  Object.keys(RAIDERIO_TIER_BIS_SLOTS).forEach(function (bisSlot) {
+    var resolvedName = bySlot[bisSlot];
+    if (!resolvedName) return;
+    var wowId = itemWowIds[resolvedName];
+    var equipped = gearItems[RAIDERIO_TIER_BIS_SLOTS[bisSlot]];
+    if (wowId != null && equipped && equipped.item_id === wowId) count++;
+  });
+  return count;
+}
+
+// Shared write path for both the bulk roster sync (js/tabs/tab-priority.js's
+// syncRosterTierCounts) and every individual Raider.IO sync below -- also
+// patches the in-memory player/roster object so an immediate re-render
+// (profile badge, priority tab) reflects the new count without a full
+// DATA reload. No new RLS needed: "Officers write players" already covers
+// this (officers are the only role that ever calls this).
+function writeTierPiecesEquipped(player, count) {
+  var syncedAt = new Date().toISOString();
+  return supabaseClient
+    .from('players')
+    .update({ tier_pieces_equipped: count, tier_pieces_synced_at: syncedAt })
+    .eq('id', player.id)
+    .then(function (result) {
+      if (result.error) throw new Error(result.error.message);
+      player.tierPiecesEquipped = count;
+      player.tierPiecesSyncedAt = syncedAt;
+    });
+}
+
 // UI-agnostic driver: looks up the player, fetches their gear, applies the
 // sync, and updates whichever button/message elements the caller points it
 // at -- reused as-is by both call sites (see the block comment above).
@@ -625,9 +684,26 @@ function runRaiderIoTierSync(nameRealm, btnId, msgId, onDone) {
   }
   if (msgEl) msgEl.textContent = '';
 
+  var fetchedGear = null;
   fetchRaiderIoGear(player.firstName, player.realm)
     .then(function (gearItems) {
+      fetchedGear = gearItems;
       return applyRaiderIoTierSync(player, gearItems);
+    })
+    .then(function (updatedCount) {
+      // Keep the raw tier-piece count fresh from every individual sync too,
+      // not just the bulk roster action -- same gear fetch already in hand,
+      // one more cheap write. Failing this write shouldn't fail the whole
+      // sync -- the obtained-flag update above already succeeded and is
+      // what the user waiting on this button actually asked for.
+      return writeTierPiecesEquipped(player, countEquippedTierPieces(player, fetchedGear)).then(
+        function () {
+          return updatedCount;
+        },
+        function () {
+          return updatedCount;
+        }
+      );
     })
     .then(function (updatedCount) {
       if (btn) {
@@ -1268,7 +1344,7 @@ function fetchSupabaseRoster() {
   var query = supabaseClient
     .from('players')
     .select(
-      'id, name_realm, nickname, is_trial, is_bench, is_backup_tank, is_backup_healer, bis_link, bis_allowed, wishlist_allowed, m_plus_excluded, m_plus_note, join_date, officer_notes, classes_specs(class, spec, role)'
+      'id, name_realm, nickname, is_trial, is_bench, is_backup_tank, is_backup_healer, bis_link, bis_allowed, wishlist_allowed, m_plus_excluded, m_plus_note, join_date, officer_notes, tier_pieces_equipped, tier_pieces_synced_at, classes_specs(class, spec, role)'
     )
     .eq('team_id', _teamCfg.supabaseTeamId)
     .is('archived_at', null)
@@ -1444,7 +1520,9 @@ function mapSupabaseRoster(rows, jsonpRoster, mplusRejections) {
       mPlusNote: row.m_plus_note || '',
       mPlusRejected: mPlusRejected,
       mPlusRejectionNote: mPlusRejected ? mplusRejections[row.id] : '',
-      officerNote: row.officer_notes || ''
+      officerNote: row.officer_notes || '',
+      tierPiecesEquipped: row.tier_pieces_equipped,
+      tierPiecesSyncedAt: row.tier_pieces_synced_at || ''
     });
   });
   return players;
@@ -5078,6 +5156,17 @@ function renderProfile(firstName, backTo, container) {
       ')</span></span>'
     : '';
 
+  // Raw tier-set progress (#651) -- independent of any tagged BiS pick,
+  // unlike bisCompletionHTML above. null means never synced (see
+  // runRaiderIoTierSync/syncRosterTierCounts), not 0 -- shown as "--" rather
+  // than claiming a real 0/5.
+  var tierProgressHTML =
+    player.tierPiecesEquipped != null
+      ? '<span style="font-size:0.95rem;color:var(--text-muted);margin-left:0.5rem;" title="Tier pieces currently equipped, synced from Raider.IO">Tier: <span style="color:var(--gold-light);font-weight:600;">' +
+        player.tierPiecesEquipped +
+        '/5</span></span>'
+      : '';
+
   var fullyBisBadge =
     bisItems.length > 0 && bisReceivedCount === bisItems.length
       ? '<span class="badge" style="background:rgba(212,175,55,0.15);color:var(--gold);border:1px solid rgba(212,175,55,0.45);font-weight:700;">Fully BiS</span>'
@@ -5512,6 +5601,7 @@ function renderProfile(firstName, backTo, container) {
       player.firstName +
       "');l.style.display=l.style.display==='none'?'block':'none';\">BiS List" +
       bisCompletionHTML +
+      tierProgressHTML +
       // Self-service (#651): a raider can now sync their own tier picks
       // against Raider.IO's equipped gear directly from their own profile,
       // no officer needed -- RLS (bis_items_self_obtained migration) only
