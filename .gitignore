@@ -30,3 +30,9 @@ items_insert.sql
 # scripts/fetch-item-stats.js scratch output (#560) -- regenerated per run
 item_ids.csv
 item_stats_update.sql
+
+# scripts/fetch-tier-resolved-items.js / generate-tier-token-map-sql.js
+# scratch output -- regenerated per run, same category as items.csv above
+tier_resolved_items.csv
+tier_resolved_items_insert.sql
+tier_token_map_insert.sql

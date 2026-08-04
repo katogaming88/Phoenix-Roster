@@ -490,6 +490,7 @@ select#playerSelect option { background:#1a1d27; }
 .item-detail-line { font-size:0.9rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); margin-top:0.15rem; }
 .item-detail-sep { margin:0 0.4rem; opacity:0.5; }
 .stat-pill { font-size:0.9rem; font-weight:600; letter-spacing:0.03em; text-transform:none; padding:2px 7px; line-height:1.2; display:inline-block; border-radius:2px; background:rgba(255,255,255,0.05); border:1px solid var(--border); margin-right:0.3rem; }
+.tier-pill { font-size:0.9rem; font-weight:700; letter-spacing:0.03em; text-transform:none; padding:2px 7px; line-height:1.2; display:inline-block; border-radius:2px; background:rgba(214,163,68,0.15); border:1px solid rgba(214,163,68,0.4); color:var(--gold); }
 .prio-item-count { font-size:1rem; font-weight:600; padding:2px 8px; border-radius:2px; background:rgba(255,255,255,0.05); color:var(--text-muted); border:1px solid var(--border); }
 .prio-ranked-list { display:flex; flex-direction:column; gap:0.2rem; }
 .prio-rank-row { display:flex; align-items:center; gap:0.6rem; padding:0.25rem 0; border-bottom:1px solid var(--border); }

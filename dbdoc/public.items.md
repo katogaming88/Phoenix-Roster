@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer | nextval('items_id_seq'::regclass) | false | [public.bis_items](public.bis_items.md) [public.item_bosses](public.item_bosses.md) [public.rclc_loot](public.rclc_loot.md) [public.priority_order](public.priority_order.md) [public.self_received_requests](public.self_received_requests.md) [public.item_preferences](public.item_preferences.md) |  |  |
+| id | integer | nextval('items_id_seq'::regclass) | false | [public.bis_items](public.bis_items.md) [public.item_bosses](public.item_bosses.md) [public.rclc_loot](public.rclc_loot.md) [public.priority_order](public.priority_order.md) [public.self_received_requests](public.self_received_requests.md) [public.item_preferences](public.item_preferences.md) [public.tier_token_map](public.tier_token_map.md) |  |  |
 | wow_item_id | integer |  | true |  |  |  |
 | name | text |  | false |  |  |  |
 | slot | text |  | false |  |  |  |
@@ -44,6 +44,8 @@ erDiagram
 "public.priority_order" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id)"
 "public.self_received_requests" }o--|| "public.items" : "FOREIGN KEY (self_item_id) REFERENCES items(id) ON DELETE SET NULL"
 "public.item_preferences" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE"
+"public.tier_token_map" }o--|| "public.items" : "FOREIGN KEY (resolved_item_id) REFERENCES items(id) ON DELETE CASCADE"
+"public.tier_token_map" }o--|| "public.items" : "FOREIGN KEY (token_item_id) REFERENCES items(id) ON DELETE CASCADE"
 
 "public.items" {
   integer id
@@ -118,6 +120,13 @@ erDiagram
   timestamp_with_time_zone updated_at
   timestamp_with_time_zone created_at
   text season
+}
+"public.tier_token_map" {
+  integer id
+  integer token_item_id FK
+  text class
+  integer resolved_item_id FK
+  timestamp_with_time_zone created_at
 }
 ```
 

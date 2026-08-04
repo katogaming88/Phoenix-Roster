@@ -21,7 +21,7 @@ export type Database = {
           report_id: string | null;
           report_title: string | null;
           source: string;
-          status: string;
+          status: string | null;
           team_id: number;
         };
         Insert: {
@@ -32,7 +32,7 @@ export type Database = {
           report_id?: string | null;
           report_title?: string | null;
           source?: string;
-          status?: string;
+          status?: string | null;
           team_id: number;
         };
         Update: {
@@ -43,7 +43,7 @@ export type Database = {
           report_id?: string | null;
           report_title?: string | null;
           source?: string;
-          status?: string;
+          status?: string | null;
           team_id?: number;
         };
         Relationships: [
@@ -389,6 +389,7 @@ export type Database = {
           slot: string;
           sort_id: number | null;
           wcl_zone_id: number | null;
+          weapon_subtype: string | null;
           wow_item_id: number | null;
         };
         Insert: {
@@ -403,6 +404,7 @@ export type Database = {
           slot: string;
           sort_id?: number | null;
           wcl_zone_id?: number | null;
+          weapon_subtype?: string | null;
           wow_item_id?: number | null;
         };
         Update: {
@@ -417,6 +419,7 @@ export type Database = {
           slot?: string;
           sort_id?: number | null;
           wcl_zone_id?: number | null;
+          weapon_subtype?: string | null;
           wow_item_id?: number | null;
         };
         Relationships: [];
@@ -1392,6 +1395,45 @@ export type Database = {
           wcl_guild_id?: number | null;
         };
         Relationships: [];
+      };
+      tier_token_map: {
+        Row: {
+          class: string;
+          created_at: string;
+          id: number;
+          resolved_item_id: number;
+          token_item_id: number;
+        };
+        Insert: {
+          class: string;
+          created_at?: string;
+          id?: number;
+          resolved_item_id: number;
+          token_item_id: number;
+        };
+        Update: {
+          class?: string;
+          created_at?: string;
+          id?: number;
+          resolved_item_id?: number;
+          token_item_id?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'tier_token_map_resolved_item_id_fkey';
+            columns: ['resolved_item_id'];
+            isOneToOne: false;
+            referencedRelation: 'items';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'tier_token_map_token_item_id_fkey';
+            columns: ['token_item_id'];
+            isOneToOne: false;
+            referencedRelation: 'items';
+            referencedColumns: ['id'];
+          }
+        ];
       };
     };
     Views: {

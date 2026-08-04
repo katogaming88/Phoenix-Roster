@@ -787,15 +787,35 @@ function bisEditorHTML() {
       : '<span style="color:var(--text-dim);">none</span>') +
     '</div>';
 
+  // Tier tokens (Head/Shoulder/Chest/Hands/Legs) drop as a generic
+  // per-armor-type item -- bis_items.item_id and entry.item both stay on the
+  // token throughout, matching bis's role in generate_priority_order() (its
+  // `bis` CTE also matches bi.item_id = p_item_id, the token's id) same as
+  // item_preferences already does (js/wishlist.js). This only substitutes
+  // the *displayed* name for this row, via a shallow copy -- entry itself,
+  // and everything derived from getBisItems()/DATA.bisList, keeps the raw
+  // token name.
+  var tierTokenMap = (DATA && DATA.tierTokenMap) || {};
+  var playerClass = player && player.class;
+
   html += '<div style="display:flex;flex-direction:column;gap:2px;margin-bottom:0.6rem;">';
   for (var s = 0; s < BIS_SLOTS.length; s++) {
     var slotName = BIS_SLOTS[s];
     var bucket = buckets[slotName];
+    var displayEntry = bucket && bucket.entry;
+    if (
+      displayEntry &&
+      playerClass &&
+      tierTokenMap[displayEntry.item] &&
+      tierTokenMap[displayEntry.item][playerClass]
+    ) {
+      displayEntry = Object.assign({}, displayEntry, { item: tierTokenMap[displayEntry.item][playerClass] });
+    }
     html += bisSlotRowHTML(
       slotName,
       slotName,
       bucket ? bucket.index : -1,
-      bucket ? bucket.entry : null,
+      displayEntry,
       !bucket,
       _bisActiveSlot === slotName,
       s
@@ -932,7 +952,14 @@ function bisSlotOnInput() {
   var itemMainStats = DATA.itemMainStats || {};
   var itemWeaponSubtypes = DATA.itemWeaponSubtypes || {};
   var itemPlaceholders = DATA.itemPlaceholders || {};
-  var allItems = Object.keys(itemSlots);
+  var tierTokenMap = DATA.tierTokenMap || {};
+  var tierResolvedItemNames = DATA.tierResolvedItemNames || {};
+  var allItems = Object.keys(itemSlots).filter(function (name) {
+    // Resolved tier items are only ever reachable by their token's
+    // substitution below -- listing them here too would show the same class
+    // piece twice (same as js/wishlist.js's wishlistBucketRealItems).
+    return !tierResolvedItemNames[name];
+  });
 
   var playerArmorType = null;
   var playerMainStat = null;
@@ -1022,9 +1049,20 @@ function bisSlotOnInput() {
     )
       continue;
 
-    if (query && normalise(name).indexOf(query) === -1) continue;
+    // Same tier-token substitution as bisEditorHTML's row display: search
+    // matches and shows the officer's own class's resolved piece (e.g.
+    // "Charred Grasps"), while itemName (used for both resolveItemId() and
+    // storage below) stays the token's own catalog name -- entry.item and
+    // bis_items.item_id both need to stay on the token so generate_priority_order()'s
+    // bis CTE keeps matching bi.item_id against p_item_id correctly.
+    var displayName = name;
+    if (playerClass && tierTokenMap[name] && tierTokenMap[name][playerClass]) {
+      displayName = tierTokenMap[name][playerClass];
+    }
 
-    matches.push(name);
+    if (query && normalise(displayName).indexOf(query) === -1) continue;
+
+    matches.push({ itemName: name, displayName: displayName });
     if (matches.length >= 12) break;
   }
 
@@ -1034,12 +1072,14 @@ function bisSlotOnInput() {
   }
 
   dropdown.innerHTML = matches
-    .map(function (name) {
+    .map(function (m) {
       return (
         '<div class="realm-option" onmousedown="bisSlotPickItem(\'' +
-        name.replace(/'/g, "\\'") +
+        m.itemName.replace(/'/g, "\\'") +
+        "', '" +
+        m.displayName.replace(/'/g, "\\'") +
         '\')"><span>' +
-        name +
+        m.displayName +
         '</span></div>'
       );
     })
@@ -1047,7 +1087,12 @@ function bisSlotOnInput() {
   dropdown.style.display = 'block';
 }
 
-function bisSlotPickItem(itemName) {
+// displayName: only used for the audit-log text, so officers reading the log
+// see the actual resolved gear piece (e.g. "Charred Grasps") rather than the
+// generic token name -- defaults to itemName for every non-tier-token pick,
+// where the two are the same thing. Storage (bis_items.item_id, entry.item)
+// always stays on itemName/the token; see bisEditorHTML's comment on why.
+function bisSlotPickItem(itemName, displayName) {
   if (!_bisActiveSlot || !_bisListEditor) return;
   var slotName = _bisActiveSlot;
   var player = findRosterPlayerByNameRealm(_bisListEditor.nameRealm);
@@ -1069,11 +1114,14 @@ function bisSlotPickItem(itemName) {
         })
         .then(function (result) {
           if (result.error) throw new Error(result.error.message);
-          return writeAuditLog('BiS Item Added', 'players', player.id, bisItemAuditDetail(itemName, slotName)).then(
-            function () {
-              return itemId;
-            }
-          );
+          return writeAuditLog(
+            'BiS Item Added',
+            'players',
+            player.id,
+            bisItemAuditDetail(displayName || itemName, slotName)
+          ).then(function () {
+            return itemId;
+          });
         });
     })
     .then(function (itemId) {
