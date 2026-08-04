@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.49.50';
+var VERSION = '3.50.0';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -486,6 +486,177 @@ function characterProfileLinks(firstName, realm) {
     armory: 'https://worldofwarcraft.com/en-us/character/us/' + realmSlug + '/' + nameEnc,
     warcraftLogs: 'https://www.warcraftlogs.com/character/us/' + realmSlug + '/' + nameEnc
   };
+}
+
+// Raider.IO's character-profile endpoint (#651) -- public, keyless, and
+// CORS-friendly, so this calls it straight from the browser rather than
+// through a Supabase Edge Function (a bulk "sync whole roster" action would
+// want a server-side batcher to respect rate limits, but a single raider's
+// own sync doesn't need one). Region hardcoded 'us', matching
+// characterProfileLinks() above -- every roster realm today is US. Returns
+// gear.items keyed by lowercase slot name (head, shoulder, chest, hands,
+// legs, ...), each carrying the raider's *equipped*, already-resolved
+// item_id -- e.g. the id for "Damned Necrolyte's Charred Grasps", never the
+// generic token that actually dropped in raid. That's exactly the id side
+// DATA.itemWowIds maps class tier items to, so no token/bonus-ID resolution
+// is needed here; see applyRaiderIoTierSync below.
+function fetchRaiderIoGear(firstName, realm) {
+  var realmSlug = _wowRealmSlug(realm);
+  var url =
+    'https://raider.io/api/v1/characters/profile?region=us&realm=' +
+    encodeURIComponent(realmSlug) +
+    '&name=' +
+    encodeURIComponent(firstName) +
+    '&fields=gear';
+  return fetch(url)
+    .then(function (res) {
+      if (!res.ok) throw new Error('Raider.IO lookup failed (HTTP ' + res.status + ')');
+      return res.json();
+    })
+    .then(function (data) {
+      if (!data || !data.gear || !data.gear.items) throw new Error('Raider.IO has no gear data for this character');
+      return data.gear.items;
+    });
+}
+
+// ── Raider.IO tier sync (#651) ───────────────────────────────────────────────
+//
+// Only ever auto-marks the 5 deterministic per-slot tier rows, and only when
+// the player already has a tagged BiS pick sitting in that row -- this never
+// adds a pick on anyone's behalf, just confirms one that's already there. The
+// Omni-Curio is out of scope by design (see the tier_token_map migration's
+// header comment): it can become any of a class's 5 slots at the raider's own
+// choice, so there's no deterministic slot to compare it against here.
+//
+// Shared by both write paths bis_items now supports (#651's
+// bis_items_self_obtained migration): the officer's BiS editor
+// (js/tabs/tab-bis.js's syncBisFromRaiderIo, any raider's row) and a raider's
+// own profile (renderProfile below, gated on isOwnWishlistView) -- RLS decides
+// which UPDATE actually succeeds ("Officers write bis_items" vs "Raiders
+// update own bis_items obtained"), this just finds the same 5 rows either way.
+var RAIDERIO_TIER_BIS_SLOTS = {
+  Head: 'head',
+  Shoulder: 'shoulder',
+  Chest: 'chest',
+  Hands: 'hands',
+  Legs: 'legs'
+};
+
+// Tier tokens' catalog slot (items.slot) is always exactly their BIS_SLOTS row
+// name 1:1 -- unlike Finger/Trinket, a Head/Shoulder/Chest/Hands/Legs item
+// never fans out to more than one row, so this doesn't need tab-bis.js's full
+// bisSlotBuckets() (officer-editor-only, not loaded on index.html) to find the
+// row a raw bis_items entry belongs to.
+function bisTierEntryForCatalogSlot(items, slotName) {
+  var itemSlots = (DATA && DATA.itemSlots) || {};
+  for (var i = 0; i < items.length; i++) {
+    var entry = items[i];
+    var catalogSlot = entry.dbSlot || itemSlots[entry.item] || '';
+    if (catalogSlot === slotName) return entry;
+  }
+  return null;
+}
+
+// Compares each tier row's tagged BiS pick (stored on the token, matching
+// item_preferences/bis_items' existing convention) against Raider.IO's
+// equipped, already-resolved item_id for that slot -- matching purely on
+// DATA.itemWowIds, no bonus-ID or catalyst-token guessing needed (settled in
+// #650/#651). Rows with no tagged pick, an unresolvable class, or already
+// marked obtained are left alone. Returns a promise of how many rows were
+// newly marked.
+function applyRaiderIoTierSync(player, gearItems) {
+  var items = getBisItems(player.nameRealm);
+  var tierTokenMap = (DATA && DATA.tierTokenMap) || {};
+  var itemWowIds = (DATA && DATA.itemWowIds) || {};
+  var playerClass = player.class;
+
+  var toUpdate = [];
+  Object.keys(RAIDERIO_TIER_BIS_SLOTS).forEach(function (bisSlot) {
+    var entry = bisTierEntryForCatalogSlot(items, bisSlot);
+    if (!entry || entry.obtained || entry.itemId == null) return;
+    var tokenName = entry.item;
+    var resolvedName = playerClass && tierTokenMap[tokenName] && tierTokenMap[tokenName][playerClass];
+    if (!resolvedName) return;
+    var resolvedWowId = itemWowIds[resolvedName];
+    if (resolvedWowId == null) return;
+    var equipped = gearItems[RAIDERIO_TIER_BIS_SLOTS[bisSlot]];
+    if (!equipped || equipped.item_id !== resolvedWowId) return;
+    toUpdate.push({ entry: entry, resolvedName: resolvedName });
+  });
+
+  if (!toUpdate.length) return Promise.resolve(0);
+
+  return Promise.all(
+    toUpdate.map(function (u) {
+      var entry = u.entry;
+      var query = supabaseClient
+        .from('bis_items')
+        .update({ obtained: true })
+        .eq('player_id', player.id)
+        .eq('item_id', entry.itemId);
+      query = entry.dbSlot ? query.eq('slot', entry.dbSlot) : query.is('slot', null);
+      return query.then(function (result) {
+        if (result.error) throw new Error(result.error.message);
+        entry.obtained = true;
+        return writeAuditLog(
+          'BiS Item Obtained Changed',
+          'players',
+          player.id,
+          'Marked obtained (Raider.IO sync): ' + [entry.slot, u.resolvedName].filter(Boolean).join(' ')
+        );
+      });
+    })
+  ).then(function () {
+    return toUpdate.length;
+  });
+}
+
+// UI-agnostic driver: looks up the player, fetches their gear, applies the
+// sync, and updates whichever button/message elements the caller points it
+// at -- reused as-is by both call sites (see the block comment above).
+function runRaiderIoTierSync(nameRealm, btnId, msgId, onDone) {
+  var player = findRosterPlayerByNameRealm(nameRealm);
+  if (!player || !player.firstName || !player.realm) return;
+  var btn = /** @type {HTMLButtonElement} */ (document.getElementById(btnId));
+  var msgEl = document.getElementById(msgId);
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Syncing...';
+  }
+  if (msgEl) msgEl.textContent = '';
+
+  fetchRaiderIoGear(player.firstName, player.realm)
+    .then(function (gearItems) {
+      return applyRaiderIoTierSync(player, gearItems);
+    })
+    .then(function (updatedCount) {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Sync from Raider.IO';
+      }
+      if (msgEl) {
+        msgEl.textContent = updatedCount
+          ? 'Synced -- ' + updatedCount + ' tier piece' + (updatedCount === 1 ? '' : 's') + ' marked obtained.'
+          : 'Synced -- no new tier pieces to mark.';
+      }
+      if (onDone) onDone();
+    })
+    .catch(function (err) {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Sync from Raider.IO';
+      }
+      if (msgEl) msgEl.textContent = 'Raider.IO sync failed: ' + err.message;
+    });
+}
+
+// Thin wrapper for the raider's own profile button (renderProfile below) --
+// re-renders the whole profile on success so the BiS List's obtained
+// badges/completion % pick up the change immediately.
+function syncOwnBisFromRaiderIo(firstName, nameRealm) {
+  runRaiderIoTierSync(nameRealm, 'bisRaiderIoSyncBtn-' + firstName, 'bisRaiderIoMsg-' + firstName, function () {
+    if (typeof renderProfile === 'function') renderProfile(firstName, 'landing');
+  });
 }
 
 // Maintenance mode (#245). Checked at the earliest point each page's boot
@@ -5341,12 +5512,37 @@ function renderProfile(firstName, backTo, container) {
       player.firstName +
       "');l.style.display=l.style.display==='none'?'block':'none';\">BiS List" +
       bisCompletionHTML +
+      // Self-service (#651): a raider can now sync their own tier picks
+      // against Raider.IO's equipped gear directly from their own profile,
+      // no officer needed -- RLS (bis_items_self_obtained migration) only
+      // lets this UPDATE succeed against the viewer's own player_id, so it's
+      // gated on isOwnWishlistView the same way the Wishlist tab itself is.
+      (isOwnWishlistView && player.firstName && player.realm
+        ? '<button id="bisRaiderIoSyncBtn-' +
+          player.firstName +
+          '" class="btn btn-muted" style="font-size:0.93rem;padding:0.15rem 0.6rem;" ' +
+          'onclick="event.stopPropagation();syncOwnBisFromRaiderIo(\'' +
+          player.firstName.replace(/'/g, "\\'") +
+          "','" +
+          player.nameRealm.replace(/'/g, "\\'") +
+          '\')" title="Check Raider.IO\'s equipped gear and mark any matching tagged tier pieces obtained">Sync from Raider.IO</button>' +
+          '<span id="bisRaiderIoMsg-' +
+          player.firstName +
+          '" style="font-size:0.95rem;color:var(--text-muted);"></span>'
+        : '') +
       (backTo !== 'officer'
         ? '<button class="help-btn" onclick="event.stopPropagation();toggleHelp(\'help-bislist-' +
           player.firstName +
           '\')" title="Show help">?</button>'
         : '') +
-      '<span style="font-size:1.07rem;color:var(--text-dim);">click to expand</span></div>' +
+      // BiS already has its own top-level sub-tab on the raider's own profile
+      // (backTo === 'landing', profileTabBis above) -- collapsing this too was
+      // a click behind a click for the one section that tab exists to show.
+      // The officer's inline embedded view (backTo === 'officer') has no
+      // sub-tabs and stays collapsed by default to keep the roster row compact.
+      '<span style="font-size:1.07rem;color:var(--text-dim);">' +
+      (backTo === 'landing' ? 'click to collapse' : 'click to expand') +
+      '</span></div>' +
       (backTo !== 'officer'
         ? '<div id="help-bislist-' +
           player.firstName +
@@ -5354,7 +5550,9 @@ function renderProfile(firstName, backTo, container) {
         : '') +
       '<div id="prio-list-' +
       player.firstName +
-      '" style="display:none;">' +
+      '" style="display:' +
+      (backTo === 'landing' ? '' : 'none') +
+      ';">' +
       priorityHTML +
       '</div>' +
       '</div>'
