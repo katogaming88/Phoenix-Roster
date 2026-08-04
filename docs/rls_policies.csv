@@ -11,6 +11,7 @@ bis_items,Officers write bis_items,public,ALL,PERMISSIVE,"(my_team_role(( SELECT
    FROM players
   WHERE (players.id = bis_items.player_id))) = ANY (ARRAY['officer'::text, 'team_leader'::text]))"
 bis_items,Public read bis_items,public,SELECT,PERMISSIVE,true,
+bis_items,Raiders update own bis_items obtained,public,UPDATE,PERMISSIVE,is_own_player(player_id),is_own_player(player_id)
 bis_requests,Claude readers read bis_requests,claude_readers,SELECT,PERMISSIVE,true,
 bis_requests,Officers read bis_requests,public,SELECT,PERMISSIVE,"((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())",
 bis_requests,Officers update bis_requests,public,UPDATE,PERMISSIVE,"((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())","((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())"

@@ -781,10 +781,16 @@ function bisEditorHTML() {
   var player = findRosterPlayerByNameRealm(_bisListEditor.nameRealm);
   var bisLink = player && player.bisLink;
   html +=
-    '<div style="font-size:1rem;color:var(--text-muted);margin-bottom:0.5rem;">BiS Source: ' +
+    '<div style="font-size:1rem;color:var(--text-muted);margin-bottom:0.5rem;display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">' +
+    '<span>BiS Source: ' +
     (bisLink
       ? '<a href="' + bisLink + '" target="_blank" rel="noopener" style="color:var(--gold);">' + bisLink + '</a>'
       : '<span style="color:var(--text-dim);">none</span>') +
+    '</span>' +
+    (player && player.firstName && player.realm
+      ? '<button id="bisRaiderIoSyncBtn" class="btn btn-muted" style="font-size:0.93rem;padding:0.15rem 0.6rem;" ' +
+        'onclick="syncBisFromRaiderIo()" title="Check Raider.IO\'s equipped gear and mark any matching tagged tier pieces obtained">Sync from Raider.IO</button>'
+      : '') +
     '</div>';
 
   // Tier tokens (Head/Shoulder/Chest/Hands/Legs) drop as a generic
@@ -1142,4 +1148,15 @@ function bisSlotPickItem(itemName, displayName) {
       var msg = document.getElementById('bisListSaveMsg');
       if (msg) msg.textContent = 'Failed: ' + err.message;
     });
+}
+
+// ── Raider.IO tier sync (#651) ───────────────────────────────────────────────
+//
+// The actual fetch/match/write logic is shared with the raider's own
+// self-service sync button on their profile (js/common.js's
+// runRaiderIoTierSync/applyRaiderIoTierSync) -- this is just the officer BiS
+// editor's thin wiring on top of it.
+function syncBisFromRaiderIo() {
+  if (!_bisListEditor) return;
+  runRaiderIoTierSync(_bisListEditor.nameRealm, 'bisRaiderIoSyncBtn', 'bisListSaveMsg', refreshBisEditorPanel);
 }

@@ -31,6 +31,7 @@
 
 | Name | Definition |
 | ---- | ---------- |
+| trg_bis_items_restrict_update | CREATE TRIGGER trg_bis_items_restrict_update BEFORE UPDATE ON public.bis_items FOR EACH ROW EXECUTE FUNCTION restrict_bis_items_update_to_obtained() |
 | trg_bis_items_updated_at | CREATE TRIGGER trg_bis_items_updated_at BEFORE UPDATE ON public.bis_items FOR EACH ROW EXECUTE FUNCTION set_updated_at() |
 
 ## Relations
