@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.51.2] - 2026-08-04
+
+### Frontend
+
+- **Fixed resolved class tier items showing up as duplicate, unmanageable entries on the Priority tab** -- the 65 class-specific resolved tier items added in #650 (e.g. "Damned Necrolyte's Charred Grasps") were appearing in Unmanaged Items alongside their own drop token (e.g. "Venomwoven Idol"), even though priority is only ever generated and matched against the token. Officers could accidentally set priority on the resolved item itself, which loot tracking would never actually use. Now excluded, matching the same filter Wishlist/BiS already applied.
+
 ## [3.51.1] - 2026-08-04
 
 ### Frontend
