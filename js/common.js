@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.49.48';
+var VERSION = '3.49.49';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -880,6 +880,82 @@ var SPEC_MAIN_STAT_OVERRIDE = {
 function specMainStat(className, specName) {
   return SPEC_MAIN_STAT_OVERRIDE[specName] || CLASS_MAIN_STAT[className] || null;
 }
+
+// Which weapon subtypes (items.weapon_subtype -- Wowhead/Blizzard's item
+// subclass name, e.g. 'Axe'/'Dagger'/'Staff') each class can actually equip,
+// keyed by handedness (#609). Handedness matters because the subtype name
+// alone doesn't distinguish it -- a One-Hand Sword and a Two-Hand Sword both
+// report weapon_subtype 'Sword', but plenty of classes get one handedness of
+// a type and not the other (e.g. Mage gets One-Hand Sword but no Two-Hand
+// Sword, while still getting Two-Hand Staff). Wand is listed under One-Hand:
+// it occupies the Weapon slot like any other one-hander and pairs with a
+// separate Off Hand item, mutually exclusive with a Staff by construction
+// (a Staff already fills both hands). Ranged (Bow/Gun/Crossbow) is only
+// listed for Hunter -- Warrior/Rogue are technically able to equip a ranged
+// weapon, but neither ever receives one as loot in current itemization, so
+// listing it would just be dead code (Kat-confirmed, #609).
+var CLASS_WEAPON_TYPES = {
+  'Death Knight': { 'One-Hand': ['Axe', 'Mace', 'Sword'], 'Two-Hand': ['Axe', 'Mace', 'Sword', 'Polearm'] },
+  'Demon Hunter': { 'One-Hand': ['Axe', 'Sword', 'Fist Weapon', 'Warglaive'] },
+  Druid: { 'One-Hand': ['Mace', 'Dagger', 'Fist Weapon'], 'Two-Hand': ['Mace', 'Staff', 'Polearm'] },
+  Evoker: {
+    'One-Hand': ['Axe', 'Mace', 'Sword', 'Dagger', 'Fist Weapon'],
+    'Two-Hand': ['Axe', 'Mace', 'Sword', 'Staff']
+  },
+  Hunter: {
+    'One-Hand': ['Axe', 'Sword', 'Fist Weapon'],
+    'Two-Hand': ['Axe', 'Sword', 'Polearm'],
+    Ranged: ['Bow', 'Gun', 'Crossbow']
+  },
+  Mage: { 'One-Hand': ['Sword', 'Dagger', 'Wand'], 'Two-Hand': ['Staff'] },
+  Monk: { 'One-Hand': ['Axe', 'Mace', 'Sword', 'Fist Weapon'], 'Two-Hand': ['Staff', 'Polearm'] },
+  Paladin: { 'One-Hand': ['Axe', 'Mace', 'Sword'], 'Two-Hand': ['Axe', 'Mace', 'Sword', 'Polearm'] },
+  Priest: { 'One-Hand': ['Mace', 'Dagger', 'Wand'], 'Two-Hand': ['Staff'] },
+  Rogue: { 'One-Hand': ['Axe', 'Sword', 'Dagger', 'Fist Weapon'] },
+  Shaman: { 'One-Hand': ['Axe', 'Mace', 'Dagger', 'Fist Weapon'], 'Two-Hand': ['Staff'] },
+  Warlock: { 'One-Hand': ['Sword', 'Dagger', 'Wand'], 'Two-Hand': ['Staff'] },
+  Warrior: {
+    'One-Hand': ['Axe', 'Mace', 'Sword', 'Dagger', 'Fist Weapon'],
+    'Two-Hand': ['Axe', 'Mace', 'Sword', 'Polearm', 'Staff']
+  }
+};
+
+// Only these 3 classes can equip a Shield (items.weapon_subtype 'Shield',
+// items.slot 'Off Hand') -- Kat-confirmed, #609. Every other class's Off
+// Hand row stays filtered by main-stat only, same as before.
+var CLASS_SHIELD_USERS = { Warrior: true, Paladin: true, Shaman: true };
+
+// Some trinkets' equip/on-use effect is entirely about healing or
+// protecting allies -- no damage, no self-buff a DPS spec could use -- so
+// they're dead weight for a DPS spec even though nothing in the catalog's
+// stat data (armor_type/main_stats) rules them out (#636); some aren't even
+// Int-restricted (Preternatural Antivenom carries no main_stats at all, so
+// today it shows to literally every spec with no filter catching it). No
+// such signal exists in the item catalog -- Kat-curated here by item name,
+// same manual-per-tier-edit workflow as CURRENT_SEASON/TOKEN_SLOT_KEYWORDS.
+// Not a mechanical rule (e.g. "must trigger off the word healing") --
+// Soulcoiler Ritual Vessel is a plain on-use ability, not gated behind a
+// healing-spell trigger, and still belongs here because its only effect
+// (shielding allies) has zero value for a DPS raider. Judgment call each
+// time a new one shows up; Kat confirms before it's added. Checked against
+// SPEC_ROLE's 'Heal' role, not class, so e.g. a Discipline Priest still sees
+// it while Shadow doesn't.
+var HEALER_ONLY_TRINKETS = {
+  'Light of the Cosmic Crescendo': true, // Equip triggers off "Your healing..."
+  'Volatile Void Suffuser': true, // Equip triggers off "Your healing spells and abilities..."
+  'Soulcoiler Ritual Vessel': true, // Use: shields 5 allies -- no damage/self-buff value for DPS
+  'Preternatural Antivenom': true // Equip triggers off "Your healing..."; not even Int-restricted
+};
+
+// Same idea as HEALER_ONLY_TRINKETS, mirrored for the opposite direction:
+// some Strength/Agility (or stat-less) trinkets' entire effect is reducing
+// damage the wearer takes, or shielding the wearer -- no throughput value,
+// so they're dead weight outside a tank spec. Same Kat-curated,
+// judgment-call-per-item workflow; checked against SPEC_ROLE's 'Tank' role.
+var TANK_ONLY_TRINKETS = {
+  "First Mate's Shellward": true, // Use: pure self-shield, deals damage only to melee attackers while it holds
+  'Idol of the Howling Nexus': true // Equip triggers off dodge/parry/block -- tank avoidance stats
+};
 
 var CLASS_COLORS = {
   'Death Knight': '#C41E3A',
@@ -2051,7 +2127,7 @@ function fetchSupabaseItems() {
   var query = supabaseClient
     .from('items')
     .select(
-      'id, wow_item_id, name, slot, armor_type, is_placeholder, icon, wcl_zone_id, secondary_stats, main_stats, is_ptr'
+      'id, wow_item_id, name, slot, armor_type, is_placeholder, icon, wcl_zone_id, secondary_stats, main_stats, weapon_subtype, is_ptr'
     )
     .then(
       function (result) {
@@ -2119,6 +2195,7 @@ function buildItemMaps(rows) {
   var itemZones = {};
   var itemSecondaryStats = {};
   var itemMainStats = {};
+  var itemWeaponSubtypes = {};
   var itemIsPtr = {};
   (rows || []).forEach(function (row) {
     var name = String(row.name || '').trim();
@@ -2132,6 +2209,7 @@ function buildItemMaps(rows) {
     if (row.wcl_zone_id != null) itemZones[name] = row.wcl_zone_id;
     if (row.secondary_stats) itemSecondaryStats[name] = row.secondary_stats;
     if (row.main_stats) itemMainStats[name] = row.main_stats;
+    if (row.weapon_subtype) itemWeaponSubtypes[name] = row.weapon_subtype;
     if (row.is_ptr) itemIsPtr[name] = true;
   });
   return {
@@ -2144,6 +2222,7 @@ function buildItemMaps(rows) {
     itemZones: itemZones,
     itemSecondaryStats: itemSecondaryStats,
     itemMainStats: itemMainStats,
+    itemWeaponSubtypes: itemWeaponSubtypes,
     itemIsPtr: itemIsPtr
   };
 }
@@ -2647,6 +2726,7 @@ function loadData(onCoreReady, onHeavyReady) {
       DATA.itemZones = itemMaps.itemZones;
       DATA.itemSecondaryStats = itemMaps.itemSecondaryStats;
       DATA.itemMainStats = itemMaps.itemMainStats;
+      DATA.itemWeaponSubtypes = itemMaps.itemWeaponSubtypes;
       DATA.itemIsPtr = itemMaps.itemIsPtr;
       DATA.itemBosses = mapSupabaseItemBosses(itemBossRows);
       var mappedSelfReceived = selfReceivedRows ? mapSupabaseSelfReceived(selfReceivedRows) : null;

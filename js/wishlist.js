@@ -243,12 +243,13 @@ function wishlistPrefFor(itemId, slot) {
 // scoped to the raider's main stat on Trinket/Weapon/Off Hand (items.main_stats,
 // scripts/fetch-item-stats.js) -- those rows have no armor_type to filter on,
 // so a Strength main stat still hid nothing there until this.
-function wishlistBucketRealItems(playerArmorType, playerMainStat) {
+function wishlistBucketRealItems(playerArmorType, playerMainStat, playerRole, playerClass) {
   var itemSlots = (DATA && DATA.itemSlots) || {};
   var itemPlaceholders = (DATA && DATA.itemPlaceholders) || {};
   var itemIds = (DATA && DATA.itemIds) || {};
   var itemArmorTypes = (DATA && DATA.itemArmorTypes) || {};
   var itemMainStats = (DATA && DATA.itemMainStats) || {};
+  var itemWeaponSubtypes = (DATA && DATA.itemWeaponSubtypes) || {};
   var buckets = {};
   WISHLIST_SLOTS.forEach(function (s) {
     buckets[s] = [];
@@ -276,6 +277,27 @@ function wishlistBucketRealItems(playerArmorType, playerMainStat) {
         mainStats.indexOf(playerMainStat) === -1
       )
         return;
+      // #636: a role-restricted trinket's effect is useless outside that
+      // role even when its stats match -- see HEALER_ONLY_TRINKETS/
+      // TANK_ONLY_TRINKETS. playerRole gate matches every other filter here:
+      // an unknown role (no class on file) shows everything rather than
+      // guessing.
+      if (playerRole && (row === 'Trinket 1' || row === 'Trinket 2')) {
+        if (HEALER_ONLY_TRINKETS[name] && playerRole !== 'Heal') return;
+        if (TANK_ONLY_TRINKETS[name] && playerRole !== 'Tank') return;
+      }
+      // #609: weapon_subtype only exists for actual Weapon-slot items and
+      // Shields -- other Off Hand items (tomes/orbs) have none and stay
+      // unfiltered here, same as before (they're already narrowed by the
+      // main-stat check above). Null/unbackfilled weapon_subtype also stays
+      // unfiltered, matching every other filter's "unknown shows everything"
+      // convention.
+      var weaponSubtype = itemWeaponSubtypes[name] || '';
+      if (playerClass && row === 'Weapon' && weaponSubtype) {
+        var allowedWeaponTypes = ((CLASS_WEAPON_TYPES || {})[playerClass] || {})[catalogSlot] || [];
+        if (allowedWeaponTypes.indexOf(weaponSubtype) === -1) return;
+      }
+      if (playerClass && row === 'Off Hand' && weaponSubtype === 'Shield' && !CLASS_SHIELD_USERS[playerClass]) return;
       buckets[row].push({ name: name, itemId: itemIds[name] });
     });
   });
@@ -744,7 +766,8 @@ function wishlistOtherSourcesSectionHTML() {
 function wishlistSectionBodyHTML(player) {
   var playerArmorType = (CLASS_ARMOR_TYPE || {})[player && player.class] || null;
   var playerMainStat = specMainStat(player && player.class, player && player.spec);
-  var buckets = wishlistBucketRealItems(playerArmorType, playerMainStat);
+  var playerRole = (SPEC_ROLE || {})[player && player.spec] || null;
+  var buckets = wishlistBucketRealItems(playerArmorType, playerMainStat, playerRole, player && player.class);
 
   var html =
     '<div class="profile-section"><div class="section-label">My Wishlist ' +

@@ -8,7 +8,16 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
-## [3.49.48] - 2026-08-03
+## [3.49.49] - 2026-08-03
+
+### Frontend
+
+- **Wishlist/BiS grid now hide gear a class can't actually use** -- the Weapon and Off Hand rows previously showed every class's weapons/shields mixed together (a Mage could see Maces and Polearms, any class could see Shields), since neither armor type nor main stat rules out the wrong weapon type. Now filtered by a class-eligible weapon-type/shield table, on top of the existing armor/main-stat filters.
+- **Filtered out healer-only and tank-only trinkets from wrong-role wishlist/BiS views** -- a trinket whose only value is healing/protecting allies (e.g. a healing-triggered proc, or an ally-shield on-use ability) now only shows to a Heal-role viewer, and one whose only value is reducing/absorbing damage the wearer takes now only shows to a Tank-role viewer, instead of every spec that happened to match its stats (or, for one healer trinket, every spec at all -- it carried no stat restriction whatsoever).
+
+### Backend
+
+- Added `items.weapon_subtype` (nullable text, e.g. `'Sword'`/`'Staff'`/`'Shield'`), backfilled by `scripts/fetch-item-stats.js` in the same pass as `secondary_stats`/`main_stats` -- no extra API calls needed. See `docs/database-decisions.md` (#609) for the class-weapon-type table and its sourcing.
 
 ### Frontend
 

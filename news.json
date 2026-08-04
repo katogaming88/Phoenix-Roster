@@ -1,6 +1,13 @@
 [
   {
     "date": "2026-08-03",
+    "category": "Fix",
+    "version": "3.49.49",
+    "title": "Wishlist/BiS now only show weapons your class can use",
+    "body": "The Weapon and Off Hand rows in your Wishlist and the officer BiS grid used to mix in every class's weapons and shields. They're now filtered to what your class can actually equip -- e.g. a Mage no longer sees Maces or Polearms, and shields only show for Warrior/Paladin/Shaman. Also filtered out a handful of healer-only and tank-only trinkets from showing to the wrong role."
+  },
+  {
+    "date": "2026-08-03",
     "category": "Feature",
     "version": "3.49.48",
     "title": "WGA Priority Loot addon linked from Wishlist and Loot pages",
