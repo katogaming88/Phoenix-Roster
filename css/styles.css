@@ -157,6 +157,7 @@ a.prog-boss-pulls:hover { color:var(--gold); text-decoration:underline; }
 .recap-season-block:last-child { border-bottom:none; padding-bottom:0; }
 .recap-season-name { font-family:'Cinzel',serif; font-size:1.07rem; font-weight:600; color:var(--gold-light); letter-spacing:0.02em; margin-bottom:0.25rem; }
 .recap-season-score { font-size:1rem; color:var(--text-muted); }
+.recap-season-progress { font-size:0.93rem; color:var(--text-dim); margin-top:0.15rem; }
 
 /* Team officer bios (#477, second slice) -- officer-authored bio cards. */
 .bio-wrap { display:grid; grid-template-columns:repeat(2,1fr); gap:1rem; width:100%; max-width:760px; }

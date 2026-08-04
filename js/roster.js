@@ -558,9 +558,10 @@ function _formatMDY(iso) {
 // History tab (js/roster.js showView()), built lazily when that tab opens,
 // same as buildPublicRosterTab()/buildStreamersTab().
 //
-// Deliberately no "boss progress % at season end" line -- that would need
-// the in-progress boss's live pull count/best %, which archive_current_season()
-// never persists (DATA.raidProgress is a live-only WCL join, not archived).
+// mythicPulls/mythicBestPct (added to archive_current_season()'s per-boss
+// snapshot) let this show where the team left off on an unkilled boss --
+// a season-end snapshot, not a running history, so it only ever reflects
+// progress as of whenever wcl-progression-sync last ran before archiving.
 function buildSeasonRecap() {
   var history = (DATA && DATA.seasonHistory) || [];
   var el = document.getElementById('historyView');
@@ -573,6 +574,11 @@ function buildSeasonRecap() {
     var killed = 0;
     var total = 0;
     var lastKillDate = '';
+    // Last unkilled boss with recorded pulls, in raid/boss order -- guilds
+    // progress roughly in order, so this is what the team was actually
+    // working on when the season ended, not just whichever boss happens to
+    // sort last.
+    var currentBoss = null;
     for (var j = 0; j < raids.length; j++) {
       var bosses = raids[j].bosses || [];
       for (var k = 0; k < bosses.length; k++) {
@@ -580,6 +586,8 @@ function buildSeasonRecap() {
         if (bosses[k].mythicDate) {
           killed++;
           if (bosses[k].mythicDate > lastKillDate) lastKillDate = bosses[k].mythicDate;
+        } else if (bosses[k].mythicPulls) {
+          currentBoss = bosses[k];
         }
       }
     }
@@ -589,6 +597,17 @@ function buildSeasonRecap() {
     html += '<div class="recap-season-score">' + killed + '/' + total + ' Mythic';
     if (lastKillDate) html += ' -- Last boss kill ' + _formatMDY(lastKillDate);
     html += '</div>';
+    if (currentBoss) {
+      html +=
+        '<div class="recap-season-progress">Working on ' +
+        _esc(currentBoss.name || '') +
+        ' -- ' +
+        currentBoss.mythicPulls +
+        ' pull' +
+        (currentBoss.mythicPulls === 1 ? '' : 's') +
+        (currentBoss.mythicBestPct != null ? ', best ' + currentBoss.mythicBestPct + '%' : '') +
+        '</div>';
+    }
     html += '</div>';
   }
   html += '</div>';
