@@ -8,6 +8,15 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-08-03 -- `add_signup_to_roster()`: carry `team_member_id` to the new character on a main-swap archive
+
+Decided directly in conversation (no tracking issue): found while investigating why a Hellfire officer (Crilynn-Nesingwary, `team_members.role = 'officer'`) lost dashboard access after a main-swap signup archived her old character in favor of a new one (Vellisara-Nesingwary).
+
+- **Root cause**: `add_signup_to_roster`'s `p_archive_player_id` path only set `archived_at = now()` on the old `players` row -- it never moved `team_member_id` (the Discord account / role link) to the newly inserted row for the new character name. The account link was orphaned onto an inactive, archived character; the new active character came in completely unclaimed.
+- **Not officer-specific.** Any raider's claimed-character link breaks the same way on a main-swap, officer or not -- confirmed 11 approved-but-not-yet-pushed main-swap signups on Phoenix at the time, one of which (`Ród-Shadowsong <- Hotstreak-Shadowsong`) also carried an officer's link and would have hit the identical failure if pushed to roster before this fix.
+- **Fix**: capture the archived row's `team_member_id` before nulling it out, then apply it to the new row only if the new row doesn't already have one (protects the reactivation path, where an existing archived row matching the new name might already carry its own link). Implemented in `20260803230409_add_signup_to_roster_carry_team_member.sql`, same 5-arg signature as `20260726145742_players_backup_tank_healer.sql`, function body only -- no RLS or schema change.
+- **Known pre-existing bad data not covered by this migration**: Crilynn/Vellisara on Hellfire still needs a manual backfill (`players.team_member_id` moved from the archived Crilynn row to the active Vellisara row) since the fix only prevents the bug going forward, it doesn't repair signups already processed under the old function.
+
 ## 2026-07-31 -- `generate_priority_order()`: bench/trial sort by tier, not by a second score multiplier
 
 Decided directly in conversation (no tracking issue): an officer flagged that a trial DPS could outrank a long-term healer for the same item, which felt wrong even though nothing stops an officer from manually reordering the generated list afterward.
