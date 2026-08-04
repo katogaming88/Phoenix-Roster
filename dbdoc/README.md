@@ -42,6 +42,7 @@
 | [public.site_settings](public.site_settings.md) | 5 |  | BASE TABLE |
 | [public.incoming_roster](public.incoming_roster.md) | 7 |  | VIEW |
 | [public.guild_officers](public.guild_officers.md) | 3 |  | BASE TABLE |
+| [public.tier_token_map](public.tier_token_map.md) | 5 |  | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -160,6 +161,8 @@ erDiagram
 "public.item_preferences" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE"
 "public.item_preferences" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.item_preferences" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.tier_token_map" }o--|| "public.items" : "FOREIGN KEY (resolved_item_id) REFERENCES items(id) ON DELETE CASCADE"
+"public.tier_token_map" }o--|| "public.items" : "FOREIGN KEY (token_item_id) REFERENCES items(id) ON DELETE CASCADE"
 
 "public.attendance" {
   integer id
@@ -537,6 +540,13 @@ erDiagram
   integer id
   text discord_id
   uuid auth_user_id FK
+}
+"public.tier_token_map" {
+  integer id
+  integer token_item_id FK
+  text class
+  integer resolved_item_id FK
+  timestamp_with_time_zone created_at
 }
 ```
 

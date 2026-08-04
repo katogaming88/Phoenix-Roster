@@ -1502,12 +1502,12 @@
       ],
       "triggers": [
         {
-          "name": "trg_priority_order_updated_at",
-          "def": "CREATE TRIGGER trg_priority_order_updated_at BEFORE UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
-        },
-        {
           "name": "trg_priority_order_team_id_check",
           "def": "CREATE TRIGGER trg_priority_order_team_id_check BEFORE INSERT OR UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
+        },
+        {
+          "name": "trg_priority_order_updated_at",
+          "def": "CREATE TRIGGER trg_priority_order_updated_at BEFORE UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
         }
       ]
     },
@@ -3743,6 +3743,104 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.tier_token_map",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('tier_token_map_id_seq'::regclass)"
+        },
+        {
+          "name": "token_item_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "class",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "resolved_item_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "tier_token_map_pkey",
+          "def": "CREATE UNIQUE INDEX tier_token_map_pkey ON public.tier_token_map USING btree (id)",
+          "table": "public.tier_token_map",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "tier_token_map_token_class_key",
+          "def": "CREATE UNIQUE INDEX tier_token_map_token_class_key ON public.tier_token_map USING btree (token_item_id, class)",
+          "table": "public.tier_token_map",
+          "columns": [
+            "token_item_id",
+            "class"
+          ]
+        },
+        {
+          "name": "tier_token_map_resolved_item_key",
+          "def": "CREATE UNIQUE INDEX tier_token_map_resolved_item_key ON public.tier_token_map USING btree (resolved_item_id)",
+          "table": "public.tier_token_map",
+          "columns": [
+            "resolved_item_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "tier_token_map_resolved_item_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (resolved_item_id) REFERENCES items(id) ON DELETE CASCADE",
+          "table": "public.tier_token_map",
+          "referenced_table": "public.items",
+          "columns": [
+            "resolved_item_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "tier_token_map_token_item_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (token_item_id) REFERENCES items(id) ON DELETE CASCADE",
+          "table": "public.tier_token_map",
+          "referenced_table": "public.items",
+          "columns": [
+            "token_item_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "tier_token_map_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.tier_token_map",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -4291,6 +4389,32 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.tier_token_map",
+      "columns": [
+        "resolved_item_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.items",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (resolved_item_id) REFERENCES items(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.tier_token_map",
+      "columns": [
+        "token_item_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.items",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (token_item_id) REFERENCES items(id) ON DELETE CASCADE"
     }
   ],
   "functions": [

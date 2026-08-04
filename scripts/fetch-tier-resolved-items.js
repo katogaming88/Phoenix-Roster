@@ -154,7 +154,8 @@ async function main() {
   const csv = [
     'wow_item_id,name,slot,armor_type,sort_id,icon,wcl_zone_id',
     ...rows.map(
-      (r) => `${r.id},${csvEscape(r.name)},${csvEscape(r.slot)},${csvEscape(r.armor_type)},,${csvEscape(r.icon)},${WCL_ZONE_ID}`
+      (r) =>
+        `${r.id},${csvEscape(r.name)},${csvEscape(r.slot)},${csvEscape(r.armor_type)},,${csvEscape(r.icon)},${WCL_ZONE_ID}`
     )
   ].join('\n');
   writeFileSync('tier_resolved_items.csv', csv, 'utf8');

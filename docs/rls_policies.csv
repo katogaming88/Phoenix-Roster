@@ -82,3 +82,5 @@ team_settings,Public read settings,public,SELECT,PERMISSIVE,true,
 team_settings,Team leaders write settings,public,ALL,PERMISSIVE,((my_team_role(team_id) = 'team_leader'::text) OR is_site_admin()),((my_team_role(team_id) = 'team_leader'::text) OR is_site_admin())
 teams,Claude readers read teams,claude_readers,SELECT,PERMISSIVE,true,
 teams,Public read teams,public,SELECT,PERMISSIVE,true,
+tier_token_map,Claude readers read tier_token_map,claude_readers,SELECT,PERMISSIVE,true,
+tier_token_map,Public read tier_token_map,public,SELECT,PERMISSIVE,true,
