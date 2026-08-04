@@ -623,6 +623,8 @@ export type Database = {
           officer_notes: string | null;
           team_id: number;
           team_member_id: number | null;
+          tier_pieces_equipped: number | null;
+          tier_pieces_synced_at: string | null;
           updated_at: string | null;
           wishlist_allowed: boolean;
         };
@@ -644,6 +646,8 @@ export type Database = {
           officer_notes?: string | null;
           team_id: number;
           team_member_id?: number | null;
+          tier_pieces_equipped?: number | null;
+          tier_pieces_synced_at?: string | null;
           updated_at?: string | null;
           wishlist_allowed?: boolean;
         };
@@ -665,6 +669,8 @@ export type Database = {
           officer_notes?: string | null;
           team_id?: number;
           team_member_id?: number | null;
+          tier_pieces_equipped?: number | null;
+          tier_pieces_synced_at?: string | null;
           updated_at?: string | null;
           wishlist_allowed?: boolean;
         };

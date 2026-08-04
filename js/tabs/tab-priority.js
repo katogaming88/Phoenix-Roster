@@ -303,6 +303,69 @@ function checkPriorityDrift() {
   });
 }
 
+// #651: refreshes players.tier_pieces_equipped for the whole roster from
+// Raider.IO, right before an officer would generate priority for a
+// tier-token drop -- that count is what generate_priority_order() now
+// weights tier-token candidates by (see the tier_pieces_priority_weighting
+// migration). Sequential with a small delay between requests, polite to
+// Raider.IO's public API across a full roster -- no existing bulk-roster
+// loop pattern to mirror anywhere in js/tabs/, modeled instead on
+// js/common.js's runRaiderIoTierSync (single-player) disable/restore-button
+// idiom. A player with no Raider.IO data (never scanned, stale name_realm)
+// is skipped and tallied rather than overwriting their last-known count with
+// a false 0.
+function syncRosterTierCounts() {
+  var btn = document.getElementById('syncRosterTierBtn');
+  var status = document.getElementById('syncRosterTierStatus');
+  var roster = (DATA.roster || []).filter(function (p) {
+    return p.firstName && p.realm;
+  });
+  if (!roster.length) return;
+  if (btn) btn.disabled = true;
+
+  var synced = 0;
+  var skipped = 0;
+  var i = 0;
+
+  function next() {
+    if (i >= roster.length) {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Sync Roster Tier Counts';
+      }
+      if (status) {
+        status.textContent =
+          synced + ' synced' + (skipped ? ', ' + skipped + ' skipped (no Raider.IO data)' : '') + '.';
+        status.style.color = skipped ? 'var(--gold)' : 'var(--heal)';
+      }
+      buildPriorityTab();
+      return;
+    }
+    var player = roster[i];
+    i++;
+    if (btn) btn.textContent = 'Syncing ' + i + '/' + roster.length + '...';
+
+    fetchRaiderIoGear(player.firstName, player.realm)
+      .then(function (gearItems) {
+        return writeTierPiecesEquipped(player, countEquippedTierPieces(player, gearItems));
+      })
+      .then(
+        function () {
+          synced++;
+        },
+        function () {
+          skipped++;
+        }
+      )
+      .then(function () {
+        setTimeout(next, 200);
+      });
+  }
+
+  if (status) status.textContent = '';
+  next();
+}
+
 // Own copy of js/wishlist.js's WISHLIST_TIER_COLORS -- officer.html doesn't
 // load wishlist.js, same bundle-boundary reason as WISHLIST_LABEL_DEFAULTS
 // in tab-admin.js (whose dotColor values these .css fields match).

@@ -350,12 +350,12 @@
       ],
       "triggers": [
         {
-          "name": "trg_bis_items_restrict_update",
-          "def": "CREATE TRIGGER trg_bis_items_restrict_update BEFORE UPDATE ON public.bis_items FOR EACH ROW EXECUTE FUNCTION restrict_bis_items_update_to_obtained()"
-        },
-        {
           "name": "trg_bis_items_updated_at",
           "def": "CREATE TRIGGER trg_bis_items_updated_at BEFORE UPDATE ON public.bis_items FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        },
+        {
+          "name": "trg_bis_items_restrict_update",
+          "def": "CREATE TRIGGER trg_bis_items_restrict_update BEFORE UPDATE ON public.bis_items FOR EACH ROW EXECUTE FUNCTION restrict_bis_items_update_to_obtained()"
         }
       ]
     },
@@ -1245,6 +1245,16 @@
           "type": "boolean",
           "nullable": false,
           "default": "false"
+        },
+        {
+          "name": "tier_pieces_equipped",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "tier_pieces_synced_at",
+          "type": "timestamp with time zone",
+          "nullable": true
         }
       ],
       "indexes": [
@@ -1267,6 +1277,16 @@
         }
       ],
       "constraints": [
+        {
+          "name": "players_tier_pieces_equipped_range",
+          "type": "CHECK",
+          "def": "CHECK (((tier_pieces_equipped IS NULL) OR ((tier_pieces_equipped \u003e= 0) AND (tier_pieces_equipped \u003c= 5))))",
+          "table": "public.players",
+          "referenced_table": "",
+          "columns": [
+            "tier_pieces_equipped"
+          ]
+        },
         {
           "name": "players_class_spec_id_fkey",
           "type": "FOREIGN KEY",
@@ -1506,12 +1526,12 @@
       ],
       "triggers": [
         {
-          "name": "trg_priority_order_team_id_check",
-          "def": "CREATE TRIGGER trg_priority_order_team_id_check BEFORE INSERT OR UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
-        },
-        {
           "name": "trg_priority_order_updated_at",
           "def": "CREATE TRIGGER trg_priority_order_updated_at BEFORE UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        },
+        {
+          "name": "trg_priority_order_team_id_check",
+          "def": "CREATE TRIGGER trg_priority_order_team_id_check BEFORE INSERT OR UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
         }
       ]
     },

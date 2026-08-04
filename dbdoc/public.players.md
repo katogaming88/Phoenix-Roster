@@ -23,11 +23,14 @@
 | is_backup_tank | boolean | false | false |  |  |  |
 | is_backup_healer | boolean | false | false |  |  |  |
 | wishlist_allowed | boolean | false | false |  |  |  |
+| tier_pieces_equipped | integer |  | true |  |  |  |
+| tier_pieces_synced_at | timestamp with time zone |  | true |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| players_tier_pieces_equipped_range | CHECK | CHECK (((tier_pieces_equipped IS NULL) OR ((tier_pieces_equipped >= 0) AND (tier_pieces_equipped <= 5)))) |
 | players_class_spec_id_fkey | FOREIGN KEY | FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE |
 | players_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | players_team_id_name_realm_key | UNIQUE | UNIQUE (team_id, name_realm) |
@@ -89,6 +92,8 @@ erDiagram
   boolean is_backup_tank
   boolean is_backup_healer
   boolean wishlist_allowed
+  integer tier_pieces_equipped
+  timestamp_with_time_zone tier_pieces_synced_at
 }
 "public.attendance" {
   integer id

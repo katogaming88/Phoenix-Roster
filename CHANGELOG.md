@@ -8,6 +8,16 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.51.0] - 2026-08-04
+
+### Frontend
+
+- **Priority order for tier-token drops now accounts for a raider's overall tier-set progress** -- a raider closer to finishing their 5-piece class set (especially anyone one piece from a 2pc/4pc bonus) now outranks a raider further along, on top of the existing score/wishlist/status math. A new "Sync Roster Tier Counts" action on the Priority tab refreshes every roster player's tier-piece count from Raider.IO in one pass (meant to be run right before generating priority); every individual "Sync from Raider.IO" click (raider's own profile or officer's BiS editor) keeps it fresh too, at no extra cost. A raider's own profile now also shows a raw "Tier: N/5" progress badge, separate from BiS-tagged completion %.
+
+### Backend
+
+- Added `players.tier_pieces_equipped`/`tier_pieces_synced_at` and rewrote `generate_priority_order()` to weight tier-token candidates by that count -- no new RLS needed, officers already had full write access to `players`. See `supabase/migrations/20260804140751_tier_pieces_priority_weighting.sql` for the exact ranking rule.
+
 ## [3.50.0] - 2026-08-04
 
 ### Frontend
