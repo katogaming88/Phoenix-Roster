@@ -930,11 +930,14 @@ function bisSlotOnInput() {
   var itemSlots = DATA.itemSlots || {};
   var itemArmorTypes = DATA.itemArmorTypes || {};
   var itemMainStats = DATA.itemMainStats || {};
+  var itemWeaponSubtypes = DATA.itemWeaponSubtypes || {};
   var itemPlaceholders = DATA.itemPlaceholders || {};
   var allItems = Object.keys(itemSlots);
 
   var playerArmorType = null;
   var playerMainStat = null;
+  var playerRole = null;
+  var playerClass = null;
   var existingRealItems = {};
   if (_bisListEditor) {
     var roster = DATA.roster || [];
@@ -943,6 +946,8 @@ function bisSlotOnInput() {
       if (normalise(roster[pi].nameRealm) === edNorm) {
         playerArmorType = (CLASS_ARMOR_TYPE || {})[roster[pi].class] || null;
         playerMainStat = specMainStat(roster[pi].class, roster[pi].spec);
+        playerRole = (SPEC_ROLE || {})[roster[pi].spec] || null;
+        playerClass = roster[pi].class || null;
         break;
       }
     }
@@ -986,6 +991,34 @@ function bisSlotOnInput() {
       BIS_MAIN_STAT_ROWS[slotName] &&
       mainStats.length &&
       mainStats.indexOf(playerMainStat) === -1
+    )
+      continue;
+
+    // #636: mirrors js/wishlist.js's HEALER_ONLY_TRINKETS/TANK_ONLY_TRINKETS
+    // check -- a role-restricted trinket's effect is useless outside that
+    // role even when its stats match. playerRole gate matches every other
+    // filter above: an unknown role shows everything rather than guessing.
+    if (!isPlaceholder && playerRole && (slotName === 'Trinket 1' || slotName === 'Trinket 2')) {
+      if (HEALER_ONLY_TRINKETS[name] && playerRole !== 'Heal') continue;
+      if (TANK_ONLY_TRINKETS[name] && playerRole !== 'Tank') continue;
+    }
+
+    // #609: mirrors js/wishlist.js's CLASS_WEAPON_TYPES/CLASS_SHIELD_USERS
+    // check. weapon_subtype only exists for Weapon-slot items and Shields --
+    // other Off Hand items (tomes/orbs) have none and stay unfiltered here.
+    // Null/unbackfilled weapon_subtype also stays unfiltered, matching every
+    // other filter's "unknown shows everything" convention.
+    var weaponSubtype = itemWeaponSubtypes[name] || '';
+    if (!isPlaceholder && playerClass && slotName === 'Weapon' && weaponSubtype) {
+      var allowedWeaponTypes = ((CLASS_WEAPON_TYPES || {})[playerClass] || {})[catalogSlot] || [];
+      if (allowedWeaponTypes.indexOf(weaponSubtype) === -1) continue;
+    }
+    if (
+      !isPlaceholder &&
+      playerClass &&
+      slotName === 'Off Hand' &&
+      weaponSubtype === 'Shield' &&
+      !CLASS_SHIELD_USERS[playerClass]
     )
       continue;
 

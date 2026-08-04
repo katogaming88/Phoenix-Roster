@@ -116,6 +116,36 @@ function extractMainStatsFromEffectText(text) {
   return found;
 }
 
+// Blizzard's item_subclass.name and Wowhead's tooltip subtype text don't
+// always agree on wording for the same subclass -- confirmed live: Blizzard
+// returns "Warglaives" (plural) for Demon Hunter's weapon type, Wowhead's
+// tooltip renders "Warglaive" (singular) for the same subclass id on a
+// still-PTR item Blizzard hasn't indexed yet. js/common.js's
+// CLASS_WEAPON_TYPES only lists one spelling per type, so an unnormalized
+// mismatch here would silently exclude that weapon from the very class it's
+// meant for. Normalize known mismatches to the singular form
+// CLASS_WEAPON_TYPES uses; add another entry here if a future tier surfaces
+// a new one (the console log below always prints the raw captured value, so
+// a new mismatch is visible immediately rather than silently wrong).
+const WEAPON_SUBTYPE_ALIASES = { Warglaives: 'Warglaive' };
+
+function normalizeWeaponSubtype(name) {
+  if (!name) return name;
+  return WEAPON_SUBTYPE_ALIASES[name] || name;
+}
+
+// Only Weapon (item_class id 2) and Shield (Armor/id 4, subclass id 6) rows
+// get a weapon_subtype -- everything else's item_subclass name is an armor
+// slot/material name, not a weapon type, and js/common.js's
+// CLASS_WEAPON_TYPES/CLASS_SHIELD_USERS filter only ever checks Weapon/Off
+// Hand rows anyway (#609).
+function weaponSubtypeFromItemClass(itemClass, itemSubclass) {
+  if (!itemClass || !itemSubclass) return null;
+  if (itemClass.id === 2) return normalizeWeaponSubtype(itemSubclass.name);
+  if (itemClass.id === 4 && itemSubclass.id === 6) return normalizeWeaponSubtype(itemSubclass.name);
+  return null;
+}
+
 async function fetchBlizzardStats(wowItemId, token) {
   const res = await fetch(`https://us.api.blizzard.com/data/wow/item/${wowItemId}?namespace=static-us&locale=en_US`, {
     headers: { Authorization: `Bearer ${token}` }
@@ -130,7 +160,8 @@ async function fetchBlizzardStats(wowItemId, token) {
     const effectText = (data.preview_item?.spells ?? []).map((s) => s.description || '').join(' ');
     mainStats = extractMainStatsFromEffectText(effectText);
   }
-  return { stats, mainStats };
+  const weaponSubtype = weaponSubtypeFromItemClass(data.preview_item?.item_class, data.preview_item?.item_subclass);
+  return { stats, mainStats, weaponSubtype };
 }
 
 // Fallback for items still 404ing against Blizzard (current-tier PTR items).
@@ -162,7 +193,19 @@ async function fetchWowheadStats(wowItemId) {
     const effectText = data.tooltip?.split('<!--nameDescStats-->')[1] ?? '';
     mainStats = extractMainStatsFromEffectText(effectText.replace(/<[^>]+>/g, ' '));
   }
-  return { stats, mainStats };
+
+  // The weapon-type/shield line renders as e.g. <!--scstart2:7-->Sword<!--scend-->
+  // (2 = Weapon item class, 7 = subclass id) -- appears before <!--rf-->, so
+  // it's read off the full tooltip, not the stat-only statBlock window above.
+  // Same class-id gate as weaponSubtypeFromItemClass: only Weapon (2) or
+  // Shield (4/6) counts.
+  const scMatch = data.tooltip?.match(/<!--scstart(\d+):(\d+)-->\s*<span[^>]*>([^<]+)<\/span>/);
+  const weaponSubtype =
+    scMatch && (scMatch[1] === '2' || (scMatch[1] === '4' && scMatch[2] === '6'))
+      ? normalizeWeaponSubtype(scMatch[3])
+      : null;
+
+  return { stats, mainStats, weaponSubtype };
 }
 
 function parseItemIds(csv) {
@@ -209,9 +252,9 @@ async function main() {
     try {
       const result = await fetchBlizzardStats(id, token);
       if (!result.notFound) {
-        updates.push({ id, stats: result.stats, mainStats: result.mainStats });
+        updates.push({ id, stats: result.stats, mainStats: result.mainStats, weaponSubtype: result.weaponSubtype });
         console.log(
-          `[OK]   ${id}: secondary=${result.stats.length ? result.stats.join(', ') : '(none)'} main=${result.mainStats.length ? result.mainStats.join(', ') : '(none)'}`
+          `[OK]   ${id}: secondary=${result.stats.length ? result.stats.join(', ') : '(none)'} main=${result.mainStats.length ? result.mainStats.join(', ') : '(none)'} weapon=${result.weaponSubtype ?? '(n/a)'}`
         );
         await sleep(100);
         continue;
@@ -222,9 +265,14 @@ async function main() {
         notFound.push(id);
         console.log(`[404]  ${id}: not found on Blizzard or Wowhead`);
       } else {
-        updates.push({ id, stats: fallback.stats, mainStats: fallback.mainStats });
+        updates.push({
+          id,
+          stats: fallback.stats,
+          mainStats: fallback.mainStats,
+          weaponSubtype: fallback.weaponSubtype
+        });
         console.log(
-          `[OK]   ${id}: secondary=${fallback.stats.length ? fallback.stats.join(', ') : '(none)'} main=${fallback.mainStats.length ? fallback.mainStats.join(', ') : '(none)'} (via Wowhead fallback)`
+          `[OK]   ${id}: secondary=${fallback.stats.length ? fallback.stats.join(', ') : '(none)'} main=${fallback.mainStats.length ? fallback.mainStats.join(', ') : '(none)'} weapon=${fallback.weaponSubtype ?? '(n/a)'} (via Wowhead fallback)`
         );
       }
     } catch (err) {
@@ -234,10 +282,10 @@ async function main() {
   }
 
   const sql = updates
-    .map(
-      (u) =>
-        `update items set secondary_stats = '${JSON.stringify(u.stats)}'::jsonb, main_stats = '${JSON.stringify(u.mainStats)}'::jsonb where wow_item_id = ${u.id};`
-    )
+    .map((u) => {
+      const weaponSubtypeSql = u.weaponSubtype ? `'${u.weaponSubtype.replace(/'/g, "''")}'` : 'NULL';
+      return `update items set secondary_stats = '${JSON.stringify(u.stats)}'::jsonb, main_stats = '${JSON.stringify(u.mainStats)}'::jsonb, weapon_subtype = ${weaponSubtypeSql} where wow_item_id = ${u.id};`;
+    })
     .join('\n');
   writeFileSync('item_stats_update.sql', sql + '\n', 'utf8');
 

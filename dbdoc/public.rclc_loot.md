@@ -101,6 +101,7 @@ erDiagram
   integer wcl_zone_id
   boolean is_ptr
   jsonb main_stats
+  text weapon_subtype
 }
 ```
 

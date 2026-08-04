@@ -16,6 +16,7 @@
 | wcl_zone_id | integer |  | true |  |  |  |
 | is_ptr | boolean | false | false |  |  |  |
 | main_stats | jsonb |  | true |  |  |  |
+| weapon_subtype | text |  | true |  |  |  |
 
 ## Constraints
 
@@ -57,6 +58,7 @@ erDiagram
   integer wcl_zone_id
   boolean is_ptr
   jsonb main_stats
+  text weapon_subtype
 }
 "public.bis_items" {
   integer id

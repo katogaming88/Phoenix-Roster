@@ -12,8 +12,24 @@ include:
 # Without this, a table's trigger/index/constraint listing order comes
 # straight off Postgres's catalog tables, which isn't guaranteed stable
 # across separate `supabase db reset` runs even with identical migrations
-# applied in the same order (#504) -- caused spurious `tbls diff` mismatches
-# (e.g. priority_order's two triggers swapping order) that a fresh reset
-# only reduced the odds of, never eliminated. Sorting makes both `db:docs`
-# and `db:docs:check` deterministic regardless of catalog ordering.
+# applied in the same order (#504).
+#
+# This only fully stabilizes `npm run db:docs` (tbls doc), not
+# `npm run db:docs:check` / CI's `tbls diff` -- confirmed against tbls'
+# source: `doc` applies the sort step to the schema it renders, but `diff`
+# never sorts the freshly-introspected live schema before comparing it to
+# the committed docs, so a table with 2+ triggers can still spuriously fail
+# `tbls diff` whenever Postgres's raw catalog order for that run doesn't
+# happen to match dbdoc/'s already-sorted listing (observed repeatedly on
+# priority_order's two triggers). Root cause: a genuine tbls bug, not
+# anything fixable from this config -- its Postgres trigger query has
+# `ORDER BY tgrelid`, but tgrelid is already pinned to a single table by the
+# WHERE clause, so that ORDER BY is a no-op. Tracked upstream at
+# https://github.com/k1LoW/tbls/issues/850, fix in
+# https://github.com/k1LoW/tbls/pull/851 (open, not yet released as of
+# 2026-08-03) -- once released, bump the `k1LoW/setup-tbls@v1` pin in
+# .github/workflows/schema-docs.yml and this whole caveat can go away.
+# Until then: a `tbls diff` failure that's ONLY a trigger-order swap on an
+# unrelated table (not the table your migration actually touched) is this
+# known flake, not a real doc staleness -- rerun the check.
 sort: true
