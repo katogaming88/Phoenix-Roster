@@ -1,5 +1,12 @@
 [
   {
+    "date": "2026-08-04",
+    "category": "Feature",
+    "version": "3.51.0",
+    "title": "Raider.IO sync + tier-progress priority weighting",
+    "body": "Your BiS List now has a Sync from Raider.IO button that checks your equipped gear and auto-marks tagged tier pieces as obtained, and shows your tier-set progress as a Tier: N/5 badge. Priority order for tier-token drops now factors that in too -- raiders closer to their next set bonus rank higher."
+  },
+  {
     "date": "2026-08-03",
     "category": "Fix",
     "version": "3.49.49",
