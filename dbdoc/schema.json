@@ -350,12 +350,12 @@
       ],
       "triggers": [
         {
-          "name": "trg_bis_items_updated_at",
-          "def": "CREATE TRIGGER trg_bis_items_updated_at BEFORE UPDATE ON public.bis_items FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
-        },
-        {
           "name": "trg_bis_items_restrict_update",
           "def": "CREATE TRIGGER trg_bis_items_restrict_update BEFORE UPDATE ON public.bis_items FOR EACH ROW EXECUTE FUNCTION restrict_bis_items_update_to_obtained()"
+        },
+        {
+          "name": "trg_bis_items_updated_at",
+          "def": "CREATE TRIGGER trg_bis_items_updated_at BEFORE UPDATE ON public.bis_items FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
         }
       ]
     },
@@ -1526,12 +1526,12 @@
       ],
       "triggers": [
         {
-          "name": "trg_priority_order_updated_at",
-          "def": "CREATE TRIGGER trg_priority_order_updated_at BEFORE UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
-        },
-        {
           "name": "trg_priority_order_team_id_check",
           "def": "CREATE TRIGGER trg_priority_order_team_id_check BEFORE INSERT OR UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
+        },
+        {
+          "name": "trg_priority_order_updated_at",
+          "def": "CREATE TRIGGER trg_priority_order_updated_at BEFORE UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
         }
       ]
     },
