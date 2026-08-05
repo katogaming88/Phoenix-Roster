@@ -132,21 +132,21 @@ Several parts of this doc and `db-backup.yml`'s verify step encode assumptions a
 What's schema-tied:
 
 - **Expected-error list** in `db-backup.yml`'s verify step and the drill section above -- 9 ignored errors as of the 2026-07-23 drill (#544): the container's pre-existing `public` schema, everything referencing the absent `auth` schema, and `supabase_admin` default-privilege statements.
-- **Table-count floor of 20** in the same verify step -- real count was 26 when written, now 27 as of [#607](https://github.com/katogaming88/WGA-Raid-Hub/issues/607)'s `guild_officers` table -- still well clear of the floor, no re-check needed.
-- **The five `auth.users` FKs** in the full-rebuild runbook (steps 3 and 9) -- `audit_log.actor_id`, `site_admins.auth_user_id`, `team_members.auth_user_id`, `season_signups.auth_user_id`, `guild_officers.auth_user_id` ([#607](https://github.com/katogaming88/WGA-Raid-Hub/issues/607)).
+- **Table-count floor of 20** in the same verify step -- real count was 26 when written, 27 as of [#607](https://github.com/katogaming88/WGA-Raid-Hub/issues/607)'s `guild_officers` table, now 29 (`tier_token_map` from #650, `no_character_dismissals` from [#512](https://github.com/katogaming88/WGA-Raid-Hub/issues/512)) -- still well clear of the floor, no re-check needed.
+- **The six `auth.users` FKs** in the full-rebuild runbook (steps 3 and 9) -- `audit_log.actor_id`, `site_admins.auth_user_id`, `team_members.auth_user_id`, `season_signups.auth_user_id`, `guild_officers.auth_user_id`, `no_character_dismissals.auth_user_id` ([#512](https://github.com/katogaming88/WGA-Raid-Hub/issues/512)).
 - **Sequence-name guidance** in the selective-restore runbook -- only as good as the tables it was checked against (`season_signups` resolving to `signups_id_seq` was the drill's find).
 - **Drill-log row counts** -- meaningful only while the tables they name still exist under that name.
 
 Re-check when a migration:
 
-- Adds an FK to `auth.users` on a table not in the four listed above -- add it to the full-rebuild runbook's FK list.
+- Adds an FK to `auth.users` on a table not in the six listed above -- add it to the full-rebuild runbook's FK list.
 - Renames a table or column named in this doc or the drill log -- update the reference; always resolve sequences through `pg_get_serial_sequence()` rather than trusting old guidance.
 - Adds DDL or an RLS policy referencing `auth` -- check whether it lands inside or outside the verify step's tolerated error categories.
-- Pushes the public table count close to the floor of 20, or meaningfully past 26 -- raise the floor so it still catches a truncated dump.
+- Pushes the public table count close to the floor of 20, or meaningfully past 29 -- raise the floor so it still catches a truncated dump.
 
 **CI nudge**: `schema-docs.yml` fails a PR that adds an `auth.users` FK or renames something in `supabase/migrations/` without also touching this file, mirroring the existing `docs/RLS.md` check in the same workflow. It can't catch the table-count or RLS-policy cases above -- those still rely on this checklist at review time.
 
-As of 2026-07-28 the table count (26 base tables) and the FK list still matched the 2026-07-23 drill baseline exactly. [#607](https://github.com/katogaming88/WGA-Raid-Hub/issues/607) (2026-07-30) added `guild_officers` (27 tables, 5th `auth.users` FK) -- updated above per this section's own checklist rather than a full re-drill, since neither the table-count floor nor the expected-error list needed touching. No re-drill due yet.
+As of 2026-07-28 the table count (26 base tables) and the FK list still matched the 2026-07-23 drill baseline exactly. [#607](https://github.com/katogaming88/WGA-Raid-Hub/issues/607) (2026-07-30) added `guild_officers` (27 tables, 5th `auth.users` FK) -- updated above per this section's own checklist rather than a full re-drill, since neither the table-count floor nor the expected-error list needed touching. [#512](https://github.com/katogaming88/WGA-Raid-Hub/issues/512) (2026-08-05) added `no_character_dismissals` (29 tables -- `tier_token_map` from #650 had also landed in between without this doc being updated, caught now -- 6th `auth.users` FK). No re-drill due yet.
 
 ## Ops notes
 
