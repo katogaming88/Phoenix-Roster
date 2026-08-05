@@ -1471,9 +1471,33 @@ function renderDiscordClaims() {
       ' ' +
       (claims.length === 1 ? 'has' : 'have') +
       ' claimed a character.</p>';
+
+    var claimedNorm = {};
+    claims.forEach(function (c) {
+      claimedNorm[normalise(c.nameRealm)] = true;
+    });
+    var unclaimed = (DATA.roster || [])
+      .filter(function (p) {
+        return !claimedNorm[normalise(p.nameRealm)];
+      })
+      .sort(function (a, b) {
+        return (a.nick || a.firstName).localeCompare(b.nick || b.firstName);
+      });
+    var unclaimedHtml = unclaimed.length
+      ? '<p style="color:var(--text-muted);font-size:1.02rem;margin-bottom:0.75rem;">Not yet claimed: ' +
+        unclaimed
+          .map(function (p) {
+            return escHtml(p.nick || p.firstName);
+          })
+          .join(', ') +
+        '</p>'
+      : '';
+
     if (!claims.length) {
       el.innerHTML =
-        countHtml + '<p style="color:var(--text-muted);font-size:1.02rem;">No characters have been claimed yet.</p>';
+        countHtml +
+        unclaimedHtml +
+        '<p style="color:var(--text-muted);font-size:1.02rem;">No characters have been claimed yet.</p>';
       return;
     }
     var rows = claims
@@ -1513,6 +1537,7 @@ function renderDiscordClaims() {
       .join('');
     el.innerHTML =
       countHtml +
+      unclaimedHtml +
       '<table class="loot-table" style="width:100%;table-layout:fixed;">' +
       '<thead><tr>' +
       '<th style="width:35%;text-align:left">Character</th>' +

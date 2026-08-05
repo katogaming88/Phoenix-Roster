@@ -79,6 +79,10 @@ function loadSandbox({ supabaseClient, els = {}, confirmResult = true, alertSpy 
     document: { getElementById: (id) => els[id] || null },
     localStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
     escHtml: (s) => String(s),
+    normalise: (s) =>
+      String(s || '')
+        .toLowerCase()
+        .trim(),
     confirm: vi.fn(() => confirmResult),
     alert: alertSpy,
     setTimeout,
@@ -96,8 +100,14 @@ function loadSandbox({ supabaseClient, els = {}, confirmResult = true, alertSpy 
       fetchTeamClaims().then(function (claims) {
         var total = (DATA.roster || []).length;
         var count = claims.length + '/' + total;
-        if (!claims.length) { el.innerHTML = count + '|empty'; return; }
-        el.innerHTML = count + '|' + claims.map(function (c) {
+        var claimedNorm = {};
+        claims.forEach(function (c) { claimedNorm[normalise(c.nameRealm)] = true; });
+        var unclaimed = (DATA.roster || []).filter(function (p) {
+          return !claimedNorm[normalise(p.nameRealm)];
+        }).map(function (p) { return p.nick || p.firstName; });
+        var unclaimedStr = 'unclaimed:' + unclaimed.join(',');
+        if (!claims.length) { el.innerHTML = count + '|' + unclaimedStr + '|empty'; return; }
+        el.innerHTML = count + '|' + unclaimedStr + '|' + claims.map(function (c) {
           return c.nameRealm + '|' + c.discordId + '|' + c.role;
         }).join(';');
       });
@@ -197,23 +207,40 @@ describe('renderDiscordClaims (roster tab)', () => {
         error: null
       })
     });
-    const sandbox = loadSandbox({ supabaseClient: client, els, roster: [{}, {}] });
+    const sandbox = loadSandbox({
+      supabaseClient: client,
+      els,
+      roster: [
+        { nameRealm: 'Kato-Illidan', firstName: 'Kato' },
+        { nameRealm: 'Rex-Illidan', firstName: 'Rex' }
+      ]
+    });
     sandbox.renderDiscordClaims();
     expect(els.rosterDiscordClaimsContent.innerHTML).toBe('Loading...');
     await flush();
-    expect(els.rosterDiscordClaimsContent.innerHTML).toBe('2/2|Kato-Illidan|999|team_leader;Rex-Illidan|888|raider');
+    expect(els.rosterDiscordClaimsContent.innerHTML).toBe(
+      '2/2|unclaimed:|Kato-Illidan|999|team_leader;Rex-Illidan|888|raider'
+    );
   });
 
   it('shows an empty state with no claims', async () => {
     const els = { rosterDiscordClaimsContent: makeEl() };
     const { client } = makeClient({ players: () => ({ data: [], error: null }) });
-    const sandbox = loadSandbox({ supabaseClient: client, els, roster: [{}, {}, {}] });
+    const sandbox = loadSandbox({
+      supabaseClient: client,
+      els,
+      roster: [
+        { nameRealm: 'Aaa-Illidan', firstName: 'Aaa' },
+        { nameRealm: 'Bbb-Illidan', firstName: 'Bbb' },
+        { nameRealm: 'Ccc-Illidan', firstName: 'Ccc' }
+      ]
+    });
     sandbox.renderDiscordClaims();
     await flush();
-    expect(els.rosterDiscordClaimsContent.innerHTML).toBe('0/3|empty');
+    expect(els.rosterDiscordClaimsContent.innerHTML).toBe('0/3|unclaimed:Aaa,Bbb,Ccc|empty');
   });
 
-  it('counts claims against the full roster, not just claimed players', async () => {
+  it('counts claims against the full roster and lists who has not claimed', async () => {
     const els = { rosterDiscordClaimsContent: makeEl() };
     const { client } = makeClient({
       players: () => ({
@@ -222,10 +249,22 @@ describe('renderDiscordClaims (roster tab)', () => {
       })
     });
     // 1 claimed out of a 5-player roster -- the other 4 haven't claimed yet.
-    const sandbox = loadSandbox({ supabaseClient: client, els, roster: [{}, {}, {}, {}, {}] });
+    const sandbox = loadSandbox({
+      supabaseClient: client,
+      els,
+      roster: [
+        { nameRealm: 'Kato-Illidan', firstName: 'Kato' },
+        { nameRealm: 'Aaa-Illidan', firstName: 'Aaa' },
+        { nameRealm: 'Bbb-Illidan', firstName: 'Bbb' },
+        { nameRealm: 'Ccc-Illidan', firstName: 'Ccc' },
+        { nameRealm: 'Ddd-Illidan', firstName: 'Ddd' }
+      ]
+    });
     sandbox.renderDiscordClaims();
     await flush();
-    expect(els.rosterDiscordClaimsContent.innerHTML.split('|')[0]).toBe('1/5');
+    const [count, unclaimed] = els.rosterDiscordClaimsContent.innerHTML.split('|');
+    expect(count).toBe('1/5');
+    expect(unclaimed).toBe('unclaimed:Aaa,Bbb,Ccc,Ddd');
   });
 });
 
@@ -246,7 +285,7 @@ describe('removeDiscordClaim', () => {
       ['team_id', 1],
       ['name_realm', 'Kato-Illidan']
     ]);
-    expect(els.rosterDiscordClaimsContent.innerHTML).toBe('0/0|empty');
+    expect(els.rosterDiscordClaimsContent.innerHTML).toBe('0/0|unclaimed:|empty');
   });
 
   it('does nothing when the confirm dialog is declined', async () => {

@@ -12,7 +12,7 @@ with each release split into `### Frontend` (drives the version number) and
 
 ### Frontend
 
-- The Roster tab's Discord Claims sub-tab now shows "N of M roster members have claimed a character" so officers can see claim progress at a glance instead of counting rows by hand.
+- The Roster tab's Discord Claims sub-tab now shows "N of M roster members have claimed a character" plus a list of who hasn't yet, so officers can see claim progress -- and who to nudge -- at a glance instead of cross-referencing the roster by hand.
 
 ## [3.52.0] - 2026-08-05
 
