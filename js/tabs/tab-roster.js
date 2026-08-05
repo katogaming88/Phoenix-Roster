@@ -1457,8 +1457,47 @@ function renderDiscordClaims() {
   if (!el || !supabaseClient) return;
   el.innerHTML = '<p style="color:var(--text-muted);font-size:1.02rem;">Loading...</p>';
   fetchTeamClaims().then(function (claims) {
+    // fetchTeamClaims() and DATA.roster both scope to this team's active
+    // (archived_at is null) players, so claims.length / total is a direct
+    // "how many have claimed" count, not an approximation.
+    var total = (DATA.roster || []).length;
+    var countHtml =
+      '<p style="color:var(--text-muted);font-size:1.02rem;margin-bottom:0.75rem;">' +
+      claims.length +
+      ' of ' +
+      total +
+      ' roster member' +
+      (total === 1 ? '' : 's') +
+      ' ' +
+      (claims.length === 1 ? 'has' : 'have') +
+      ' claimed a character.</p>';
+
+    var claimedNorm = {};
+    claims.forEach(function (c) {
+      claimedNorm[normalise(c.nameRealm)] = true;
+    });
+    var unclaimed = (DATA.roster || [])
+      .filter(function (p) {
+        return !claimedNorm[normalise(p.nameRealm)];
+      })
+      .sort(function (a, b) {
+        return (a.nick || a.firstName).localeCompare(b.nick || b.firstName);
+      });
+    var unclaimedHtml = unclaimed.length
+      ? '<p style="color:var(--text-muted);font-size:1.02rem;margin-bottom:0.75rem;">Not yet claimed: ' +
+        unclaimed
+          .map(function (p) {
+            return escHtml(p.nick || p.firstName);
+          })
+          .join(', ') +
+        '</p>'
+      : '';
+
     if (!claims.length) {
-      el.innerHTML = '<p style="color:var(--text-muted);font-size:1.02rem;">No characters have been claimed yet.</p>';
+      el.innerHTML =
+        countHtml +
+        unclaimedHtml +
+        '<p style="color:var(--text-muted);font-size:1.02rem;">No characters have been claimed yet.</p>';
       return;
     }
     var rows = claims
@@ -1497,6 +1536,8 @@ function renderDiscordClaims() {
       })
       .join('');
     el.innerHTML =
+      countHtml +
+      unclaimedHtml +
       '<table class="loot-table" style="width:100%;table-layout:fixed;">' +
       '<thead><tr>' +
       '<th style="width:35%;text-align:left">Character</th>' +
