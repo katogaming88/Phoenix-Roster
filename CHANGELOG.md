@@ -8,6 +8,16 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.52.0] - 2026-08-05
+
+### Frontend
+
+- **The "claim your character" prompt stopped nagging raiders who don't need it.** Two fixes: (1) an account already claimed on a different team no longer gets the auto-popping claim modal when just visiting a team it's not on -- the inline "switch teams" card already handled this correctly, the modal just never checked; (2) the claim modal now has an "I don't have a character yet" option ([#512](https://github.com/katogaming88/WGA-Raid-Hub/issues/512)) that permanently dismisses both the modal and the inline card for that account, instead of reappearing on every visit forever.
+
+### Backend
+
+- Added `no_character_dismissals` (global, keyed on `auth_user_id`, no team scoping) -- a raider manages their own row directly via RLS (`auth_user_id = auth.uid()`), no RPC needed. See `supabase/migrations/20260805130058_no_character_dismissals.sql`.
+
 ## [3.51.2] - 2026-08-04
 
 ### Frontend
