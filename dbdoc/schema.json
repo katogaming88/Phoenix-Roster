@@ -350,12 +350,12 @@
       ],
       "triggers": [
         {
-          "name": "trg_bis_items_restrict_update",
-          "def": "CREATE TRIGGER trg_bis_items_restrict_update BEFORE UPDATE ON public.bis_items FOR EACH ROW EXECUTE FUNCTION restrict_bis_items_update_to_obtained()"
-        },
-        {
           "name": "trg_bis_items_updated_at",
           "def": "CREATE TRIGGER trg_bis_items_updated_at BEFORE UPDATE ON public.bis_items FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        },
+        {
+          "name": "trg_bis_items_restrict_update",
+          "def": "CREATE TRIGGER trg_bis_items_restrict_update BEFORE UPDATE ON public.bis_items FOR EACH ROW EXECUTE FUNCTION restrict_bis_items_update_to_obtained()"
         }
       ]
     },
@@ -1526,12 +1526,12 @@
       ],
       "triggers": [
         {
-          "name": "trg_priority_order_team_id_check",
-          "def": "CREATE TRIGGER trg_priority_order_team_id_check BEFORE INSERT OR UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
-        },
-        {
           "name": "trg_priority_order_updated_at",
           "def": "CREATE TRIGGER trg_priority_order_updated_at BEFORE UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        },
+        {
+          "name": "trg_priority_order_team_id_check",
+          "def": "CREATE TRIGGER trg_priority_order_team_id_check BEFORE INSERT OR UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
         }
       ]
     },
@@ -3862,6 +3862,82 @@
           "referenced_table": "",
           "columns": [
             "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.no_character_dismissals",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('no_character_dismissals_id_seq'::regclass)"
+        },
+        {
+          "name": "auth_user_id",
+          "type": "uuid",
+          "nullable": false
+        },
+        {
+          "name": "dismissed_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "no_character_dismissals_pkey",
+          "def": "CREATE UNIQUE INDEX no_character_dismissals_pkey ON public.no_character_dismissals USING btree (id)",
+          "table": "public.no_character_dismissals",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "no_character_dismissals_auth_user_id_key",
+          "def": "CREATE UNIQUE INDEX no_character_dismissals_auth_user_id_key ON public.no_character_dismissals USING btree (auth_user_id)",
+          "table": "public.no_character_dismissals",
+          "columns": [
+            "auth_user_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "no_character_dismissals_auth_user_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (auth_user_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+          "table": "public.no_character_dismissals",
+          "referenced_table": "auth.users",
+          "columns": [
+            "auth_user_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "no_character_dismissals_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.no_character_dismissals",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "no_character_dismissals_auth_user_id_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (auth_user_id)",
+          "table": "public.no_character_dismissals",
+          "referenced_table": "",
+          "columns": [
+            "auth_user_id"
           ]
         }
       ]

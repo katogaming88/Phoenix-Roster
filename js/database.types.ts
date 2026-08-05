@@ -489,6 +489,24 @@ export type Database = {
           }
         ];
       };
+      no_character_dismissals: {
+        Row: {
+          auth_user_id: string;
+          dismissed_at: string;
+          id: number;
+        };
+        Insert: {
+          auth_user_id: string;
+          dismissed_at?: string;
+          id?: number;
+        };
+        Update: {
+          auth_user_id?: string;
+          dismissed_at?: string;
+          id?: number;
+        };
+        Relationships: [];
+      };
       notifications: {
         Row: {
           created_at: string;

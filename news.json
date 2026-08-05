@@ -1,5 +1,12 @@
 [
   {
+    "date": "2026-08-05",
+    "category": "Fix",
+    "version": "3.52.0",
+    "title": "\"Claim your character\" prompt stops nagging raiders who don't need it",
+    "body": "It no longer pops up if you're already claimed on a different team, and now has an \"I don't have a character yet\" option that dismisses it for good."
+  },
+  {
     "date": "2026-08-04",
     "category": "Feature",
     "version": "3.51.1",

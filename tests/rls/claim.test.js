@@ -227,4 +227,52 @@ describe('on_auth_user_created backfills auth_user_id (trigger capture)', () => 
   });
 });
 
+// #512: permanent "I don't have a character yet" opt-out. Global (no
+// team_id), keyed on auth_user_id -- mirrors notifications.test.js's shape
+// for a simple is_own_player()-style self-service table, except this one's
+// RLS predicate is the raw column check inline (auth_user_id = auth.uid()),
+// not a helper function, since there's no join involved.
+describe('no_character_dismissals self-service RLS', () => {
+  it('a raider can insert and then read their own dismissal row', async () => {
+    await withTxn(async ({ asUser }) => {
+      await asUser(RAIDER_T1, 'insert into public.no_character_dismissals (auth_user_id) values ($1)', [RAIDER_T1]);
+      const res = await asUser(RAIDER_T1, 'select auth_user_id from public.no_character_dismissals');
+      expect(res.rows).toHaveLength(1);
+      expect(res.rows[0].auth_user_id).toBe(RAIDER_T1);
+    });
+  });
+
+  it('a raider cannot insert a dismissal row for a different account', async () => {
+    await withTxn(async ({ asUser }) => {
+      const other = '00000000-0000-0000-0000-0000000000ee';
+      await expect(
+        asUser(RAIDER_T1, 'insert into public.no_character_dismissals (auth_user_id) values ($1)', [other])
+      ).rejects.toThrow();
+    });
+  });
+
+  it("a raider does not see another account's dismissal row", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const other = '00000000-0000-0000-0000-0000000000ff';
+      await addAuthUser(q, other, 'discord-other-dismissal');
+      await q('insert into public.no_character_dismissals (auth_user_id) values ($1)', [other]);
+      const res = await asUser(RAIDER_T1, 'select id from public.no_character_dismissals where auth_user_id = $1', [
+        other
+      ]);
+      expect(res.rows).toHaveLength(0);
+    });
+  });
+
+  it('anon cannot insert or read any dismissal row', async () => {
+    await withTxn(async ({ q, asAnon }) => {
+      await q('insert into public.no_character_dismissals (auth_user_id) values ($1)', [RAIDER_T1]);
+      await expect(
+        asAnon('insert into public.no_character_dismissals (auth_user_id) values ($1)', [RAIDER_T1])
+      ).rejects.toThrow();
+      const res = await asAnon('select id from public.no_character_dismissals');
+      expect(res.rows).toHaveLength(0);
+    });
+  });
+});
+
 afterAll(() => pool.end());

@@ -30,6 +30,8 @@ items,Public read items,public,SELECT,PERMISSIVE,true,
 mplus_exclusion_requests,Claude readers read mplus_exclusion_requests,claude_readers,SELECT,PERMISSIVE,true,
 mplus_exclusion_requests,Officers read mplus_exclusion_requests,public,SELECT,PERMISSIVE,"((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())",
 mplus_exclusion_requests,Officers update mplus_exclusion_requests,public,UPDATE,PERMISSIVE,"((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())","((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())"
+no_character_dismissals,Claude readers read no_character_dismissals,claude_readers,SELECT,PERMISSIVE,true,
+no_character_dismissals,Raiders manage own no_character_dismissal,public,ALL,PERMISSIVE,(auth_user_id = auth.uid()),(auth_user_id = auth.uid())
 notifications,Claude readers read notifications,claude_readers,SELECT,PERMISSIVE,true,
 notifications,Raiders mark own notifications read,public,UPDATE,PERMISSIVE,is_own_player(player_id),is_own_player(player_id)
 notifications,Raiders read own notifications,public,SELECT,PERMISSIVE,is_own_player(player_id),

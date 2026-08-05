@@ -248,8 +248,18 @@ function resolveDiscordSession(session) {
           isGuildOfficer: !!guildOfficerResult.data
         };
         if (nameRealm) return mapped;
-        return findClaimElsewhere(session.user.id).then(function (elsewhere) {
-          mapped.claimedElsewhere = elsewhere;
+        // Both only matter once nameRealm is already known to be empty --
+        // claimedElsewhere (#368) and dismissedNoCharacter (#512) each
+        // suppress the claim prompt for a different reason (claimed on a
+        // different team vs. explicitly said "no character"), so both are
+        // checked together in one parallel round-trip rather than two
+        // sequential ones.
+        return Promise.all([
+          findClaimElsewhere(session.user.id),
+          supabaseClient.from('no_character_dismissals').select('id').eq('auth_user_id', session.user.id).maybeSingle()
+        ]).then(function (results) {
+          mapped.claimedElsewhere = results[0];
+          mapped.dismissedNoCharacter = !!results[1].data;
           return mapped;
         });
       });
@@ -333,8 +343,11 @@ function initDiscordLogin() {
           setDiscordSession(mapped);
           renderDiscordNav(mapped);
           if (typeof onDiscordLoginComplete === 'function') onDiscordLoginComplete(mapped);
-          if (!mapped.nameRealm) {
-            // First login -- no character claimed yet, show the claiming modal
+          // No unclaimed-character popup when the account is already claimed
+          // on a different team (claimedElsewhere -- the inline landing card
+          // already handles that case by pointing them to switch teams) or
+          // has explicitly dismissed the prompt (dismissedNoCharacter, #512).
+          if (!mapped.nameRealm && !mapped.claimedElsewhere && !mapped.dismissedNoCharacter) {
             showDiscordClaimModal(mapped);
           }
         })
@@ -471,6 +484,36 @@ function submitCharacterClaim() {
     })
     .catch(function () {
       claimFailed();
+    });
+}
+
+// #512: permanent "no character, stop asking" opt-out -- inserts one row
+// into no_character_dismissals for this account (global, not per-team; RLS
+// only lets a caller write their own auth_user_id) and patches the cached
+// session so both the modal's auto-popup and the landing-page inline card
+// (_renderClaimPrompt, js/officer-quick-actions.js) stop showing immediately,
+// not just after the next login. ignoreDuplicates makes a double-click race
+// a harmless no-op instead of a unique-violation error.
+function dismissNoCharacterClaim() {
+  var session = getDiscordSession();
+  if (!session || !session.authUserId || !supabaseClient) return;
+
+  var btn = document.querySelector('#discordClaimModal .claim-dismiss-btn');
+  if (btn) btn.disabled = true;
+
+  supabaseClient
+    .from('no_character_dismissals')
+    .upsert({ auth_user_id: session.authUserId }, { onConflict: 'auth_user_id', ignoreDuplicates: true })
+    .then(function (result) {
+      if (btn) btn.disabled = false;
+      if (result.error) return;
+      var updated = Object.assign({}, session, { dismissedNoCharacter: true });
+      setDiscordSession(updated);
+      closeDiscordClaimModal();
+      if (typeof onDiscordClaimComplete === 'function') onDiscordClaimComplete(updated);
+    })
+    .catch(function () {
+      if (btn) btn.disabled = false;
     });
 }
 

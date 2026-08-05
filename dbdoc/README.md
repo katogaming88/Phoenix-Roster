@@ -43,6 +43,7 @@
 | [public.incoming_roster](public.incoming_roster.md) | 7 |  | VIEW |
 | [public.guild_officers](public.guild_officers.md) | 3 |  | BASE TABLE |
 | [public.tier_token_map](public.tier_token_map.md) | 5 |  | BASE TABLE |
+| [public.no_character_dismissals](public.no_character_dismissals.md) | 3 |  | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -550,6 +551,11 @@ erDiagram
   text class
   integer resolved_item_id FK
   timestamp_with_time_zone created_at
+}
+"public.no_character_dismissals" {
+  integer id
+  uuid auth_user_id FK
+  timestamp_with_time_zone dismissed_at
 }
 ```
 
