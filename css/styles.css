@@ -82,13 +82,14 @@ body { background:var(--bg); color:var(--text); font-family:'Rajdhani',sans-seri
 .modal-title { font-family:'Cinzel',serif; font-size:1rem; color:var(--gold-light); letter-spacing:0.1em; margin:0; }
 .modal-body { font-size:1.07rem; color:var(--text-muted); margin:0; }
 .modal-actions { display:flex; gap:0.5rem; }
-/* #512: the claim modal is the only .modal-actions with 3 buttons instead of
-   2 -- flex:1 gives each an equal share so the gap on both sides of the
-   middle "I don't have a character yet" button matches, instead of the
-   default content-width sizing leaving uneven space around it. Scoped to
-   this modal only; other .modal-actions (e.g. admin.html's 2-button ones)
-   keep their existing content-width sizing. */
-.discord-claim-box .modal-actions .btn { flex:1; }
+/* #512: Confirm/Cancel default to content-width, left-packed with dead space
+   on the right -- looks unbalanced now that the full-width "I don't have a
+   character yet" button sits directly above it. flex:1 splits the row
+   evenly; min-width:0 overrides flex's own min-width:auto default so a
+   button can actually shrink to its share instead of refusing to go below
+   its content's natural width (harmless here with only 2 short-text buttons,
+   but cheap insurance against the same overflow this modal hit with 3). */
+.discord-claim-box .modal-actions .btn { flex:1; min-width:0; }
 .form-error { font-size:1rem; color:var(--melee); margin:0; }
 .form-error-link { color:inherit; text-decoration:underline; }
 .claim-modal-team-switch { display:flex; align-items:center; gap:0.6rem; font-size:1rem; color:var(--text-muted); }
