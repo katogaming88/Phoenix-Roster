@@ -8,6 +8,16 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.52.2] - 2026-08-06
+
+### Frontend
+
+- **"Start New Season" now also wipes M+/Crafted/Catalyst BiS placeholder entries**, not just real item picks -- every BiS list/wishlist is per-season, and what a raider wants from a Mythic+ vault or has crafted can target a completely different slot next tier, so there's no reason to carry a stale placeholder forward any more than a stale real-item pick. The archive confirmation dialog's copy was updated to match (previously said these entries were kept).
+
+### Backend
+
+- `archive_current_season()`'s `bis_items` wipe dropped its `is_placeholder` exclusion -- see Frontend note above. The season-history snapshot was already unfiltered by `is_placeholder`, so nothing changes about what's preserved in history. See `docs/database-decisions.md` for details.
+
 ## [3.52.1] - 2026-08-05
 
 ### Frontend

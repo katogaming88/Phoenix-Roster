@@ -8,6 +8,14 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-08-06 -- `archive_current_season()`: wipe placeholder BiS entries too, not just real items
+
+Decided directly in conversation (no tracking issue), found while walking through what "Start New Season" does before running it on Phoenix tonight.
+
+- **Previous behavior (#498)**: the season-end `bis_items` wipe explicitly excluded placeholder rows (`and not i.is_placeholder` in the DELETE) -- items tagged as "Other Sources" (M+/Crafted/Catalyst), which have no real `wow_item_id` and exist purely to flag a slot as covered by something other than a raid drop. Real item picks were wiped; these carried forward untouched.
+- **Why that's wrong**: per Kat, every BiS list/wishlist is scoped to a season the same as real items are -- what a raider wants from a Mythic+ vault, or has crafted, can target a completely different slot next tier. There's no more reason to carry a stale placeholder forward than a stale real-item pick.
+- **Fix**: dropped the `is_placeholder` exclusion from the DELETE in `archive_current_season()` -- the whole `bis_items` table gets wiped for the active roster on archive, not just the real-item subset. The season-history snapshot (`v_bis_snapshot`) was never filtered by `is_placeholder` in the first place, so nothing changes about what's preserved in `seasonHistory`. Implemented in `20260806210047_archive_season_wipe_placeholder_bis.sql`, function body only -- no RLS or schema change. Confirmation-dialog copy in `js/tabs/tab-season.js` updated to match (previously said "M+/Crafted/Catalyst entries are kept").
+
 ## 2026-08-06 -- `add_signup_to_roster()`: carry `join_date` to the new character on a main-swap archive
 
 Decided directly in conversation (no tracking issue), found while walking through what Phoenix's "Start New Season" / pending-roster push would do before running it tonight.
