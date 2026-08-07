@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.53.2] - 2026-08-07
+
+### Frontend
+
+- **Fixed the officer dashboard's "Items Distributed" stat card (and the public landing page's "Items This Tier" stat) counting every season instead of just the current one.** `DATA.lootCounts` aggregates loot across the team's entire history with no season filter, so both cards were summing the pre-computed all-time `count`/`heroicCount`/`mythicCount` fields on each entry. Both now filter each player's individual loot entries by the active season, same approach the public roster page's recent-loot feed already used.
+
 ## [3.53.1] - 2026-08-06
 
 ### Frontend
