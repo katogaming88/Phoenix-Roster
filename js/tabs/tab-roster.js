@@ -14,8 +14,8 @@
 // from classes_specs.role, not stored), so unlike the old sheet, class and
 // spec can't be written independently -- see docs/database-decisions.md. The
 // Class dropdown only repopulates the Spec dropdown; the actual write fires
-// from the single Player Settings Save button, along with Name/Realm and
-// Joined Date if changed (officerSavePlayerSettings, #489).
+// from the single Player Settings Save button, along with Name/Realm,
+// Joined Date, and Nickname if changed (officerSavePlayerSettings, #489).
 
 function findRosterPlayer(nameRealm) {
   return (
@@ -59,7 +59,8 @@ var ROSTER_FIELD_COLUMN = {
   isBackupHealer: 'is_backup_healer',
   joinDate: 'join_date',
   mPlusExcluded: 'm_plus_excluded',
-  officerNote: 'officer_notes'
+  officerNote: 'officer_notes',
+  nick: 'nickname'
 };
 var ROSTER_FIELD_AUDIT_LABEL = {
   isTrial: 'Trial Status Changed',
@@ -68,10 +69,11 @@ var ROSTER_FIELD_AUDIT_LABEL = {
   isBackupHealer: 'Backup Healer Status Changed',
   joinDate: 'Join Date Changed',
   mPlusExcluded: 'M+ Exclusion Toggled',
-  officerNote: 'Officer Note Changed'
+  officerNote: 'Officer Note Changed',
+  nick: 'Nickname Changed'
 };
 // Fields that store their raw value as-is rather than coercing to boolean.
-var ROSTER_FIELD_RAW_VALUE = { joinDate: true, officerNote: true };
+var ROSTER_FIELD_RAW_VALUE = { joinDate: true, officerNote: true, nick: true };
 
 function rosterFieldAuditDetail(field, value) {
   if (field === 'isTrial') return value ? 'Trial added' : 'Trial removed';
@@ -81,6 +83,7 @@ function rosterFieldAuditDetail(field, value) {
   if (field === 'joinDate') return 'Changed to ' + value;
   if (field === 'mPlusExcluded') return value ? 'Excluded' : 'Exclusion removed';
   if (field === 'officerNote') return value ? 'Changed to ' + value : 'Cleared';
+  if (field === 'nick') return value ? 'Changed to ' + value : 'Cleared';
   return null;
 }
 
@@ -1017,8 +1020,9 @@ function renamePlayerSupabase(oldNameRealm, newNameRealm) {
 // Single Save action for the whole Player Settings panel (#489): commits
 // Class, Spec, Name, Realm, and Joined Date together instead of each having
 // its own auto-save or Save button. Class+Spec always write (they resolve to
-// one class_spec_id FK, so both must be valid every time); Name/Realm and
-// Joined Date only write if actually changed from the current player record.
+// one class_spec_id FK, so both must be valid every time); Name/Realm,
+// Joined Date, and Nickname only write if actually changed from the current
+// player record.
 function officerSavePlayerSettings(nameRealm, firstName) {
   var player = findRosterPlayer(nameRealm);
   if (!player) return;
@@ -1048,12 +1052,21 @@ function officerSavePlayerSettings(nameRealm, firstName) {
   var newJoinDate = joinDateInput ? joinDateInput.value : player.joinDate || '';
   var joinDateChanged = newJoinDate !== (player.joinDate || '');
 
+  var nicknameInput = document.getElementById('editNicknameInput-' + firstName);
+  var newNickname = nicknameInput ? nicknameInput.value.trim() : player.nick || '';
+  var nicknameChanged = newNickname !== (player.nick || '');
+
   if (msgEl) msgEl.textContent = 'Saving...';
 
   var chain = updateClassSpecSupabase(nameRealm, classValue, specValue);
   if (joinDateChanged) {
     chain = chain.then(function () {
       return updateRosterFieldSupabase(nameRealm, 'joinDate', newJoinDate);
+    });
+  }
+  if (nicknameChanged) {
+    chain = chain.then(function () {
+      return updateRosterFieldSupabase(nameRealm, 'nick', newNickname);
     });
   }
   if (renamed) {
@@ -1071,6 +1084,9 @@ function officerSavePlayerSettings(nameRealm, firstName) {
     if (joinDateChanged) {
       player.joinDate = newJoinDate;
       buildTrialPromoAlert();
+    }
+    if (nicknameChanged) {
+      player.nick = newNickname || null;
     }
 
     if (renamed) {
