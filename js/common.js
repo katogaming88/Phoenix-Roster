@@ -4679,6 +4679,15 @@ function renderProfile(firstName, backTo, container) {
   var attendPct = getDisplayAttendancePct(player);
   var barWidth = attendPct;
   var attendDetail = (DATA.attendanceDetails || {})[player.firstName] || [];
+  // Same season-scoping as renderAttendTrend -- mapSupabaseAttendanceDetails
+  // returns full history, so without this a new season's "click to expand"
+  // list still shows the previous season's No Show/Excused/Late nights.
+  var attendRange = getSeasonDateRange();
+  if (attendRange.start || attendRange.end) {
+    attendDetail = attendDetail.filter(function (r) {
+      return (!attendRange.start || r.date >= attendRange.start) && (!attendRange.end || r.date <= attendRange.end);
+    });
+  }
   var hasPenalties = attendDetail.length > 0;
   var attendExtra = '';
   if (hasPenalties) {
