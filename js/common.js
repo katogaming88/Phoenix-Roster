@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.52.2';
+var VERSION = '3.53.0';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -5292,6 +5292,14 @@ function renderProfile(firstName, backTo, container) {
       '" class="self-received-source" style="font-size:1.04rem;padding:0.25rem 0.5rem;max-width:10rem;">' +
       realmOptHtml +
       '</select>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:0.75rem;">' +
+      '<span style="font-size:1.04rem;color:var(--text-muted);min-width:3.5rem;">Nickname</span>' +
+      '<input type="text" id="editNicknameInput-' +
+      player.firstName +
+      '" value="' +
+      escHtml(player.nick || '') +
+      '" placeholder="(optional)" class="self-received-source" style="font-size:1.04rem;padding:0.25rem 0.5rem;max-width:9rem;">' +
       '</div>' +
       '<div style="display:flex;align-items:center;gap:0.75rem;">' +
       '<span style="font-size:1.04rem;color:var(--text-muted);min-width:3.5rem;">Trial</span>' +

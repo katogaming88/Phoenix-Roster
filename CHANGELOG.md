@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.53.0] - 2026-08-06
+
+### Frontend
+
+- **The officer dashboard's Player Settings panel can now edit a roster member's nickname**, not just set one when first adding a player. Previously the only way to change an existing player's nickname was to overwrite it via the Name/Realm field, which actually renames the character record. Saves together with the rest of the panel's fields.
+
 ## [3.52.2] - 2026-08-06
 
 ### Frontend
