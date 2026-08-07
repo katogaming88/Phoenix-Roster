@@ -8,6 +8,15 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-08-06 -- `add_signup_to_roster()`: carry `join_date` to the new character on a main-swap archive
+
+Decided directly in conversation (no tracking issue), found while walking through what Phoenix's "Start New Season" / pending-roster push would do before running it tonight.
+
+- **Root cause**: same shape as the `team_member_id` fix below (2026-08-03) but a separate gap the original fix didn't cover. On a genuine main-swap (new character name/realm, distinct from the old one), the new `players` row is a plain insert with `join_date = current_date` -- there's no `(team_id, name_realm)` conflict to trigger the on-conflict branch that would otherwise preserve an existing date. Every main-swap silently reset the raider's displayed tenure to "today."
+- **Fix**: capture the archived row's `join_date` alongside `team_member_id`, then apply it to the new row only if the new row's `join_date` is still today's date (i.e. it went through the plain-insert path, not the on-conflict reactivation path). Implemented in `20260806202156_add_signup_to_roster_carry_join_date.sql`, same 5-arg signature -- function body only, no RLS or schema change.
+- **Reactivating a previously-archived alt as the swap target still lands on the swapped-from date, not the alt's own original history.** The existing on-conflict branch already refreshes a reactivated archived character's `join_date` to today (same as it refreshes `is_trial`) regardless of this fix -- so there was never an "alt's own date" being preserved for this fix to protect. The swap-carry logic runs after that refresh and overwrites the resulting today's-date with the swapped-from date, same as the plain-insert case. Covered by `tests/rls/promotion.test.js`.
+- **No backfill.** Unlike the `team_member_id` fix, this doesn't correct any already-processed signups -- Phoenix's roster push happens after this migration ships, so nothing needed fixing retroactively.
+
 ## 2026-08-03 -- `add_signup_to_roster()`: carry `team_member_id` to the new character on a main-swap archive
 
 Decided directly in conversation (no tracking issue): found while investigating why a Hellfire officer (Crilynn-Nesingwary, `team_members.role = 'officer'`) lost dashboard access after a main-swap signup archived her old character in favor of a new one (Vellisara-Nesingwary).

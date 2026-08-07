@@ -170,6 +170,52 @@ describe('main swap archiving', () => {
       expect(other.archived_at).toBeNull();
     });
   });
+
+  it("carries the old character's join_date to the new one instead of resetting to today", async () => {
+    await withTxn(async (q, asOfficer) => {
+      const old = await q(
+        `insert into public.players (team_id, name_realm, class_spec_id, join_date)
+         values (1, 'Oldmain-Illidan', 1, '2024-03-15') returning id`
+      );
+      const oldId = old.rows[0].id;
+
+      const res = await promote(asOfficer, APPROVED_SIGNUP, true, oldId);
+      const newId = res.rows[0].player_id;
+
+      const newPlayer = (await q('select join_date::text as join_date_text from public.players where id = $1', [newId]))
+        .rows[0];
+      expect(newPlayer.join_date_text).toBe('2024-03-15');
+    });
+  });
+
+  it("swap onto a reactivated same-name-realm alt still carries the swapped-from join_date, not the alt's own pre-archive date", async () => {
+    // The on-conflict reactivation path (see 'returning archived character'
+    // above) already refreshes join_date to today on its own, discarding
+    // whatever the alt's own original date was -- so there's no "restore the
+    // alt's own history" behavior to preserve here. The swap-carry logic then
+    // overwrites that today's-date with the swapped-from character's date,
+    // same as the plain-insert case, keeping "main swap = continuation of
+    // tenure" true even when the destination happens to be a known alt.
+    await withTxn(async (q, asOfficer) => {
+      const old = await q(
+        `insert into public.players (team_id, name_realm, class_spec_id, join_date)
+         values (1, 'Oldmain2-Illidan', 1, '2024-03-15') returning id`
+      );
+      const oldId = old.rows[0].id;
+      await q(
+        `insert into public.players (team_id, name_realm, class_spec_id, join_date, archived_at)
+         values (1, $1, 1, '2023-06-01', now())`,
+        [APPROVED_NAME]
+      );
+
+      const res = await promote(asOfficer, APPROVED_SIGNUP, true, oldId);
+      const newId = res.rows[0].player_id;
+
+      const newPlayer = (await q('select join_date::text as join_date_text from public.players where id = $1', [newId]))
+        .rows[0];
+      expect(newPlayer.join_date_text).toBe('2024-03-15');
+    });
+  });
 });
 
 describe('season_signups_player_only_when_added CHECK', () => {
