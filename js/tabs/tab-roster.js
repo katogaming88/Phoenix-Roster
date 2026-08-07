@@ -146,12 +146,23 @@ function buildStatsBar() {
   }
   var avgAttend = attendCount ? Math.round(totalAttend / attendCount) : 0;
   var avgColor = attendColor(avgAttend);
+  // DATA.lootCounts carries every season for the team (js/common.js
+  // fetchSupabaseLoot has no season filter) -- count/heroicCount/mythicCount
+  // are all-time aggregates, so scoping to the active season means walking
+  // each entry's items[] and filtering by season ourselves, same as
+  // buildRecentLoot() does on the public roster page.
   var totalItems = 0;
   var lootMap = DATA.lootCounts || {};
   var lootKeys = Object.keys(lootMap);
-  var countField = statItemsDiff === 'heroic' ? 'heroicCount' : statItemsDiff === 'mythic' ? 'mythicCount' : 'count';
+  var currentSeason = (DATA && DATA.seasonName) || '';
   for (var j = 0; j < lootKeys.length; j++) {
-    if (lootMap[lootKeys[j]]) totalItems += lootMap[lootKeys[j]][countField] || 0;
+    var lootItems = (lootMap[lootKeys[j]] && lootMap[lootKeys[j]].items) || [];
+    for (var m = 0; m < lootItems.length; m++) {
+      if (currentSeason && lootItems[m].season !== currentSeason) continue;
+      if (statItemsDiff === 'heroic' && lootItems[m].difficulty !== 'Heroic') continue;
+      if (statItemsDiff === 'mythic' && lootItems[m].difficulty !== 'Mythic') continue;
+      totalItems++;
+    }
   }
   var diffTip =
     statItemsDiff === 'heroic'
