@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.53.0';
+var VERSION = '3.53.1';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -3749,6 +3749,18 @@ function renderAttendTrend(firstName) {
   var trend = (DATA.recentAttendanceTrend || {})[firstName];
   if (!trend || !trend.length) return '';
 
+  // Season-scope the same way computeSeasonAttendancePct does, so a new
+  // season clears this graph instead of carrying the whole raid history
+  // forward under a new tier's profile card (ACTIVE_SEASON null = All
+  // Seasons, left as-is).
+  var range = getSeasonDateRange();
+  if (range.start || range.end) {
+    trend = trend.filter(function (n) {
+      return (!range.start || n.date >= range.start) && (!range.end || n.date <= range.end);
+    });
+  }
+  if (!trend.length) return '';
+
   var nights = trend.slice().reverse(); // oldest left, newest right
 
   // Aggregate by calendar month
@@ -5536,7 +5548,7 @@ function renderProfile(firstName, backTo, container) {
       lootCount +
       ' item' +
       (lootCount !== 1 ? 's' : '') +
-      (ACTIVE_SEASON ? ' — ' + ACTIVE_SEASON : ' this tier') +
+      (ACTIVE_SEASON ? ' — ' + ACTIVE_SEASON : ' all-time') +
       '</div>' +
       (lastItems.length
         ? (function () {

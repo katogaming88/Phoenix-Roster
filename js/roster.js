@@ -847,6 +847,14 @@ function bootRosterApp() {
     }
     loadData(
       function () {
+        // officer.html's ACTIVE_SEASON (js/common.js) is kept in sync with the
+        // live season by officer.js's populateSeasonSelector() -- this page
+        // never loads officer.js (no season dropdown here), so without this
+        // it stays stuck at its null ("All Seasons") default forever, and
+        // every player's profile card silently shows career totals mislabeled
+        // "this tier" for Items Received/attendance instead of the current
+        // season's.
+        ACTIVE_SEASON = (DATA && DATA.seasonName) || null;
         populateDropdown();
         buildPublicStats();
         buildProgression();
