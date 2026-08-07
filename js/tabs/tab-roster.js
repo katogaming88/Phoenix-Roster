@@ -1030,10 +1030,11 @@ function renamePlayerSupabase(oldNameRealm, newNameRealm) {
 
 // Single Save action for the whole Player Settings panel (#489): commits
 // Class, Spec, Name, Realm, and Joined Date together instead of each having
-// its own auto-save or Save button. Class+Spec always write (they resolve to
-// one class_spec_id FK, so both must be valid every time); Name/Realm,
-// Joined Date, and Nickname only write if actually changed from the current
-// player record.
+// its own auto-save or Save button. Class/Spec, Name/Realm, Joined Date, and
+// Nickname each only write (and audit-log) if actually changed from the
+// current player record -- the dropdowns always hold a valid combo since
+// they're required fields, but that doesn't mean it differs from what's
+// already saved.
 function officerSavePlayerSettings(nameRealm, firstName) {
   var player = findRosterPlayer(nameRealm);
   if (!player) return;
@@ -1067,9 +1068,11 @@ function officerSavePlayerSettings(nameRealm, firstName) {
   var newNickname = nicknameInput ? nicknameInput.value.trim() : player.nick || '';
   var nicknameChanged = newNickname !== (player.nick || '');
 
+  var specChanged = classValue !== (player.class || '') || specValue !== (player.spec || '');
+
   if (msgEl) msgEl.textContent = 'Saving...';
 
-  var chain = updateClassSpecSupabase(nameRealm, classValue, specValue);
+  var chain = specChanged ? updateClassSpecSupabase(nameRealm, classValue, specValue) : Promise.resolve();
   if (joinDateChanged) {
     chain = chain.then(function () {
       return updateRosterFieldSupabase(nameRealm, 'joinDate', newJoinDate);

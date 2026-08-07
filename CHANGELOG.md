@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.53.3] - 2026-08-07
+
+### Frontend
+
+- **Fixed the Player Settings panel logging a spurious "Spec Changed" audit entry on every save, even when only the nickname (or another field) actually changed.** Class/Spec always wrote to the database and audit log because the dropdowns always hold a valid selection (they're required fields) -- that was mistaken for "always changed". Now compares the selected class/spec against the player's current values and only writes/logs when they actually differ, same as Name/Realm, Joined Date, and Nickname already did.
+
 ## [3.53.2] - 2026-08-07
 
 ### Frontend
