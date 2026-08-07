@@ -8,6 +8,16 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-08-06 -- `add_signup_to_roster()`: compute join_date in America/New_York, not the session's UTC current_date
+
+Decided directly in conversation (no tracking issue), found live: pushing Phoenix's pending roster to active in the evening EDT set new characters' `join_date` one calendar day ahead (Aug 6 EDT showed as Aug 7).
+
+- **Root cause**: `add_signup_to_roster()` used bare `current_date` for a new character's `join_date`. Supabase's DB session runs in UTC by default (confirmed: `show timezone` -> UTC), so `current_date` is "today in UTC," not "today in the raid's local timezone." Past roughly 8pm EDT / 9pm EST, UTC has already rolled to the next calendar day. Same class of bug the rest of this codebase already accounts for elsewhere (`import_rclc_loot()`'s `awarded_at`, `mapSupabaseLoot()` in `js/common.js`) -- just missed here since `join_date` is a plain `date` column, not a `timestamptz`, so there was no obvious "at time zone" spot to reach for.
+- **Fix**: compute `v_today := (now() at time zone 'America/New_York')::date` once at the top of the function and use it everywhere `current_date` was used -- both the new-character `join_date` insert and the join_date-carry-over guard added earlier the same day (20260806202156), which compared against `current_date` too and inherited the same one-day-early cutoff.
+- **Test coverage**: `tests/rls/promotion.test.js` gained an assertion that a newly-created character's `join_date` matches `(now() at time zone 'America/New_York')::date` computed independently in the test -- proves the fix's actual behavior rather than depending on wall-clock luck (the bug is only externally observable as wrong in the roughly-4-hour daily window where UTC and America/New_York disagree on the date).
+- **Swept for the same bug elsewhere**: `current_date` only appears in this function's own migration history across the whole `supabase/migrations/` tree -- no other latent instance found.
+- **Known pre-existing bad data not covered by this migration**: Phoenix's roster push tonight straddled the UTC midnight rollover before this fix shipped -- 5 of the pushed characters landed with `join_date = 2026-08-07` instead of `2026-08-06` (`Saucewell-Area 52`, `Khaosmagi-Thrall`, `Sullÿ-Thrall`, `Drowzen-Moon Guard`, `Astraoneiros-Area 52`; ids 176/182/185/190/197). Corrected with a one-off `update ... where id in (...)` run directly against production -- the fix only prevents this going forward, it doesn't repair rows already written under the old function.
+
 ## 2026-08-06 -- `archive_current_season()`: wipe placeholder BiS entries too, not just real items
 
 Decided directly in conversation (no tracking issue), found while walking through what "Start New Season" does before running it on Phoenix tonight.
