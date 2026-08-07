@@ -8,6 +8,15 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.53.1] - 2026-08-06
+
+### Frontend
+
+- **Fixed the public roster's character profile card showing career-long Items Received and attendance instead of the current season's.** Only officer.html sets the season filter used to scope those sections (`ACTIVE_SEASON`, set via the officer dashboard's Season dropdown); index.html's profile card shares the same rendering code but never set it, so it silently stayed on "all seasons" forever, mislabeled "this tier" -- new-season loot/attendance never appeared cleared because it was actually still showing everything ever received/recorded. index.html now defaults it to the live season on load, same as officer.html does.
+- The attendance trend graph (the dots under the % bar) also ignored the season filter even on officer.html -- it always showed full raid history regardless of which season was selected, unlike the % number above it. Now scoped to the selected season's date range, same as the percentage.
+- Same fix for the public profile card's "click to expand" attendance detail list (No Show/Excused/Late nights) -- was also full history, so a new season's card still surfaced the previous season's flagged nights.
+- An officer explicitly viewing "All Seasons" on the officer dashboard now sees an honest "N items — all-time" label instead of the misleading "N items this tier".
+
 ## [3.53.0] - 2026-08-06
 
 ### Frontend
