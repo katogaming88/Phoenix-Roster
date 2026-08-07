@@ -376,10 +376,20 @@ document.getElementById('playerSelect').addEventListener('change', function (e) 
 });
 
 function buildPublicStats() {
+  // DATA.lootCounts carries every season for the team (see buildRecentLoot()
+  // below) -- "Items This Tier" needs the same per-item season filter, not
+  // the entry's all-time count.
   var loot = DATA.lootCounts || {};
   var totalItems = 0;
   var keys = Object.keys(loot);
-  for (var i = 0; i < keys.length; i++) totalItems += loot[keys[i]].count || 0;
+  var currentSeason = (DATA && DATA.seasonName) || '';
+  for (var i = 0; i < keys.length; i++) {
+    var items = loot[keys[i]].items || [];
+    for (var j = 0; j < items.length; j++) {
+      if (currentSeason && items[j].season !== currentSeason) continue;
+      totalItems++;
+    }
+  }
 
   var el = document.getElementById('landingStats');
   if (!el) return;
