@@ -110,15 +110,20 @@ describe('archive_current_season', () => {
     });
   });
 
-  // #498: a new tier is almost always a different loot table, so real-item
-  // bis_items rows are dead weight once archived -- snapshot them (placeholders
-  // included) into history, then wipe only the real-item rows. M+ exclusion
-  // means "doesn't need gear right now," which a new tier invalidates, so it
-  // resets for the whole active roster too. Bench resets the same way; trial
-  // status is deliberately left alone (still a Trial Promotions call).
-  // A submitted BiS link is cleared unconditionally too (20260731135713) --
-  // it's effectively per-tier regardless of which site it points to.
-  it('snapshots bis_items (placeholders included) into history, wipes real items and BiS link, and resets m+ exclusion and bench', async () => {
+  // #498: a new tier is almost always a different loot table, so bis_items
+  // rows are dead weight once archived -- snapshot everything (placeholders
+  // included) into history, then wipe the whole table for the active roster.
+  // Placeholders (M+/Crafted/Catalyst "Other Sources" tags) are wiped too,
+  // not just real items (20260806210047) -- every BiS list/wishlist is
+  // per-season, and what a raider wants from M+ or has crafted can change
+  // slot/target entirely next tier, so there's no reason to carry those
+  // forward either. M+ exclusion means "doesn't need gear right now," which
+  // a new tier invalidates, so it resets for the whole active roster too.
+  // Bench resets the same way; trial status is deliberately left alone
+  // (still a Trial Promotions call). A submitted BiS link is cleared
+  // unconditionally too (20260731135713) -- it's effectively per-tier
+  // regardless of which site it points to.
+  it('snapshots bis_items (placeholders included) into history, wipes all of it plus BiS link, and resets m+ exclusion and bench', async () => {
     await withActors(async (client, as) => {
       // items has no authenticated write policy (read-only shared catalog) --
       // seed as the unrestricted connection before dropping to a PostgREST role.
@@ -157,9 +162,9 @@ describe('archive_current_season', () => {
         ])
       );
 
-      // Real item (seed row, item 1) is gone; placeholder (item 900) survives.
+      // Both the real item (seed row, item 1) and the placeholder (item 900) are gone.
       const remaining = await client.query(`select item_id from public.bis_items where player_id = 1 order by item_id`);
-      expect(remaining.rows.map((r) => r.item_id)).toEqual([900]);
+      expect(remaining.rows.map((r) => r.item_id)).toEqual([]);
 
       const player = await client.query(
         `select m_plus_excluded, m_plus_note, is_bench, is_trial, bis_link from public.players where id = 1`
