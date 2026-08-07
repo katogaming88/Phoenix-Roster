@@ -14,6 +14,10 @@ with each release split into `### Frontend` (drives the version number) and
 
 - The Roster tab's Discord Claims sub-tab now shows "N of M roster members have claimed a character" plus a list of who hasn't yet, so officers can see claim progress -- and who to nudge -- at a glance instead of cross-referencing the roster by hand.
 
+### Backend
+
+- Fixed `add_signup_to_roster()` silently resetting a raider's tenure to today on a main-swap: the new character was always a plain insert with `join_date = current_date`, since a genuine main-swap has no `(team_id, name_realm)` conflict to preserve an existing date through. Now carries the archived character's `join_date` forward, same fix pattern as the earlier `team_member_id` carry-over. See `docs/database-decisions.md` for details.
+
 ## [3.52.0] - 2026-08-05
 
 ### Frontend

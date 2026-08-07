@@ -68,10 +68,14 @@ begin
        where id = v_player_id and team_member_id is null;
     end if;
 
-    -- Only overwrite when the new row landed on today's date (the plain-insert
-    -- path above) -- a reactivated same-name-realm alt already preserved its
-    -- own original join_date via the on-conflict branch and shouldn't be
-    -- clobbered with the swapped-from character's date instead.
+    -- Only overwrite when the new row is still on today's date. That covers
+    -- both the plain-insert path above AND a reactivated same-name-realm alt:
+    -- the on-conflict branch already refreshes a reactivated archived
+    -- character's join_date to today too (same as it refreshes is_trial), so
+    -- there's no "alt's own original date" being protected here either way --
+    -- landing the swapped-from date on top of that today's-date keeps "main
+    -- swap = continuation of tenure" true even when the destination is a
+    -- known alt, not just a brand-new character.
     if v_archived_join_date is not null then
       update public.players set join_date = v_archived_join_date
        where id = v_player_id and join_date = current_date;
