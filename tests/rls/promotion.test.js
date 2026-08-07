@@ -69,6 +69,18 @@ describe('promotion of an approved signup', () => {
     });
   });
 
+  it("sets a new character's join_date to today in America/New_York, not the session's UTC current_date (20260806230556)", async () => {
+    await withTxn(async (q, asOfficer) => {
+      const res = await promote(asOfficer, APPROVED_SIGNUP);
+      const playerId = res.rows[0].player_id;
+
+      const player = (await q('select join_date::text as join_date_text from public.players where id = $1', [playerId]))
+        .rows[0];
+      const expected = (await q(`select (now() at time zone 'America/New_York')::date::text as today`)).rows[0].today;
+      expect(player.join_date_text).toBe(expected);
+    });
+  });
+
   it('removes the signup from pending_roster and incoming_roster', async () => {
     await withTxn(async (q, asOfficer) => {
       const before = await asOfficer('select count(*)::int as n from public.pending_roster where signup_id = $1', [

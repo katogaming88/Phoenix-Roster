@@ -17,6 +17,7 @@ with each release split into `### Frontend` (drives the version number) and
 ### Backend
 
 - `archive_current_season()`'s `bis_items` wipe dropped its `is_placeholder` exclusion -- see Frontend note above. The season-history snapshot was already unfiltered by `is_placeholder`, so nothing changes about what's preserved in history. See `docs/database-decisions.md` for details.
+- Fixed `add_signup_to_roster()` setting a new character's `join_date` one calendar day ahead in the evening -- it used the DB session's `current_date` (UTC), not the raid's local date. Past ~8pm EDT / 9pm EST, UTC had already rolled to the next day. Now computed explicitly in America/New_York. See `docs/database-decisions.md` for details, including which live rows needed a manual date correction.
 
 ## [3.52.1] - 2026-08-05
 
