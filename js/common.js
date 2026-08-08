@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.58.0';
+var VERSION = '3.58.1';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -3436,7 +3436,7 @@ function fetchPlayerItemPreferences(playerId) {
 // moves to the row's native title tooltip instead of its own line -- still
 // reachable on hover, without adding a permanent line to every row that has
 // one.
-function officerWishlistRowHTML(name, pref, labelOverrides) {
+function officerWishlistRowHTML(name, pref, labelOverrides, slot) {
   var tier = PROFILE_WISHLIST_STATUS_LABELS.filter(function (t) {
     return t.value === pref.status;
   })[0];
@@ -3444,6 +3444,13 @@ function officerWishlistRowHTML(name, pref, labelOverrides) {
   var icon = ((DATA && DATA.itemIcons) || {})[name];
   var iconImg = icon
     ? '<img src="https://wow.zamimg.com/images/wow/icons/large/' + icon + '.jpg" alt="" class="item-icon-sm">'
+    : '';
+  var slotHTML = slot
+    ? '<span style="font-size:0.85rem;font-weight:600;color:' +
+      getSlotColor(slot) +
+      ';white-space:nowrap;">' +
+      _esc(slot) +
+      '</span>'
     : '';
   return (
     '<div style="display:flex;align-items:center;gap:0.5rem;padding:0.25rem 0.5rem;border-radius:4px;' +
@@ -3454,6 +3461,7 @@ function officerWishlistRowHTML(name, pref, labelOverrides) {
     '<span style="color:var(--text);font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' +
     _esc(name) +
     '</span>' +
+    slotHTML +
     '<span style="font-size:0.85rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;white-space:nowrap;">' +
     _esc(label) +
     '</span>' +
@@ -3557,7 +3565,7 @@ function officerWishlistSectionHTML(player, backTo) {
 
   if (bisEntries.length) {
     bisEntries.forEach(function (e) {
-      html += officerWishlistRowHTML(e.item, e.pref, labelOverrides);
+      html += officerWishlistRowHTML(e.item, e.pref, labelOverrides, e.slot);
     });
   } else {
     html += '<p style="color:var(--text-muted);padding:0.3rem 0;">No BiS picks tagged yet.</p>';
@@ -3581,7 +3589,7 @@ function officerWishlistSectionHTML(player, backTo) {
     if (expanded) {
       html += '<div style="margin-top:0.3rem;">';
       otherEntries.forEach(function (e) {
-        html += officerWishlistRowHTML(e.item, e.pref, labelOverrides);
+        html += officerWishlistRowHTML(e.item, e.pref, labelOverrides, e.slot);
       });
       html += '</div>';
     }
