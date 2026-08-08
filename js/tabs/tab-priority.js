@@ -695,6 +695,10 @@ function renderWishlistIncompleteBanner() {
       // Wishlists Completed stat card (js/tabs/tab-roster.js) shows "-" until
       // this fetch resolves -- refresh it now that real data's in.
       if (typeof buildStatsBar === 'function') buildStatsBar();
+      // #478 onboarding checklist (js/tabs/tab-roster.js) also waits on this
+      // same fetch for its "wishlist not started" signal.
+      if (typeof buildOnboardingAlert === 'function') buildOnboardingAlert();
+      if (typeof buildRosterTable === 'function') buildRosterTable();
     });
     return;
   }

@@ -349,6 +349,7 @@ function buildOfficerDashboard() {
   buildRosterTable();
   buildRosterBuffCoverage();
   buildTrialPromoAlert();
+  buildOnboardingAlert();
   renderSignupToggle();
   renderBisToggle();
   renderWishlistToggle();

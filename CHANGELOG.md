@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.56.0] - 2026-08-08
+
+### Frontend
+
+- **New raiders now get a nudge to fill out their gear wishlist.** For anyone who joined the roster after the current season started (and within the last 30 days), a "Wishlist not started" badge shows on the officer roster table, a "New Raider Onboarding" alert card lists everyone still onboarding on the officer dashboard, and the raider's own profile card shows a welcome banner linking to the Wishlist tab -- all three disappear immediately once the raider adds their first wishlist entry, or once 30 days pass (#478).
+
 ## [3.55.0] - 2026-08-08
 
 ### Frontend

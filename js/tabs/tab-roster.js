@@ -331,6 +331,18 @@ function _rosterScoreCellHtml(p) {
   return '<span style="color:' + color + ';font-weight:600;">' + score.toFixed(2) + '</span>';
 }
 
+// #478 -- wishlist-not-started check backing the onboarding checklist.
+// Returns null when _teamItemPreferences (tab-priority.js) hasn't loaded yet
+// -- same "don't flash a false state" convention as buildStatsBar()'s
+// wishlistHtml above -- else true/false.
+function onboardingWishlistNotStarted(playerId) {
+  if (typeof _teamItemPreferences === 'undefined' || _teamItemPreferences === null) return null;
+  for (var i = 0; i < _teamItemPreferences.length; i++) {
+    if (_teamItemPreferences[i].player_id === playerId) return false;
+  }
+  return true;
+}
+
 function buildRosterTable() {
   _fetchTeamScoringIfNeeded();
   var order = ['Tank', 'Heal', 'Melee', 'Ranged', 'Bench'];
@@ -497,7 +509,14 @@ function buildRosterTable() {
         '<td>' +
         statusTags +
         '</td>' +
-        '<td></td>' +
+        '<td>' +
+        (seasonHasStarted() &&
+        joinedAfterSeasonStart(p) &&
+        isRecentJoiner(p, 30) &&
+        onboardingWishlistNotStarted(p.id) === true
+          ? '<span class="onboarding-badge" title="Joined within the last 30 days, no wishlist tags yet">Wishlist not started</span>'
+          : '') +
+        '</td>' +
         '</tr>';
       totalRows++;
     }
@@ -1358,6 +1377,81 @@ function buildTrialPromoAlert() {
       "','" +
       fnSafe +
       '\',this)">Promote</button></td>';
+    html += '</tr>';
+  }
+  html += '</tbody></table></div>';
+
+  el.innerHTML = html;
+}
+
+// #478 -- onboarding checklist alert: recently-joined (<=30 days) raiders
+// who haven't started their wishlist yet. Same shape as buildTrialPromoAlert
+// above; null _teamItemPreferences (not loaded yet) means "show nothing"
+// rather than a false-empty list, same as onboardingWishlistNotStarted's
+// null convention.
+function buildOnboardingAlert() {
+  var el = document.getElementById('onboardingAlert');
+  if (!el) return;
+  if (typeof _teamItemPreferences === 'undefined' || _teamItemPreferences === null) return;
+  if (!seasonHasStarted()) {
+    el.innerHTML = '';
+    return;
+  }
+
+  var roster = DATA.roster || [];
+  var pending = [];
+  for (var i = 0; i < roster.length; i++) {
+    var p = roster[i];
+    if (joinedAfterSeasonStart(p) && isRecentJoiner(p, 30) && onboardingWishlistNotStarted(p.id) === true)
+      pending.push(p);
+  }
+
+  if (!pending.length) {
+    el.innerHTML = '';
+    return;
+  }
+
+  pending.sort(function (a, b) {
+    return (b.joinDate || '').localeCompare(a.joinDate || '');
+  });
+
+  var html = '<div class="onboarding-alert-card">';
+  html += '<div class="onboarding-alert-header">';
+  html += '<span class="onboarding-alert-title">New Raider Onboarding</span>';
+  html += '<span class="onboarding-alert-count">' + pending.length + ' still onboarding</span>';
+  html += '</div>';
+  html +=
+    '<p style="font-size:0.97rem;color:var(--text-muted);margin:0 0 0.75rem;">Joined within the last 30 days, no wishlist tags yet.</p>';
+
+  html += '<table class="onboarding-alert-table"><thead><tr><th>Player</th><th>Joined</th></tr></thead><tbody>';
+  for (var j = 0; j < pending.length; j++) {
+    var pl = pending[j];
+    var plName = pl.nick || pl.firstName;
+    var plFnSafe = pl.firstName.replace(/'/g, "\\'");
+    var plRoleColor =
+      pl.role === 'Tank'
+        ? 'var(--tank)'
+        : pl.role === 'Heal'
+          ? 'var(--heal)'
+          : pl.role === 'Ranged'
+            ? 'var(--ranged)'
+            : 'var(--melee)';
+    html +=
+      '<tr class="onboarding-alert-row" onclick="officerSelectPlayer(\'' +
+      plFnSafe +
+      '\')" title="Open player profile">';
+    html += '<td><div class="player-name-cell">';
+    html +=
+      '<div class="mini-avatar" style="background:rgba(0,0,0,0.25);color:' +
+      plRoleColor +
+      ';border:2px solid ' +
+      plRoleColor +
+      ';">' +
+      plName.slice(0, 2).toUpperCase() +
+      '</div>';
+    html += '<span style="font-weight:600;color:var(--text);">' + plName + '</span>';
+    html += '</div></td>';
+    html += '<td style="color:var(--text-muted);">' + formatJoinDate(pl.joinDate) + '</td>';
     html += '</tr>';
   }
   html += '</tbody></table></div>';
