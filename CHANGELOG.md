@@ -13,6 +13,7 @@ with each release split into `### Frontend` (drives the version number) and
 ### Frontend
 
 - **The public progression card now tracks Heroic the same way it already tracks Mythic** -- each boss shows a live Heroic kill date (once cleared) or current pull count and best % remaining, with a report link when available. AOTC now updates itself automatically from the last boss's Heroic kill date instead of requiring an officer to click "Fetch from WCL" + Save in Season Settings (#629).
+- **The card's header score now shows Heroic progress (`x/y H`) while a raid is still working toward AOTC**, alongside Mythic (`x/y M`) once mythic pulls exist too -- instead of a static "0/x M" that looked like no progress at all while a guild farmed Heroic bosses ahead of AOTC. Switches to Mythic-only, permanently, the moment AOTC is achieved. The progress bar follows the same switch.
 
 ### Backend
 

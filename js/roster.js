@@ -515,27 +515,69 @@ function buildProgression() {
   for (var i = 0; i < raids.length; i++) {
     var raid = raids[i];
     var bosses = raid.bosses || [];
-    var killed = bosses.filter(function (b) {
+    var total = bosses.length;
+    var mythicKilled = bosses.filter(function (b) {
       return !!b.mythicDate;
     }).length;
-    var total = bosses.length;
-    var pct = total ? Math.round((killed / total) * 100) : 0;
+
+    // A first pass purely to know each boss's live progress before the
+    // header renders (heroicKilled count, and the last boss's heroic date
+    // for AOTC) -- the per-boss loop below looks each of these up again,
+    // which is a cheap map read, not worth threading through as state.
+    var heroicKilled = 0;
+    var lastProgress = null;
+    for (var h = 0; h < bosses.length; h++) {
+      var p = _raidProgressFor(raid, bosses[h]);
+      if (p && p.heroicDate) heroicKilled++;
+      if (h === bosses.length - 1) lastProgress = p;
+    }
+    // Prefers the live-synced Heroic kill date on the last boss (#629) over
+    // the officer-typed raid.aotcDate -- once wcl-progression-sync sees the
+    // Heroic kill, AOTC updates on its own with no manual "Fetch from WCL" +
+    // Save round trip. Falls back to raid.aotcDate when the sync hasn't
+    // caught up yet (or for seasons/raids synced before this existed).
+    var aotcDate = (lastProgress && lastProgress.heroicDate) || raid.aotcDate;
+
+    // Before AOTC, the header/bar track Heroic progress (what the team is
+    // actually working on) instead of a static "0/x M" that never moves
+    // until the guild starts pulling Mythic weeks later -- but still shows
+    // Mythic alongside it once mythic pulls exist, since guilds commonly
+    // start Mythic on farmed Heroic bosses before finishing the Heroic
+    // clear. Once AOTC is achieved, switches to Mythic-only, permanently
+    // (mirrors the AOTC badge's own !raid.isMiniRaid gate -- mini-raids
+    // have no AOTC concept, so they always show Mythic-only).
+    var showHeroic = !raid.isMiniRaid && !aotcDate && (heroicKilled > 0 || mythicKilled > 0);
+    var barKilled = showHeroic ? heroicKilled : mythicKilled;
+    var pct = total ? Math.round((barKilled / total) * 100) : 0;
+
     html += '<div class="prog-card">';
     html += '<div class="prog-header">';
-    html += '<span class="prog-score">' + killed + '/' + total + ' M</span>';
+    if (showHeroic) {
+      html += '<span class="prog-score-combo">';
+      html += '<span class="prog-score prog-score-heroic">' + heroicKilled + '/' + total + ' H</span>';
+      if (mythicKilled > 0) {
+        html += '<span class="prog-score">' + mythicKilled + '/' + total + ' M</span>';
+      }
+      html += '</span>';
+    } else {
+      html += '<span class="prog-score">' + mythicKilled + '/' + total + ' M</span>';
+    }
     html += '<span class="prog-raid-name">' + _esc(raid.name || 'Unnamed Raid') + '</span>';
     html += '</div>';
     if (total) {
-      html += '<div class="prog-bar-wrap"><div class="prog-bar" style="width:' + pct + '%"></div></div>';
+      html +=
+        '<div class="prog-bar-wrap"><div class="prog-bar' +
+        (showHeroic ? ' prog-bar-heroic' : '') +
+        '" style="width:' +
+        pct +
+        '%"></div></div>';
     }
-    var lastProgress = null;
     if (bosses.length) {
       html += '<div class="prog-bosses">';
       for (var j = 0; j < bosses.length; j++) {
         var boss = bosses[j];
         var killed_ = !!boss.mythicDate;
         var progress = _raidProgressFor(raid, boss);
-        if (j === bosses.length - 1) lastProgress = progress;
         html += '<div class="prog-boss-item">';
         html += '<div class="prog-boss' + (killed_ ? ' prog-boss-killed' : '') + '">';
         html += '<span class="prog-boss-num">' + (j + 1) + '</span>';
@@ -548,12 +590,6 @@ function buildProgression() {
       }
       html += '</div>';
     }
-    // Prefers the live-synced Heroic kill date on the last boss (#629) over
-    // the officer-typed raid.aotcDate -- once wcl-progression-sync sees the
-    // Heroic kill, AOTC updates on its own with no manual "Fetch from WCL" +
-    // Save round trip. Falls back to raid.aotcDate when the sync hasn't
-    // caught up yet (or for seasons/raids synced before this existed).
-    var aotcDate = (lastProgress && lastProgress.heroicDate) || raid.aotcDate;
     if (!raid.isMiniRaid && aotcDate) {
       html += '<div class="prog-aotc">AOTC <span class="prog-aotc-date">' + aotcDate + '</span></div>';
     }
