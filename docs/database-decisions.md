@@ -8,6 +8,16 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-08-07 -- `update_own_signup()`: allow editing an already-`added` signup while its season is still open
+
+Decided directly in conversation (no tracking issue), found from a screenshot: a raider already promoted to the roster (`status = 'added'`) saw a hard "signup details are locked" message even while the team's signup window for that season was still open and other raiders were still submitting.
+
+- **Root cause**: `update_own_signup()` (from #500) locked any `status = 'added'` row outright, treating "already on the roster" as always meaning "the signup window is closed." Those aren't the same thing -- an officer can (and routinely does) promote signups while the season's signup window stays open for everyone else.
+- **The season-open check is free**: `get_own_signup()` already only returns an `added` row while its `season` still matches `team_settings.config.activeSignupSeason` -- once an officer moves that setting on, the row stops coming back and the raider gets a fresh form instead. So "the raider is looking at their added signup" and "signups for that season are still open" were already the same fact; `update_own_signup()` just wasn't using it. The fix re-derives the same check server-side (season match) rather than trusting the client.
+- **Edit does not touch the live roster directly.** Considered auto-syncing the edited name/class/spec straight onto the `players` row `add_signup_to_roster()` already created, but Kat rejected that -- an officer should still have to approve any change to someone already on the roster. Instead, editing an `added` signup reverts it to `pending` (clearing `approved_player_id`/`reviewed_at`/`reviewed_by`/`signup_officer_note`, same as the existing `approved`-not-yet-promoted edit path from #500) and sends it back through normal officer review + a fresh `add_signup_to_roster()` promotion, which naturally applies the edit via its existing upsert-by-`name_realm` behavior.
+- **`approved_player_id` is nulled alongside the status revert** -- required by the pre-existing `season_signups_player_only_when_added` CHECK (only `added` rows may have it set).
+- Implemented in `20260807232530_update_own_signup_allow_added_while_open.sql`, function body only -- no RLS or schema change. `docs/RLS.md`'s `update_own_signup` entry and `tests/rls/own-signup.test.js` updated to match.
+
 ## 2026-08-06 -- `add_signup_to_roster()`: compute join_date in America/New_York, not the session's UTC current_date
 
 Decided directly in conversation (no tracking issue), found live: pushing Phoenix's pending roster to active in the evening EDT set new characters' `join_date` one calendar day ahead (Aug 6 EDT showed as Aug 7).

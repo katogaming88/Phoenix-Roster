@@ -8,6 +8,16 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.54.0] - 2026-08-07
+
+### Frontend
+
+- **A raider already added to the roster can now edit their signup while the team's signup window for that season is still open**, instead of seeing it hard-locked as soon as an officer promoted them. Editing sends the signup back through officer review (reverting to Pending) rather than writing the roster directly -- an officer still has to approve the change before it takes effect.
+
+### Backend
+
+- `update_own_signup()`: allows editing an `added` signup while its `season` still matches the team's active signup season (the same condition `get_own_signup()` already requires to show the raider that row at all). The edit reverts the signup to `pending` for re-review instead of touching the `players` roster row directly.
+
 ## [3.53.3] - 2026-08-07
 
 ### Frontend
