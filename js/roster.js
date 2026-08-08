@@ -539,14 +539,16 @@ function buildProgression() {
     var aotcDate = (lastProgress && lastProgress.heroicDate) || raid.aotcDate;
 
     // Before AOTC, the header/bar track Heroic progress (what the team is
-    // actually working on) instead of a static "0/x M" that never moves
-    // until the guild starts pulling Mythic weeks later -- but still shows
-    // Mythic alongside it once mythic pulls exist, since guilds commonly
-    // start Mythic on farmed Heroic bosses before finishing the Heroic
-    // clear. Once AOTC is achieved, switches to Mythic-only, permanently
-    // (mirrors the AOTC badge's own !raid.isMiniRaid gate -- mini-raids
-    // have no AOTC concept, so they always show Mythic-only).
-    var showHeroic = !raid.isMiniRaid && !aotcDate && (heroicKilled > 0 || mythicKilled > 0);
+    // actually working on, including a brand-new raid with zero kills in
+    // either difficulty -- it's still a Heroic clear waiting to happen, not
+    // a Mythic one) instead of a static "0/x M" that never moves until the
+    // guild starts pulling Mythic weeks later. Shows Mythic alongside it
+    // once mythic pulls exist, since guilds commonly start Mythic on farmed
+    // Heroic bosses before finishing the Heroic clear. Once AOTC is
+    // achieved, switches to Mythic-only, permanently (mirrors the AOTC
+    // badge's own !raid.isMiniRaid gate -- mini-raids have no AOTC concept,
+    // so they always show Mythic-only).
+    var showHeroic = !raid.isMiniRaid && !aotcDate;
     var barKilled = showHeroic ? heroicKilled : mythicKilled;
     var pct = total ? Math.round((barKilled / total) * 100) : 0;
 
