@@ -600,7 +600,12 @@ function _priorityWishlistMissingRows(prefs, idToName, itemSlots, officerBuckets
     _priorityItemRows(p.item_id, p.slot || null, idToName, itemSlots).forEach(function (row) {
       taggedRows[row] = true;
     });
-    if (p.status === 'bis' && !p.slot) {
+    // Mirrors js/wishlist.js's wishlistCompleteness() fix: p.slot is now
+    // 'Weapon' (not null) for anything tagged since dual-wield fan-out
+    // (DUAL_WIELD_CLASSES) added Weapon/Off Hand to WISHLIST_DISAMBIGUATE_SLOTS.
+    // Off Hand itself deliberately excluded -- a One-Hand BiS *there* fills
+    // Off Hand, it doesn't require it.
+    if (p.status === 'bis' && (p.slot === 'Weapon' || !p.slot)) {
       var name = idToName[p.item_id];
       if (name && itemSlots[name] === 'One-Hand') offHandRequired = true;
     }

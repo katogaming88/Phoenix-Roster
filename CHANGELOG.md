@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.57.0] - 2026-08-08
+
+### Frontend
+
+- **Dual-wield classes (Death Knight, Demon Hunter, Monk, Rogue, Shaman, Warrior) can now tag a second one-handed weapon for Off Hand** on both the raider Wishlist and the officer BiS grid. Previously the Off Hand row only ever accepted true off-hand-slot items (shields, tomes/orbs), so a Frost DK dual-wielding two one-handers had nowhere to tag their off-hand pick at all -- reported by a raider stuck exactly there.
+
 ## [3.56.0] - 2026-08-08
 
 ### Frontend

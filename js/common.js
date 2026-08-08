@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.56.0';
+var VERSION = '3.57.0';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -1171,6 +1171,21 @@ var CLASS_WEAPON_TYPES = {
 // items.slot 'Off Hand') -- Kat-confirmed, #609. Every other class's Off
 // Hand row stays filtered by main-stat only, same as before.
 var CLASS_SHIELD_USERS = { Warrior: true, Paladin: true, Shaman: true };
+
+// Classes that can wield a second one-handed weapon in the Off Hand slot
+// (Kat-confirmed) -- these are the only classes for whom a 'One-Hand'
+// catalog item should ever appear as an Off Hand row candidate, in addition
+// to its normal Weapon row placement. Every other class's One-Hand items
+// (paired with a shield or an actual Off Hand-slot item like a tome/orb, if
+// anything) stay Weapon-row-only, same as before this table existed.
+var DUAL_WIELD_CLASSES = {
+  'Death Knight': true,
+  'Demon Hunter': true,
+  Monk: true,
+  Rogue: true,
+  Shaman: true,
+  Warrior: true
+};
 
 // Some trinkets' equip/on-use effect is entirely about healing or
 // protecting allies -- no damage, no self-buff a DPS spec could use -- so

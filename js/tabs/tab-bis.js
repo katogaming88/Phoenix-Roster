@@ -681,7 +681,7 @@ function toggleBisListEditor(firstName, nameRealm) {
 // truth. Anything that still doesn't land anywhere (unrecognised slot, or
 // every candidate row already taken) surfaces in a separate leftover list
 // so nothing silently disappears from the editor.
-function bisSlotBuckets(items) {
+function bisSlotBuckets(items, playerClass) {
   var buckets = {};
   BIS_SLOTS.forEach(function (s) {
     buckets[s] = null;
@@ -702,6 +702,12 @@ function bisSlotBuckets(items) {
   unassigned.forEach(function (u) {
     var catalogSlot = itemSlots[u.entry.item] || '';
     var candidates = BIS_CATALOG_SLOT_TO_ROWS[catalogSlot] || [];
+    // Legacy (pre-dbSlot) One-Hand entries: mirrors bisSlotOnInput/
+    // wishlistBucketRealItems' DUAL_WIELD_CLASSES fan-out, so an untagged
+    // second one-hander can still land in Off Hand instead of leftover.
+    if (catalogSlot === 'One-Hand' && playerClass && DUAL_WIELD_CLASSES[playerClass]) {
+      candidates = candidates.concat(['Off Hand']);
+    }
     for (var c = 0; c < candidates.length; c++) {
       if (!buckets[candidates[c]]) {
         buckets[candidates[c]] = { entry: u.entry, index: u.index };
@@ -773,12 +779,12 @@ function bisSlotRowHTML(label, colorSlot, index, entry, isEmpty, isActive, rowPo
 function bisEditorHTML() {
   if (!_bisListEditor) return '';
   var items = getBisItems(_bisListEditor.nameRealm);
-  var grouped = bisSlotBuckets(items);
+  var player = findRosterPlayerByNameRealm(_bisListEditor.nameRealm);
+  var grouped = bisSlotBuckets(items, player && player.class);
   var buckets = grouped.buckets;
   var leftover = grouped.leftover;
   var html = '<div style="margin-bottom:0.6rem;">';
 
-  var player = findRosterPlayerByNameRealm(_bisListEditor.nameRealm);
   var bisLink = player && player.bisLink;
   html +=
     '<div style="font-size:1rem;color:var(--text-muted);margin-bottom:0.5rem;display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">' +
@@ -998,7 +1004,13 @@ function bisSlotOnInput() {
 
     // Scope to items whose catalog slot maps to this row; placeholders
     // (M+/Crafted/Catalyst) fit every row, since they name a source, not a slot.
-    if (!isPlaceholder && (BIS_CATALOG_SLOT_TO_ROWS[catalogSlot] || []).indexOf(slotName) === -1) continue;
+    // Dual-wield classes (DUAL_WIELD_CLASSES, js/common.js) get an extra
+    // carve-out: a 'One-Hand' item is also a valid Off Hand row candidate,
+    // mirroring js/wishlist.js's wishlistBucketRealItems fan-out.
+    var isDualWieldOffHand =
+      slotName === 'Off Hand' && catalogSlot === 'One-Hand' && playerClass && DUAL_WIELD_CLASSES[playerClass];
+    if (!isPlaceholder && !isDualWieldOffHand && (BIS_CATALOG_SLOT_TO_ROWS[catalogSlot] || []).indexOf(slotName) === -1)
+      continue;
 
     // A real item can only occupy one row -- don't re-offer one already
     // placed elsewhere on this player's list. Placeholders are exempt: the
@@ -1042,7 +1054,7 @@ function bisSlotOnInput() {
     // Null/unbackfilled weapon_subtype also stays unfiltered, matching every
     // other filter's "unknown shows everything" convention.
     var weaponSubtype = itemWeaponSubtypes[name] || '';
-    if (!isPlaceholder && playerClass && slotName === 'Weapon' && weaponSubtype) {
+    if (!isPlaceholder && playerClass && (slotName === 'Weapon' || isDualWieldOffHand) && weaponSubtype) {
       var allowedWeaponTypes = ((CLASS_WEAPON_TYPES || {})[playerClass] || {})[catalogSlot] || [];
       if (allowedWeaponTypes.indexOf(weaponSubtype) === -1) continue;
     }
