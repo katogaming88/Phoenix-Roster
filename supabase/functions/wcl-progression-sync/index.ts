@@ -1,7 +1,9 @@
-// wcl-progression-sync (#285): keeps team_raid_progress current with each
-// team's live mythic pull count / best % remaining on the boss they're
-// currently working, plus total pulls for already-killed bosses -- shown on
-// the public landing page's progression card.
+// wcl-progression-sync (#285, extended for both difficulties in #629): keeps
+// team_raid_progress current with each team's live Mythic AND Heroic pull
+// count / best % remaining on the boss they're currently working, plus total
+// pulls and kill date for already-killed bosses -- shown on the public
+// landing page's progression card, and (for Heroic) the source of the
+// automatic AOTC date.
 //
 // Unlike wcl-sync, there is no logged-in officer to forward a JWT from --
 // this runs on a GitHub Actions cron schedule (.github/workflows/
@@ -117,6 +119,7 @@ const REPORT_LIMIT = 100;
 // loop (e.g. a WCL response that never actually terminates).
 const MAX_REPORT_PAGES = 20;
 const MYTHIC_DIFF = 5;
+const HEROIC_DIFF = 4;
 
 type RaidConfigEntry = {
   wclZoneId?: string | number;
@@ -124,10 +127,11 @@ type RaidConfigEntry = {
   isMiniRaid?: boolean;
 };
 
-type EncounterAgg = {
+// One of these per difficulty (Mythic, Heroic) tracked for an encounter.
+type DifficultyAgg = {
   pulls: number;
   killed: boolean;
-  mythicMs: number | null;
+  killMs: number | null;
   // Best (lowest) % remaining seen on a non-kill attempt so far.
   bestPct: number | null;
   bestReportCode: string | null;
@@ -136,6 +140,24 @@ type EncounterAgg = {
   killReportCode: string | null;
   killFightId: number | null;
 };
+
+type EncounterAgg = {
+  mythic: DifficultyAgg;
+  heroic: DifficultyAgg;
+};
+
+function newDifficultyAgg(): DifficultyAgg {
+  return {
+    pulls: 0,
+    killed: false,
+    killMs: null,
+    bestPct: null,
+    bestReportCode: null,
+    bestFightId: null,
+    killReportCode: null,
+    killFightId: null
+  };
+}
 
 async function syncTeamZone(
   token: string,
@@ -181,9 +203,10 @@ async function syncTeamZone(
             data {
               code
               startTime
-              fights(difficulty: ${MYTHIC_DIFF}) {
+              fights {
                 id
                 encounterID
+                difficulty
                 kill
                 bossPercentage
               }
@@ -234,21 +257,15 @@ async function syncTeamZone(
 
   const agg = new Map<number, EncounterAgg>();
   function entryFor(encId: number): EncounterAgg {
-    if (!agg.has(encId)) {
-      agg.set(encId, {
-        pulls: 0,
-        killed: false,
-        mythicMs: null,
-        bestPct: null,
-        bestReportCode: null,
-        bestFightId: null,
-        killReportCode: null,
-        killFightId: null
-      });
-    }
+    if (!agg.has(encId)) agg.set(encId, { mythic: newDifficultyAgg(), heroic: newDifficultyAgg() });
     return agg.get(encId)!;
   }
 
+  // The reports() query above no longer filters by difficulty -- fetching
+  // every difficulty's fights in one pass and bucketing by fight.difficulty
+  // here covers Heroic without a second report fetch/page loop per zone
+  // (avoiding the API-usage doubling flagged when #629 was filed). LFR/
+  // Normal fights come through too but are simply ignored below.
   for (const report of reports) {
     for (const fight of report.fights || []) {
       const encId = fight.encounterID;
@@ -256,16 +273,23 @@ async function syncTeamZone(
       // for the guild, not just ones tagged to this zone (see the comment
       // above the reports() query for why).
       if (encId == null || !encounterIdByWcl.has(encId)) continue;
-      const e = entryFor(encId);
+      let e: DifficultyAgg;
+      if (fight.difficulty === MYTHIC_DIFF) {
+        e = entryFor(encId).mythic;
+      } else if (fight.difficulty === HEROIC_DIFF) {
+        e = entryFor(encId).heroic;
+      } else {
+        continue;
+      }
       e.pulls++;
       if (fight.kill) {
         // Track the earliest kill across every report returned, not just
         // the last one iterated -- a farmed boss has many kill fights, and
-        // mythic_date should be the *first* one, matching fetchProgression's
+        // the kill date should be the *first* one, matching fetchProgression's
         // own "min timestamp among kills" logic in wcl-sync.
         e.killed = true;
-        if (e.mythicMs === null || report.startTime < e.mythicMs) {
-          e.mythicMs = report.startTime;
+        if (e.killMs === null || report.startTime < e.killMs) {
+          e.killMs = report.startTime;
           e.killReportCode = report.code;
           e.killFightId = fight.id;
         }
@@ -281,17 +305,24 @@ async function syncTeamZone(
 
   const rows: any[] = [];
   const now = new Date().toISOString();
+  function difficultyColumns(d: DifficultyAgg, prefix: 'mythic' | 'heroic') {
+    return {
+      [`${prefix}_date`]: d.killed ? d.killMs && formatReportDate(d.killMs) : null,
+      [`${prefix}_pulls`]: d.pulls,
+      [`${prefix}_best_pct`]: d.killed ? null : d.bestPct,
+      [`${prefix}_report_code`]: d.killed ? d.killReportCode : d.bestReportCode,
+      [`${prefix}_fight_id`]: d.killed ? d.killFightId : d.bestFightId
+    };
+  }
+
   for (const [wclEncId, data] of agg) {
     const encounterId = encounterIdByWcl.get(wclEncId);
     if (!encounterId) continue;
     rows.push({
       team_id: teamId,
       encounter_id: encounterId,
-      mythic_date: data.killed ? data.mythicMs && formatReportDate(data.mythicMs) : null,
-      mythic_pulls: data.pulls,
-      mythic_best_pct: data.killed ? null : data.bestPct,
-      mythic_report_code: data.killed ? data.killReportCode : data.bestReportCode,
-      mythic_fight_id: data.killed ? data.killFightId : data.bestFightId,
+      ...difficultyColumns(data.mythic, 'mythic'),
+      ...difficultyColumns(data.heroic, 'heroic'),
       updated_at: now
     });
   }

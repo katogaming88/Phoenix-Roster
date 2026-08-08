@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.54.0';
+var VERSION = '3.55.0';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -1939,17 +1939,19 @@ function mapSupabaseStreamers(rows) {
   return mapped;
 }
 
-// Current-team mythic pull count/best % (#285), synced by the
-// wcl-progression-sync Edge Function (cron, see .github/workflows/
-// wcl-progression-sync.yml). Joins through raid_encounters/raid_zones since
-// team_raid_progress only stores encounter_id -- the boss-name join key
-// buildProgression() actually needs comes from the embedded encounter row.
+// Current-team mythic/heroic pull count/best % (#285, extended to Heroic in
+// #629), synced by the wcl-progression-sync Edge Function (cron, see
+// .github/workflows/wcl-progression-sync.yml). Joins through
+// raid_encounters/raid_zones since team_raid_progress only stores
+// encounter_id -- the boss-name join key buildProgression() actually needs
+// comes from the embedded encounter row.
 function fetchSupabaseRaidProgress() {
   if (!supabaseClient) return Promise.resolve(null);
   var query = supabaseClient
     .from('team_raid_progress')
     .select(
       'mythic_pulls, mythic_best_pct, mythic_report_code, mythic_fight_id, ' +
+        'heroic_date, heroic_pulls, heroic_best_pct, heroic_report_code, heroic_fight_id, ' +
         'raid_encounters(name, wcl_encounter_id, raid_zones(wcl_zone_id))'
     )
     .eq('team_id', _teamCfg.supabaseTeamId)
@@ -1994,7 +1996,12 @@ function mapSupabaseRaidProgress(rows) {
       pulls: row.mythic_pulls,
       bestPct: row.mythic_best_pct,
       reportCode: row.mythic_report_code,
-      fightId: row.mythic_fight_id
+      fightId: row.mythic_fight_id,
+      heroicDate: row.heroic_date,
+      heroicPulls: row.heroic_pulls,
+      heroicBestPct: row.heroic_best_pct,
+      heroicReportCode: row.heroic_report_code,
+      heroicFightId: row.heroic_fight_id
     };
     if (encounter.wcl_encounter_id != null) {
       map[zone.wcl_zone_id + '|id|' + encounter.wcl_encounter_id] = progress;

@@ -3159,6 +3159,26 @@
           "name": "updated_at",
           "type": "timestamp with time zone",
           "nullable": true
+        },
+        {
+          "name": "heroic_pulls",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "heroic_best_pct",
+          "type": "numeric(5,2)",
+          "nullable": true
+        },
+        {
+          "name": "heroic_report_code",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "heroic_fight_id",
+          "type": "integer",
+          "nullable": true
         }
       ],
       "indexes": [

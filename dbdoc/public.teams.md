@@ -228,6 +228,10 @@ erDiagram
   text mythic_report_code
   integer mythic_fight_id
   timestamp_with_time_zone updated_at
+  integer heroic_pulls
+  numeric_5_2_ heroic_best_pct
+  text heroic_report_code
+  integer heroic_fight_id
 }
 "public.item_preferences" {
   integer id
