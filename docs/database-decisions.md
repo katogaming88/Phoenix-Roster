@@ -8,6 +8,16 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-08-08 -- `wcl-progression-sync`: extend the cron sync to Heroic, not just Mythic (#629)
+
+Decided directly in conversation, expanding #629's original ask (automate the AOTC date) to the same live pull-count/best-%/kill-date tracking Mythic already gets, since AOTC is really just one derived fact from that same Heroic data.
+
+- **One unfiltered fights query instead of two filtered ones.** #629 flagged that adding a Heroic query would roughly double this job's WCL API usage. Instead, the `reports()` query dropped its `fights(difficulty: 5)` filter in favor of a bare `fights { ... difficulty ... }` and buckets each fight into a Mythic or Heroic `DifficultyAgg` in the same pass -- no extra request/page loop per zone. LFR/Normal fights ride along in the same response and are simply ignored.
+- **`team_raid_progress` gained `heroic_pulls`/`heroic_best_pct`/`heroic_report_code`/`heroic_fight_id`** to sit alongside the `heroic_date` column that already existed (added with #285 but never written to by anything automatic -- only the officer-triggered "Fetch from WCL" button computed a Heroic kill date, and only for the AOTC field).
+- **No cron write into `team_settings.config.raidProgression`.** #629 flagged that AOTC only exists inside that JSON blob and a cron merge into it would be uglier than a normalized column write. Sidestepped entirely: the public progression card now prefers the *live* `team_raid_progress` Heroic kill date on a raid's last boss over the officer-typed `raid.aotcDate` field, falling back to it only when the sync hasn't produced one yet. AOTC updates itself the moment the sync sees the kill, with zero risk of a cron job clobbering an officer's manual entry (there's nothing to clobber -- it never writes there).
+- **Displayed per-boss, not just used for AOTC.** Each boss row on the progression card now shows a second Heroic line (kill date once cleared, otherwise live pulls + best % remaining, with a report link when the sync found one) -- the same shape the Mythic row already has via `_renderPullsBadge()`, factored into a parallel `_renderHeroicRow()`. Mythic's own "killed" gating (`boss.mythicDate`, config-JSON, officer-confirmed via Save) is untouched -- only the new Heroic row is fully live/unconfirmed, since there's no equivalent manually-saved per-boss Heroic field to prefer it over.
+- Implemented in `20260808164225_team_raid_progress_heroic_columns.sql` (schema only) plus a `wcl-progression-sync` function-body change -- no RLS change, existing "Officers write team_raid_progress" policy already covers the new columns.
+
 ## 2026-08-07 -- `update_own_signup()`: allow editing an already-`added` signup while its season is still open
 
 Decided directly in conversation (no tracking issue), found from a screenshot: a raider already promoted to the roster (`status = 'added'`) saw a hard "signup details are locked" message even while the team's signup window for that season was still open and other raiders were still submitting.

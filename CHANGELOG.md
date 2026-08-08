@@ -8,6 +8,16 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.55.0] - 2026-08-08
+
+### Frontend
+
+- **The public progression card now tracks Heroic the same way it already tracks Mythic** -- each boss shows a live Heroic kill date (once cleared) or current pull count and best % remaining, with a report link when available. AOTC now updates itself automatically from the last boss's Heroic kill date instead of requiring an officer to click "Fetch from WCL" + Save in Season Settings (#629).
+
+### Backend
+
+- `wcl-progression-sync` now aggregates both Mythic and Heroic from a single unfiltered `fights` query per report (bucketed by `fight.difficulty`) instead of a Mythic-only filtered one, avoiding a second WCL API round trip per zone. `team_raid_progress` gained `heroic_pulls`/`heroic_best_pct`/`heroic_report_code`/`heroic_fight_id` alongside its existing (previously unused) `heroic_date` column.
+
 ## [3.54.0] - 2026-08-07
 
 ### Frontend

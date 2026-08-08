@@ -14,6 +14,10 @@
 | mythic_report_code | text |  | true |  |  |  |
 | mythic_fight_id | integer |  | true |  |  |  |
 | updated_at | timestamp with time zone |  | true |  |  |  |
+| heroic_pulls | integer |  | true |  |  |  |
+| heroic_best_pct | numeric(5,2) |  | true |  |  |  |
+| heroic_report_code | text |  | true |  |  |  |
+| heroic_fight_id | integer |  | true |  |  |  |
 
 ## Constraints
 
@@ -56,6 +60,10 @@ erDiagram
   text mythic_report_code
   integer mythic_fight_id
   timestamp_with_time_zone updated_at
+  integer heroic_pulls
+  numeric_5_2_ heroic_best_pct
+  text heroic_report_code
+  integer heroic_fight_id
 }
 "public.teams" {
   integer id

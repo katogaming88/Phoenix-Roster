@@ -33,7 +33,7 @@
 | [public.notifications](public.notifications.md) | 6 |  | BASE TABLE |
 | [public.raid_zones](public.raid_zones.md) | 6 |  | BASE TABLE |
 | [public.raid_encounters](public.raid_encounters.md) | 5 |  | BASE TABLE |
-| [public.team_raid_progress](public.team_raid_progress.md) | 10 |  | BASE TABLE |
+| [public.team_raid_progress](public.team_raid_progress.md) | 14 |  | BASE TABLE |
 | [public.priority_order_live_first_prios](public.priority_order_live_first_prios.md) | 9 |  | VIEW |
 | [public.priority_order_first_prio_counts](public.priority_order_first_prio_counts.md) | 5 |  | VIEW |
 | [public.priority_order_same_boss_conflicts](public.priority_order_same_boss_conflicts.md) | 10 |  | VIEW |
@@ -472,6 +472,10 @@ erDiagram
   text mythic_report_code
   integer mythic_fight_id
   timestamp_with_time_zone updated_at
+  integer heroic_pulls
+  numeric_5_2_ heroic_best_pct
+  text heroic_report_code
+  integer heroic_fight_id
 }
 "public.priority_order_live_first_prios" {
   integer priority_order_id

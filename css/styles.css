@@ -144,8 +144,9 @@ body { background:var(--bg); color:var(--text); font-family:'Rajdhani',sans-seri
 .prog-bar-wrap { height:4px; background:rgba(255,255,255,0.08); border-radius:2px; margin-bottom:0.75rem; overflow:hidden; }
 .prog-bar { height:100%; background:linear-gradient(90deg,#6a30c8,#b085f0); border-radius:2px; transition:width 0.4s; }
 .prog-bosses { display:flex; flex-direction:column; gap:0.3rem; }
-.prog-boss { display:flex; align-items:center; gap:0.55rem; padding:0.3rem 0; border-bottom:1px solid rgba(255,255,255,0.05); }
-.prog-boss:last-child { border-bottom:none; }
+.prog-boss-item { border-bottom:1px solid rgba(255,255,255,0.05); }
+.prog-boss-item:last-child { border-bottom:none; }
+.prog-boss { display:flex; align-items:center; gap:0.55rem; padding:0.3rem 0 0.1rem; }
 .prog-boss-num { font-size:0.87rem; color:var(--text-dim); min-width:1rem; text-align:right; }
 .prog-boss-name { flex:1; font-size:1rem; color:var(--text-muted); }
 .prog-boss-killed .prog-boss-name { color:var(--heal); }
@@ -155,6 +156,12 @@ body { background:var(--bg); color:var(--text); font-family:'Rajdhani',sans-seri
 .prog-boss-killed .prog-boss-pulls { color:var(--heal); }
 a.prog-boss-pulls { text-decoration:none; }
 a.prog-boss-pulls:hover { color:var(--gold); text-decoration:underline; }
+.prog-boss-heroic { display:flex; align-items:center; gap:0.4rem; padding:0 0 0.3rem 1.55rem; font-size:0.82rem; color:var(--text-dim); }
+.prog-boss-heroic-label { font-weight:700; letter-spacing:0.04em; color:#4dd9e0; }
+.prog-boss-heroic-date { white-space:nowrap; color:#4dd9e0; }
+.prog-boss-heroic-pulls { white-space:nowrap; }
+a.prog-boss-heroic-pulls { text-decoration:none; color:var(--text-dim); }
+a.prog-boss-heroic-pulls:hover { color:var(--gold); text-decoration:underline; }
 .prog-aotc { display:inline-flex; align-items:center; gap:0.4rem; margin-top:0.65rem; font-size:0.89rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--gold); background:rgba(214,163,68,0.1); border:1px solid rgba(214,163,68,0.3); border-radius:4px; padding:0.2rem 0.6rem; }
 .prog-aotc-date { font-weight:400; color:var(--text-muted); letter-spacing:0; text-transform:none; }
 

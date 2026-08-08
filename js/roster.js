@@ -528,23 +528,34 @@ function buildProgression() {
     if (total) {
       html += '<div class="prog-bar-wrap"><div class="prog-bar" style="width:' + pct + '%"></div></div>';
     }
+    var lastProgress = null;
     if (bosses.length) {
       html += '<div class="prog-bosses">';
       for (var j = 0; j < bosses.length; j++) {
         var boss = bosses[j];
         var killed_ = !!boss.mythicDate;
         var progress = _raidProgressFor(raid, boss);
+        if (j === bosses.length - 1) lastProgress = progress;
+        html += '<div class="prog-boss-item">';
         html += '<div class="prog-boss' + (killed_ ? ' prog-boss-killed' : '') + '">';
         html += '<span class="prog-boss-num">' + (j + 1) + '</span>';
         html += '<span class="prog-boss-name">' + _esc(boss.name || 'Unknown') + '</span>';
         if (killed_) html += '<span class="prog-boss-date">' + boss.mythicDate + '</span>';
         html += _renderPullsBadge(progress, killed_);
         html += '</div>';
+        html += _renderHeroicRow(progress);
+        html += '</div>';
       }
       html += '</div>';
     }
-    if (!raid.isMiniRaid && raid.aotcDate) {
-      html += '<div class="prog-aotc">AOTC <span class="prog-aotc-date">' + raid.aotcDate + '</span></div>';
+    // Prefers the live-synced Heroic kill date on the last boss (#629) over
+    // the officer-typed raid.aotcDate -- once wcl-progression-sync sees the
+    // Heroic kill, AOTC updates on its own with no manual "Fetch from WCL" +
+    // Save round trip. Falls back to raid.aotcDate when the sync hasn't
+    // caught up yet (or for seasons/raids synced before this existed).
+    var aotcDate = (lastProgress && lastProgress.heroicDate) || raid.aotcDate;
+    if (!raid.isMiniRaid && aotcDate) {
+      html += '<div class="prog-aotc">AOTC <span class="prog-aotc-date">' + aotcDate + '</span></div>';
     }
     html += '</div>';
   }
@@ -745,10 +756,10 @@ function _raidProgressFor(raid, boss) {
   return map[zoneId + '|' + normalise(boss.name)] || null;
 }
 
-function _wclReportUrl(progress) {
-  if (!progress || !progress.reportCode) return '';
-  var url = 'https://www.warcraftlogs.com/reports/' + encodeURIComponent(progress.reportCode);
-  if (progress.fightId) url += '#fight=' + encodeURIComponent(progress.fightId);
+function _wclReportUrl(reportCode, fightId) {
+  if (!reportCode) return '';
+  var url = 'https://www.warcraftlogs.com/reports/' + encodeURIComponent(reportCode);
+  if (fightId) url += '#fight=' + encodeURIComponent(fightId);
   return url;
 }
 
@@ -763,11 +774,40 @@ function _renderPullsBadge(progress, killed) {
   if (!killed && progress.bestPct != null) {
     text += ' -- best ' + progress.bestPct + '%';
   }
-  var url = _wclReportUrl(progress);
+  var url = _wclReportUrl(progress.reportCode, progress.fightId);
   if (url) {
     return '<a class="prog-boss-pulls" href="' + url + '" target="_blank" rel="noopener">' + _esc(text) + '</a>';
   }
   return '<span class="prog-boss-pulls">' + _esc(text) + '</span>';
+}
+
+// Heroic counterpart to _renderPullsBadge() (#629) -- same pulls/best-%/
+// report-link shape, plus its own kill date (Heroic isn't gated behind the
+// officer-confirmed boss.mythicDate the Mythic row uses; it's shown purely
+// from the live sync since there's no equivalent manually-saved field to
+// prefer). Renders as its own line below the Mythic row rather than inside
+// it -- see the .prog-boss-item wrapper in buildProgression().
+function _renderHeroicRow(progress) {
+  if (!progress || (progress.heroicPulls == null && !progress.heroicDate)) return '';
+  var killed = !!progress.heroicDate;
+  var text = '';
+  if (progress.heroicPulls != null) {
+    text = progress.heroicPulls + (progress.heroicPulls === 1 ? ' pull' : ' pulls');
+    if (!killed && progress.heroicBestPct != null) {
+      text += ' -- best ' + progress.heroicBestPct + '%';
+    }
+  }
+  var url = _wclReportUrl(progress.heroicReportCode, progress.heroicFightId);
+  var html = '<div class="prog-boss-heroic' + (killed ? ' prog-boss-heroic-killed' : '') + '">';
+  html += '<span class="prog-boss-heroic-label">H</span>';
+  if (killed) html += '<span class="prog-boss-heroic-date">' + _esc(progress.heroicDate) + '</span>';
+  if (text) {
+    html += url
+      ? '<a class="prog-boss-heroic-pulls" href="' + url + '" target="_blank" rel="noopener">' + _esc(text) + '</a>'
+      : '<span class="prog-boss-heroic-pulls">' + _esc(text) + '</span>';
+  }
+  html += '</div>';
+  return html;
 }
 
 function _esc(str) {
