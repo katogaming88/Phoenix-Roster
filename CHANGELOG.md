@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.58.1] - 2026-08-08
+
+### Frontend
+
+- The officer-facing compact Wishlist row (#672 follow-up) now shows each item's slot next to its name, color-coded to match the same slot colors used elsewhere -- the compact single-line row had dropped the slot entirely, leaving no way to tell what a tagged item was for without expanding it.
+
 ## [3.58.0] - 2026-08-08
 
 ### Frontend
