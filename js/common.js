@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.57.0';
+var VERSION = '3.58.0';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -1143,7 +1143,7 @@ function specMainStat(className, specName) {
 // listing it would just be dead code (Kat-confirmed, #609).
 var CLASS_WEAPON_TYPES = {
   'Death Knight': { 'One-Hand': ['Axe', 'Mace', 'Sword'], 'Two-Hand': ['Axe', 'Mace', 'Sword', 'Polearm'] },
-  'Demon Hunter': { 'One-Hand': ['Axe', 'Sword', 'Fist Weapon', 'Warglaive'] },
+  'Demon Hunter': { 'One-Hand': ['Axe', 'Sword', 'Dagger', 'Fist Weapon', 'Warglaive'] },
   Druid: { 'One-Hand': ['Mace', 'Dagger', 'Fist Weapon'], 'Two-Hand': ['Mace', 'Staff', 'Polearm'] },
   Evoker: {
     'One-Hand': ['Axe', 'Mace', 'Sword', 'Dagger', 'Fist Weapon'],
@@ -3428,32 +3428,35 @@ function fetchPlayerItemPreferences(playerId) {
   return Promise.race([query, timeout]);
 }
 
-function officerWishlistRowHTML(name, slot, pref, labelOverrides) {
+// Compact single-line row (#672 follow-up): icon + name + status label only
+// -- no armor/slot/stat pills, no boss line, no per-status border/background
+// tint (every row uses the same neutral card style now; BIS entries already
+// stand apart by being the ones shown by default, so re-asserting that with
+// color on every row was redundant noise on top of noise). A note, if any,
+// moves to the row's native title tooltip instead of its own line -- still
+// reachable on hover, without adding a permanent line to every row that has
+// one.
+function officerWishlistRowHTML(name, pref, labelOverrides) {
   var tier = PROFILE_WISHLIST_STATUS_LABELS.filter(function (t) {
     return t.value === pref.status;
   })[0];
-  var rowBorder = tier ? tier.color : 'var(--border)';
-  var rowBackground = tier ? 'rgba(' + tier.rgb + ',0.08)' : 'var(--bg-card)';
   var label = (tier && labelOverrides[tier.value]) || (tier && tier.label) || pref.status;
+  var icon = ((DATA && DATA.itemIcons) || {})[name];
+  var iconImg = icon
+    ? '<img src="https://wow.zamimg.com/images/wow/icons/large/' + icon + '.jpg" alt="" class="item-icon-sm">'
+    : '';
   return (
-    '<div style="padding:0.4rem 0.6rem;border-radius:4px;border:1px solid ' +
-    rowBorder +
-    ';background:' +
-    rowBackground +
-    ';margin-bottom:2px;">' +
-    '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;flex-wrap:wrap;">' +
-    itemNameBlockHtml(name, slot) +
-    '<span style="font-size:0.85rem;font-weight:600;color:' +
-    rowBorder +
-    ';text-transform:uppercase;letter-spacing:0.04em;">' +
-    escHtml(label) +
+    '<div style="display:flex;align-items:center;gap:0.5rem;padding:0.25rem 0.5rem;border-radius:4px;' +
+    'border:1px solid var(--border);background:var(--bg-card);margin-bottom:2px;"' +
+    (pref.note ? ' title="Note: ' + _esc(pref.note) + '"' : '') +
+    '>' +
+    iconImg +
+    '<span style="color:var(--text);font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' +
+    _esc(name) +
     '</span>' +
-    '</div>' +
-    (pref.note
-      ? '<div style="font-size:0.92rem;color:var(--text-muted);font-style:italic;margin-top:0.25rem;">"' +
-        escHtml(pref.note) +
-        '"</div>'
-      : '') +
+    '<span style="font-size:0.85rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;white-space:nowrap;">' +
+    _esc(label) +
+    '</span>' +
     '</div>'
   );
 }
@@ -3533,15 +3536,69 @@ function officerWishlistSectionHTML(player, backTo) {
     if (!name) return;
     entries.push({ item: name, slot: p.slot || itemSlots[name] || '', dbSlot: p.slot || '', pref: p });
   });
-  entries.sort(function (a, b) {
+  var bySlot = function (a, b) {
     return bisDisplaySortKey(a, itemSlots) - bisDisplaySortKey(b, itemSlots);
+  };
+  // BIS-first (#672 follow-up): a full wishlist mixes every status (Good/OK/
+  // Catalyst/Pass) in with the handful of picks officers actually act on,
+  // which is the "too many rows" half of what read as noisy. BIS entries
+  // always render; everything else stays behind a "Show all" toggle,
+  // per-player state (_officerWishlistExpanded) so it survives re-renders
+  // triggered elsewhere on the page but resets on next page load same as
+  // every other profile-view toggle here.
+  var bisEntries = entries.filter(function (e) {
+    return e.pref.status === 'bis';
   });
+  var otherEntries = entries.filter(function (e) {
+    return e.pref.status !== 'bis';
+  });
+  bisEntries.sort(bySlot);
+  otherEntries.sort(bySlot);
 
-  entries.forEach(function (e) {
-    html += officerWishlistRowHTML(e.item, e.dbSlot || itemSlots[e.item] || '', e.pref, labelOverrides);
-  });
+  if (bisEntries.length) {
+    bisEntries.forEach(function (e) {
+      html += officerWishlistRowHTML(e.item, e.pref, labelOverrides);
+    });
+  } else {
+    html += '<p style="color:var(--text-muted);padding:0.3rem 0;">No BiS picks tagged yet.</p>';
+  }
+
+  if (otherEntries.length) {
+    var expanded = !!_officerWishlistExpanded[player.id];
+    html +=
+      '<button type="button" class="btn btn-muted" style="font-size:0.85rem;padding:2px 8px;margin-top:0.4rem;" ' +
+      'onclick="toggleOfficerWishlistExpanded(\'' +
+      player.id +
+      "', '" +
+      player.firstName.replace(/'/g, "\\'") +
+      "', '" +
+      (backTo || '') +
+      '\')">' +
+      (expanded
+        ? 'Hide'
+        : 'Show all ' + otherEntries.length + ' other tagged item' + (otherEntries.length === 1 ? '' : 's')) +
+      '</button>';
+    if (expanded) {
+      html += '<div style="margin-top:0.3rem;">';
+      otherEntries.forEach(function (e) {
+        html += officerWishlistRowHTML(e.item, e.pref, labelOverrides);
+      });
+      html += '</div>';
+    }
+  }
 
   return html + '</div>';
+}
+
+// player.id -> true once an officer clicks "Show all" on that player's
+// wishlist section (officerWishlistSectionHTML above) -- resets on page
+// load, same lifetime as every other profile-view UI toggle in this file.
+var _officerWishlistExpanded = {};
+
+function toggleOfficerWishlistExpanded(playerId, firstName, backTo) {
+  _officerWishlistExpanded[playerId] = !_officerWishlistExpanded[playerId];
+  if (typeof reopenSelectedPlayer === 'function') reopenSelectedPlayer();
+  else if (typeof renderProfile === 'function') renderProfile(firstName, backTo);
 }
 
 function getSelfReceivedItems(firstName) {
@@ -5413,7 +5470,7 @@ function renderProfile(firstName, backTo, container) {
       '<input type="text" id="editNicknameInput-' +
       player.firstName +
       '" value="' +
-      escHtml(player.nick || '') +
+      _esc(player.nick || '') +
       '" placeholder="(optional)" class="self-received-source" style="font-size:1.04rem;padding:0.25rem 0.5rem;max-width:9rem;">' +
       '</div>' +
       '<div style="display:flex;align-items:center;gap:0.75rem;">' +

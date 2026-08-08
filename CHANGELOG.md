@@ -8,6 +8,14 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.58.0] - 2026-08-08
+
+### Frontend
+
+- **The read-only Wishlist view an officer (or teammate) sees on someone else's profile is now compact and BiS-first.** Every tagged item used to render as a full detail card (icon, slot/armor/stat pills, boss line, status badge) all at once regardless of status, which got noisy fast on a filled-out wishlist. Rows are now a single compact line (icon + name + status), only BiS picks show by default, and everything else (Good/OK/Catalyst/Pass) sits behind a "Show all N other tagged items" toggle. A tagged item's note, if any, is now a hover tooltip instead of its own line.
+- Fixed a `ReferenceError: escHtml is not defined` on that same view (and on the roster nickname-edit field) -- both called a same-named function that only exists in `js/tabs/tab-attendance.js` (officer.html-only), so it threw the moment either rendered on index.html, which never loads that file. Both now use `_esc()`, the escaper already meant to be common.js-safe on both pages.
+- `CLASS_WEAPON_TYPES` (Kat-curated) now allows Demon Hunter one-handers to include Daggers, not just Axe/Sword/Fist Weapon/Warglaive -- Wishlist and BiS grid Weapon-row filtering were silently hiding a legal DH weapon type.
+
 ## [3.57.0] - 2026-08-08
 
 ### Frontend
