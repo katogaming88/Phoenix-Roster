@@ -90,7 +90,15 @@ function renderSignupSummary(row) {
   if (row.status === 'pending' || row.status === 'approved') {
     actionsHtml = '<button class="btn btn-gold" onclick="startSignupEdit()">Edit Signup</button>';
   } else if (row.status === 'added') {
-    actionsHtml = '<p class="signup-step-desc">You\'re on the roster for this season -- signup details are locked.</p>';
+    // get_own_signup() only ever returns an 'added' row while its season is
+    // still the team's active signup season -- once an officer moves on,
+    // the row stops coming back and this raider gets a fresh form instead.
+    // So reaching this branch already means signups are still open; editing
+    // sends it back through officer review rather than touching the roster
+    // directly (see update_own_signup()).
+    actionsHtml =
+      '<p class="signup-step-desc">You\'re on the roster for this season. You can still update your signup while signups are open -- it\'ll go back to an officer for review.</p>' +
+      '<button class="btn btn-gold" onclick="startSignupEdit()">Edit Signup</button>';
   } else {
     actionsHtml =
       '<p class="signup-step-desc">This signup was not approved. Contact an officer on Discord if you have questions.</p>';

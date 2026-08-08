@@ -162,12 +162,45 @@ describe('update_own_signup', () => {
     });
   });
 
-  it('an added signup cannot be edited', async () => {
+  it("an added signup can be edited while its season is still the team's active signup season, and reverts to pending for re-review", async () => {
     await withTxn(async ({ q, asUser }) => {
       const player = await q(
         "insert into public.players (team_id, name_realm, class_spec_id) values (1, 'Ownsignuproster-Illidan', 1) returning id"
       );
-      const { rows } = await insertSignup(q, { status: 'added', approved_player_id: player.rows[0].id });
+      const { rows } = await insertSignup(q, {
+        status: 'added',
+        approved_player_id: player.rows[0].id,
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: 1,
+        signup_officer_note: 'looked fine'
+      });
+      await updateOwn(asUser, SIGNUP_OWNER_T1, rows[0].id);
+      const signup = (await q('select * from public.season_signups where id = $1', [rows[0].id])).rows[0];
+      const player_row = (
+        await q('select name_realm, class_spec_id from public.players where id = $1', [player.rows[0].id])
+      ).rows[0];
+      expect(signup.status).toBe('pending');
+      expect(signup.approved_player_id).toBeNull();
+      expect(signup.reviewed_at).toBeNull();
+      expect(signup.reviewed_by).toBeNull();
+      expect(signup.signup_officer_note).toBeNull();
+      expect(signup.signup_name_realm).toBe('Editedname-Illidan');
+      // The live roster row is untouched -- the edit only re-queues the
+      // signup for officer review, it does not write the roster directly.
+      expect(player_row.name_realm).toBe('Ownsignuproster-Illidan');
+    });
+  });
+
+  it("an added signup whose season is no longer the team's active signup season cannot be edited", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const player = await q(
+        "insert into public.players (team_id, name_realm, class_spec_id) values (1, 'Ownsignuproster-Illidan', 1) returning id"
+      );
+      const { rows } = await insertSignup(q, {
+        status: 'added',
+        approved_player_id: player.rows[0].id,
+        season: 'not-the-active-season'
+      });
       await expect(updateOwn(asUser, SIGNUP_OWNER_T1, rows[0].id)).rejects.toThrow(/already been added to the roster/);
     });
   });
