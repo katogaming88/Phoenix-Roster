@@ -1,5 +1,12 @@
 [
   {
+    "date": "2026-08-08",
+    "category": "Feature",
+    "version": "3.56.0",
+    "title": "A nudge to fill out your wishlist when you're new",
+    "body": "If you joined the roster recently and haven't tagged anything in your Wishlist yet, you'll now see a welcome banner on your profile pointing you to the Wishlist tab. It goes away as soon as you add your first entry (or after 30 days)."
+  },
+  {
     "date": "2026-08-05",
     "category": "Fix",
     "version": "3.52.0",
@@ -82,8 +89,7 @@
     "category": "Feature",
     "version": "3.46.0",
     "title": "This News tab",
-    "body": "You're looking at it -- a new News tab with a running feed of what's shipped, newest first. Click an entry to expand a short write-up. The red dot on the nav item clears once you visit.",
-    "pinned": true
+    "body": "You're looking at it -- a new News tab with a running feed of what's shipped, newest first. Click an entry to expand a short write-up. The red dot on the nav item clears once you visit."
   },
   {
     "date": "2026-07-20",

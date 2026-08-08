@@ -428,6 +428,21 @@ select#playerSelect option { background:#1a1d27; }
 .trial-promo-row:hover { background:rgba(214,163,68,0.05); }
 .trial-promo-row:last-child td { border-bottom:none; }
 
+/* Onboarding checklist (#478) */
+.onboarding-badge { font-size:0.87rem; font-weight:700; padding:1px 6px; border-radius:2px; background:rgba(74,158,255,0.12); color:var(--tank); border:1px solid rgba(74,158,255,0.3); white-space:nowrap; }
+.onboarding-alert-card { background:rgba(74,158,255,0.04); border:1px solid rgba(74,158,255,0.2); border-left:3px solid var(--tank); border-radius:4px; padding:0.85rem 1.1rem; margin-bottom:1rem; }
+.onboarding-alert-header { display:flex; align-items:center; gap:0.75rem; margin-bottom:0.6rem; flex-wrap:wrap; }
+.onboarding-alert-title { font-size:1rem; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--tank); }
+.onboarding-alert-count { font-size:1.02rem; font-weight:600; padding:2px 8px; border-radius:2px; background:rgba(74,158,255,0.1); color:var(--tank); border:1px solid rgba(74,158,255,0.25); }
+.onboarding-alert-table { width:100%; border-collapse:collapse; }
+.onboarding-alert-table th { font-size:0.95rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); font-weight:600; padding:0.3rem 0.6rem; border-bottom:1px solid rgba(74,158,255,0.15); text-align:left; }
+.onboarding-alert-table td { padding:0.4rem 0.6rem; border-bottom:1px solid var(--border); font-size:1rem; vertical-align:middle; }
+.onboarding-alert-row { cursor:pointer; transition:background 0.1s; }
+.onboarding-alert-row:hover { background:rgba(74,158,255,0.05); }
+.onboarding-alert-row:last-child td { border-bottom:none; }
+.onboarding-welcome-banner { margin:0.75rem 1.25rem 0; padding:0.6rem 0.85rem; background:rgba(74,158,255,0.06); border:1px solid rgba(74,158,255,0.25); border-radius:4px; font-size:1rem; color:var(--text); }
+.onboarding-welcome-link { margin-left:0.4rem; background:none; border:none; color:var(--tank); font-weight:600; text-decoration:underline; cursor:pointer; padding:0; font-size:1rem; font-family:inherit; }
+
 /* BiS conflicts */
 .conflict-item { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; padding:1rem 1.25rem; margin-bottom:0.75rem; }
 .conflict-item-name { font-size:1.1rem; font-weight:600; color:var(--text); margin-bottom:0.5rem; display:flex; align-items:center; gap:0.75rem; }

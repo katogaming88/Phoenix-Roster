@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.55.0';
+var VERSION = '3.56.0';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -3443,6 +3443,40 @@ function officerWishlistRowHTML(name, slot, pref, labelOverrides) {
   );
 }
 
+// #478 -- "still onboarding" welcome banner on the profile card (raider's own
+// view and the officer inline view, since both go through renderProfile()).
+// Shares officerWishlistSectionHTML()'s below 3-branch prefs resolution
+// (team cache / per-player cache / trigger fetch+re-render) so the two never
+// double-fetch item_preferences for the same player.
+function onboardingWelcomeBannerHTML(player, backTo) {
+  if (!player || !seasonHasStarted() || !joinedAfterSeasonStart(player) || !isRecentJoiner(player, 30)) return '';
+  if (typeof featureEnabled === 'function' && !featureEnabled('bis')) return '';
+
+  var teamPrefs = typeof _teamItemPreferences !== 'undefined' ? _teamItemPreferences : undefined;
+  var prefs;
+  if (teamPrefs !== undefined && teamPrefs !== null) {
+    prefs = teamPrefs.filter(function (p) {
+      return p.player_id === player.id;
+    });
+  } else if (_profileWishlistPrefsCache[player.id]) {
+    prefs = _profileWishlistPrefsCache[player.id];
+  } else {
+    // Still loading -- officerWishlistSectionHTML() below is the one that
+    // triggers the fetch/re-render; skip this pass rather than show a stale
+    // "no wishlist yet" state that might flip a moment later.
+    return '';
+  }
+  if (prefs.length) return '';
+
+  return (
+    '<div class="onboarding-welcome-banner">Welcome to the team! Add gear to your wishlist so officers know what to prioritize for you.' +
+    (backTo === 'landing'
+      ? ' <button class="onboarding-welcome-link" onclick="showProfileSubTab(\'wishlist\')">Go to Wishlist</button>'
+      : '') +
+    '</div>'
+  );
+}
+
 function officerWishlistSectionHTML(player, backTo) {
   if (!player) return '';
   if (typeof featureEnabled === 'function' && !featureEnabled('bis')) return '';
@@ -3952,6 +3986,44 @@ function formatJoinDate(dateStr) {
   var m = parseInt(parts[1], 10) - 1;
   if (m < 0 || m > 11) return dateStr;
   return months[m] + ' ' + parseInt(parts[2], 10) + ', ' + parts[0];
+}
+
+// #478 -- shared "still onboarding" window check, same join-date math as
+// buildTrialPromoAlert() (js/tabs/tab-roster.js) so both pages agree on
+// what counts as "recent".
+function isRecentJoiner(player, days) {
+  if (!player || !player.joinDate) return false;
+  var parts = player.joinDate.split('-');
+  if (parts.length !== 3) return false;
+  var joinMs = Date.UTC(+parts[0], +parts[1] - 1, +parts[2]);
+  if (isNaN(joinMs)) return false;
+  var today = new Date();
+  var todayMs = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+  var ageDays = Math.floor((todayMs - joinMs) / 86400000);
+  return ageDays >= 0 && ageDays <= days;
+}
+
+// #478 -- onboarding checklist only applies once the current season has
+// actually started (DATA.seasonStart, set in Season Settings) -- before kickoff
+// there's no wishlist expectation yet to nudge a new raider toward.
+function seasonHasStarted() {
+  if (!DATA || !DATA.seasonStart) return false;
+  var parts = DATA.seasonStart.split('-');
+  if (parts.length !== 3) return false;
+  var startMs = Date.UTC(+parts[0], +parts[1] - 1, +parts[2]);
+  if (isNaN(startMs)) return false;
+  var today = new Date();
+  var todayMs = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+  return todayMs >= startMs;
+}
+
+// #478 -- excludes veterans who joined before the current season kicked off
+// (they're not "new," even if they happen to fall inside the 30-day window
+// right after a season start) -- only raiders who joined during this season
+// get nudged. Plain string comparison is safe since both are YYYY-MM-DD.
+function joinedAfterSeasonStart(player) {
+  if (!DATA || !DATA.seasonStart || !player || !player.joinDate) return false;
+  return player.joinDate >= DATA.seasonStart;
 }
 
 // Shared by both pages (index.html's signup/claim flow and officer.html's
@@ -5514,7 +5586,8 @@ function renderProfile(firstName, backTo, container) {
       : '') +
     '</div>' +
     charLinksHTML +
-    '</div>';
+    '</div>' +
+    onboardingWelcomeBannerHTML(player, backTo);
 
   var attendanceSectionHTML =
     '<div class="profile-section">' +
