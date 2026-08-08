@@ -98,7 +98,23 @@ var CATALYST_SOURCE_SLOTS = ['Back', 'Wrist', 'Waist', 'Feet'];
 // second ring/trinket demotes whatever was just tagged BiS for the first.
 // Every other row already maps 1:1 to its catalog slot, so null (falling
 // back to the item's own catalog slot) stays unambiguous there.
-var WISHLIST_DISAMBIGUATE_SLOTS = { 'Finger 1': true, 'Finger 2': true, 'Trinket 1': true, 'Trinket 2': true };
+//
+// Weapon/Off Hand joined this list for the same reason once dual-wield
+// classes started seeing 'One-Hand' items fanned into both rows
+// (wishlistBucketRealItems, DUAL_WIELD_CLASSES) -- without an explicit slot,
+// tagging a one-hander BiS on the Weapon card would read as claiming the Off
+// Hand row too. Unlike Finger/Trinket there's no WISHLIST_SIBLING_SLOT entry
+// for these two: the same physical weapon legitimately can be BiS in both
+// hands at once (dual-wielding two of the same item), so no cross-row lock
+// or mirroring is wanted here.
+var WISHLIST_DISAMBIGUATE_SLOTS = {
+  'Finger 1': true,
+  'Finger 2': true,
+  'Trinket 1': true,
+  'Trinket 2': true,
+  Weapon: true,
+  'Off Hand': true
+};
 
 // The other numbered row for a disambiguated slot -- since the same physical
 // item now shows up under both cards (a ring/trinket isn't restricted to one
@@ -267,6 +283,15 @@ function wishlistBucketRealItems(playerArmorType, playerMainStat, playerRole, pl
     if (typeof isItemInSeasonScope === 'function' && !isItemInSeasonScope(name)) return;
     var catalogSlot = itemSlots[name] || '';
     var rows = WISHLIST_CATALOG_SLOT_TO_ROWS[catalogSlot] || [];
+    // Dual-wield classes (DUAL_WIELD_CLASSES, js/common.js) can put a second
+    // one-hander in the Off Hand slot -- fan a 'One-Hand' item into that row
+    // too, in addition to its normal Weapon row placement, rather than
+    // leaving Off Hand reachable only by true off-hand-slot items (shields,
+    // tomes/orbs). Copied via concat so the shared WISHLIST_CATALOG_SLOT_TO_ROWS
+    // array itself is never mutated.
+    if (catalogSlot === 'One-Hand' && playerClass && DUAL_WIELD_CLASSES[playerClass]) {
+      rows = rows.concat(['Off Hand']);
+    }
     var armorType = itemArmorTypes[name] || '';
     var mainStats = itemMainStats[name] || [];
     rows.forEach(function (row) {
@@ -300,7 +325,11 @@ function wishlistBucketRealItems(playerArmorType, playerMainStat, playerRole, pl
       // unfiltered, matching every other filter's "unknown shows everything"
       // convention.
       var weaponSubtype = itemWeaponSubtypes[name] || '';
-      if (playerClass && row === 'Weapon' && weaponSubtype) {
+      // Covers both the item's normal Weapon-row placement and its
+      // DUAL_WIELD_CLASSES fan-out into Off Hand above -- catalogSlot is
+      // still 'One-Hand' either way, so the same allowed-subtype list
+      // (Frost DK's Axe/Mace/Sword, etc.) applies to both hands.
+      if (playerClass && (row === 'Weapon' || (row === 'Off Hand' && catalogSlot === 'One-Hand')) && weaponSubtype) {
         var allowedWeaponTypes = ((CLASS_WEAPON_TYPES || {})[playerClass] || {})[catalogSlot] || [];
         if (allowedWeaponTypes.indexOf(weaponSubtype) === -1) return;
       }
@@ -1030,7 +1059,12 @@ function wishlistCompleteness() {
     wishlistItemRows(p.item_id, p.slot || null).forEach(function (row) {
       taggedRows[row] = true;
     });
-    if (p.status === 'bis' && !p.slot) {
+    // p.slot is 'Weapon' for anything tagged since WISHLIST_DISAMBIGUATE_SLOTS
+    // picked up Weapon/Off Hand (dual-wield fan-out, DUAL_WIELD_CLASSES);
+    // older rows tagged before that change still carry slot=null. Off Hand
+    // itself is deliberately excluded here -- a One-Hand BiS *there* doesn't
+    // make Off Hand "required," it already fills it.
+    if (p.status === 'bis' && (p.slot === 'Weapon' || !p.slot)) {
       var name = idToName[p.item_id];
       if (name && itemSlots[name] === 'One-Hand') offHandRequired = true;
     }
