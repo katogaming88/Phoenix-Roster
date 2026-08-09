@@ -8,6 +8,13 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.58.2] - 2026-08-09
+
+### Frontend
+
+- **Fixed a raider's tagged Wishlist BiS picks not showing up in their BiS List when viewed by anyone other than themself.** The BiS List's wishlist merge only ever worked for the raider's own logged-in view of their own profile -- anyone else browsing their profile from the public roster (officer, teammate, guildmate) saw only the officer's curated `bis_items` picks, silently missing every item the raider had tagged BiS on their own Wishlist. Now reuses the same cached wishlist data the profile's Wishlist tab already fetches for that view.
+- **Fixed the BiS List showing a tier token's generic name (e.g. "Venomwoven Idol") instead of the raider's own resolved class piece.** The profile card's BiS/Priority row never applied the class-specific tier-token resolution tab-bis.js's own grid already does -- every viewer, including the raider looking at their own BiS List, saw the raw token name for any tier-slot pick. Now resolves for display the same way, while keeping every underlying lookup (priority rank, received/self-received matching, Mark Received) on the token's own name so nothing else breaks.
+
 ## [3.58.1] - 2026-08-08
 
 ### Frontend

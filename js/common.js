@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.58.1';
+var VERSION = '3.58.2';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -5170,9 +5170,25 @@ function renderProfile(firstName, backTo, container) {
   // this display; untouched everywhere else (tab-conflicts.js,
   // tab-priority.js, the officer's own bis_items grid all still read
   // getBisItems()/bis_items directly, unaffected by this local reassignment).
-  if (backTo === 'landing' && typeof wishlistBisMergeGroups === 'function') {
+  if (backTo === 'landing' && isOwnWishlistView && typeof wishlistBisMergeGroups === 'function') {
     var bisMerge = wishlistBisMergeGroups(player, bisItems);
     bisItems = bisMerge.fromWishlist.concat(bisMerge.officerSet);
+  } else if (
+    // Someone other than the raider viewing their profile via the public
+    // roster (index.html) -- wishlistBisMergeGroups()/_wishlistPrefs above
+    // only ever get populated for the logged-in raider's own profile
+    // (ownWishlistSectionHTML is the only thing that sets _wishlistPlayerId).
+    // officerWishlistSectionHTML() (called just above to build this same
+    // view's Wishlist tab) already fetched and cached this player's prefs in
+    // _profileWishlistPrefsCache, so reuse that instead of leaving the merge
+    // silently empty here.
+    backTo === 'landing' &&
+    !isOwnWishlistView &&
+    typeof bisMergeWishlistPrefs === 'function' &&
+    _profileWishlistPrefsCache[player.id]
+  ) {
+    var bisMergeLanding = bisMergeWishlistPrefs(_profileWishlistPrefsCache[player.id], bisItems, player.id);
+    bisItems = bisMergeLanding.fromWishlist.concat(bisMergeLanding.officerSet);
   } else if (
     backTo === 'officer' &&
     (typeof featureEnabled !== 'function' || featureEnabled('bis')) &&
@@ -5194,11 +5210,27 @@ function renderProfile(firstName, backTo, container) {
   bisItems = bisItems.slice().sort(function (a, b) {
     return bisDisplaySortKey(a, itemSlotsForSort) - bisDisplaySortKey(b, itemSlotsForSort);
   });
+  // Tier tokens (Head/Shoulder/Chest/Hands/Legs) drop as a generic
+  // per-armor-type item -- bis_items.item_id/item_preferences.item_id and
+  // this row's own `item` all stay on the token throughout (matches the
+  // token's role in generate_priority_order()'s `bis` CTE and
+  // DATA.priorityOrder, both keyed by the token's own name/id), same as
+  // tab-bis.js's own grid (#393). Only the *displayed* name is substituted
+  // here, via `displayItem` -- `item` itself stays the raw token name for
+  // every lookup below (getRank/DATA.priorityOrder, receivedMap/selfRecMap,
+  // and the Mark Received flow's defaultSrc), so nothing else in this row
+  // breaks.
+  var rowTierTokenMap = (DATA && DATA.tierTokenMap) || {};
+  var rowPlayerClass = player && player.class;
   var rows = '';
   for (var bi = 0; bi < bisItems.length; bi++) {
     var entry = bisItems[bi];
     var item = entry.item,
       bisSlot = entry.slot;
+    var displayItem =
+      rowPlayerClass && rowTierTokenMap[item] && rowTierTokenMap[item][rowPlayerClass]
+        ? rowTierTokenMap[item][rowPlayerClass]
+        : item;
     var rank = getRank(player.nameRealm, item);
     var slot = (DATA.itemSlots || {})[item] || bisSlot || '';
     // The raw bis_items.slot for this row, which "Mark received" sends so the
@@ -5247,9 +5279,9 @@ function renderProfile(firstName, backTo, container) {
     rows += '<span class="priority-item-slot" style="color:' + getSlotColor(slot) + ';">' + slot + '</span>';
     rows +=
       '<span class="priority-item-name" style="text-align:center;" title="' +
-      item +
+      displayItem +
       '">' +
-      item +
+      displayItem +
       (entry.fromWishlist
         ? ' <span style="color:var(--gold-light);font-size:0.85em;font-weight:600;">(Wishlist)</span>'
         : '') +
