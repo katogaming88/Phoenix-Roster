@@ -49,7 +49,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.58.1';
+var VERSION = '3.58.2';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -5170,9 +5170,25 @@ function renderProfile(firstName, backTo, container) {
   // this display; untouched everywhere else (tab-conflicts.js,
   // tab-priority.js, the officer's own bis_items grid all still read
   // getBisItems()/bis_items directly, unaffected by this local reassignment).
-  if (backTo === 'landing' && typeof wishlistBisMergeGroups === 'function') {
+  if (backTo === 'landing' && isOwnWishlistView && typeof wishlistBisMergeGroups === 'function') {
     var bisMerge = wishlistBisMergeGroups(player, bisItems);
     bisItems = bisMerge.fromWishlist.concat(bisMerge.officerSet);
+  } else if (
+    // Someone other than the raider viewing their profile via the public
+    // roster (index.html) -- wishlistBisMergeGroups()/_wishlistPrefs above
+    // only ever get populated for the logged-in raider's own profile
+    // (ownWishlistSectionHTML is the only thing that sets _wishlistPlayerId).
+    // officerWishlistSectionHTML() (called just above to build this same
+    // view's Wishlist tab) already fetched and cached this player's prefs in
+    // _profileWishlistPrefsCache, so reuse that instead of leaving the merge
+    // silently empty here.
+    backTo === 'landing' &&
+    !isOwnWishlistView &&
+    typeof bisMergeWishlistPrefs === 'function' &&
+    _profileWishlistPrefsCache[player.id]
+  ) {
+    var bisMergeLanding = bisMergeWishlistPrefs(_profileWishlistPrefsCache[player.id], bisItems, player.id);
+    bisItems = bisMergeLanding.fromWishlist.concat(bisMergeLanding.officerSet);
   } else if (
     backTo === 'officer' &&
     (typeof featureEnabled !== 'function' || featureEnabled('bis')) &&
