@@ -5210,11 +5210,27 @@ function renderProfile(firstName, backTo, container) {
   bisItems = bisItems.slice().sort(function (a, b) {
     return bisDisplaySortKey(a, itemSlotsForSort) - bisDisplaySortKey(b, itemSlotsForSort);
   });
+  // Tier tokens (Head/Shoulder/Chest/Hands/Legs) drop as a generic
+  // per-armor-type item -- bis_items.item_id/item_preferences.item_id and
+  // this row's own `item` all stay on the token throughout (matches the
+  // token's role in generate_priority_order()'s `bis` CTE and
+  // DATA.priorityOrder, both keyed by the token's own name/id), same as
+  // tab-bis.js's own grid (#393). Only the *displayed* name is substituted
+  // here, via `displayItem` -- `item` itself stays the raw token name for
+  // every lookup below (getRank/DATA.priorityOrder, receivedMap/selfRecMap,
+  // and the Mark Received flow's defaultSrc), so nothing else in this row
+  // breaks.
+  var rowTierTokenMap = (DATA && DATA.tierTokenMap) || {};
+  var rowPlayerClass = player && player.class;
   var rows = '';
   for (var bi = 0; bi < bisItems.length; bi++) {
     var entry = bisItems[bi];
     var item = entry.item,
       bisSlot = entry.slot;
+    var displayItem =
+      rowPlayerClass && rowTierTokenMap[item] && rowTierTokenMap[item][rowPlayerClass]
+        ? rowTierTokenMap[item][rowPlayerClass]
+        : item;
     var rank = getRank(player.nameRealm, item);
     var slot = (DATA.itemSlots || {})[item] || bisSlot || '';
     // The raw bis_items.slot for this row, which "Mark received" sends so the
@@ -5263,9 +5279,9 @@ function renderProfile(firstName, backTo, container) {
     rows += '<span class="priority-item-slot" style="color:' + getSlotColor(slot) + ';">' + slot + '</span>';
     rows +=
       '<span class="priority-item-name" style="text-align:center;" title="' +
-      item +
+      displayItem +
       '">' +
-      item +
+      displayItem +
       (entry.fromWishlist
         ? ' <span style="color:var(--gold-light);font-size:0.85em;font-weight:600;">(Wishlist)</span>'
         : '') +
