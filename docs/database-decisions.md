@@ -8,6 +8,16 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-08-08 -- `generate_priority_order()`: rank true tier-token BiS holders ahead of sidegrade taggers
+
+Decided directly in conversation (no tracking issue), a follow-up to #651's tier-piece-count weighting (`20260804140751_tier_pieces_priority_weighting.sql`). That change ranked candidates for a tier-token drop purely by how many tier pieces they already have equipped -- so a raider who only tagged this specific token as a sidegrade (Good/OK/Catalyst Only) could still outrank a raider with this exact token tagged as their actual BiS, if the sidegrade tagger happened to be closer to a 2pc/4pc bonus. Kat wants raiders to keep getting set bonuses quickly, but not at the expense of handing a token to someone who's going to replace it later.
+
+- **New `bis_match_rank` sort key**, slotted in between `status_tier` (bench/trial) and the existing `tier_rank` (piece count) in the `order by` clause. 0 (best) for a raider with `status = 'bis'` on this token via `item_preferences`, or with no wishlist row at all but a `bis_items` pick for it -- the same "untagged reads as BiS" treatment the existing wishlist score multiplier already gives that case. 1 otherwise. Neutral (0 for everyone) on non-tier items, same pattern `tier_rank` already uses, so ordering elsewhere is untouched.
+- **BiS-match dominates, tier_rank only breaks ties among equally-true-BiS raiders.** A raider with this token tagged BiS and 0/5 pieces still outranks a raider one piece away from a set bonus who only tagged it Good -- confirmed as the intended behavior, not a bug, since "is this raider actually keeping the piece" matters more than "how close are they to a bonus."
+- **Doesn't touch candidacy** -- the `bis`/`wishlist` CTEs and the `candidates` union/except are unchanged. This only reorders raiders already eligible to appear.
+- **Not a hard lock.** The suggested order is still just a default; officers can hand a drop to someone else in raid based on real-time need (e.g. giving it to a raider continuing into Mythic over one only raiding Heroic), same as always.
+- Implemented in `20260808212802_tier_priority_bis_match.sql`, function body only -- no schema/RLS change. New coverage in `tests/rls/priority-tier-bis-match.test.js`.
+
 ## 2026-08-08 -- `wcl-progression-sync`: extend the cron sync to Heroic, not just Mythic (#629)
 
 Decided directly in conversation, expanding #629's original ask (automate the AOTC date) to the same live pull-count/best-%/kill-date tracking Mythic already gets, since AOTC is really just one derived fact from that same Heroic data.
