@@ -44,19 +44,19 @@ function makeSandbox({ roster, incompleteWishlists }) {
   return { sandbox, container };
 }
 
-describe('buildBisListsTab wishlist-incomplete badge (#515)', () => {
-  it('shows a "Wishlist incomplete" badge with a hover title for a raider with missing slots', () => {
+describe('buildBisListsTab wishlist-incomplete badge (#515, item-level)', () => {
+  it('shows a "Wishlist incomplete" badge with a hover title listing missing items per row', () => {
     const roster = [{ firstName: 'Kat', nameRealm: 'Kat-Illidan', role: 'Melee', isBench: false, class: 'Rogue' }];
     const incompleteWishlists = {
       count: 1,
-      raiders: [{ nameRealm: 'Kat-Illidan', missingRows: ['Neck', 'Waist'] }]
+      raiders: [{ nameRealm: 'Kat-Illidan', missingRows: ['Neck', 'Waist'], missingCounts: { Neck: 2, Waist: 1 } }]
     };
     const { sandbox, container } = makeSandbox({ roster, incompleteWishlists });
 
     sandbox.buildBisListsTab();
 
-    expect(container.innerHTML).toContain('Wishlist incomplete (2)');
-    expect(container.innerHTML).toContain('Wishlist missing: Neck, Waist');
+    expect(container.innerHTML).toContain('Wishlist incomplete (3)');
+    expect(container.innerHTML).toContain('Wishlist missing: Neck (2), Waist (1)');
   });
 
   it('omits the badge for a raider with a complete wishlist', () => {

@@ -486,8 +486,20 @@ function buildPriorityNotesTab() {
         escHtml(statusLabels[p.status] || p.status) +
         '</span>' +
         '</div>' +
-        '<div class="self-received-source" style="width:100%;box-sizing:border-box;font-size:0.92rem;margin-top:0.25rem;">' +
+        '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:0.5rem;width:100%;margin-top:0.25rem;">' +
+        '<div class="self-received-source" style="flex:1;box-sizing:border-box;font-size:0.92rem;">' +
         escHtml(p.note) +
+        '</div>' +
+        '<button type="button" class="btn btn-muted" style="font-size:0.85rem;padding:1px 8px;flex-shrink:0;" ' +
+        'onclick="clearWishlistNote(' +
+        p.id +
+        ',' +
+        p.player_id +
+        ",'" +
+        display.replace(/'/g, "\\'") +
+        "','" +
+        name.replace(/'/g, "\\'") +
+        '\')">Clear Note</button>' +
         '</div>' +
         '</div>';
     });
@@ -495,6 +507,37 @@ function buildPriorityNotesTab() {
   });
 
   el.innerHTML = html;
+}
+
+// Officers clear a raider's redundant/noisy note without touching their
+// status tag -- item_preferences' "Officers clear item_preferences note"
+// policy (20260810160841_item_preferences_officer_clear_note.sql) plus its
+// restrict trigger only allow this exact write (note set to NULL, nothing
+// else), so there's nothing else this can be misused for even if the
+// row id were guessed. Patches _teamItemPreferences locally rather than
+// refetching, same "own write, then update local state" shape as
+// clearMyWishlist() (js/wishlist.js).
+function clearWishlistNote(prefId, playerId, displayName, itemName) {
+  if (!supabaseClient) return;
+  if (!confirm('Clear ' + displayName + "'s note on " + itemName + '?')) return;
+
+  supabaseClient
+    .from('item_preferences')
+    .update({ note: null })
+    .eq('id', prefId)
+    .then(function (result) {
+      if (result.error) {
+        alert('Failed to clear note: ' + result.error.message);
+        return;
+      }
+      var pref = (_teamItemPreferences || []).find(function (p) {
+        return p.id === prefId;
+      });
+      if (pref) pref.note = null;
+      writeAuditLog('Wishlist Note Cleared', 'players', playerId, displayName + ' -- ' + itemName);
+      buildPriorityNotesTab();
+      updatePriorityNotesBadge();
+    });
 }
 
 // Re-renders whichever Priority sub-tab is currently visible, plus its boss
@@ -556,7 +599,7 @@ function fetchTeamItemPreferences() {
   if (!supabaseClient) return Promise.resolve(null);
   var query = supabaseClient
     .from('item_preferences')
-    .select('player_id, item_id, status, slot, note')
+    .select('id, player_id, item_id, status, slot, note')
     .eq('team_id', _teamCfg.supabaseTeamId)
     .then(function (result) {
       if (result.error) {
@@ -589,17 +632,36 @@ function _priorityItemRows(itemId, slot, idToName, itemSlots) {
   return BIS_CATALOG_SLOT_TO_ROWS[itemSlots[name] || ''] || [];
 }
 
+// Own copy of js/wishlist.js's WISHLIST_DISAMBIGUATE_SLOTS -- the rows where
+// item_preferences.slot is written as the row name itself (not null),
+// because the same physical item (a ring, a trinket, a one-hander) can show
+// up as a candidate on more than one row and needs to say which one it was
+// tagged on. Needed here to match a preference row to a specific eligible
+// item the same way wishlist.js's wishlistPrefFor() does.
+var PRIORITY_WISHLIST_DISAMBIGUATE_SLOTS = {
+  'Finger 1': true,
+  'Finger 2': true,
+  'Trinket 1': true,
+  'Trinket 2': true,
+  Weapon: true,
+  'Off Hand': true
+};
+
 // officerBuckets (tab-bis.js's bisSlotBuckets().buckets for this player) --
-// a row already covered by the officer's bis_items grid doesn't need the
-// raider to have tagged it themselves too, same fallback js/wishlist.js's
-// own wishlistCompleteness() applies on the raider side.
-function _priorityWishlistMissingRows(prefs, idToName, itemSlots, officerBuckets) {
-  var taggedRows = {};
+// eligibleBuckets (tab-bis.js's bisEligibleRealItemsBySlot() for this
+// player) -- every real catalog item the raider could tag per row. Item-level
+// completeness (#515 follow-up): a row is only fully covered once every
+// eligible item in it has either a raider-tagged preference, or is the exact
+// item the officer's bis_items grid already picked for that row (covers just
+// that one item, not the whole row -- mirrors js/wishlist.js's
+// wishlistCompleteness()).
+function _priorityWishlistMissingRows(prefs, idToName, itemSlots, officerBuckets, eligibleBuckets) {
   var offHandRequired = false;
+  var taggedWeaponRow = false;
   prefs.forEach(function (p) {
-    _priorityItemRows(p.item_id, p.slot || null, idToName, itemSlots).forEach(function (row) {
-      taggedRows[row] = true;
-    });
+    if (_priorityItemRows(p.item_id, p.slot || null, idToName, itemSlots).indexOf('Weapon') !== -1) {
+      taggedWeaponRow = true;
+    }
     // Mirrors js/wishlist.js's wishlistCompleteness() fix: p.slot is now
     // 'Weapon' (not null) for anything tagged since dual-wield fan-out
     // (DUAL_WIELD_CLASSES) added Weapon/Off Hand to WISHLIST_DISAMBIGUATE_SLOTS.
@@ -610,15 +672,46 @@ function _priorityWishlistMissingRows(prefs, idToName, itemSlots, officerBuckets
       if (name && itemSlots[name] === 'One-Hand') offHandRequired = true;
     }
   });
-  if (!taggedRows.Weapon && officerBuckets.Weapon && itemSlots[officerBuckets.Weapon.item] === 'One-Hand') {
+  if (!taggedWeaponRow && officerBuckets.Weapon && itemSlots[officerBuckets.Weapon.item] === 'One-Hand') {
     offHandRequired = true;
   }
   var requiredRows = BIS_SLOTS.filter(function (row) {
     return row !== 'Off Hand' || offHandRequired;
   });
-  return requiredRows.filter(function (row) {
-    return !taggedRows[row] && !officerBuckets[row];
+
+  // Same lookup as _priorityWishlistMissingRows' exact-slot match, but falls
+  // back to a legacy slot=null pref (tagged before Finger/Trinket/Weapon/Off
+  // Hand started writing an explicit disambiguating slot) when that pref's
+  // item still resolves to this row via its own catalog slot -- mirrors
+  // js/wishlist.js's wishlistPrefForRow().
+  function taggedForRow(itemId, row) {
+    var rowSlot = PRIORITY_WISHLIST_DISAMBIGUATE_SLOTS[row] ? row : null;
+    var exact = prefs.some(function (p) {
+      return p.item_id === itemId && (p.slot || null) === rowSlot;
+    });
+    if (exact || !rowSlot) return exact;
+    return prefs.some(function (p) {
+      return (
+        p.item_id === itemId && !p.slot && _priorityItemRows(itemId, null, idToName, itemSlots).indexOf(row) !== -1
+      );
+    });
+  }
+
+  var missingRows = [];
+  var missingCounts = {};
+  requiredRows.forEach(function (row) {
+    var items = eligibleBuckets[row] || [];
+    var missing = 0;
+    items.forEach(function (item) {
+      var officerCovers = officerBuckets[row] && officerBuckets[row].item === item.rankName;
+      if (!officerCovers && !taggedForRow(item.itemId, row)) missing++;
+    });
+    if (missing > 0) {
+      missingRows.push(row);
+      missingCounts[row] = missing;
+    }
   });
+  return { missingRows: missingRows, missingCounts: missingCounts };
 }
 
 // roster override (js/tabs/tab-roster.js's Wishlists Completed stat card):
@@ -646,8 +739,27 @@ function getIncompleteWishlists(roster) {
       typeof getBisItems === 'function' && typeof bisSlotBuckets === 'function'
         ? bisSlotBuckets(getBisItems(player.nameRealm)).buckets
         : {};
-    var missingRows = _priorityWishlistMissingRows(prefsByPlayer[player.id] || [], idToName, itemSlots, officerBuckets);
-    if (missingRows.length) raiders.push({ nameRealm: player.nameRealm, missingRows: missingRows });
+    var playerArmorType = (typeof CLASS_ARMOR_TYPE !== 'undefined' && CLASS_ARMOR_TYPE[player.class]) || null;
+    var playerMainStat = typeof specMainStat === 'function' ? specMainStat(player.class, player.spec) : null;
+    var playerRole = (typeof SPEC_ROLE !== 'undefined' && SPEC_ROLE[player.spec]) || null;
+    var eligibleBuckets =
+      typeof bisEligibleRealItemsBySlot === 'function'
+        ? bisEligibleRealItemsBySlot(playerArmorType, playerMainStat, playerRole, player.class || null)
+        : {};
+    var result = _priorityWishlistMissingRows(
+      prefsByPlayer[player.id] || [],
+      idToName,
+      itemSlots,
+      officerBuckets,
+      eligibleBuckets
+    );
+    if (result.missingRows.length) {
+      raiders.push({
+        nameRealm: player.nameRealm,
+        missingRows: result.missingRows,
+        missingCounts: result.missingCounts
+      });
+    }
   });
   raiders.sort(function (a, b) {
     return a.nameRealm.localeCompare(b.nameRealm);

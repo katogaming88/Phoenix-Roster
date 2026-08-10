@@ -8,6 +8,28 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-08-10 -- `generate_priority_order()`: match wishlist tags by item_id, not slot = null
+
+Found while investigating an unrelated question about an orphaned `item_preferences` row on a raider's profile: `generate_priority_order()`'s wishlist CTE (`20260720165552_priority_wishlist_ranking.sql`) has filtered `ip.slot is null` since it shipped 2026-07-20. That was a no-op at the time -- every real item's row had `slot = null` unconditionally, only placeholder (Other Sources) rows carried a slot. Two later features started writing an explicit slot on real items too and neither updated this function: Finger/Trinket disambiguation (#623, 2026-08-01) and the Weapon/Off Hand dual-wield fix (#673, 2026-08-08).
+
+- **Real-world impact:** since 2026-08-01/08-08 respectively, any status a raider tagged on a Finger 1/Finger 2/Trinket 1/Trinket 2/Weapon/Off Hand item was invisible to priority-order generation -- including `pass`. A raider explicitly passing on one of these items was silently still eligible to be suggested for it. Caught live on one raider (Torbjorn) whose four `pass`-tagged weapons were, in practice, only still excluded because his *pre-disambiguation legacy rows* (the ones the bug actually read) happened to still exist untouched.
+- **Fix:** match on `item_id` alone (drop the slot filter). Since the same `item_id` can now carry more than one row per player (one per disambiguated row it's eligible for -- e.g. a one-hander tagged differently for Weapon vs. Off Hand), collapse to a single best status per player via a ranked `array_agg`. "Best" = most favorable to candidacy, matching the existing multiplier order (bis > good > catalyst > ok > pass/excluded) -- a raider who wants an item in *either* hand/finger/ring slot is still a genuine candidate for it; only a raider who passed on *every* row for that `item_id` is excluded.
+- **Rejected:** trying to resolve which physical slot a drop "is" and only reading that row's status -- the schema has no notion of which equip slot a specific drop instance will occupy (a one-hander can go in either hand), so there's no principled way to prefer one row over the other except by favorability.
+- Implemented in `20260810163045_priority_order_wishlist_slot_aware.sql`. Covered by 4 new cases in `tests/rls/priority-wishlist-ranking.test.js` (explicit-slot status now counted, pass-on-explicit-slot still excludes, best-of-two-hands wins over a pass in the other, all-rows-pass still excludes).
+
+---
+
+## 2026-08-10 -- `item_preferences`: officer can clear (not edit) a raider's note
+
+Decided directly in conversation (no tracking issue): some raiders were leaving redundant/noisy `item_preferences.note` text (e.g. restating "BiS" when the status tier already says so), and the Priority > Notes sub-tab had no way to clean that up -- officers could only read notes, not touch them.
+
+- **Narrow officer UPDATE policy** (`my_team_role(team_id)` officer/team_leader, same predicate as the table's existing officer read policy) plus a restrict trigger, following the now-established shape from `bis_items.obtained` and `players.bonus_roll_encounter_id`: the policy alone only scopes *which row*, so the trigger locks down *what* the write can do.
+- **Stricter than the `obtained`/`bonus_roll_encounter_id` precedents on purpose**: those only restrict *which column* changes; this restricts the column *and* the value -- an officer-driven update must set `note` to `NULL`, nothing else. The feature is "clear a note," not "edit a note," and locking the value prevents an officer from quietly rewriting a raider's stated reasoning.
+- **Owner-exemption branch reused verbatim** from `restrict_players_self_update_to_bonus_roll()`: `current_user <> 'authenticated'` (service role / SQL Editor / migrations) OR `is_own_player(player_id)` bypass the restriction entirely, so a raider's own existing full-column-freedom self-service policy on this table is untouched -- only a non-owning actor (reaching the row through the new officer policy) is restricted to the note-clear.
+- Implemented in `20260810160841_item_preferences_officer_clear_note.sql` and `js/tabs/tab-priority.js`'s `clearWishlistNote()` (Notes sub-tab). Covered by `tests/rls/item-preferences.test.js`.
+
+---
+
 ## 2026-08-09 -- `players.bonus_roll_encounter_id`: self-service Bonus Roll target, informational only
 
 Decided directly in conversation (no tracking issue): raiders wanted a way to declare which current-raid boss they're planning to spend their weekly Bonus Roll on until they get the item(s) they're after, so officers have a heads-up when making in-raid loot calls. Split into two pieces up front -- a live in-game addon flag (RCLootCouncil_PriorityLoot's `nonTradeables`-based "already bonus-rolled this pull" column, shipped separately, addon-only) and this web-app piece: a forward-looking planning declaration, not live combat data.

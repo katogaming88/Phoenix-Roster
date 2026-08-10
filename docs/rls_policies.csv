@@ -23,6 +23,7 @@ guild_officers,Site Admins write guild_officers,public,ALL,PERMISSIVE,is_site_ad
 item_bosses,Claude readers read item_bosses,claude_readers,SELECT,PERMISSIVE,true,
 item_bosses,Public read item_bosses,public,SELECT,PERMISSIVE,true,
 item_preferences,Claude readers read item_preferences,claude_readers,SELECT,PERMISSIVE,true,
+item_preferences,Officers clear item_preferences note,public,UPDATE,PERMISSIVE,"(my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text]))","(my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text]))"
 item_preferences,Officers read item_preferences,public,SELECT,PERMISSIVE,"(my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text]))",
 item_preferences,Raiders manage own item_preferences,public,ALL,PERMISSIVE,is_own_player(player_id),is_own_player(player_id)
 items,Claude readers read items,claude_readers,SELECT,PERMISSIVE,true,

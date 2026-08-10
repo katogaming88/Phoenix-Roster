@@ -135,4 +135,88 @@ describe('generate_priority_order wishlist integration', () => {
   });
 });
 
+// #623 (Finger/Trinket) and #673 (Weapon/Off Hand dual-wield) started
+// writing an explicit disambiguating slot on real-item item_preferences
+// rows -- generate_priority_order() previously only matched slot = null
+// rows, silently ignoring every status tagged on one of these rows
+// (including 'pass'). 20260810163045_priority_order_wishlist_slot_aware.sql
+// fixes this by matching on item_id alone and collapsing to the single best
+// status across all of a player's rows for that item_id.
+describe('generate_priority_order slot-aware wishlist matching (#623/#673 follow-up)', () => {
+  it('a status tagged on an explicit-slot row (e.g. Weapon) is no longer ignored', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await seedScoring(q, 2, 100, 100);
+      await q(
+        "insert into public.item_preferences (team_id, player_id, item_id, status, slot) values (1, 2, 2, 'good', 'Weapon')"
+      );
+      const res = await generate(asUser, 2);
+      const row = res.rows.find((r) => r.player_id === 2);
+      expect(row).toBeTruthy();
+      expect(row.weighted_total).toBe('90.0');
+      expect(row.status_label).toContain('Wishlist: Good');
+    });
+  });
+
+  it("'pass' tagged on an explicit-slot row still excludes the raider", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await seedScoring(q, 1, 100, 100);
+      // Player 1 has a bis_items row for item 1 (seed.sql) -- Pass on an
+      // explicit-slot row should still exclude them, same as the legacy
+      // slot=null case above.
+      await q(
+        "insert into public.item_preferences (team_id, player_id, item_id, status, slot) values (1, 1, 1, 'pass', 'Off Hand')"
+      );
+      const res = await generate(asUser, 1);
+      expect(res.rows.find((r) => r.player_id === 1)).toBeFalsy();
+    });
+  });
+
+  it('a dual-wielded one-hander tagged BiS in one hand and Pass in the other still counts the raider as BiS (best status wins)', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await seedScoring(q, 2, 100, 100);
+      await q(
+        "insert into public.item_preferences (team_id, player_id, item_id, status, slot) values (1, 2, 2, 'bis', 'Weapon')"
+      );
+      await q(
+        "insert into public.item_preferences (team_id, player_id, item_id, status, slot) values (1, 2, 2, 'pass', 'Off Hand')"
+      );
+      const res = await generate(asUser, 2);
+      const row = res.rows.find((r) => r.player_id === 2);
+      expect(row).toBeTruthy();
+      expect(row.weighted_total).toBe('100.0');
+      expect(row.status_label == null || !row.status_label.includes('Wishlist')).toBe(true);
+    });
+  });
+
+  it('a raider who passed on every disambiguated row for an item is excluded', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await seedScoring(q, 2, 100, 100);
+      await q(
+        "insert into public.item_preferences (team_id, player_id, item_id, status, slot) values (1, 2, 2, 'pass', 'Weapon')"
+      );
+      await q(
+        "insert into public.item_preferences (team_id, player_id, item_id, status, slot) values (1, 2, 2, 'pass', 'Off Hand')"
+      );
+      const res = await generate(asUser, 2);
+      expect(res.rows.find((r) => r.player_id === 2)).toBeFalsy();
+    });
+  });
+
+  it('the better of two differing non-pass statuses (Good in one hand, OK in the other) wins', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await seedScoring(q, 2, 100, 100);
+      await q(
+        "insert into public.item_preferences (team_id, player_id, item_id, status, slot) values (1, 2, 2, 'ok', 'Weapon')"
+      );
+      await q(
+        "insert into public.item_preferences (team_id, player_id, item_id, status, slot) values (1, 2, 2, 'good', 'Off Hand')"
+      );
+      const res = await generate(asUser, 2);
+      const row = res.rows.find((r) => r.player_id === 2);
+      expect(row.weighted_total).toBe('90.0');
+      expect(row.status_label).toContain('Wishlist: Good');
+    });
+  });
+});
+
 afterAll(() => pool.end());

@@ -98,6 +98,7 @@
 | public.check_priority_order_drift | record | p_team_id integer, p_season text | FUNCTION |
 | public.restrict_bis_items_update_to_obtained | trigger |  | FUNCTION |
 | public.restrict_players_self_update_to_bonus_roll | trigger |  | FUNCTION |
+| public.restrict_item_preferences_officer_update_to_note_clear | trigger |  | FUNCTION |
 
 ## Enums
 

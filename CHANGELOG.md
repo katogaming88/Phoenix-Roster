@@ -8,6 +8,18 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.0] - 2026-08-10
+
+### Frontend
+
+- **Wishlist completeness is now tracked per item, not per slot.** Previously a slot counted as "done" the moment any one item on it had a status -- a raider could tag a single BiS pick per slot and show as 100% complete while every backup/sidegrade option sat untagged. Now every eligible item in a slot needs its own status (BiS/Good/OK/Catalyst Only/Pass) before that slot clears, with the raider's own Wishlist summary, the officer BiS Lists badge, and the Roster tab's completeness stat all showing remaining item counts (e.g. "Neck (2)") instead of just a bare slot name.
+- Officers can now clear a raider's wishlist note directly from the Priority > Notes sub-tab ("Clear Note" button) -- useful for wiping redundant/noisy notes (e.g. restating a status that's already obvious) without touching the raider's actual tag.
+
+### Backend
+
+- Fixed a real regression in `generate_priority_order()`: it had matched wishlist tags by `item_id` *and* `slot = null` since Wishlist ranking first shipped, which silently stopped working once Finger/Trinket disambiguation (#623) and the Weapon/Off Hand dual-wield fix (#673) started writing an explicit slot on real items. Any status tagged on one of those rows since -- including `Pass` -- was invisible to priority-order generation. Now matches by `item_id` alone and takes the most-favorable status across a player's rows for that item. See `docs/database-decisions.md` for the full writeup.
+- Added a narrow officer UPDATE policy + restrict trigger on `item_preferences` so an officer can null out a raider's `note` column (and only that, and only to `NULL`) -- backs the new Clear Note button above.
+
 ## [3.59.0] - 2026-08-09
 
 ### Frontend

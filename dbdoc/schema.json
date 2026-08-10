@@ -3622,6 +3622,10 @@
       ],
       "triggers": [
         {
+          "name": "trg_item_preferences_restrict_officer_update",
+          "def": "CREATE TRIGGER trg_item_preferences_restrict_officer_update BEFORE UPDATE ON public.item_preferences FOR EACH ROW EXECUTE FUNCTION restrict_item_preferences_officer_update_to_note_clear()"
+        },
+        {
           "name": "trg_item_preferences_team_id_check",
           "def": "CREATE TRIGGER trg_item_preferences_team_id_check BEFORE INSERT OR UPDATE ON public.item_preferences FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
         },
@@ -4863,6 +4867,12 @@
     },
     {
       "name": "public.restrict_players_self_update_to_bonus_roll",
+      "return_type": "trigger",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.restrict_item_preferences_officer_update_to_note_clear",
       "return_type": "trigger",
       "arguments": "",
       "type": "FUNCTION"
