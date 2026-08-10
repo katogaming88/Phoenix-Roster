@@ -36,9 +36,9 @@
 
 | Name | Definition |
 | ---- | ---------- |
+| trg_item_preferences_restrict_officer_update | CREATE TRIGGER trg_item_preferences_restrict_officer_update BEFORE UPDATE ON public.item_preferences FOR EACH ROW EXECUTE FUNCTION restrict_item_preferences_officer_update_to_note_clear() |
 | trg_item_preferences_team_id_check | CREATE TRIGGER trg_item_preferences_team_id_check BEFORE INSERT OR UPDATE ON public.item_preferences FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player() |
 | trg_item_preferences_updated_at | CREATE TRIGGER trg_item_preferences_updated_at BEFORE UPDATE ON public.item_preferences FOR EACH ROW EXECUTE FUNCTION set_updated_at() |
-| trg_item_preferences_restrict_officer_update | CREATE TRIGGER trg_item_preferences_restrict_officer_update BEFORE UPDATE ON public.item_preferences FOR EACH ROW EXECUTE FUNCTION restrict_item_preferences_officer_update_to_note_clear() |
 
 ## Relations
 
