@@ -350,12 +350,12 @@
       ],
       "triggers": [
         {
-          "name": "trg_bis_items_restrict_update",
-          "def": "CREATE TRIGGER trg_bis_items_restrict_update BEFORE UPDATE ON public.bis_items FOR EACH ROW EXECUTE FUNCTION restrict_bis_items_update_to_obtained()"
-        },
-        {
           "name": "trg_bis_items_updated_at",
           "def": "CREATE TRIGGER trg_bis_items_updated_at BEFORE UPDATE ON public.bis_items FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        },
+        {
+          "name": "trg_bis_items_restrict_update",
+          "def": "CREATE TRIGGER trg_bis_items_restrict_update BEFORE UPDATE ON public.bis_items FOR EACH ROW EXECUTE FUNCTION restrict_bis_items_update_to_obtained()"
         }
       ]
     },
@@ -1368,12 +1368,12 @@
       ],
       "triggers": [
         {
-          "name": "trg_players_restrict_self_update",
-          "def": "CREATE TRIGGER trg_players_restrict_self_update BEFORE UPDATE ON public.players FOR EACH ROW EXECUTE FUNCTION restrict_players_self_update_to_bonus_roll()"
-        },
-        {
           "name": "trg_players_updated_at",
           "def": "CREATE TRIGGER trg_players_updated_at BEFORE UPDATE ON public.players FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        },
+        {
+          "name": "trg_players_restrict_self_update",
+          "def": "CREATE TRIGGER trg_players_restrict_self_update BEFORE UPDATE ON public.players FOR EACH ROW EXECUTE FUNCTION restrict_players_self_update_to_bonus_roll()"
         }
       ]
     },
@@ -1548,12 +1548,12 @@
       ],
       "triggers": [
         {
-          "name": "trg_priority_order_team_id_check",
-          "def": "CREATE TRIGGER trg_priority_order_team_id_check BEFORE INSERT OR UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
-        },
-        {
           "name": "trg_priority_order_updated_at",
           "def": "CREATE TRIGGER trg_priority_order_updated_at BEFORE UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        },
+        {
+          "name": "trg_priority_order_team_id_check",
+          "def": "CREATE TRIGGER trg_priority_order_team_id_check BEFORE INSERT OR UPDATE ON public.priority_order FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
         }
       ]
     },
@@ -3628,6 +3628,10 @@
         {
           "name": "trg_item_preferences_updated_at",
           "def": "CREATE TRIGGER trg_item_preferences_updated_at BEFORE UPDATE ON public.item_preferences FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        },
+        {
+          "name": "trg_item_preferences_restrict_officer_update",
+          "def": "CREATE TRIGGER trg_item_preferences_restrict_officer_update BEFORE UPDATE ON public.item_preferences FOR EACH ROW EXECUTE FUNCTION restrict_item_preferences_officer_update_to_note_clear()"
         }
       ]
     },
@@ -4863,6 +4867,12 @@
     },
     {
       "name": "public.restrict_players_self_update_to_bonus_roll",
+      "return_type": "trigger",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.restrict_item_preferences_officer_update_to_note_clear",
       "return_type": "trigger",
       "arguments": "",
       "type": "FUNCTION"

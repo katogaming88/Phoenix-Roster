@@ -143,6 +143,95 @@ describe('officers can read but not directly write item_preferences', () => {
   });
 });
 
+describe('officers can clear (but not otherwise edit) a raider note', () => {
+  it('a team 1 officer can null out a note on a team 1 raider row', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await linkPlayer1ToRaider(q);
+      const inserted = await asUser(
+        RAIDER_T1,
+        "insert into public.item_preferences (team_id, player_id, item_id, status, note) values (1, 1, 1, 'bis', 'redundant note') returning id"
+      );
+      const id = inserted.rows[0].id;
+
+      await asUser(OFFICER_T1, 'update public.item_preferences set note = null where id = $1', [id]);
+      const after = (await q('select note from public.item_preferences where id = $1', [id])).rows[0];
+      expect(after.note).toBeNull();
+    });
+  });
+
+  it('an officer cannot set a note to a non-null value', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await linkPlayer1ToRaider(q);
+      const inserted = await asUser(
+        RAIDER_T1,
+        "insert into public.item_preferences (team_id, player_id, item_id, status, note) values (1, 1, 1, 'bis', 'original note') returning id"
+      );
+      const id = inserted.rows[0].id;
+
+      await expect(
+        asUser(OFFICER_T1, "update public.item_preferences set note = 'rewritten' where id = $1", [id])
+      ).rejects.toThrow();
+    });
+  });
+
+  it('an officer cannot change status/item_id/slot via this path', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await linkPlayer1ToRaider(q);
+      const inserted = await asUser(
+        RAIDER_T1,
+        "insert into public.item_preferences (team_id, player_id, item_id, status, note) values (1, 1, 1, 'bis', 'a note') returning id"
+      );
+      const id = inserted.rows[0].id;
+
+      await expect(
+        asUser(OFFICER_T1, "update public.item_preferences set status = 'pass' where id = $1", [id])
+      ).rejects.toThrow();
+      await expect(
+        asUser(OFFICER_T1, "update public.item_preferences set slot = 'Neck' where id = $1", [id])
+      ).rejects.toThrow();
+    });
+  });
+
+  it("a team 2 officer cannot clear a team 1 raider's note", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await linkPlayer1ToRaider(q);
+      const inserted = await asUser(
+        RAIDER_T1,
+        "insert into public.item_preferences (team_id, player_id, item_id, status, note) values (1, 1, 1, 'bis', 'a note') returning id"
+      );
+      const id = inserted.rows[0].id;
+
+      const res = await asUser(
+        OFFICER_T2,
+        'update public.item_preferences set note = null where id = $1 returning id',
+        [id]
+      );
+      expect(res.rows.length).toBe(0);
+      const after = (await q('select note from public.item_preferences where id = $1', [id])).rows[0];
+      expect(after.note).toBe('a note');
+    });
+  });
+
+  it("a raider's own unrestricted self-update still works (owner exemption regression guard)", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await linkPlayer1ToRaider(q);
+      const inserted = await asUser(
+        RAIDER_T1,
+        "insert into public.item_preferences (team_id, player_id, item_id, status, note) values (1, 1, 1, 'bis', 'a note') returning id"
+      );
+      const id = inserted.rows[0].id;
+
+      await asUser(
+        RAIDER_T1,
+        "update public.item_preferences set status = 'good', note = 'edited by me' where id = $1",
+        [id]
+      );
+      const after = (await q('select status, note from public.item_preferences where id = $1', [id])).rows[0];
+      expect(after).toMatchObject({ status: 'good', note: 'edited by me' });
+    });
+  });
+});
+
 describe('the slot-override unique index allows the same placeholder item once per slot', () => {
   it('a raider can tag the same item_id with two different slots but not the same slot twice', async () => {
     await withTxn(async ({ q, asUser }) => {

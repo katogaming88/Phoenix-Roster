@@ -531,7 +531,7 @@ function buildBisListsTab() {
     typeof getIncompleteWishlists === 'function' ? getIncompleteWishlists() : { count: 0, raiders: [] };
   var missingByNameRealm = {};
   incompleteWishlists.raiders.forEach(function (r) {
-    missingByNameRealm[r.nameRealm] = r.missingRows;
+    missingByNameRealm[r.nameRealm] = r;
   });
 
   for (var i = 0; i < roster.length; i++) {
@@ -570,7 +570,14 @@ function buildBisListsTab() {
       var isEditing = _bisListEditor && _bisListEditor.nameRealm === p.nameRealm;
       var fnSafe = p.firstName.replace(/'/g, "\\'");
       var nrSafe = p.nameRealm.replace(/'/g, "\\'");
-      var missingRows = missingByNameRealm[p.nameRealm];
+      var missingInfo = missingByNameRealm[p.nameRealm];
+      var missingRows = missingInfo && missingInfo.missingRows;
+      var missingCounts = (missingInfo && missingInfo.missingCounts) || {};
+      var missingTotal = missingRows
+        ? missingRows.reduce(function (sum, row) {
+            return sum + (missingCounts[row] || 0);
+          }, 0)
+        : 0;
 
       html +=
         '<tr id="bis-player-row-' +
@@ -593,9 +600,14 @@ function buildBisListsTab() {
           : '') +
         (missingRows
           ? '<span style="font-size:0.85em;color:var(--melee);cursor:default;" title="Wishlist missing: ' +
-            missingRows.join(', ').replace(/"/g, '&quot;') +
+            missingRows
+              .map(function (row) {
+                return row + ' (' + missingCounts[row] + ')';
+              })
+              .join(', ')
+              .replace(/"/g, '&quot;') +
             '">Wishlist incomplete (' +
-            missingRows.length +
+            missingTotal +
             ')</span>'
           : '') +
         '</div>' +
@@ -951,14 +963,16 @@ function bisSlotCancelAdd() {
   refreshBisEditorPanel();
 }
 
-function bisSlotOnInput() {
-  if (!_bisActiveSlot) return;
-  var slotName = _bisActiveSlot;
-  _bisActiveSlotQuery = (document.getElementById('bisSlotSearchInput') || {}).value || '';
-  var dropdown = document.getElementById('bisSlotDropdown');
-  if (!dropdown) return;
-  var query = normalise(_bisActiveSlotQuery.trim());
-
+// Own copy of js/wishlist.js's wishlistBucketRealItems() -- officer.html and
+// index.html are separate script bundles (see js/wishlist.js's file-header
+// comment), so this can't be shared directly. Buckets every real
+// (non-placeholder), in-season-scope catalog item into its BIS_SLOTS row(s),
+// scoped to the given player's armor type/main stat/role/class the same way
+// bisSlotOnInput's search dropdown always has. Used both by that dropdown
+// and by tab-priority.js's item-level wishlist completeness check (#515
+// follow-up), which needs every eligible item per row, not just the ones
+// matching a search query.
+function bisEligibleRealItemsBySlot(playerArmorType, playerMainStat, playerRole, playerClass) {
   var itemSlots = DATA.itemSlots || {};
   var itemArmorTypes = DATA.itemArmorTypes || {};
   var itemMainStats = DATA.itemMainStats || {};
@@ -966,12 +980,86 @@ function bisSlotOnInput() {
   var itemPlaceholders = DATA.itemPlaceholders || {};
   var tierTokenMap = DATA.tierTokenMap || {};
   var tierResolvedItemNames = DATA.tierResolvedItemNames || {};
-  var allItems = Object.keys(itemSlots).filter(function (name) {
+
+  var buckets = {};
+  BIS_SLOTS.forEach(function (s) {
+    buckets[s] = [];
+  });
+
+  Object.keys(itemSlots).forEach(function (name) {
     // Resolved tier items are only ever reachable by their token's
     // substitution below -- listing them here too would show the same class
     // piece twice (same as js/wishlist.js's wishlistBucketRealItems).
-    return !tierResolvedItemNames[name];
+    if (tierResolvedItemNames[name]) return;
+    if (itemPlaceholders[name]) return;
+    if (!isItemInSeasonScope(name)) return;
+
+    var catalogSlot = itemSlots[name] || '';
+    var rows = (BIS_CATALOG_SLOT_TO_ROWS[catalogSlot] || []).slice();
+    // Dual-wield classes (DUAL_WIELD_CLASSES, js/common.js) get an extra
+    // carve-out: a 'One-Hand' item is also a valid Off Hand row candidate,
+    // mirroring js/wishlist.js's wishlistBucketRealItems fan-out.
+    if (catalogSlot === 'One-Hand' && playerClass && DUAL_WIELD_CLASSES[playerClass]) {
+      rows.push('Off Hand');
+    }
+
+    var armorType = itemArmorTypes[name] || '';
+    var mainStats = itemMainStats[name] || [];
+    var weaponSubtype = itemWeaponSubtypes[name] || '';
+
+    rows.forEach(function (row) {
+      if (playerArmorType && BIS_ARMOR_TYPES[armorType] && !BIS_UNIVERSAL_ROWS[row] && armorType !== playerArmorType)
+        return;
+      if (playerMainStat && BIS_MAIN_STAT_ROWS[row] && mainStats.length && mainStats.indexOf(playerMainStat) === -1)
+        return;
+      // #636: mirrors js/wishlist.js's HEALER_ONLY_TRINKETS/TANK_ONLY_TRINKETS
+      // check -- a role-restricted trinket's effect is useless outside that
+      // role even when its stats match. playerRole gate matches every other
+      // filter above: an unknown role shows everything rather than guessing.
+      if (playerRole && (row === 'Trinket 1' || row === 'Trinket 2')) {
+        if (HEALER_ONLY_TRINKETS[name] && playerRole !== 'Heal') return;
+        if (TANK_ONLY_TRINKETS[name] && playerRole !== 'Tank') return;
+      }
+      var isDualWieldOffHand = row === 'Off Hand' && catalogSlot === 'One-Hand';
+      // #609: mirrors js/wishlist.js's CLASS_WEAPON_TYPES/CLASS_SHIELD_USERS
+      // check. weapon_subtype only exists for Weapon-slot items and Shields --
+      // other Off Hand items (tomes/orbs) have none and stay unfiltered here.
+      // Null/unbackfilled weapon_subtype also stays unfiltered, matching every
+      // other filter's "unknown shows everything" convention.
+      if (playerClass && (row === 'Weapon' || isDualWieldOffHand) && weaponSubtype) {
+        var allowedWeaponTypes = ((CLASS_WEAPON_TYPES || {})[playerClass] || {})[catalogSlot] || [];
+        if (allowedWeaponTypes.indexOf(weaponSubtype) === -1) return;
+      }
+      if (playerClass && row === 'Off Hand' && weaponSubtype === 'Shield' && !CLASS_SHIELD_USERS[playerClass]) return;
+
+      // Same tier-token substitution as bisEditorHTML's row display -- see
+      // that function's comment for why displayName/itemName stay separate.
+      var displayName = name;
+      if (playerClass && tierTokenMap[name] && tierTokenMap[name][playerClass]) {
+        displayName = tierTokenMap[name][playerClass];
+      }
+      buckets[row].push({ name: displayName, itemId: (DATA.itemIds || {})[name], rankName: name });
+    });
   });
+
+  Object.keys(buckets).forEach(function (row) {
+    buckets[row].sort(function (a, b) {
+      return a.name.localeCompare(b.name);
+    });
+  });
+
+  return buckets;
+}
+
+function bisSlotOnInput() {
+  if (!_bisActiveSlot) return;
+  var slotName = _bisActiveSlot;
+  _bisActiveSlotQuery = (document.getElementById('bisSlotSearchInput') || {}).value || '';
+  var dropdown = document.getElementById('bisSlotDropdown');
+  if (!dropdown) return;
+  var query = normalise(_bisActiveSlotQuery.trim());
+  var itemPlaceholders = DATA.itemPlaceholders || {};
+  var tierResolvedItemNames = DATA.tierResolvedItemNames || {};
 
   var playerArmorType = null;
   var playerMainStat = null;
@@ -996,91 +1084,34 @@ function bisSlotOnInput() {
     }
   }
 
-  var matches = [];
-  for (var i = 0; i < allItems.length; i++) {
-    var name = allItems[i];
-    var isPlaceholder = !!itemPlaceholders[name];
-    var catalogSlot = itemSlots[name] || '';
+  // Placeholders (M+/Crafted/Catalyst) fit every row and aren't part of
+  // bisEligibleRealItemsBySlot's real-item buckets, so they're layered back
+  // in here alongside that row's real items.
+  var candidates = (
+    bisEligibleRealItemsBySlot(playerArmorType, playerMainStat, playerRole, playerClass)[slotName] || []
+  ).map(function (item) {
+    return { itemName: item.rankName, displayName: item.name };
+  });
+  Object.keys(itemPlaceholders)
+    .sort()
+    .forEach(function (name) {
+      if (tierResolvedItemNames[name]) return;
+      candidates.push({ itemName: name, displayName: name });
+    });
 
-    // Scope to items whose catalog slot maps to this row; placeholders
-    // (M+/Crafted/Catalyst) fit every row, since they name a source, not a slot.
-    // Dual-wield classes (DUAL_WIELD_CLASSES, js/common.js) get an extra
-    // carve-out: a 'One-Hand' item is also a valid Off Hand row candidate,
-    // mirroring js/wishlist.js's wishlistBucketRealItems fan-out.
-    var isDualWieldOffHand =
-      slotName === 'Off Hand' && catalogSlot === 'One-Hand' && playerClass && DUAL_WIELD_CLASSES[playerClass];
-    if (!isPlaceholder && !isDualWieldOffHand && (BIS_CATALOG_SLOT_TO_ROWS[catalogSlot] || []).indexOf(slotName) === -1)
-      continue;
+  var matches = [];
+  for (var i = 0; i < candidates.length; i++) {
+    var c = candidates[i];
+    var isPlaceholder = !!itemPlaceholders[c.itemName];
 
     // A real item can only occupy one row -- don't re-offer one already
     // placed elsewhere on this player's list. Placeholders are exempt: the
     // same one can legitimately fill more than one row.
-    if (!isPlaceholder && existingRealItems[normalise(name)]) continue;
+    if (!isPlaceholder && existingRealItems[normalise(c.itemName)]) continue;
 
-    if (!isItemInSeasonScope(name)) continue;
+    if (query && normalise(c.displayName).indexOf(query) === -1) continue;
 
-    var armorType = itemArmorTypes[name] || '';
-    if (
-      !isPlaceholder &&
-      playerArmorType &&
-      BIS_ARMOR_TYPES[armorType] &&
-      !BIS_UNIVERSAL_ROWS[slotName] &&
-      armorType !== playerArmorType
-    )
-      continue;
-
-    var mainStats = itemMainStats[name] || [];
-    if (
-      !isPlaceholder &&
-      playerMainStat &&
-      BIS_MAIN_STAT_ROWS[slotName] &&
-      mainStats.length &&
-      mainStats.indexOf(playerMainStat) === -1
-    )
-      continue;
-
-    // #636: mirrors js/wishlist.js's HEALER_ONLY_TRINKETS/TANK_ONLY_TRINKETS
-    // check -- a role-restricted trinket's effect is useless outside that
-    // role even when its stats match. playerRole gate matches every other
-    // filter above: an unknown role shows everything rather than guessing.
-    if (!isPlaceholder && playerRole && (slotName === 'Trinket 1' || slotName === 'Trinket 2')) {
-      if (HEALER_ONLY_TRINKETS[name] && playerRole !== 'Heal') continue;
-      if (TANK_ONLY_TRINKETS[name] && playerRole !== 'Tank') continue;
-    }
-
-    // #609: mirrors js/wishlist.js's CLASS_WEAPON_TYPES/CLASS_SHIELD_USERS
-    // check. weapon_subtype only exists for Weapon-slot items and Shields --
-    // other Off Hand items (tomes/orbs) have none and stay unfiltered here.
-    // Null/unbackfilled weapon_subtype also stays unfiltered, matching every
-    // other filter's "unknown shows everything" convention.
-    var weaponSubtype = itemWeaponSubtypes[name] || '';
-    if (!isPlaceholder && playerClass && (slotName === 'Weapon' || isDualWieldOffHand) && weaponSubtype) {
-      var allowedWeaponTypes = ((CLASS_WEAPON_TYPES || {})[playerClass] || {})[catalogSlot] || [];
-      if (allowedWeaponTypes.indexOf(weaponSubtype) === -1) continue;
-    }
-    if (
-      !isPlaceholder &&
-      playerClass &&
-      slotName === 'Off Hand' &&
-      weaponSubtype === 'Shield' &&
-      !CLASS_SHIELD_USERS[playerClass]
-    )
-      continue;
-
-    // Same tier-token substitution as bisEditorHTML's row display: search
-    // matches and shows the officer's own class's resolved piece (e.g.
-    // "Charred Grasps"), while itemName (used for both resolveItemId() and
-    // storage below) stays the token's own catalog name -- entry.item and
-    // bis_items.item_id both need to stay on the token so generate_priority_order()'s
-    // bis CTE keeps matching bi.item_id against p_item_id correctly.
-    var displayName = name;
-    if (playerClass && tierTokenMap[name] && tierTokenMap[name][playerClass]) {
-      displayName = tierTokenMap[name][playerClass];
-    }
-
-    if (query && normalise(displayName).indexOf(query) === -1) continue;
-
-    matches.push({ itemName: name, displayName: displayName });
+    matches.push(c);
     if (matches.length >= 12) break;
   }
 

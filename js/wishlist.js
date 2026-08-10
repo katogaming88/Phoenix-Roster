@@ -249,6 +249,21 @@ function wishlistPrefFor(itemId, slot) {
   return null;
 }
 
+// Same lookup as wishlistPrefFor(), but for a specific WISHLIST_SLOTS row
+// rather than a raw slot value -- falls back to a legacy slot=null pref
+// (tagged before Finger/Trinket/Weapon/Off Hand started writing an explicit
+// disambiguating slot) when that pref's item still resolves to this row via
+// its own catalog slot. Used by wishlistCompleteness() so pre-disambiguation
+// tags still count as covering their row.
+function wishlistPrefForRow(itemId, row) {
+  var rowSlot = WISHLIST_DISAMBIGUATE_SLOTS[row] ? row : null;
+  var exact = wishlistPrefFor(itemId, rowSlot);
+  if (exact || !rowSlot) return exact;
+  var legacy = wishlistPrefFor(itemId, null);
+  if (legacy && wishlistItemRows(itemId, null).indexOf(row) !== -1) return legacy;
+  return null;
+}
+
 // Buckets every real (non-placeholder) catalog item into its WISHLIST_SLOTS
 // row(s) via WISHLIST_CATALOG_SLOT_TO_ROWS, same fan-out tab-bis.js uses for
 // Finger/Trinket. Unlike the officer grid (one item per row, search-to-add),
@@ -840,20 +855,24 @@ function wishlistSectionBodyHTML(player) {
     '<p style="font-size:1.02rem;color:var(--text-muted);margin:0.25rem 0 0.75rem;">Want to see your Priority rank in-game as items drop? Install the ' +
     '<a href="https://www.curseforge.com/wow/addons/wga-priority-loot" target="_blank" rel="noopener">WGA Priority Loot addon</a>.</p>';
 
-  var completeness = wishlistCompleteness();
+  var completeness = wishlistCompleteness(buckets);
   html += completeness.missingRows.length
     ? '<p style="font-size:1.02rem;color:var(--melee);margin:0.25rem 0 0.75rem;">' +
       completeness.taggedCount +
       '/' +
       completeness.totalRequired +
-      ' slots tagged -- missing: ' +
-      completeness.missingRows.join(', ') +
+      ' items tagged -- missing: ' +
+      completeness.missingRows
+        .map(function (row) {
+          return row + ' (' + completeness.missingCounts[row] + ')';
+        })
+        .join(', ') +
       '</p>'
     : '<p style="font-size:1.02rem;color:var(--heal);margin:0.25rem 0 0.75rem;">' +
       completeness.taggedCount +
       '/' +
       completeness.totalRequired +
-      ' slots tagged.</p>';
+      ' items tagged.</p>';
 
   html += wishlistEditableNow()
     ? ''
@@ -1038,14 +1057,20 @@ function wishlistOfficerRowBuckets(officerBisItems) {
   return buckets;
 }
 
-// Completeness (#515): a wishlist is "complete" once every required
-// WISHLIST_SLOTS row is covered -- either the raider tagged something there
-// themselves (any status), or the officer's bis_items grid already has a
-// pick for it. Off Hand is only required when the current BiS/officer
-// Weapon pick is a real One-Hand item; a Two-Hand/Ranged pick, an untagged
-// Weapon slot, or a placeholder (Other Sources) BiS pick for Weapon (no
-// catalog slot to check) all leave Off Hand optional.
-function wishlistCompleteness() {
+// Completeness (#515): a wishlist is "complete" once every eligible real
+// catalog item across every required WISHLIST_SLOTS row has a status --
+// either the raider tagged it themselves (any status), or it's the exact
+// item the officer's bis_items grid already picked for that row (covers
+// just that one item, not the whole row -- every other eligible item in the
+// row still needs its own tag). `buckets` is wishlistBucketRealItems()'s
+// per-row eligible-item list, built by the caller with the raider's real
+// armor-type/main-stat/role/class filters so it's only computed once per
+// render. Off Hand is only required when the current BiS/officer Weapon
+// pick is a real One-Hand item; a Two-Hand/Ranged pick, an untagged Weapon
+// slot, or a placeholder (Other Sources) BiS pick for Weapon (no catalog
+// slot to check) all leave Off Hand optional.
+function wishlistCompleteness(buckets) {
+  buckets = buckets || {};
   var itemSlots = (DATA && DATA.itemSlots) || {};
   var itemIds = (DATA && DATA.itemIds) || {};
   var idToName = {};
@@ -1087,15 +1112,35 @@ function wishlistCompleteness() {
   var requiredRows = WISHLIST_SLOTS.filter(function (row) {
     return row !== 'Off Hand' || offHandRequired;
   });
-  var missingRows = requiredRows.filter(function (row) {
-    return !taggedRows[row] && !officerBuckets[row];
+
+  var missingRows = [];
+  var missingCounts = {};
+  var totalRequired = 0;
+  var taggedCount = 0;
+  requiredRows.forEach(function (row) {
+    var items = buckets[row] || [];
+    var missing = 0;
+    items.forEach(function (item) {
+      totalRequired++;
+      var officerCovers = officerBuckets[row] && officerBuckets[row].item === item.rankName;
+      if (wishlistPrefForRow(item.itemId, row) || officerCovers) {
+        taggedCount++;
+      } else {
+        missing++;
+      }
+    });
+    if (missing > 0) {
+      missingRows.push(row);
+      missingCounts[row] = missing;
+    }
   });
 
   return {
     requiredRows: requiredRows,
     missingRows: missingRows,
-    taggedCount: requiredRows.length - missingRows.length,
-    totalRequired: requiredRows.length,
+    missingCounts: missingCounts,
+    taggedCount: taggedCount,
+    totalRequired: totalRequired,
     officerBuckets: officerBuckets
   };
 }

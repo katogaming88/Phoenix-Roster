@@ -4,10 +4,12 @@ import vm from 'node:vm';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// Completeness (#515): a wishlist is complete once every required
-// WISHLIST_SLOTS row has at least one tagged item (any status), with Off
-// Hand only required when the raider's BiS Weapon pick is a real One-Hand
-// item.
+// Completeness (#515, item-level follow-up): a wishlist is complete once
+// every eligible real catalog item across every required WISHLIST_SLOTS row
+// has a status (any of BiS/Good/OK/Catalyst/Pass) -- not just one item per
+// row. An officer's bis_items pick for a row covers only that one exact
+// item, not the whole row. Off Hand is only required when the raider's BiS
+// Weapon pick is a real One-Hand item.
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const COMMON_JS = readFileSync(path.join(HERE, '../../js/common.js'), 'utf8');
@@ -40,74 +42,53 @@ function makeSandbox(itemSlots, itemIds, prefs, bisList) {
   return sandbox;
 }
 
-const ALL_SLOTS = [
-  'Head',
-  'Neck',
-  'Shoulder',
-  'Back',
-  'Chest',
-  'Wrist',
-  'Hands',
-  'Waist',
-  'Legs',
-  'Feet',
-  'Finger 1',
-  'Finger 2',
-  'Trinket 1',
-  'Trinket 2',
-  'Weapon',
-  'Off Hand'
-];
-
-function fullPrefsExcept(itemSlots, itemIds, exclude) {
-  const prefs = [];
-  let id = 1;
-  Object.keys(itemSlots).forEach((name) => {
-    if (exclude.indexOf(name) !== -1) return;
-    prefs.push({ id: id, item_id: itemIds[name], status: 'good', note: null, slot: null });
-    id++;
-  });
-  return prefs;
+// Real callers always build buckets via wishlistBucketRealItems() (with the
+// raider's actual armor-type/main-stat/role/class filters) and pass them in
+// -- these tests use the unfiltered form (nulls) since none of these
+// fixtures need armor/stat/role scoping.
+function completenessFor(sandbox) {
+  const buckets = sandbox.wishlistBucketRealItems(null, null, null, null);
+  return sandbox.wishlistCompleteness(buckets);
 }
 
-describe('wishlistCompleteness', () => {
-  it('is complete when every slot (minus Off Hand, no weapon tagged) has an item', () => {
-    const itemSlots = {
-      Helm: 'Head',
-      Necklace: 'Neck',
-      Pauldrons: 'Shoulder',
-      Cape: 'Back',
-      Robe: 'Chest',
-      Bands: 'Wrist',
-      Gloves: 'Hands',
-      Girdle: 'Waist',
-      Trousers: 'Legs',
-      Boots: 'Feet',
-      'Ring A': 'Finger',
-      'Ring B': 'Finger',
-      'Trinket A': 'Trinket',
-      'Trinket B': 'Trinket',
-      Staff: 'Two-Hand'
-    };
-    const itemIds = {};
-    Object.keys(itemSlots).forEach((n, i) => (itemIds[n] = i + 1));
-    const prefs = fullPrefsExcept(itemSlots, itemIds, []);
+describe('wishlistCompleteness (item-level)', () => {
+  it('is complete once every eligible item in every required row is tagged', () => {
+    const itemSlots = { Helm: 'Head', Necklace: 'Neck', Staff: 'Two-Hand' };
+    const itemIds = { Helm: 1, Necklace: 2, Staff: 3 };
+    const prefs = [
+      { id: 1, item_id: 1, status: 'good', note: null, slot: null },
+      { id: 2, item_id: 2, status: 'pass', note: null, slot: null },
+      { id: 3, item_id: 3, status: 'bis', note: null, slot: null }
+    ];
     const sandbox = makeSandbox(itemSlots, itemIds, prefs);
 
-    const result = sandbox.wishlistCompleteness();
+    const result = completenessFor(sandbox);
     expect(result.missingRows).toEqual([]);
-    expect(result.totalRequired).toBe(15); // Off Hand not required, Weapon covered by Staff
+    expect(result.taggedCount).toBe(3);
+    expect(result.totalRequired).toBe(3); // Off Hand not required (Two-Hand weapon)
   });
 
-  it('lists missing rows when slots are untouched', () => {
-    const itemSlots = { Helm: 'Head', Necklace: 'Neck' };
-    const itemIds = { Helm: 1, Necklace: 2 };
+  it('flags a row as missing when only some of its eligible items are tagged', () => {
+    const itemSlots = { Helm: 'Head', Circlet: 'Head' };
+    const itemIds = { Helm: 1, Circlet: 2 };
     const prefs = [{ id: 1, item_id: 1, status: 'good', note: null, slot: null }];
     const sandbox = makeSandbox(itemSlots, itemIds, prefs);
 
-    const result = sandbox.wishlistCompleteness();
-    expect(result.missingRows).toContain('Neck');
-    expect(result.missingRows).not.toContain('Head');
+    const result = completenessFor(sandbox);
+    expect(result.missingRows).toContain('Head');
+    expect(result.missingCounts.Head).toBe(1);
+    expect(result.taggedCount).toBe(1);
+    expect(result.totalRequired).toBe(2);
+  });
+
+  it('a row with no eligible catalog items is never missing', () => {
+    const itemSlots = { Helm: 'Head' };
+    const itemIds = { Helm: 1 };
+    const prefs = [{ id: 1, item_id: 1, status: 'good', note: null, slot: null }];
+    const sandbox = makeSandbox(itemSlots, itemIds, prefs);
+
+    const result = completenessFor(sandbox);
+    expect(result.missingRows).not.toContain('Neck');
   });
 
   it('requires Off Hand when the BiS Weapon pick is One-Hand', () => {
@@ -116,9 +97,8 @@ describe('wishlistCompleteness', () => {
     const prefs = [{ id: 1, item_id: 1, status: 'bis', note: null, slot: null }];
     const sandbox = makeSandbox(itemSlots, itemIds, prefs);
 
-    const result = sandbox.wishlistCompleteness();
+    const result = completenessFor(sandbox);
     expect(result.requiredRows).toContain('Off Hand');
-    expect(result.missingRows).toContain('Off Hand');
   });
 
   it('does not require Off Hand for a Two-Hand BiS weapon', () => {
@@ -127,7 +107,7 @@ describe('wishlistCompleteness', () => {
     const prefs = [{ id: 1, item_id: 1, status: 'bis', note: null, slot: null }];
     const sandbox = makeSandbox(itemSlots, itemIds, prefs);
 
-    const result = sandbox.wishlistCompleteness();
+    const result = completenessFor(sandbox);
     expect(result.requiredRows).not.toContain('Off Hand');
   });
 
@@ -138,43 +118,46 @@ describe('wishlistCompleteness', () => {
     const prefs = [{ id: 1, item_id: 1, status: 'good', note: null, slot: null }];
     const sandbox = makeSandbox(itemSlots, itemIds, prefs);
 
-    const result = sandbox.wishlistCompleteness();
+    const result = completenessFor(sandbox);
     expect(result.requiredRows).not.toContain('Off Hand');
-    // Weapon itself is still missing since only 'good' isn't required to be 'bis',
-    // but a tagged pref of any status should count as covering the Weapon row.
     expect(result.missingRows).not.toContain('Weapon');
   });
 
-  it('satisfies both Finger 1 and Finger 2 from a single tagged ring (data-model limitation)', () => {
+  it('a ring tagged only under Finger 1 still leaves Finger 2 missing (independently tagged rows)', () => {
     const itemSlots = { 'Ring A': 'Finger' };
     const itemIds = { 'Ring A': 1 };
-    const prefs = [{ id: 1, item_id: 1, status: 'good', note: null, slot: null }];
+    const prefs = [{ id: 1, item_id: 1, status: 'good', note: null, slot: 'Finger 1' }];
     const sandbox = makeSandbox(itemSlots, itemIds, prefs);
 
-    const result = sandbox.wishlistCompleteness();
+    const result = completenessFor(sandbox);
     expect(result.missingRows).not.toContain('Finger 1');
-    expect(result.missingRows).not.toContain('Finger 2');
+    expect(result.missingRows).toContain('Finger 2');
   });
 
-  it('Other Sources (placeholder) rows count toward completeness via their explicit slot', () => {
-    const itemSlots = { 'M+': '' };
-    const itemIds = { 'M+': 1 };
-    const prefs = [{ id: 1, item_id: 1, status: 'bis', note: null, slot: 'Neck' }];
+  it('an Other Sources (placeholder) tag does not satisfy a real raid-item row', () => {
+    // Placeholders (M+/Crafted/Catalyst) are a separate, optional section --
+    // tagging one for a slot no longer excuses tagging the real raid items
+    // eligible for that row.
+    const itemSlots = { Helm: 'Head', 'M+': '' };
+    const itemIds = { Helm: 1, 'M+': 2 };
+    const prefs = [{ id: 1, item_id: 2, status: 'bis', note: null, slot: 'Head' }];
     const sandbox = makeSandbox(itemSlots, itemIds, prefs);
 
-    const result = sandbox.wishlistCompleteness();
-    expect(result.missingRows).not.toContain('Neck');
+    const result = completenessFor(sandbox);
+    expect(result.missingRows).toContain('Head');
+    expect(result.missingCounts.Head).toBe(1);
   });
 
-  it('an officer bis_items pick for a slot counts toward completeness even if the raider never tagged it', () => {
-    const itemSlots = { Helm: 'Head', Necklace: 'Neck' };
-    const itemIds = { Helm: 1, Necklace: 2 };
+  it('an officer bis_items pick covers only that one item, not the whole row', () => {
+    const itemSlots = { Helm: 'Head', Circlet: 'Head', Necklace: 'Neck' };
+    const itemIds = { Helm: 1, Circlet: 2, Necklace: 3 };
     const prefs = []; // raider never touched their wishlist at all
     const bisList = { Kat: [{ item: 'Helm', dbSlot: 'Head' }] };
     const sandbox = makeSandbox(itemSlots, itemIds, prefs, bisList);
 
-    const result = sandbox.wishlistCompleteness();
-    expect(result.missingRows).not.toContain('Head');
+    const result = completenessFor(sandbox);
+    expect(result.missingRows).toContain('Head');
+    expect(result.missingCounts.Head).toBe(1); // Circlet still untagged
     expect(result.missingRows).toContain('Neck');
   });
 
@@ -185,34 +168,22 @@ describe('wishlistCompleteness', () => {
     const bisList = { Kat: [{ item: 'Sword', dbSlot: 'Weapon' }] };
     const sandbox = makeSandbox(itemSlots, itemIds, prefs, bisList);
 
-    const result = sandbox.wishlistCompleteness();
+    const result = completenessFor(sandbox);
     expect(result.requiredRows).toContain('Off Hand');
-    expect(result.missingRows).toContain('Off Hand');
-    expect(result.missingRows).not.toContain('Weapon');
+    expect(result.missingRows).not.toContain('Weapon'); // officer's pick covers the only eligible Weapon item
   });
 
-  it('legacy officer bis_items rows without dbSlot still resolve via catalog slot', () => {
-    const itemSlots = { 'Ring A': 'Finger' };
-    const itemIds = { 'Ring A': 1 };
-    const prefs = [];
-    const bisList = { Kat: [{ item: 'Ring A', dbSlot: null }] };
-    const sandbox = makeSandbox(itemSlots, itemIds, prefs, bisList);
-
-    const result = sandbox.wishlistCompleteness();
-    expect(result.missingRows).not.toContain('Finger 1');
-  });
-
-  it('an officer bis_items pick from a different season view does not count toward completeness', () => {
+  it('an item outside the current season view never appears as required', () => {
     const itemSlots = { Helm: 'Head', Necklace: 'Neck' };
     const itemIds = { Helm: 1, Necklace: 2 };
     const prefs = [];
-    const bisList = { Kat: [{ item: 'Helm', dbSlot: 'Head' }] };
-    const sandbox = makeSandbox(itemSlots, itemIds, prefs, bisList);
+    const sandbox = makeSandbox(itemSlots, itemIds, prefs);
     sandbox.DATA.seasonView = 'S2';
     sandbox.DATA.itemZones = { Helm: 1 };
     sandbox.DATA.raidZones = [{ wclZoneId: '1', season: 'S1' }];
 
-    const result = sandbox.wishlistCompleteness();
-    expect(result.missingRows).toContain('Head');
+    const result = completenessFor(sandbox);
+    expect(result.missingRows).not.toContain('Head'); // Helm is out of scope, not shown at all
+    expect(result.missingRows).toContain('Neck');
   });
 });
