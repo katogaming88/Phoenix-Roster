@@ -9,20 +9,26 @@ var TEAMS = {
     gasUrl:
       'https://script.google.com/macros/s/AKfycbxrQdQGqbBTELWm7huWChdbES0ry7WFZetlELWuEdI0T6lfbXEzrqx9Vo5yA-b9dW4y7A/exec',
     name: 'Phoenix',
-    supabaseTeamId: 1
+    supabaseTeamId: 1,
+    emoji: '🔥'
   },
   hellfire: {
     gasUrl:
       'https://script.google.com/macros/s/AKfycbwIpnJyZDwWr5MmWIv7iyaDZ0OajPTFePMTYfIy8WG7jhg7pakQTvTVSM3SLihrKxBb/exec',
     name: 'Hellfire Rollers',
-    supabaseTeamId: 2
+    supabaseTeamId: 2,
+    // Same flame as Phoenix's own name/theme read as one guild's emblem
+    // being reused for the other -- 🎲 instead, distinct at a glance and
+    // still on-theme for a loot council site.
+    emoji: '🎲'
   },
   // Never had a GAS deployment -- Immolation was created directly in
   // Supabase, unlike Phoenix/Hellfire's pre-migration Sheets.
   immolation: {
     gasUrl: '',
     name: 'Immolation',
-    supabaseTeamId: 3
+    supabaseTeamId: 3,
+    emoji: '🔥'
   }
 };
 
@@ -49,7 +55,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.58.2';
+var VERSION = '3.59.0';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -421,6 +427,20 @@ function initTeamUI() {
   document.title = TEAM_NAME + (suffix ? ' -- ' + suffix : '');
   var nameEl = document.getElementById('headerTeamName');
   if (nameEl) nameEl.textContent = TEAM_NAME;
+  // Both header-emblem and the favicon are static 🔥 in the HTML source
+  // (shared across every team's deployment) -- swapped here per-team so a
+  // guild with its own emoji (TEAMS[slug].emoji) doesn't just inherit
+  // Phoenix's flame by default.
+  var emoji = (_teamCfg && _teamCfg.emoji) || '🔥';
+  var emblemEl = document.querySelector('.header-emblem');
+  if (emblemEl) emblemEl.textContent = emoji;
+  var faviconEl = /** @type {HTMLLinkElement} */ (document.querySelector('link[rel="icon"]'));
+  if (faviconEl) {
+    faviconEl.href =
+      "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>" +
+      emoji +
+      '</text></svg>';
+  }
   ['teamSwitcherSelect', 'officerPromptTeamSelect', 'claimModalTeamSelect'].forEach(function (id) {
     var sel = document.getElementById(id);
     if (!sel) return;
@@ -1359,7 +1379,7 @@ function fetchSupabaseRoster() {
   var query = supabaseClient
     .from('players')
     .select(
-      'id, name_realm, nickname, is_trial, is_bench, is_backup_tank, is_backup_healer, bis_link, bis_allowed, wishlist_allowed, m_plus_excluded, m_plus_note, join_date, officer_notes, tier_pieces_equipped, tier_pieces_synced_at, classes_specs(class, spec, role)'
+      'id, name_realm, nickname, is_trial, is_bench, is_backup_tank, is_backup_healer, bis_link, bis_allowed, wishlist_allowed, m_plus_excluded, m_plus_note, join_date, officer_notes, tier_pieces_equipped, tier_pieces_synced_at, bonus_roll_encounter_id, raid_encounters(name), classes_specs(class, spec, role)'
     )
     .eq('team_id', _teamCfg.supabaseTeamId)
     .is('archived_at', null)
@@ -1537,7 +1557,9 @@ function mapSupabaseRoster(rows, jsonpRoster, mplusRejections) {
       mPlusRejectionNote: mPlusRejected ? mplusRejections[row.id] : '',
       officerNote: row.officer_notes || '',
       tierPiecesEquipped: row.tier_pieces_equipped,
-      tierPiecesSyncedAt: row.tier_pieces_synced_at || ''
+      tierPiecesSyncedAt: row.tier_pieces_synced_at || '',
+      bonusRollEncounterId: row.bonus_roll_encounter_id || null,
+      bonusRollBoss: (row.raid_encounters && row.raid_encounters.name) || ''
     });
   });
   return players;
@@ -2385,6 +2407,60 @@ function fetchSupabaseRaidZones() {
     );
 }
 
+// Every raid boss across every seeded season, ordered by zone then
+// encounter sort_index -- the dropdown source for a raider's Bonus Roll
+// target (js/bonusRoll.js). Unlike fetchSupabaseRaidZones (which only
+// carries wcl_zone_id/season, no row id), this needs raid_encounters.id
+// itself since that's what players.bonus_roll_encounter_id stores.
+//
+// Deliberately unfiltered by season at fetch time -- this fires in parallel
+// with the rest of the bootstrap's heavy reads, before DATA.seasonView/
+// seasonName exist yet (they're only set once applyCoreData() resolves), so
+// there is nothing yet to filter by. js/bonusRoll.js filters to
+// resolveSeasonView() itself at render time instead, the same "fetch once,
+// filter at use time against whichever season is live *then*" split
+// currentZoneIdsForSeason()/isItemInSeasonScope() already use for the item
+// catalog -- CURRENT_SEASON (a hardcoded item-catalog-tier constant) is not
+// the right value here, since a team's actual raid_zones.season can be
+// configured independently via Season Settings.
+function mapSupabaseRaidEncounters(rows) {
+  return (rows || [])
+    .map(function (row) {
+      var zone = row.raid_zones || {};
+      return {
+        id: row.id,
+        name: row.name,
+        sortIndex: row.sort_index,
+        season: zone.season,
+        zoneName: zone.name,
+        zoneSortIndex: zone.sort_index
+      };
+    })
+    .sort(function (a, b) {
+      return a.zoneSortIndex - b.zoneSortIndex || a.sortIndex - b.sortIndex;
+    });
+}
+
+function fetchSupabaseRaidEncounters() {
+  if (!supabaseClient) return Promise.resolve([]);
+  return supabaseClient
+    .from('raid_encounters')
+    .select('id, name, sort_index, raid_zones(name, season, sort_index)')
+    .then(
+      function (result) {
+        if (result.error) {
+          console.warn('Supabase raid_encounters query failed.', result.error.message);
+          return [];
+        }
+        return mapSupabaseRaidEncounters(result.data);
+      },
+      function (err) {
+        console.warn('Supabase raid_encounters query failed.', err);
+        return [];
+      }
+    );
+}
+
 // Item catalog reads come exclusively from Supabase (#391): the GAS "Item
 // Lookup" sheet is retired as a data source for the web app now that
 // scripts/fetch-items.js seeds items/item_bosses from Wowhead every tier
@@ -2977,6 +3053,8 @@ function loadData(onCoreReady, onHeavyReady) {
   // Fired alongside; the heavy callback waits for it before setting
   // guildOfficerBios. Guild-wide (site_settings), not per-team.
   var guildOfficerBiosPromise = fetchSupabaseGuildOfficerBios();
+  // Fired alongside; the heavy callback waits for it before setting raidEncounters.
+  var raidEncountersPromise = fetchSupabaseRaidEncounters();
 
   // Builds DATA from the Supabase roster/settings/M+ rejections, then runs
   // onCoreReady. GAS is retired (#225) -- there is no core payload to overlay
@@ -3029,7 +3107,8 @@ function loadData(onCoreReady, onHeavyReady) {
       raidProgressPromise,
       incomingRosterPromise,
       raidZonesPromise,
-      guildOfficerBiosPromise
+      guildOfficerBiosPromise,
+      raidEncountersPromise
     ]).then(function (results) {
       var lootRows = results[0];
       var bisRows = results[1];
@@ -3046,7 +3125,9 @@ function loadData(onCoreReady, onHeavyReady) {
       var incomingRosterRows = results[12];
       var raidZonesRows = results[13];
       var guildOfficerBiosRows = results[14];
+      var raidEncountersRows = results[15];
       DATA.raidZones = raidZonesRows || [];
+      DATA.raidEncounters = raidEncountersRows || [];
       var mappedLoot = lootRows ? mapSupabaseLoot(lootRows) : null;
       DATA.lootCounts = mappedLoot || {};
       var mappedAttendance = attendanceRows !== null ? mapSupabaseAttendanceRaw(attendanceRows, DATA.roster) : null;
@@ -5888,6 +5969,8 @@ function renderProfile(firstName, backTo, container) {
       : '';
 
   var streamSectionHTML = typeof ownStreamerSectionHTML === 'function' ? ownStreamerSectionHTML(player, backTo) : '';
+  var bonusRollSectionHTML =
+    typeof ownBonusRollSectionHTML === 'function' ? ownBonusRollSectionHTML(player, backTo) : '';
 
   // Sub-tabs only for the raider's own profile view -- the officer inline
   // view (backTo === 'officer') keeps its original single-flow layout, since
@@ -5929,6 +6012,7 @@ function renderProfile(firstName, backTo, container) {
       attendanceSectionHTML +
       lootSectionHTML +
       mplusSectionHTML +
+      bonusRollSectionHTML +
       '</div>' +
       (bisFeatureOn
         ? '<div id="profileTabBis" style="display:' +
@@ -5953,6 +6037,7 @@ function renderProfile(firstName, backTo, container) {
       lootSectionHTML +
       bisSectionHTML +
       mplusSectionHTML +
+      bonusRollSectionHTML +
       streamSectionHTML +
       wishlistSectionHTML;
   }

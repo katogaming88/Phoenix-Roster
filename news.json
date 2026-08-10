@@ -1,5 +1,12 @@
 [
   {
+    "date": "2026-08-09",
+    "category": "Feature",
+    "version": "3.59.0",
+    "title": "Set a Bonus Roll target on your profile",
+    "body": "Planning to spend your weekly Bonus Roll on a specific boss until you get the item(s) you're after? Set it on your profile now so officers have a heads-up when making loot calls. It's purely informational -- it has no effect on Priority order. Officers see it as a badge on the Roster tab."
+  },
+  {
     "date": "2026-08-08",
     "category": "Feature",
     "version": "3.56.0",

@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer | nextval('raid_encounters_id_seq'::regclass) | false | [public.team_raid_progress](public.team_raid_progress.md) |  |  |
+| id | integer | nextval('raid_encounters_id_seq'::regclass) | false | [public.players](public.players.md) [public.team_raid_progress](public.team_raid_progress.md) |  |  |
 | zone_id | integer |  | false |  | [public.raid_zones](public.raid_zones.md) |  |
 | wcl_encounter_id | integer |  | false |  |  |  |
 | name | text |  | false |  |  |  |
@@ -30,6 +30,7 @@
 ```mermaid
 erDiagram
 
+"public.players" }o--o| "public.raid_encounters" : "FOREIGN KEY (bonus_roll_encounter_id) REFERENCES raid_encounters(id) ON DELETE SET NULL"
 "public.team_raid_progress" }o--|| "public.raid_encounters" : "FOREIGN KEY (encounter_id) REFERENCES raid_encounters(id) ON DELETE CASCADE"
 "public.raid_encounters" }o--|| "public.raid_zones" : "FOREIGN KEY (zone_id) REFERENCES raid_zones(id) ON DELETE CASCADE"
 
@@ -39,6 +40,30 @@ erDiagram
   integer wcl_encounter_id
   text name
   integer sort_index
+}
+"public.players" {
+  integer id
+  integer team_id FK
+  text name_realm
+  integer class_spec_id FK
+  boolean is_trial
+  boolean is_bench
+  text nickname
+  text bis_link
+  date join_date
+  boolean m_plus_excluded
+  text m_plus_note
+  integer team_member_id FK
+  timestamp_with_time_zone archived_at
+  timestamp_with_time_zone updated_at
+  boolean bis_allowed
+  text officer_notes
+  boolean is_backup_tank
+  boolean is_backup_healer
+  boolean wishlist_allowed
+  integer tier_pieces_equipped
+  timestamp_with_time_zone tier_pieces_synced_at
+  integer bonus_roll_encounter_id FK
 }
 "public.team_raid_progress" {
   integer id

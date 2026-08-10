@@ -8,6 +8,16 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.59.0] - 2026-08-09
+
+### Frontend
+
+- **Raiders can now declare which boss they're planning to spend their weekly Bonus Roll on** -- a new "Bonus Roll" section on their own profile lets them pick a current-raid boss (or clear it once they've gotten what they wanted), highlighted in gold when set. Purely informational: it has no effect on Priority order. Officers see it at a glance as a 🎲 badge next to the raider's name on the Roster tab.
+
+### Backend
+
+- Added `players.bonus_roll_encounter_id` (nullable, FK to `raid_encounters`), a narrow self-service UPDATE policy (`is_own_player(id)`) plus a restrict trigger locking non-officer updates through that policy to just that one column. See `docs/database-decisions.md` for the full writeup, including two rounds of test-driven fixes to the trigger's exemption logic.
+
 ## [3.58.2] - 2026-08-09
 
 ### Frontend

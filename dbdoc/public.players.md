@@ -25,6 +25,7 @@
 | wishlist_allowed | boolean | false | false |  |  |  |
 | tier_pieces_equipped | integer |  | true |  |  |  |
 | tier_pieces_synced_at | timestamp with time zone |  | true |  |  |  |
+| bonus_roll_encounter_id | integer |  | true |  | [public.raid_encounters](public.raid_encounters.md) |  |
 
 ## Constraints
 
@@ -36,6 +37,7 @@
 | players_team_id_name_realm_key | UNIQUE | UNIQUE (team_id, name_realm) |
 | players_team_member_id_fkey | FOREIGN KEY | FOREIGN KEY (team_member_id) REFERENCES team_members(id) ON DELETE SET NULL |
 | players_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
+| players_bonus_roll_encounter_id_fkey | FOREIGN KEY | FOREIGN KEY (bonus_roll_encounter_id) REFERENCES raid_encounters(id) ON DELETE SET NULL |
 
 ## Indexes
 
@@ -48,6 +50,7 @@
 
 | Name | Definition |
 | ---- | ---------- |
+| trg_players_restrict_self_update | CREATE TRIGGER trg_players_restrict_self_update BEFORE UPDATE ON public.players FOR EACH ROW EXECUTE FUNCTION restrict_players_self_update_to_bonus_roll() |
 | trg_players_updated_at | CREATE TRIGGER trg_players_updated_at BEFORE UPDATE ON public.players FOR EACH ROW EXECUTE FUNCTION set_updated_at() |
 
 ## Relations
@@ -71,6 +74,7 @@ erDiagram
 "public.players" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.players" }o--o| "public.classes_specs" : "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE"
 "public.players" }o--o| "public.team_members" : "FOREIGN KEY (team_member_id) REFERENCES team_members(id) ON DELETE SET NULL"
+"public.players" }o--o| "public.raid_encounters" : "FOREIGN KEY (bonus_roll_encounter_id) REFERENCES raid_encounters(id) ON DELETE SET NULL"
 
 "public.players" {
   integer id
@@ -94,6 +98,7 @@ erDiagram
   boolean wishlist_allowed
   integer tier_pieces_equipped
   timestamp_with_time_zone tier_pieces_synced_at
+  integer bonus_roll_encounter_id FK
 }
 "public.attendance" {
   integer id
@@ -264,6 +269,13 @@ erDiagram
   text role
   text name_realm
   timestamp_with_time_zone updated_at
+}
+"public.raid_encounters" {
+  integer id
+  integer zone_id FK
+  integer wcl_encounter_id
+  text name
+  integer sort_index
 }
 ```
 

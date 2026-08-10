@@ -131,7 +131,9 @@ describe('mapSupabaseRoster', () => {
         mPlusRejectionNote: '',
         officerNote: '',
         tierPiecesEquipped: undefined,
-        tierPiecesSyncedAt: ''
+        tierPiecesSyncedAt: '',
+        bonusRollEncounterId: null,
+        bonusRollBoss: ''
       }
     ]);
   });
@@ -179,7 +181,9 @@ describe('mapSupabaseRoster', () => {
         mPlusRejectionNote: '',
         officerNote: '',
         tierPiecesEquipped: undefined,
-        tierPiecesSyncedAt: ''
+        tierPiecesSyncedAt: '',
+        bonusRollEncounterId: null,
+        bonusRollBoss: ''
       }
     ]);
   });

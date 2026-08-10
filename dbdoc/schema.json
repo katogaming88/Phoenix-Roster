@@ -1255,6 +1255,11 @@
           "name": "tier_pieces_synced_at",
           "type": "timestamp with time zone",
           "nullable": true
+        },
+        {
+          "name": "bonus_roll_encounter_id",
+          "type": "integer",
+          "nullable": true
         }
       ],
       "indexes": [
@@ -1346,9 +1351,26 @@
           "referenced_columns": [
             "id"
           ]
+        },
+        {
+          "name": "players_bonus_roll_encounter_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (bonus_roll_encounter_id) REFERENCES raid_encounters(id) ON DELETE SET NULL",
+          "table": "public.players",
+          "referenced_table": "public.raid_encounters",
+          "columns": [
+            "bonus_roll_encounter_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
         }
       ],
       "triggers": [
+        {
+          "name": "trg_players_restrict_self_update",
+          "def": "CREATE TRIGGER trg_players_restrict_self_update BEFORE UPDATE ON public.players FOR EACH ROW EXECUTE FUNCTION restrict_players_self_update_to_bonus_roll()"
+        },
         {
           "name": "trg_players_updated_at",
           "def": "CREATE TRIGGER trg_players_updated_at BEFORE UPDATE ON public.players FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
@@ -4199,6 +4221,19 @@
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
     },
     {
+      "table": "public.players",
+      "columns": [
+        "bonus_roll_encounter_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.raid_encounters",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (bonus_roll_encounter_id) REFERENCES raid_encounters(id) ON DELETE SET NULL"
+    },
+    {
       "table": "public.priority_order",
       "columns": [
         "item_id"
@@ -4822,6 +4857,12 @@
     },
     {
       "name": "public.restrict_bis_items_update_to_obtained",
+      "return_type": "trigger",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.restrict_players_self_update_to_bonus_roll",
       "return_type": "trigger",
       "arguments": "",
       "type": "FUNCTION"

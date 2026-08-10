@@ -103,6 +103,7 @@ erDiagram
   boolean wishlist_allowed
   integer tier_pieces_equipped
   timestamp_with_time_zone tier_pieces_synced_at
+  integer bonus_roll_encounter_id FK
 }
 ```
 
