@@ -647,6 +647,18 @@ var PRIORITY_WISHLIST_DISAMBIGUATE_SLOTS = {
   'Off Hand': true
 };
 
+// Own copy of js/wishlist.js's WISHLIST_SIBLING_SLOT -- Finger 1/2 and
+// Trinket 1/2 only (not Weapon/Off Hand, where a raider can legitimately
+// want two *different* one-handers). The same ring/trinket provides
+// identical stats regardless of which numbered slot it's tagged under, so a
+// status set on one side counts for both.
+var PRIORITY_WISHLIST_SIBLING_SLOT = {
+  'Finger 1': 'Finger 2',
+  'Finger 2': 'Finger 1',
+  'Trinket 1': 'Trinket 2',
+  'Trinket 2': 'Trinket 1'
+};
+
 // officerBuckets (tab-bis.js's bisSlotBuckets().buckets for this player) --
 // eligibleBuckets (tab-bis.js's bisEligibleRealItemsBySlot() for this
 // player) -- every real catalog item the raider could tag per row. Item-level
@@ -679,21 +691,30 @@ function _priorityWishlistMissingRows(prefs, idToName, itemSlots, officerBuckets
     return row !== 'Off Hand' || offHandRequired;
   });
 
-  // Same lookup as _priorityWishlistMissingRows' exact-slot match, but falls
-  // back to a legacy slot=null pref (tagged before Finger/Trinket/Weapon/Off
-  // Hand started writing an explicit disambiguating slot) when that pref's
-  // item still resolves to this row via its own catalog slot -- mirrors
-  // js/wishlist.js's wishlistPrefForRow().
+  // Same lookup as _priorityWishlistMissingRows' exact-slot match, with two
+  // fallbacks -- mirrors js/wishlist.js's wishlistPrefForRow():
+  // 1. A legacy slot=null pref (tagged before Finger/Trinket/Weapon/Off Hand
+  //    started writing an explicit disambiguating slot) when that pref's
+  //    item still resolves to this row via its own catalog slot.
+  // 2. For Finger 1/2 and Trinket 1/2, the sibling row's pref for the same
+  //    item_id -- tagging one side always counts for both.
   function taggedForRow(itemId, row) {
     var rowSlot = PRIORITY_WISHLIST_DISAMBIGUATE_SLOTS[row] ? row : null;
     var exact = prefs.some(function (p) {
       return p.item_id === itemId && (p.slot || null) === rowSlot;
     });
-    if (exact || !rowSlot) return exact;
-    return prefs.some(function (p) {
+    if (exact) return true;
+    if (!rowSlot) return false;
+    var legacy = prefs.some(function (p) {
       return (
         p.item_id === itemId && !p.slot && _priorityItemRows(itemId, null, idToName, itemSlots).indexOf(row) !== -1
       );
+    });
+    if (legacy) return true;
+    var siblingSlot = PRIORITY_WISHLIST_SIBLING_SLOT[row];
+    if (!siblingSlot) return false;
+    return prefs.some(function (p) {
+      return p.item_id === itemId && p.slot === siblingSlot;
     });
   }
 

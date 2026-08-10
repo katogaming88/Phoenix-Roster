@@ -123,7 +123,7 @@ describe('wishlistCompleteness (item-level)', () => {
     expect(result.missingRows).not.toContain('Weapon');
   });
 
-  it('a ring tagged only under Finger 1 still leaves Finger 2 missing (independently tagged rows)', () => {
+  it('a ring tagged only under Finger 1 also covers Finger 2 (same physical item, same stats either finger)', () => {
     const itemSlots = { 'Ring A': 'Finger' };
     const itemIds = { 'Ring A': 1 };
     const prefs = [{ id: 1, item_id: 1, status: 'good', note: null, slot: 'Finger 1' }];
@@ -131,7 +131,38 @@ describe('wishlistCompleteness (item-level)', () => {
 
     const result = completenessFor(sandbox);
     expect(result.missingRows).not.toContain('Finger 1');
+    expect(result.missingRows).not.toContain('Finger 2');
+  });
+
+  it('a trinket tagged only under Trinket 2 also covers Trinket 1', () => {
+    const itemSlots = { 'Trinket A': 'Trinket' };
+    const itemIds = { 'Trinket A': 1 };
+    const prefs = [{ id: 1, item_id: 1, status: 'ok', note: null, slot: 'Trinket 2' }];
+    const sandbox = makeSandbox(itemSlots, itemIds, prefs);
+
+    const result = completenessFor(sandbox);
+    expect(result.missingRows).not.toContain('Trinket 1');
+    expect(result.missingRows).not.toContain('Trinket 2');
+  });
+
+  it('two different rings each tagged once (one per numbered slot) both count as fully rated -- an untagged third ring still shows missing on both', () => {
+    const itemSlots = { 'Ring A': 'Finger', 'Ring B': 'Finger', 'Ring C': 'Finger' };
+    const itemIds = { 'Ring A': 1, 'Ring B': 2, 'Ring C': 3 };
+    const prefs = [
+      { id: 1, item_id: 1, status: 'bis', note: null, slot: 'Finger 1' },
+      { id: 2, item_id: 2, status: 'good', note: null, slot: 'Finger 2' }
+      // Ring C never tagged at all
+    ];
+    const sandbox = makeSandbox(itemSlots, itemIds, prefs);
+
+    const result = completenessFor(sandbox);
+    // Ring A and Ring B are each fully rated (their one tag counts for both
+    // numbered slots), so only Ring C's missing rating shows up -- once per
+    // row, since it's eligible under both.
+    expect(result.missingRows).toContain('Finger 1');
     expect(result.missingRows).toContain('Finger 2');
+    expect(result.missingCounts['Finger 1']).toBe(1);
+    expect(result.missingCounts['Finger 2']).toBe(1);
   });
 
   it('an Other Sources (placeholder) tag does not satisfy a real raid-item row', () => {

@@ -250,17 +250,34 @@ function wishlistPrefFor(itemId, slot) {
 }
 
 // Same lookup as wishlistPrefFor(), but for a specific WISHLIST_SLOTS row
-// rather than a raw slot value -- falls back to a legacy slot=null pref
-// (tagged before Finger/Trinket/Weapon/Off Hand started writing an explicit
-// disambiguating slot) when that pref's item still resolves to this row via
-// its own catalog slot. Used by wishlistCompleteness() so pre-disambiguation
-// tags still count as covering their row.
+// rather than a raw slot value. Two fallbacks beyond an exact-slot match:
+//
+// 1. A legacy slot=null pref (tagged before Finger/Trinket/Weapon/Off Hand
+//    started writing an explicit disambiguating slot) when that pref's item
+//    still resolves to this row via its own catalog slot.
+// 2. For Finger 1/2 and Trinket 1/2 specifically (WISHLIST_SIBLING_SLOT):
+//    the sibling row's pref for the same item_id. Unlike Weapon/Off Hand
+//    (a raider can legitimately want two *different* one-handers, one per
+//    hand -- no mirroring there), the same ring/trinket provides identical
+//    stats regardless of which numbered slot it's tagged under, so a status
+//    set on one side always counts for both -- wishlistSetStatus() already
+//    writes both rows going forward, this only covers data tagged before
+//    that mirroring existed.
+//
+// Used by wishlistCompleteness() so pre-disambiguation/pre-mirroring tags
+// still count as covering their row.
 function wishlistPrefForRow(itemId, row) {
   var rowSlot = WISHLIST_DISAMBIGUATE_SLOTS[row] ? row : null;
   var exact = wishlistPrefFor(itemId, rowSlot);
-  if (exact || !rowSlot) return exact;
+  if (exact) return exact;
+  if (!rowSlot) return null;
   var legacy = wishlistPrefFor(itemId, null);
   if (legacy && wishlistItemRows(itemId, null).indexOf(row) !== -1) return legacy;
+  var siblingSlot = WISHLIST_SIBLING_SLOT[row];
+  if (siblingSlot) {
+    var sibling = wishlistPrefFor(itemId, siblingSlot);
+    if (sibling) return sibling;
+  }
   return null;
 }
 
@@ -856,23 +873,27 @@ function wishlistSectionBodyHTML(player) {
     '<a href="https://www.curseforge.com/wow/addons/wga-priority-loot" target="_blank" rel="noopener">WGA Priority Loot addon</a>.</p>';
 
   var completeness = wishlistCompleteness(buckets);
+  var slotsComplete = completeness.requiredRows.length - completeness.missingRows.length;
+  var summaryPrefix =
+    slotsComplete +
+    '/' +
+    completeness.requiredRows.length +
+    ' slots tagged (' +
+    completeness.taggedCount +
+    '/' +
+    completeness.totalRequired +
+    ' items tagged)';
   html += completeness.missingRows.length
     ? '<p style="font-size:1.02rem;color:var(--melee);margin:0.25rem 0 0.75rem;">' +
-      completeness.taggedCount +
-      '/' +
-      completeness.totalRequired +
-      ' items tagged -- missing: ' +
+      summaryPrefix +
+      ' -- missing: ' +
       completeness.missingRows
         .map(function (row) {
           return row + ' (' + completeness.missingCounts[row] + ')';
         })
         .join(', ') +
       '</p>'
-    : '<p style="font-size:1.02rem;color:var(--heal);margin:0.25rem 0 0.75rem;">' +
-      completeness.taggedCount +
-      '/' +
-      completeness.totalRequired +
-      ' items tagged.</p>';
+    : '<p style="font-size:1.02rem;color:var(--heal);margin:0.25rem 0 0.75rem;">' + summaryPrefix + '.</p>';
 
   html += wishlistEditableNow()
     ? ''
