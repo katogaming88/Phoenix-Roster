@@ -217,6 +217,17 @@ describe('getIncompleteWishlists (#515, item-level)', () => {
     expect(result.raiders[0].missingRows).toContain('Neck');
   });
 
+  it('a ring tagged only under Finger 1 also covers Finger 2 for that same item', () => {
+    const itemSlots = { 'Ring A': 'Finger' };
+    const itemIds = { 'Ring A': 1 };
+    const roster = [{ id: 11, nameRealm: 'Kat-Illidan' }];
+    const sandbox = makeSandbox({ itemSlots, itemIds, roster });
+    sandbox._teamItemPreferences = [{ player_id: 11, item_id: 1, status: 'good', slot: 'Finger 1' }];
+
+    const result = sandbox.getIncompleteWishlists();
+    expect(result.count).toBe(0);
+  });
+
   it('renders a compact name-only banner on the Priority tab, no per-slot breakdown', async () => {
     const itemSlots = { Helm: 'Head', Circlet: 'Head' };
     const itemIds = { Helm: 1, Circlet: 2 };

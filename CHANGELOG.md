@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.1] - 2026-08-10
+
+### Frontend
+
+- **Fixed Wishlist completeness wrongly requiring the same ring/trinket to be tagged twice.** Finger 1/Finger 2 and Trinket 1/Trinket 2 show the same candidate items since either slot can hold the same physical item -- but completeness was treating a status set on one side as not covering the other, so a fully-rated ring could still show as "missing" under its second slot. Tagging either side now counts for both (a status set on one numbered slot always applies to its sibling for that same item). The Wishlist summary also now shows both counts together, e.g. "16/16 slots tagged (45/45 items tagged)."
+
 ## [3.60.0] - 2026-08-10
 
 ### Frontend
