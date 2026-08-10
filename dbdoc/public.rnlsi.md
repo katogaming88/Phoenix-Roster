@@ -45,7 +45,7 @@ CREATE VIEW rnlsi AS (
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
 | [public.attendance](public.attendance.md) | 9 |  | BASE TABLE |
-| [public.players](public.players.md) | 21 |  | BASE TABLE |
+| [public.players](public.players.md) | 22 |  | BASE TABLE |
 | [public.classes_specs](public.classes_specs.md) | 4 |  | BASE TABLE |
 | [LATERAL](LATERAL.md) | 0 |  |  |
 | [public.rclc_loot](public.rclc_loot.md) | 10 |  | BASE TABLE |

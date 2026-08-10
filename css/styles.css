@@ -392,6 +392,7 @@ select#playerSelect option { background:#1a1d27; }
 .tag { font-size:1rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; padding:1px 6px; border-radius:2px; }
 .tag-trial { background:rgba(240,200,112,0.1); color:#f0c870; border:1px solid rgba(240,200,112,0.2); }
 .tag-bench { background:rgba(255,255,255,0.04); color:var(--text); border:1px solid var(--border); }
+.tag-bonus-roll { background:rgba(214,163,68,0.1); color:var(--gold); border:1px solid rgba(214,163,68,0.3); }
 .tag-backup-tank { background:rgba(74,158,255,0.1); color:var(--tank); border:1px solid rgba(74,158,255,0.2); }
 .tag-backup-healer { background:rgba(61,220,132,0.1); color:var(--heal); border:1px solid rgba(61,220,132,0.2); }
 #officerProfile { margin-top:1.5rem; }

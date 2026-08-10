@@ -14,7 +14,7 @@
 | [public.rclc_loot](public.rclc_loot.md) | 10 |  | BASE TABLE |
 | [public.mplus_exclusion_requests](public.mplus_exclusion_requests.md) | 9 |  | BASE TABLE |
 | [public.player_wcl_season_perf](public.player_wcl_season_perf.md) | 7 |  | BASE TABLE |
-| [public.players](public.players.md) | 21 |  | BASE TABLE |
+| [public.players](public.players.md) | 22 |  | BASE TABLE |
 | [public.priority_order](public.priority_order.md) | 8 |  | BASE TABLE |
 | [public.scoring](public.scoring.md) | 10 |  | BASE TABLE |
 | [public.season_signups](public.season_signups.md) | 18 |  | BASE TABLE |
@@ -97,6 +97,7 @@
 | public.admin_revoke_guild_officer | void | p_discord_id text | FUNCTION |
 | public.check_priority_order_drift | record | p_team_id integer, p_season text | FUNCTION |
 | public.restrict_bis_items_update_to_obtained | trigger |  | FUNCTION |
+| public.restrict_players_self_update_to_bonus_roll | trigger |  | FUNCTION |
 
 ## Enums
 
@@ -139,6 +140,7 @@ erDiagram
 "public.players" }o--o| "public.classes_specs" : "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE"
 "public.players" }o--o| "public.team_members" : "FOREIGN KEY (team_member_id) REFERENCES team_members(id) ON DELETE SET NULL"
 "public.players" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.players" }o--o| "public.raid_encounters" : "FOREIGN KEY (bonus_roll_encounter_id) REFERENCES raid_encounters(id) ON DELETE SET NULL"
 "public.priority_order" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id)"
 "public.priority_order" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.priority_order" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
@@ -285,6 +287,7 @@ erDiagram
   boolean wishlist_allowed
   integer tier_pieces_equipped
   timestamp_with_time_zone tier_pieces_synced_at
+  integer bonus_roll_encounter_id FK
 }
 "public.priority_order" {
   integer id

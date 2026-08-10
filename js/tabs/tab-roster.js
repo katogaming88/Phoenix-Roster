@@ -437,6 +437,16 @@ function buildRosterTable() {
       if (p.isBench) statusTags += '<span class="tag tag-bench">Bench</span> ';
       if (p.isBackupTank) statusTags += '<span class="tag tag-backup-tank">Backup Tank</span> ';
       if (p.isBackupHealer) statusTags += '<span class="tag tag-backup-healer">Backup Healer</span>';
+      // Informational only (not fed into priority order, see
+      // 20260808212802_tier_priority_bis_match.sql's neutral tier_rank on
+      // non-tier items) -- a heads-up for officers making an in-raid loot
+      // call, same "raider self-service, officer-visible" shape as the
+      // Wishlist onboarding badge below.
+      if (p.bonusRollBoss)
+        statusTags +=
+          ' <span class="tag tag-bonus-roll" title="Bonus Roll target this week">🎲 ' +
+          _esc(p.bonusRollBoss) +
+          '</span>';
       if (!statusTags) statusTags = '<span style="color:var(--text);">-</span>';
       var barPct = pct.toFixed(1) + '%';
       var clsColor = classColor(p.class);
