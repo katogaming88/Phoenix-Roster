@@ -1254,7 +1254,17 @@ function wishlistSetStatus(itemId, slot, status) {
   wishlistUpsert(itemId, slot || null, { status: status });
 }
 
+// Mirrors into the sibling slot the same way wishlistSetStatus() does for
+// Finger 1/2 and Trinket 1/2 (same physical item, same note either way) --
+// but only when the sibling row already exists. wishlistUpsert() defaults a
+// brand-new row's status to 'good', so mirroring unconditionally would let
+// typing a note on an otherwise-untouched sibling slot silently tag it,
+// which a raider editing just one row's note wouldn't expect.
 function wishlistSetNote(itemId, slot, note) {
+  var siblingSlot = wishlistIsPlaceholderItem(itemId) ? null : WISHLIST_SIBLING_SLOT[slot];
+  if (siblingSlot && wishlistPrefFor(itemId, siblingSlot)) {
+    wishlistUpsert(itemId, siblingSlot, { note: note || null });
+  }
   wishlistUpsert(itemId, slot || null, { note: note || null });
 }
 

@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.5] - 2026-08-11
+
+### Frontend
+
+- Wishlist notes now mirror across Finger 1/Finger 2 and Trinket 1/Trinket 2 the same way BiS/Good/OK/Catalyst/Pass status already does -- editing a note on one numbered slot updates the other too (when it's already tagged), instead of the two notes silently drifting apart for what's the same physical item. Weapon/Off Hand stay independent, matching status's own behavior there.
+
 ## [3.60.4] - 2026-08-10
 
 ### Frontend
