@@ -273,7 +273,13 @@ function wishlistPrefForRow(itemId, row) {
   if (!rowSlot) return null;
   var legacy = wishlistPrefFor(itemId, null);
   if (legacy && wishlistItemRows(itemId, null).indexOf(row) !== -1) return legacy;
-  var siblingSlot = WISHLIST_SIBLING_SLOT[row];
+  // Placeholders (M+/Crafted/Catalyst) are exempt from sibling mirroring --
+  // wishlistIsPlaceholderItem's own comment: "intentionally allowed to hold
+  // BiS in more than one row at once (it names a source, not a specific
+  // item)." Not currently reachable via wishlistCompleteness() (placeholders
+  // never appear in wishlistBucketRealItems()'s buckets), but kept here so
+  // this function stays correct for any other caller too.
+  var siblingSlot = !wishlistIsPlaceholderItem(itemId) && WISHLIST_SIBLING_SLOT[row];
   if (siblingSlot) {
     var sibling = wishlistPrefFor(itemId, siblingSlot);
     if (sibling) return sibling;
@@ -403,6 +409,20 @@ function wishlistCurrentStatus(itemId, slot) {
   return pref ? pref.status : null;
 }
 
+// Display-time status for a row -- like wishlistCurrentStatus(), but for
+// Finger 1/2 and Trinket 1/2 also falls back to the sibling row's status
+// for the same item (wishlistPrefForRow()'s same fallback chain), so the
+// card header count/dots/button highlighting agree with
+// wishlistCompleteness()'s "either side counts" rule instead of only ever
+// showing a tag on the exact row it was written to. Deliberately NOT used
+// by wishlistLockedBySibling() itself, which needs a strict, non-recursive
+// check of the sibling's own exact status.
+function wishlistDisplayStatus(itemId, slot) {
+  if (!WISHLIST_DISAMBIGUATE_SLOTS[slot]) return wishlistCurrentStatus(itemId, slot);
+  var pref = wishlistPrefForRow(itemId, slot);
+  return pref ? pref.status : null;
+}
+
 // A placeholder (M+/Crafted/Catalyst) is intentionally allowed to hold BiS
 // in more than one row at once (it names a source, not a specific item), so
 // wishlistLockedBySibling below must not treat it like a real ring/trinket.
@@ -471,7 +491,7 @@ function toggleWishlistSlot(key) {
 function wishlistSlotSummaryDotsHTML(items) {
   var dots = '';
   items.forEach(function (it) {
-    var status = wishlistCurrentStatus(it.itemId, it.slot || null);
+    var status = wishlistDisplayStatus(it.itemId, it.slot || null);
     if (!status) return;
     var color = WISHLIST_TIER_COLORS[status];
     dots +=
@@ -507,7 +527,7 @@ function wishlistStatusButtonsHTML(itemId, slot, lockOnceSet) {
   // other slot, so no independent status here makes sense until the sibling
   // slot's BiS pick changes to something else.
   var lockedSibling = wishlistLockedBySibling(itemId, slot);
-  var current = lockedSibling ? 'bis' : wishlistCurrentStatus(itemId, slot);
+  var current = lockedSibling ? 'bis' : wishlistDisplayStatus(itemId, slot);
   var savingKey = itemId + '|' + (slot || '');
   var locked = !!(lockOnceSet && current) || !!lockedSibling;
   var disabled = _wishlistSaving[savingKey] || !wishlistEditableNow() || locked ? ' disabled' : '';
@@ -593,7 +613,7 @@ function wishlistRowHTML(name, itemId, slot, rowIndex, lockOnceSet, rankName) {
   // catalog item lists under both cards, so without this a raider has no
   // way to tell they're looking at their already-locked-in pick.
   var lockedSibling = wishlistLockedBySibling(itemId, slot);
-  var current = lockedSibling ? 'bis' : wishlistCurrentStatus(itemId, slot);
+  var current = lockedSibling ? 'bis' : wishlistDisplayStatus(itemId, slot);
   var color = current && WISHLIST_TIER_COLORS[current];
   var rowBackground = color ? 'rgba(' + color.rgb + ',0.08)' : rowIndex % 2 ? 'var(--bg-elevated)' : 'var(--bg-card)';
   var rowBorder = color ? color.css : 'var(--border)';
@@ -651,18 +671,22 @@ function wishlistRowHTML(name, itemId, slot, rowIndex, lockOnceSet, rankName) {
 // lookup key ('__other__' for the placeholder card, the slot name otherwise).
 // `officerCovered` (slot cards only): true when the officer's bis_items grid
 // already has a pick for this row (wishlistCompleteness()'s officerBuckets).
-// The "N tagged" count and its green/grey styling always reflect the
-// raider's own wishlist tags only -- officerCovered just appends a note so a
-// slot that reads "0 tagged" here still shows it's actually settled via the
-// officer's pick, without the card claiming credit for a tag the raider
-// didn't make.
-function wishlistCollapsibleCardHTML(key, label, summaryItems, bodyHTML, officerCovered) {
+// The "N tagged" count always reflects the raider's own wishlist tags only --
+// officerCovered just appends a note so a slot that reads "0 tagged" here
+// still shows it's actually settled via the officer's pick, without the card
+// claiming credit for a tag the raider didn't make.
+// `otherSourcesCovered` (slot cards only): true when the raider has already
+// tagged an Other Sources placeholder (M+/Crafted/Catalyst) as this slot's
+// real BiS -- unlike officerCovered, this DOES force green/"all tagged"
+// styling, since the raider has already settled their actual plan for the
+// slot and the raid items underneath are moot for it.
+function wishlistCollapsibleCardHTML(key, label, summaryItems, bodyHTML, officerCovered, otherSourcesCovered) {
   var expanded = !!_wishlistExpandedSlots[key];
   var dots = wishlistSlotSummaryDotsHTML(summaryItems);
   var taggedCount = summaryItems.filter(function (it) {
-    return wishlistCurrentStatus(it.itemId, it.slot || null);
+    return wishlistDisplayStatus(it.itemId, it.slot || null);
   }).length;
-  var allTagged = summaryItems.length > 0 && taggedCount === summaryItems.length;
+  var allTagged = (summaryItems.length > 0 && taggedCount === summaryItems.length) || !!otherSourcesCovered;
   var countText = taggedCount + ' tagged' + (officerCovered ? ' -- officer BiS set' : '');
   var countLabel =
     '<span style="font-size:1.02rem;color:' +
@@ -938,7 +962,7 @@ function wishlistSectionBodyHTML(player) {
       : '';
     var tierNote =
       WISHLIST_TIER_SET_SLOTS.indexOf(slotName) !== -1
-        ? '<p style="font-size:1.04rem;color:var(--text);margin:0 0 0.5rem;">Catalyzing keeps an item\'s stats/cantrip -- tag whichever piece you actually want as BiS, tier or not.</p>'
+        ? "<p style=\"font-size:1.04rem;color:var(--gold);margin:0 0 0.5rem;\">Catalyzing keeps an item's stats/cantrip -- if a non-tier piece here has the best stats for this slot and you plan to catalyze it, <strong>tag it BiS, not Catalyst Only</strong>. Catalyst Only is for a piece that isn't your best stat pick but you'd still take just to fill this slot for the set bonus.</p>"
         : '';
     var body =
       otherSourceNote +
@@ -952,7 +976,15 @@ function wishlistSectionBodyHTML(player) {
       return { itemId: item.itemId, slot: rowSlot };
     });
     var officerCovered = !!completeness.officerBuckets[slotName];
-    slotCards += wishlistCollapsibleCardHTML(slotName, slotName, summaryItems, body, officerCovered);
+    var otherSourcesCovered = !!otherSourcesTaggedSlots[slotName];
+    slotCards += wishlistCollapsibleCardHTML(
+      slotName,
+      slotName,
+      summaryItems,
+      body,
+      officerCovered,
+      otherSourcesCovered
+    );
   }
   html += slotCards;
 

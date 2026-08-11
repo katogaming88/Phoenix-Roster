@@ -55,7 +55,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.60.1';
+var VERSION = '3.60.2';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -3533,15 +3533,39 @@ function officerWishlistRowHTML(name, pref, labelOverrides, slot) {
       _esc(slot) +
       '</span>'
     : '';
+  // Wowhead hover-tooltip link, same pattern as itemNameBlockHtml() -- the
+  // <a> sizes to just its icon+text content (not flex:1 itself) so the
+  // widget's element-anchored tooltip positions off the right spot; flex:1/
+  // min-width:0 live on the non-interactive wrapper span instead, see that
+  // function's comment for the full story on why that split matters.
+  var wowId = ((DATA && DATA.itemWowIds) || {})[name];
+  var isPtr = ((DATA && DATA.itemIsPtr) || {})[name];
+  var nameInner =
+    '<span style="color:var(--text);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' +
+    _esc(name) +
+    '</span>';
+  var nameBlock =
+    wowId == null
+      ? '<span style="display:flex;align-items:center;gap:0.4rem;flex:1;min-width:0;">' +
+        iconImg +
+        nameInner +
+        '</span>'
+      : '<span style="display:flex;align-items:center;gap:0.4rem;flex:1;min-width:0;">' +
+        '<a href="https://www.wowhead.com/' +
+        (isPtr ? 'ptr/' : '') +
+        'item=' +
+        wowId +
+        '" class="wowhead" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:0.4rem;min-width:0;overflow:hidden;text-decoration:none;">' +
+        iconImg +
+        nameInner +
+        '</a>' +
+        '</span>';
   return (
     '<div style="display:flex;align-items:center;gap:0.5rem;padding:0.25rem 0.5rem;border-radius:4px;' +
     'border:1px solid var(--border);background:var(--bg-card);margin-bottom:2px;"' +
     (pref.note ? ' title="Note: ' + _esc(pref.note) + '"' : '') +
     '>' +
-    iconImg +
-    '<span style="color:var(--text);font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' +
-    _esc(name) +
-    '</span>' +
+    nameBlock +
     slotHTML +
     '<span style="font-size:0.85rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;white-space:nowrap;">' +
     _esc(label) +
@@ -3668,7 +3692,12 @@ function officerWishlistSectionHTML(player, backTo) {
         : 'Show all ' + otherEntries.length + ' other tagged item' + (otherEntries.length === 1 ? '' : 's')) +
       '</button>';
     if (expanded) {
-      html += '<div style="margin-top:0.3rem;">';
+      // 2 columns on wide viewports (auto-fit so it collapses to 1 on
+      // narrow ones) -- this list can run 30+ rows deep once every Good/OK/
+      // Catalyst/Pass tag is included, and stacking them one-per-line made
+      // an officer scroll a long way to see the rest of a profile.
+      html +=
+        '<div style="margin-top:0.3rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:0 0.5rem;">';
       otherEntries.forEach(function (e) {
         html += officerWishlistRowHTML(e.item, e.pref, labelOverrides, e.slot);
       });
@@ -4323,7 +4352,7 @@ function submitBiSForm(nameRealm, firstName) {
       if (formEl) {
         formEl.innerHTML = result.error
           ? '<p style="font-size:1.07rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>'
-          : '<p style="font-size:1.07rem;color:var(--text-muted);padding:0.5rem 0;">Submitted -- pending officer review.</p>';
+          : '<p style="font-size:1.3rem;font-weight:700;color:var(--melee);padding:0.5rem 0;">Submitted -- pending officer review.</p>';
       }
       if (!result.error) {
         supabaseClient.functions.invoke('discord-bot-webhook', {
