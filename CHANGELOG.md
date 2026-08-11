@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.4] - 2026-08-10
+
+### Frontend
+
+- Fixed the Priority > Notes sub-tab (and its badge count) showing the same note twice when a raider tagged an identical note on both Finger 1/Finger 2 or Trinket 1/Trinket 2 for the same item -- those are two separate rows under the hood for the same raider opinion, now deduped to one. A genuinely different note per numbered slot still shows separately.
+
 ## [3.60.3] - 2026-08-10
 
 ### Frontend
