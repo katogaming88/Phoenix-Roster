@@ -575,13 +575,22 @@ function officerSelectPlayer(firstName) {
   inlineRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-// Re-renders the currently open player card after buildRosterTable() wipes the
-// table HTML. Called from onHeavyReady and rebuildSeasonFilteredViews so the
-// card stays open and picks up freshly loaded data (loot, BiS, etc.).
+// Re-renders the currently open player card. Originally only ever called
+// right after buildRosterTable() wipes the table HTML (onHeavyReady,
+// rebuildSeasonFilteredViews), so any prior inlineProfileRow was already
+// gone by the time this ran -- but js/common.js's officerWishlistSectionHTML()
+// section now also calls this directly (toggleOfficerWishlistExpanded(),
+// the item_preferences fetch callback) to refresh just the open card
+// without a full table rebuild, and without this removal a second
+// #inlineProfileRow got inserted alongside the still-present first one
+// instead of replacing it -- the whole profile appeared to duplicate on the
+// page every time, e.g. clicking "Show all N other tagged items".
 function reopenSelectedPlayer() {
   if (!selectedOfficerPlayer) return;
   var playerRow = document.querySelector('.player-row[data-player="' + selectedOfficerPlayer + '"]');
   if (!playerRow) return;
+  var existingRow = document.getElementById('inlineProfileRow');
+  if (existingRow) existingRow.remove();
   var inlineRow = document.createElement('tr');
   inlineRow.id = 'inlineProfileRow';
   var inlineCell = document.createElement('td');
