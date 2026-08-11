@@ -938,7 +938,7 @@ function wishlistSectionBodyHTML(player) {
       : '';
     var tierNote =
       WISHLIST_TIER_SET_SLOTS.indexOf(slotName) !== -1
-        ? '<p style="font-size:1.04rem;color:var(--text);margin:0 0 0.5rem;">Catalyzing keeps an item\'s stats/cantrip -- tag whichever piece you actually want as BiS, tier or not.</p>'
+        ? "<p style=\"font-size:1.04rem;color:var(--gold);margin:0 0 0.5rem;\">Catalyzing keeps an item's stats/cantrip -- if a non-tier piece here has the best stats for this slot and you plan to catalyze it, <strong>tag it BiS, not Catalyst Only</strong>. Catalyst Only is for a piece that isn't your best stat pick but you'd still take just to fill this slot for the set bonus.</p>"
         : '';
     var body =
       otherSourceNote +

@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.2] - 2026-08-10
+
+### Frontend
+
+- Clarified the tier-slot BiS-vs-Catalyst-Only guidance shown on Head/Shoulder/Chest/Hands/Legs Wishlist cards -- now explicitly says a non-tier piece with the best stats should be tagged BiS (not Catalyst Only) if you plan to catalyze it, reserving Catalyst Only for a piece you'd only take to fill the set-bonus slot. Made more visually prominent (gold, bolded call to action) since it was getting missed.
+
 ## [3.60.1] - 2026-08-10
 
 ### Frontend
