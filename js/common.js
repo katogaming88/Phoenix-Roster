@@ -55,7 +55,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.60.2';
+var VERSION = '3.60.3';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -3612,7 +3612,29 @@ function officerWishlistSectionHTML(player, backTo) {
   if (!player) return '';
   if (typeof featureEnabled === 'function' && !featureEnabled('bis')) return '';
 
-  var html = '<div class="profile-section"><div class="section-label">Wishlist</div>';
+  // Item-level completion badge next to the header, same "N% (x/y)" shape
+  // as the BiS List section's own received-count badge above it -- red/
+  // green here instead of gold since the point is to flag a raider who
+  // missed slots at a glance, matching js/wishlist.js's own completeness
+  // summary coloring. Only defined on officer.html (tab-priority.js's
+  // wishlistCompletionForPlayer()); no equivalent eligible-item bucketing
+  // exists in this bundle on index.html, so it silently no-ops there.
+  var wishlistCompletion =
+    typeof wishlistCompletionForPlayer === 'function' ? wishlistCompletionForPlayer(player) : null;
+  var wishlistCompletionHTML =
+    wishlistCompletion && wishlistCompletion.total
+      ? '<span style="font-size:1.07rem;margin-left:0.5rem;"><span style="color:' +
+        (wishlistCompletion.tagged === wishlistCompletion.total ? 'var(--heal)' : 'var(--melee)') +
+        ';font-weight:600;">' +
+        Math.round((wishlistCompletion.tagged / wishlistCompletion.total) * 100) +
+        '%</span><span style="color:var(--text-muted);font-weight:400;"> (' +
+        wishlistCompletion.tagged +
+        '/' +
+        wishlistCompletion.total +
+        ')</span></span>'
+      : '';
+
+  var html = '<div class="profile-section"><div class="section-label">Wishlist' + wishlistCompletionHTML + '</div>';
 
   var teamPrefs = typeof _teamItemPreferences !== 'undefined' ? _teamItemPreferences : undefined;
   var prefs;
@@ -4350,8 +4372,14 @@ function submitBiSForm(nameRealm, firstName) {
     })
     .then(function (result) {
       if (formEl) {
+        // submit_bis_link() surfaces specific, raider-facing reasons (blank
+        // link, submissions closed, already has a pending request) via
+        // raise exception -- show that text rather than a generic failure
+        // message so the raider actually knows why (#404 follow-up).
         formEl.innerHTML = result.error
-          ? '<p style="font-size:1.07rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>'
+          ? '<p style="font-size:1.07rem;color:var(--melee);padding:0.5rem 0;">' +
+            _esc(result.error.message || 'Failed to submit. Try again.') +
+            '</p>'
           : '<p style="font-size:1.3rem;font-weight:700;color:var(--melee);padding:0.5rem 0;">Submitted -- pending officer review.</p>';
       }
       if (!result.error) {

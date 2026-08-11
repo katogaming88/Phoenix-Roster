@@ -8,6 +8,18 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.3] - 2026-08-10
+
+### Frontend
+
+- The BiS Source submission error message now shows the actual reason (e.g. "You already have a BiS submission pending officer review") instead of a generic "Failed to submit."
+- The officer-facing profile card's Wishlist section header now shows a completion badge (e.g. "70% (14/20)", red until complete, green once every eligible item is tagged) -- a quick visual clue that a raider missed slots, without opening/scrolling into the section.
+- **Fixed the Priority > Notes sub-tab (and its nav badge count) silently dropping notes on Finger 1/2, Trinket 1/2, Weapon, and Off Hand items.** It used "has a slot" as a proxy for "is a placeholder" (M+/Crafted/Catalyst), which broke once those 6 rows started giving real items an explicit slot too -- any note tagged there was invisible to officers. Now keyed off the item's own placeholder identity instead.
+
+### Backend
+
+- Blocked a raider from submitting a second BiS Source link while one is already pending officer review -- `submit_bis_link()` had no guard, so resubmitting piled up duplicate pending requests in the officer queue. See `docs/database-decisions.md` for the full writeup.
+
 ## [3.60.2] - 2026-08-10
 
 ### Frontend
