@@ -429,12 +429,20 @@ function buildPriorityNotesTab() {
 
   var searchTerm = normalise((document.getElementById('prioNotesSearch') || {}).value || '');
 
+  // Placeholders (M+/Crafted/Catalyst) aren't a real catalog item to group
+  // notes under -- excluded by their own identity (DATA.itemPlaceholders),
+  // not by p.slot truthiness. p.slot alone used to be a reliable
+  // placeholder signal (only Other Sources rows carried one), but Finger
+  // 1/2, Trinket 1/2, Weapon, and Off Hand items now write an explicit
+  // disambiguating slot too (#623/#673) -- the old `if (p.slot) return`
+  // silently dropped every note on a real item tagged in one of those rows.
+  var itemPlaceholders = DATA.itemPlaceholders || {};
   var byItem = {};
   _teamItemPreferences.forEach(function (p) {
     if (!p.note || !p.note.trim()) return;
-    if (p.slot) return; // Other Sources placeholder rows aren't a real catalog item to group under
     var name = idToName[p.item_id];
     if (!name) return;
+    if (itemPlaceholders[name]) return;
     if (searchTerm && normalise(name).indexOf(searchTerm) === -1) return;
     (byItem[name] = byItem[name] || []).push(p);
   });
@@ -720,19 +728,69 @@ function _priorityWishlistMissingRows(prefs, idToName, itemSlots, officerBuckets
 
   var missingRows = [];
   var missingCounts = {};
+  var taggedCount = 0;
+  var totalRequired = 0;
   requiredRows.forEach(function (row) {
     var items = eligibleBuckets[row] || [];
     var missing = 0;
     items.forEach(function (item) {
+      totalRequired++;
       var officerCovers = officerBuckets[row] && officerBuckets[row].item === item.rankName;
-      if (!officerCovers && !taggedForRow(item.itemId, row)) missing++;
+      if (!officerCovers && !taggedForRow(item.itemId, row)) {
+        missing++;
+      } else {
+        taggedCount++;
+      }
     });
     if (missing > 0) {
       missingRows.push(row);
       missingCounts[row] = missing;
     }
   });
-  return { missingRows: missingRows, missingCounts: missingCounts };
+  return {
+    missingRows: missingRows,
+    missingCounts: missingCounts,
+    taggedCount: taggedCount,
+    totalRequired: totalRequired
+  };
+}
+
+// Per-player {tagged, total} item-level Wishlist completion, for a compact
+// "N% (tagged/total)" badge on the officer-facing profile card's Wishlist
+// section header (mirrors the BiS List section's own received-count badge
+// right above it, js/common.js's bisCompletionHTML). Own function rather
+// than folding into getIncompleteWishlists() -- that one only runs the full
+// roster and only returns raiders who are actually missing something; a
+// profile card needs one player's real numbers whether they're complete or
+// not. Returns null while item_preferences hasn't loaded yet, or when the
+// bis feature is off -- caller should skip rendering the badge rather than
+// show a false "0/0".
+function wishlistCompletionForPlayer(player) {
+  if ((typeof featureEnabled === 'function' && !featureEnabled('bis')) || _teamItemPreferences === null || !player) {
+    return null;
+  }
+  var itemSlots = DATA.itemSlots || {};
+  var itemIds = DATA.itemIds || {};
+  var idToName = {};
+  Object.keys(itemIds).forEach(function (name) {
+    idToName[itemIds[name]] = name;
+  });
+  var prefs = _teamItemPreferences.filter(function (p) {
+    return p.player_id === player.id;
+  });
+  var officerBuckets =
+    typeof getBisItems === 'function' && typeof bisSlotBuckets === 'function'
+      ? bisSlotBuckets(getBisItems(player.nameRealm)).buckets
+      : {};
+  var playerArmorType = (typeof CLASS_ARMOR_TYPE !== 'undefined' && CLASS_ARMOR_TYPE[player.class]) || null;
+  var playerMainStat = typeof specMainStat === 'function' ? specMainStat(player.class, player.spec) : null;
+  var playerRole = (typeof SPEC_ROLE !== 'undefined' && SPEC_ROLE[player.spec]) || null;
+  var eligibleBuckets =
+    typeof bisEligibleRealItemsBySlot === 'function'
+      ? bisEligibleRealItemsBySlot(playerArmorType, playerMainStat, playerRole, player.class || null)
+      : {};
+  var result = _priorityWishlistMissingRows(prefs, idToName, itemSlots, officerBuckets, eligibleBuckets);
+  return { tagged: result.taggedCount, total: result.totalRequired };
 }
 
 // roster override (js/tabs/tab-roster.js's Wishlists Completed stat card):
@@ -857,8 +915,17 @@ function updatePriorityNotesBadge() {
     badge.style.display = 'none';
     return;
   }
+  // Same placeholder-by-identity fix as buildPriorityNotesTab() above -- a
+  // real item's disambiguating slot (Finger 1/2, Trinket 1/2, Weapon, Off
+  // Hand) is not a placeholder signal, only DATA.itemPlaceholders is.
+  var itemIds = DATA.itemIds || {};
+  var idToName = {};
+  Object.keys(itemIds).forEach(function (name) {
+    idToName[itemIds[name]] = name;
+  });
+  var itemPlaceholders = DATA.itemPlaceholders || {};
   var count = _teamItemPreferences.filter(function (p) {
-    return p.note && p.note.trim() && !p.slot;
+    return p.note && p.note.trim() && !itemPlaceholders[idToName[p.item_id]];
   }).length;
   badge.textContent = count;
   badge.style.display = count > 0 ? '' : 'none';

@@ -246,3 +246,52 @@ describe('getIncompleteWishlists (#515, item-level)', () => {
     expect(compactEl.innerHTML).toContain('BiS Lists');
   });
 });
+
+// Per-player completion badge (officer profile card's Wishlist section
+// header, js/common.js officerWishlistSectionHTML()) -- unlike
+// getIncompleteWishlists(), this needs one player's real tagged/total
+// numbers whether they're complete or not, not just who's missing something.
+describe('wishlistCompletionForPlayer', () => {
+  it('returns null while item_preferences has not loaded yet', () => {
+    const sandbox = makeSandbox({});
+    const player = { id: 11, nameRealm: 'Kat-Illidan' };
+    expect(sandbox.wishlistCompletionForPlayer(player)).toBeNull();
+  });
+
+  it('returns null when the bis feature flag is off', () => {
+    const sandbox = makeSandbox({ bisEnabled: false });
+    sandbox._teamItemPreferences = [];
+    const player = { id: 11, nameRealm: 'Kat-Illidan' };
+    expect(sandbox.wishlistCompletionForPlayer(player)).toBeNull();
+  });
+
+  it('reports 0/N for a raider who has tagged nothing at all', () => {
+    const itemSlots = { Helm: 'Head', Circlet: 'Head' };
+    const itemIds = { Helm: 1, Circlet: 2 };
+    const sandbox = makeSandbox({ itemSlots, itemIds });
+    sandbox._teamItemPreferences = [];
+    const player = { id: 11, nameRealm: 'Kat-Illidan' };
+
+    expect(sandbox.wishlistCompletionForPlayer(player)).toEqual({ tagged: 0, total: 2 });
+  });
+
+  it('counts a partially-tagged raider correctly', () => {
+    const itemSlots = { Helm: 'Head', Circlet: 'Head' };
+    const itemIds = { Helm: 1, Circlet: 2 };
+    const sandbox = makeSandbox({ itemSlots, itemIds });
+    sandbox._teamItemPreferences = [{ player_id: 11, item_id: 1, status: 'good', slot: null }];
+    const player = { id: 11, nameRealm: 'Kat-Illidan' };
+
+    expect(sandbox.wishlistCompletionForPlayer(player)).toEqual({ tagged: 1, total: 2 });
+  });
+
+  it('reports tagged === total for a fully-tagged raider', () => {
+    const itemSlots = { Helm: 'Head' };
+    const itemIds = { Helm: 1 };
+    const sandbox = makeSandbox({ itemSlots, itemIds });
+    sandbox._teamItemPreferences = [{ player_id: 11, item_id: 1, status: 'bis', slot: null }];
+    const player = { id: 11, nameRealm: 'Kat-Illidan' };
+
+    expect(sandbox.wishlistCompletionForPlayer(player)).toEqual({ tagged: 1, total: 1 });
+  });
+});

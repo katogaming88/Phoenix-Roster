@@ -3612,7 +3612,29 @@ function officerWishlistSectionHTML(player, backTo) {
   if (!player) return '';
   if (typeof featureEnabled === 'function' && !featureEnabled('bis')) return '';
 
-  var html = '<div class="profile-section"><div class="section-label">Wishlist</div>';
+  // Item-level completion badge next to the header, same "N% (x/y)" shape
+  // as the BiS List section's own received-count badge above it -- red/
+  // green here instead of gold since the point is to flag a raider who
+  // missed slots at a glance, matching js/wishlist.js's own completeness
+  // summary coloring. Only defined on officer.html (tab-priority.js's
+  // wishlistCompletionForPlayer()); no equivalent eligible-item bucketing
+  // exists in this bundle on index.html, so it silently no-ops there.
+  var wishlistCompletion =
+    typeof wishlistCompletionForPlayer === 'function' ? wishlistCompletionForPlayer(player) : null;
+  var wishlistCompletionHTML =
+    wishlistCompletion && wishlistCompletion.total
+      ? '<span style="font-size:1.07rem;margin-left:0.5rem;"><span style="color:' +
+        (wishlistCompletion.tagged === wishlistCompletion.total ? 'var(--heal)' : 'var(--melee)') +
+        ';font-weight:600;">' +
+        Math.round((wishlistCompletion.tagged / wishlistCompletion.total) * 100) +
+        '%</span><span style="color:var(--text-muted);font-weight:400;"> (' +
+        wishlistCompletion.tagged +
+        '/' +
+        wishlistCompletion.total +
+        ')</span></span>'
+      : '';
+
+  var html = '<div class="profile-section"><div class="section-label">Wishlist' + wishlistCompletionHTML + '</div>';
 
   var teamPrefs = typeof _teamItemPreferences !== 'undefined' ? _teamItemPreferences : undefined;
   var prefs;
