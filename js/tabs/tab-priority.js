@@ -1544,17 +1544,16 @@ function prioEditRenderList() {
       ')"' +
       ' ondragend="prioEditDragEnd(event)"' +
       '>';
+    html += '<div class="prio-drag-item-row">';
     html += '<span class="prio-drag-handle">&#8942;&#8942;</span>';
     html += '<span class="prio-drag-rank">' + (i + 1) + '</span>';
     html += '<span class="prio-drag-name" style="color:' + roleColor + ';">' + display + '</span>';
     if (role) html += '<span class="prio-role-badge prio-role-' + role + '">' + role.toUpperCase() + '</span>';
     var scoreData = PRIO_EDIT.scores && PRIO_EDIT.scores[nameRealm];
+    var metaHtml = '';
     if (scoreData) {
       if (scoreData.weightedTotal !== null && scoreData.weightedTotal !== undefined) {
-        html +=
-          '<span style="font-size:0.91rem;color:var(--text-muted);margin-left:4px;">Score: ' +
-          scoreData.weightedTotal +
-          '</span>';
+        metaHtml += '<span>Score: ' + scoreData.weightedTotal + '</span>';
       }
       // "Has Heroic" (mythic track only -- still eligible for mythic, but
       // penalized) gets its own badge instead of sitting in the grey status
@@ -1588,10 +1587,7 @@ function prioEditRenderList() {
         statusParts.push('Wishlist: ' + wishlistLabel);
       }
       if (statusParts.length) {
-        html +=
-          '<span style="font-size:0.89rem;color:var(--text-muted);font-style:italic;margin-left:2px;">(' +
-          statusParts.join(', ') +
-          ')</span>';
+        metaHtml += '<span class="prio-drag-meta-status">(' + statusParts.join(', ') + ')</span>';
       }
     }
     if (i === 0) {
@@ -1612,6 +1608,8 @@ function prioEditRenderList() {
       }
     }
     html += '<button class="prio-drag-remove" onclick="prioEditRemove(' + i + ')" title="Remove">&times;</button>';
+    html += '</div>';
+    if (metaHtml) html += '<div class="prio-drag-meta">' + metaHtml + '</div>';
     html += '</div>';
   }
   list.innerHTML = html;

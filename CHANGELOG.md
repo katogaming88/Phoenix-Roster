@@ -13,6 +13,7 @@ with each release split into `### Frontend` (drives the version number) and
 ### Frontend
 
 - The Priority Order editor's wishlist status text (next to each ranked raider) now uses the team's own custom status label overrides instead of hardcoded "Wishlist: Good"/"OK"/"Catalyst Only" text -- every other wishlist status display on the site already respected these. Also fixed an empty "()" rendering for a raider with no other status text to show.
+- Fixed the Priority Order editor's ranked list wrapping its Score/status text mid-word when the row ran out of horizontal space -- the score/status text now always sits on its own line below the name, instead of squeezing into whatever space was left on the name's row.
 
 ### Backend
 
