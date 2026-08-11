@@ -8,6 +8,22 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-08-11 -- `generate_priority_order()`: return raw `wishlist_status`, not pre-formatted text
+
+Decided directly in conversation (no tracking issue): the Priority Order editor showed hardcoded "Wishlist: Good"/"Wishlist: OK"/"Wishlist: Catalyst Only" text, ignoring a team's own custom wishlist status label overrides (`team_settings.config.wishlistStatusLabels`) that every other wishlist display on the site already respects.
+
+- **Split the wishlist tier out of `status_label` into its own raw `wishlist_status` column** (`bis`/`good`/`ok`/`catalyst`/`null`) instead of baking display text into the SQL function -- the client (`js/tabs/tab-priority.js` `prioEditRenderList()`) now builds the label itself from `WISHLIST_LABEL_DEFAULTS` + `labelOverrides`, the same pattern `buildPriorityNotesTab()` already uses. `bis`/untagged still render no label at all, unchanged -- BiS is the default "really keeping this" case, only a sidegrade tag gets called out.
+- **Adding a column required `DROP FUNCTION` before recreating** -- `CREATE OR REPLACE FUNCTION` cannot change an existing function's return type/shape in Postgres. The drop also wipes grants, so they're explicitly re-applied in the same migration (officer/team_leader/site_admin only, matching the original 20260710130000 migration).
+- **Found and fixed a real bug the column addition exposed**: `check_priority_order_drift()` called `generate_priority_order()` via `WITH ORDINALITY AS t(player_id, name_realm, role, weighted_total, status_label, ord)` -- a hardcoded positional column list sized for the old 5-column shape. The new 6th column silently shifted the real ordinality value onto `wishlist_status`'s text, scrambling the "current top 3" comparison instead of erroring. Caught by `tests/rls/priority-order-drift-check.test.js` failing after the column was added -- not something a manual `psql` spot-check against `generate_priority_order()` alone would have surfaced, since that function's own output was correct.
+- Implemented in `20260811122020_priority_order_raw_wishlist_status.sql`. `tests/rls/priority-wishlist-ranking.test.js` updated to assert `wishlist_status` directly instead of substring-matching `status_label`.
+
+**Second, related change, same migration:** live case reported -- Torbjorn (tagged 2nd Choice) ranked above Katorri (tagged BiS) on Gebbo's Bottomless Bag when generating a Heroic priority order. Root cause was two separate things:
+- Wishlist status only ever affected ranking as a **multiplier on `raw_score`**, not a hard sort tier, for regular (non-tier-token) items -- a well-performing 2nd Choice raider could out-rank a lower-performing BiS raider. Tier tokens already avoided this via `bis_match_rank`, a binary BiS-vs-sidegrade sort tier ahead of score. **Generalized this into `wishlist_rank`**, a 3-way hard tier (BiS/untagged-bis-pick > Good > OK/Catalyst, tied) applied to every item, checked before `weighted_total` in the `order by`. Tier tokens keep their existing binary split unchanged -- `tier_pieces_equipped` catch-up is a stronger, more specific signal there than a 3-way wishlist split would add.
+- Separately, no one on the team had a `scoring` row for the current season at all (`MID2`) -- the #264 "Fetch WCL Performance" seed step (`_seedScoringFromSeasonPerf()`, `js/tabs/tab-season.js`) hadn't been run yet this season transition, so every `raw_score` was `NULL` and the observed order was an arbitrary tie-break, not a real score comparison. Running it seeded most of the roster correctly; that upsert call had no error handling at all (fire-and-forget with no `.then`/`.catch`), so a real failure there would have been completely silent -- added a `.catch`-equivalent `console.error` so a future failure is at least visible, even though this particular run succeeded once retried.
+- New tests in `tests/rls/priority-wishlist-ranking.test.js` assert the tiering directly: a lower-scored BiS raider outranks a higher-scored Good raider, OK/Catalyst tie and fall back to score between each other, Good outranks OK regardless of score.
+
+---
+
 ## 2026-08-10 -- `submit_bis_link()`: block a second submission while one is pending
 
 Decided directly in conversation (no tracking issue): a raider could resubmit a BiS Source link repeatedly with no guard, piling up duplicate pending `bis_requests` rows in the officer review queue for the same character.

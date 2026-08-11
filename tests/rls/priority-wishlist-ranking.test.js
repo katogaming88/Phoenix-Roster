@@ -4,6 +4,12 @@
 // Same withTxn/savepoint harness as tests/rls/item-preferences.test.js, since
 // these tests need both a direct (RLS-bypassing) seed insert and an
 // officer-role RPC call inside one rolled-back transaction.
+//
+// The wishlist tier used to be baked into status_label as pre-formatted
+// text ("Wishlist: Good") -- 20260811122020_priority_order_raw_wishlist_status.sql
+// split it into its own raw `wishlist_status` column instead, so the client
+// can build the display label from the team's own custom status label
+// overrides. Assertions below check wishlist_status directly.
 import { describe, it, expect, afterAll } from 'vitest';
 import { pool, OFFICER_T1 } from './helpers.js';
 
@@ -65,7 +71,7 @@ describe('generate_priority_order wishlist integration', () => {
       const row = res.rows.find((r) => r.player_id === 2);
       expect(row).toBeTruthy();
       expect(row.weighted_total).toBe('90.0');
-      expect(row.status_label).toContain('Wishlist: Good');
+      expect(row.wishlist_status).toBe('good');
     });
   });
 
@@ -78,7 +84,7 @@ describe('generate_priority_order wishlist integration', () => {
       const row = res.rows.find((r) => r.player_id === 1);
       expect(row).toBeTruthy();
       expect(row.weighted_total).toBe('100.0');
-      expect(row.status_label == null || !row.status_label.includes('Wishlist')).toBe(true);
+      expect(row.wishlist_status).toBeNull();
     });
   });
 
@@ -89,7 +95,7 @@ describe('generate_priority_order wishlist integration', () => {
       const res = await generate(asUser, 2);
       const row = res.rows.find((r) => r.player_id === 2);
       expect(row.weighted_total).toBe('100.0');
-      expect(row.status_label == null || !row.status_label.includes('Wishlist')).toBe(true);
+      expect(row.wishlist_status).toBe('bis');
     });
   });
 
@@ -100,7 +106,7 @@ describe('generate_priority_order wishlist integration', () => {
       const res = await generate(asUser, 2);
       const row = res.rows.find((r) => r.player_id === 2);
       expect(row.weighted_total).toBe('60.0');
-      expect(row.status_label).toContain('Wishlist: OK');
+      expect(row.wishlist_status).toBe('ok');
     });
   });
 
@@ -111,7 +117,7 @@ describe('generate_priority_order wishlist integration', () => {
       const res = await generate(asUser, 2);
       const row = res.rows.find((r) => r.player_id === 2);
       expect(row.weighted_total).toBe('75.0');
-      expect(row.status_label).toContain('Wishlist: Catalyst Only');
+      expect(row.wishlist_status).toBe('catalyst');
     });
   });
 
@@ -153,7 +159,7 @@ describe('generate_priority_order slot-aware wishlist matching (#623/#673 follow
       const row = res.rows.find((r) => r.player_id === 2);
       expect(row).toBeTruthy();
       expect(row.weighted_total).toBe('90.0');
-      expect(row.status_label).toContain('Wishlist: Good');
+      expect(row.wishlist_status).toBe('good');
     });
   });
 
@@ -184,7 +190,7 @@ describe('generate_priority_order slot-aware wishlist matching (#623/#673 follow
       const row = res.rows.find((r) => r.player_id === 2);
       expect(row).toBeTruthy();
       expect(row.weighted_total).toBe('100.0');
-      expect(row.status_label == null || !row.status_label.includes('Wishlist')).toBe(true);
+      expect(row.wishlist_status).toBe('bis');
     });
   });
 
@@ -214,7 +220,55 @@ describe('generate_priority_order slot-aware wishlist matching (#623/#673 follow
       const res = await generate(asUser, 2);
       const row = res.rows.find((r) => r.player_id === 2);
       expect(row.weighted_total).toBe('90.0');
-      expect(row.status_label).toContain('Wishlist: Good');
+      expect(row.wishlist_status).toBe('good');
+    });
+  });
+});
+
+// Wishlist status used to only apply as a MULTIPLIER on raw_score, so a
+// well-performing Good/OK/Catalyst raider could out-rank a lower-performing
+// BiS raider on a regular (non-tier-token) item -- reported live as
+// "Torbjorn (2nd Choice) ranked above Katorri (BiS) on Gebbo's Bottomless
+// Bag." 20260811122020_priority_order_raw_wishlist_status.sql generalized
+// tier tokens' existing bis_match_rank into a `wishlist_rank` hard sort
+// tier applied to every item: BiS > Good > OK/Catalyst (tied), checked
+// ahead of weighted_total, so score only breaks ties within a tier.
+describe('generate_priority_order wishlist status is a hard tier, not just a score multiplier', () => {
+  it('a lower-scored BiS raider still outranks a higher-scored Good raider', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await seedScoring(q, 1, 20, 20); // player 1: BiS via seed.sql bis_items row, low score
+      await seedScoring(q, 2, 100, 100); // player 2: Good, high score
+      await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 2, 1, 'good')");
+
+      const res = await generate(asUser, 1);
+      const order = res.rows.map((r) => r.player_id);
+      expect(order.indexOf(1)).toBeLessThan(order.indexOf(2));
+    });
+  });
+
+  it('OK and Catalyst tie for wishlist_rank -- a higher score wins between them', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await seedScoring(q, 1, 50, 50);
+      await seedScoring(q, 2, 100, 100);
+      await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 1, 2, 'ok')");
+      await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 2, 2, 'catalyst')");
+
+      const res = await generate(asUser, 2);
+      const order = res.rows.map((r) => r.player_id);
+      expect(order.indexOf(2)).toBeLessThan(order.indexOf(1));
+    });
+  });
+
+  it('a Good raider outranks an OK raider regardless of score', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await seedScoring(q, 1, 10, 10);
+      await seedScoring(q, 2, 100, 100);
+      await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 1, 2, 'good')");
+      await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 2, 2, 'ok')");
+
+      const res = await generate(asUser, 2);
+      const order = res.rows.map((r) => r.player_id);
+      expect(order.indexOf(1)).toBeLessThan(order.indexOf(2));
     });
   });
 });

@@ -60,7 +60,6 @@
 | public.resolve_actor_name | text | p_actor_id uuid, p_team_id integer | FUNCTION |
 | public.import_rclc_loot | jsonb | p_team_id integer, p_season text, p_rows jsonb | FUNCTION |
 | public.resolve_discord_display_name | text | p_actor_id uuid, p_team_id integer | FUNCTION |
-| public.generate_priority_order | record | p_team_id integer, p_season text, p_item_id integer, p_track text | FUNCTION |
 | public.save_priority_order | int4 | p_team_id integer, p_season text, p_item_id integer, p_track text, p_player_ids jsonb | FUNCTION |
 | public.build_rclc_export | jsonb | p_team_id integer, p_season text | FUNCTION |
 | public.danger_clear_bis_requests | int4 | p_team_id integer | FUNCTION |
@@ -99,6 +98,7 @@
 | public.restrict_bis_items_update_to_obtained | trigger |  | FUNCTION |
 | public.restrict_players_self_update_to_bonus_roll | trigger |  | FUNCTION |
 | public.restrict_item_preferences_officer_update_to_note_clear | trigger |  | FUNCTION |
+| public.generate_priority_order | record | p_team_id integer, p_season text, p_item_id integer, p_track text | FUNCTION |
 
 ## Enums
 

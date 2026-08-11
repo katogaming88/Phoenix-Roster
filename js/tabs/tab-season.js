@@ -310,7 +310,12 @@ function _seedScoringFromSeasonPerf(players) {
     };
   });
 
-  supabaseClient.from('scoring').upsert(rows, { onConflict: 'player_id,season', ignoreDuplicates: true });
+  supabaseClient
+    .from('scoring')
+    .upsert(rows, { onConflict: 'player_id,season', ignoreDuplicates: true })
+    .then(function (res) {
+      if (res.error) console.error('Failed to seed scoring from WCL season perf:', res.error);
+    });
 }
 
 // The roster snapshot lives inline on the seasonHistory entry itself
