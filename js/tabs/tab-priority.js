@@ -1544,32 +1544,50 @@ function prioEditRenderList() {
       ')"' +
       ' ondragend="prioEditDragEnd(event)"' +
       '>';
+    html += '<div class="prio-drag-item-row">';
     html += '<span class="prio-drag-handle">&#8942;&#8942;</span>';
     html += '<span class="prio-drag-rank">' + (i + 1) + '</span>';
     html += '<span class="prio-drag-name" style="color:' + roleColor + ';">' + display + '</span>';
     if (role) html += '<span class="prio-role-badge prio-role-' + role + '">' + role.toUpperCase() + '</span>';
     var scoreData = PRIO_EDIT.scores && PRIO_EDIT.scores[nameRealm];
+    var metaHtml = '';
     if (scoreData) {
       if (scoreData.weightedTotal !== null && scoreData.weightedTotal !== undefined) {
-        html +=
-          '<span style="font-size:0.91rem;color:var(--text-muted);margin-left:4px;">Score: ' +
-          scoreData.weightedTotal +
-          '</span>';
+        metaHtml += '<span>Score: ' + scoreData.weightedTotal + '</span>';
       }
       // "Has Heroic" (mythic track only -- still eligible for mythic, but
       // penalized) gets its own badge instead of sitting in the grey status
       // text, same as the BiS pool's "H" badge -- easy to miss otherwise.
+      // Filters out empty entries too -- ''.split(', ') returns [''], not
+      // [], so a player with no other status text at all used to still
+      // render an empty "()" once nothing was left to join.
       var statusParts = (scoreData.statusLabel || '').split(', ').filter(function (p) {
-        return p !== 'Has Heroic';
+        return p && p !== 'Has Heroic';
       });
       var hasHeroicStatus = (scoreData.statusLabel || '').indexOf('Has Heroic') !== -1;
       if (hasHeroicStatus)
         html += '<span class="prio-diff-badge prio-diff-heroic" title="Has the Heroic version">H</span>';
+      // Wishlist sidegrade label built from the raw status + the team's own
+      // custom overrides (team_settings.config.wishlistStatusLabels, set via
+      // the admin panel) instead of generate_priority_order()'s old hardcoded
+      // "Wishlist: Good"/"OK"/"Catalyst Only" text -- every other wishlist
+      // status display on the site already respects these overrides.
+      // 'bis'/untagged intentionally stay unlabeled here, same as before:
+      // BiS is the default "really keeping this" case, only a sidegrade tag
+      // gets called out.
+      if (scoreData.wishlistStatus && scoreData.wishlistStatus !== 'bis') {
+        var labelOverrides = (DATA && DATA.wishlistStatusLabels) || {};
+        var defaultLabel = (typeof WISHLIST_LABEL_DEFAULTS !== 'undefined' ? WISHLIST_LABEL_DEFAULTS : []).filter(
+          function (t) {
+            return t.value === scoreData.wishlistStatus;
+          }
+        )[0];
+        var wishlistLabel =
+          labelOverrides[scoreData.wishlistStatus] || (defaultLabel && defaultLabel.label) || scoreData.wishlistStatus;
+        statusParts.push('Wishlist: ' + wishlistLabel);
+      }
       if (statusParts.length) {
-        html +=
-          '<span style="font-size:0.89rem;color:var(--text-muted);font-style:italic;margin-left:2px;">(' +
-          statusParts.join(', ') +
-          ')</span>';
+        metaHtml += '<span class="prio-drag-meta-status">(' + statusParts.join(', ') + ')</span>';
       }
     }
     if (i === 0) {
@@ -1590,6 +1608,8 @@ function prioEditRenderList() {
       }
     }
     html += '<button class="prio-drag-remove" onclick="prioEditRemove(' + i + ')" title="Remove">&times;</button>';
+    html += '</div>';
+    if (metaHtml) html += '<div class="prio-drag-meta">' + metaHtml + '</div>';
     html += '</div>';
   }
   list.innerHTML = html;
@@ -1836,7 +1856,8 @@ function prioEditGenerate() {
           nameRealm: nameRealm,
           weightedTotal: r.weighted_total,
           role: r.role,
-          statusLabel: r.status_label || ''
+          statusLabel: r.status_label || '',
+          wishlistStatus: r.wishlist_status || null
         };
         ranked.push(nameRealm);
       });

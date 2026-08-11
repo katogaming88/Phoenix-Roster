@@ -8,6 +8,19 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.6] - 2026-08-11
+
+### Frontend
+
+- The Priority Order editor's wishlist status text (next to each ranked raider) now uses the team's own custom status label overrides instead of hardcoded "Wishlist: Good"/"OK"/"Catalyst Only" text -- every other wishlist status display on the site already respected these. Also fixed an empty "()" rendering for a raider with no other status text to show.
+- Fixed the Priority Order editor's ranked list wrapping its Score/status text mid-word when the row ran out of horizontal space -- the score/status text now always sits on its own line below the name, instead of squeezing into whatever space was left on the name's row.
+
+### Backend
+
+- `generate_priority_order()` now returns the raw wishlist status (`bis`/`good`/`ok`/`catalyst`) as its own column instead of baking pre-formatted text into `status_label`, so the client can apply the team's label overrides. Also fixed a real bug this surfaced: `check_priority_order_drift()`'s hardcoded positional column list was silently misreading the new column as the row-ordinality value, scrambling its "current top 3" comparison. See `docs/database-decisions.md` for the full writeup.
+- Wishlist status is now a hard sort tier for every item (BiS/untagged-BiS-pick > Good > OK/Catalyst, tied), not just a score multiplier -- previously a well-performing Good/OK/Catalyst raider could out-rank a lower-performing BiS raider on a regular (non-tier-token) item. Tier tokens keep their existing binary BiS-vs-sidegrade split, unaffected.
+- The WCL season-performance-baseline seed (`_seedScoringFromSeasonPerf()`, Season tab's "Fetch WCL Performance") now logs a console error if the `scoring` upsert fails instead of failing completely silently.
+
 ## [3.60.5] - 2026-08-11
 
 ### Frontend

@@ -4644,12 +4644,6 @@
       "type": "FUNCTION"
     },
     {
-      "name": "public.generate_priority_order",
-      "return_type": "record",
-      "arguments": "p_team_id integer, p_season text, p_item_id integer, p_track text",
-      "type": "FUNCTION"
-    },
-    {
       "name": "public.save_priority_order",
       "return_type": "int4",
       "arguments": "p_team_id integer, p_season text, p_item_id integer, p_track text, p_player_ids jsonb",
@@ -4875,6 +4869,12 @@
       "name": "public.restrict_item_preferences_officer_update_to_note_clear",
       "return_type": "trigger",
       "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.generate_priority_order",
+      "return_type": "record",
+      "arguments": "p_team_id integer, p_season text, p_item_id integer, p_track text",
       "type": "FUNCTION"
     }
   ],

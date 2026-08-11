@@ -556,15 +556,18 @@ select#playerSelect option { background:#1a1d27; }
 .prio-edit-section-label { font-size:0.91rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:var(--text-muted); margin-bottom:0.4rem; }
 .prio-drag-list { display:flex; flex-direction:column; gap:0.2rem; flex:1; }
 .prio-drag-list-empty { font-size:0.97rem; color:var(--text-muted); font-style:italic; padding:0.4rem 0; }
-.prio-drag-item { display:flex; align-items:center; gap:0.45rem; padding:0.35rem 0.5rem; background:var(--bg-elevated); border:1px solid var(--border); border-radius:3px; cursor:grab; user-select:none; transition:opacity 0.1s; }
+.prio-drag-item { display:flex; flex-direction:column; gap:0.15rem; padding:0.35rem 0.5rem; background:var(--bg-elevated); border:1px solid var(--border); border-radius:3px; cursor:grab; user-select:none; transition:opacity 0.1s; }
 .prio-drag-item.dragging { opacity:0.35; }
 .prio-drag-item.drag-over { border-color:var(--gold); background:rgba(197,153,83,0.12); }
+.prio-drag-item-row { display:flex; align-items:center; gap:0.45rem; }
 .prio-drag-handle { color:var(--text-dim); font-size:0.97rem; line-height:1; flex-shrink:0; }
 .prio-drag-rank { font-size:0.97rem; font-weight:700; color:var(--text-dim); min-width:18px; text-align:right; flex-shrink:0; }
-.prio-drag-name { flex:1; font-size:1.05rem; font-weight:600; color:var(--text); }
+.prio-drag-name { flex:1; font-size:1.05rem; font-weight:600; color:var(--text); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .prio-drag-remove { background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:1.07rem; padding:0 2px; line-height:1; flex-shrink:0; }
 .prio-drag-remove:hover { color:var(--melee); }
-.prio-drag-item .prio-role-badge { font-size:0.84rem; padding:1px 4px; }
+.prio-drag-item .prio-role-badge { font-size:0.84rem; padding:1px 4px; flex-shrink:0; }
+.prio-drag-meta { font-size:0.89rem; color:var(--text-muted); padding-left:calc(18px + 0.45rem); display:flex; flex-wrap:wrap; align-items:baseline; gap:0.3rem; }
+.prio-drag-meta-status { font-style:italic; }
 .prio-pool-list { display:flex; flex-direction:column; gap:0.2rem; flex:1; overflow-y:auto; max-height:240px; margin-bottom:0.4rem; }
 .prio-pool-item { display:flex; align-items:center; gap:0.4rem; padding:0.3rem 0.45rem; background:var(--bg-elevated); border:1px solid var(--border); border-radius:3px; cursor:pointer; font-size:1rem; transition:background 0.1s; }
 .prio-pool-item:hover { border-color:var(--gold); background:rgba(197,153,83,0.1); }
