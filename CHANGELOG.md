@@ -14,6 +14,14 @@ with each release split into `### Frontend` (drives the version number) and
 
 - Clarified the tier-slot BiS-vs-Catalyst-Only guidance shown on Head/Shoulder/Chest/Hands/Legs Wishlist cards -- now explicitly says a non-tier piece with the best stats should be tagged BiS (not Catalyst Only) if you plan to catalyze it, reserving Catalyst Only for a piece you'd only take to fill the set-bonus slot. Made more visually prominent (gold, bolded call to action) since it was getting missed.
 - **Fixed the Finger 1/Finger 2 and Trinket 1/Trinket 2 card headers showing mismatched "N tagged" counts and missing dots/highlighting for the same item.** The previous completeness fix (3.60.1) only corrected the top summary's math -- the card header count, colored dots, and button highlighting still looked up a row's status via an exact-slot-only match, so a ring/trinket tagged under one numbered slot displayed as untagged under its sibling. Also: a slot card now shows green/"all tagged" once its real BiS is covered by an Other Sources (M+/Crafted/Catalyst) tag, even if not every raid item underneath has its own status -- matches the raider's actual plan for that slot instead of asking for redundant tagging.
+- **Fixed an officer's open player card duplicating on the page** whenever it re-rendered without a full roster table rebuild -- most visible clicking "Show all N other tagged items" on a player's Wishlist section, which appeared to open a second full profile view instead of just expanding the list.
+- The officer-facing "N other tagged items" Wishlist list now lays out in 2 columns (auto-collapsing to 1 on narrow screens) instead of one long single-column stack, since it can run 30+ rows deep.
+- Officer-view Wishlist rows now show the Wowhead item hover tooltip (icon/name is a linked, tooltip-enabled item link) -- previously plain text, unlike every other item row on the site.
+- The "Submitted -- pending officer review" confirmation after submitting a BiS Source link is now larger, bold, red text -- it was easy to miss at the previous plain/muted size.
+
+### Backend
+
+- Extended `item_preferences` read access to site admins and guild officers -- previously only an officer/team leader on that specific team could see a raider's wishlist tags at all, so a site admin (or guild officer) covering another team saw nothing. Same view-only precedent as `audit_log`/`team_members`. See `docs/database-decisions.md` for the full writeup.
 
 ## [3.60.1] - 2026-08-10
 

@@ -4,7 +4,7 @@
 // withTxn harness as tests/rls/notifications.test.js, since both tables
 // share the is_own_player() self-service predicate.
 import { describe, it, expect, afterAll } from 'vitest';
-import { pool, OFFICER_T1, RAIDER_T1, OFFICER_T2, RLS_DENIED } from './helpers.js';
+import { pool, OFFICER_T1, RAIDER_T1, OFFICER_T2, SITE_ADMIN, GUILD_OFFICER, RLS_DENIED } from './helpers.js';
 
 async function withTxn(fn) {
   const client = await pool.connect();
@@ -139,6 +139,30 @@ describe('officers can read but not directly write item_preferences', () => {
           "insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 1, 1, 'bis')"
         )
       ).rejects.toMatchObject({ code: RLS_DENIED });
+    });
+  });
+
+  it("a site admin sees a team 1 raider's row (cross-team view access)", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await linkPlayer1ToRaider(q);
+      await asUser(
+        RAIDER_T1,
+        "insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 1, 1, 'bis')"
+      );
+      const res = await asUser(SITE_ADMIN, 'select id from public.item_preferences where player_id = 1');
+      expect(res.rows.length).toBe(1);
+    });
+  });
+
+  it("a guild officer sees a team 1 raider's row (cross-team view access)", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await linkPlayer1ToRaider(q);
+      await asUser(
+        RAIDER_T1,
+        "insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 1, 1, 'bis')"
+      );
+      const res = await asUser(GUILD_OFFICER, 'select id from public.item_preferences where player_id = 1');
+      expect(res.rows.length).toBe(1);
     });
   });
 });

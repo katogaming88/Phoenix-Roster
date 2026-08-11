@@ -8,6 +8,16 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-08-10 -- `item_preferences`: extend read access to site admin / guild officer
+
+Decided directly in conversation (no tracking issue): a site admin (assuming the guild officer tier too) couldn't see another team's raider wishlist tags at all -- `item_preferences` was missed when guild-officer tier (`20260730113259_guild_officer_tier.sql`) extended cross-team view access to `audit_log`/`team_members` read.
+
+- **Same "view-only" category as `audit_log`/`team_members`**, not the "denied" category (approvals, season settings, priority generation, loot import -- actions a guild officer is deliberately excluded from). Reading a raider's wishlist tags is passive visibility, not an action, so it follows the `audit_log`/`team_members` precedent: `alter policy "Officers read item_preferences" ... using (... or is_site_admin() or is_guild_officer())`.
+- **The officer UPDATE grant (note-clear) was deliberately left scoped to `my_team_role` only**, not extended the same way -- the read gap was the reported problem; broadening write access to a table that already has a narrow, only-recently-added officer write path wasn't asked for and wasn't touched.
+- Implemented in `20260810214342_item_preferences_site_admin_guild_officer_read.sql`. Covered by 2 new cases in `tests/rls/item-preferences.test.js` (site admin and guild officer both see a team-1 raider's row).
+
+---
+
 ## 2026-08-10 -- `generate_priority_order()`: match wishlist tags by item_id, not slot = null
 
 Found while investigating an unrelated question about an orphaned `item_preferences` row on a raider's profile: `generate_priority_order()`'s wishlist CTE (`20260720165552_priority_wishlist_ranking.sql`) has filtered `ip.slot is null` since it shipped 2026-07-20. That was a no-op at the time -- every real item's row had `slot = null` unconditionally, only placeholder (Other Sources) rows carried a slot. Two later features started writing an explicit slot on real items too and neither updated this function: Finger/Trinket disambiguation (#623, 2026-08-01) and the Weapon/Off Hand dual-wield fix (#673, 2026-08-08).
