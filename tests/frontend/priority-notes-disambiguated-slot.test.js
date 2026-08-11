@@ -73,6 +73,44 @@ describe('buildPriorityNotesTab (disambiguated-slot real items)', () => {
     expect(el.innerHTML).not.toContain('placeholder note');
     expect(el.innerHTML).toContain('No wishlist notes yet');
   });
+
+  it('shows an identical note tagged on both Finger 1 and Finger 2 only once', () => {
+    const itemSlots = { 'Alluring Bubbleband': 'Finger' };
+    const itemIds = { 'Alluring Bubbleband': 3 };
+    const roster = [{ id: 7, firstName: 'Fxhp', nameRealm: 'Fxhp-Area 52' }];
+    const prefs = [
+      { player_id: 7, item_id: 3, status: 'good', slot: 'Finger 1', note: 'M+' },
+      { player_id: 7, item_id: 3, status: 'good', slot: 'Finger 2', note: 'M+' }
+    ];
+    const el = { innerHTML: '' };
+    const sandbox = makeSandbox({ itemSlots, itemIds, roster, prefs });
+    sandbox.document.getElementById = (id) => (id === 'priorityNotesContent' ? el : null);
+
+    sandbox.buildPriorityNotesTab();
+
+    // Each rendered row has exactly one Clear Note button -- count those
+    // rather than substring occurrences of "Fxhp", which also appears a
+    // second time inside that same button's onclick handler per row.
+    expect(el.innerHTML.split('clearWishlistNote(').length - 1).toBe(1);
+  });
+
+  it('still shows a genuinely different note per numbered slot separately', () => {
+    const itemSlots = { 'Alluring Bubbleband': 'Finger' };
+    const itemIds = { 'Alluring Bubbleband': 3 };
+    const roster = [{ id: 7, firstName: 'Fxhp', nameRealm: 'Fxhp-Area 52' }];
+    const prefs = [
+      { player_id: 7, item_id: 3, status: 'good', slot: 'Finger 1', note: 'M+' },
+      { player_id: 7, item_id: 3, status: 'good', slot: 'Finger 2', note: 'better on offhand fights' }
+    ];
+    const el = { innerHTML: '' };
+    const sandbox = makeSandbox({ itemSlots, itemIds, roster, prefs });
+    sandbox.document.getElementById = (id) => (id === 'priorityNotesContent' ? el : null);
+
+    sandbox.buildPriorityNotesTab();
+
+    expect(el.innerHTML).toContain('M+');
+    expect(el.innerHTML).toContain('better on offhand fights');
+  });
 });
 
 describe('updatePriorityNotesBadge (disambiguated-slot real items)', () => {
@@ -101,5 +139,20 @@ describe('updatePriorityNotesBadge (disambiguated-slot real items)', () => {
 
     expect(badge.textContent).toBe(0);
     expect(badge.style.display).toBe('none');
+  });
+
+  it('counts an identical note tagged on both Finger 1 and Finger 2 only once', () => {
+    const itemIds = { 'Alluring Bubbleband': 3 };
+    const prefs = [
+      { player_id: 7, item_id: 3, status: 'good', slot: 'Finger 1', note: 'M+' },
+      { player_id: 7, item_id: 3, status: 'good', slot: 'Finger 2', note: 'M+' }
+    ];
+    const badge = { textContent: '', style: { display: '' } };
+    const sandbox = makeSandbox({ itemIds, prefs });
+    sandbox.document.getElementById = (id) => (id === 'prioNotesBadge' ? badge : null);
+
+    sandbox.updatePriorityNotesBadge();
+
+    expect(badge.textContent).toBe(1);
   });
 });

@@ -438,12 +438,24 @@ function buildPriorityNotesTab() {
   // silently dropped every note on a real item tagged in one of those rows.
   var itemPlaceholders = DATA.itemPlaceholders || {};
   var byItem = {};
+  // Finger 1/2 and Trinket 1/2 rows for the same item are two separate
+  // item_preferences rows (one per numbered slot) that read as one raider
+  // opinion -- wishlistCompleteness() already treats a status set on either
+  // side as covering both (#623/#673 sibling fallback), so a raider who
+  // typed the same note into both cards showed up here twice for the exact
+  // same text. Dedupe per (player, note) within an item; a genuinely
+  // different note per slot (Weapon vs Off Hand, or an intentionally
+  // different Finger 1/2 note) still shows separately.
+  var seenPlayerNote = {};
   _teamItemPreferences.forEach(function (p) {
     if (!p.note || !p.note.trim()) return;
     var name = idToName[p.item_id];
     if (!name) return;
     if (itemPlaceholders[name]) return;
     if (searchTerm && normalise(name).indexOf(searchTerm) === -1) return;
+    var dedupeKey = name + '|' + p.player_id + '|' + p.note.trim();
+    if (seenPlayerNote[dedupeKey]) return;
+    seenPlayerNote[dedupeKey] = true;
     (byItem[name] = byItem[name] || []).push(p);
   });
 
@@ -924,8 +936,19 @@ function updatePriorityNotesBadge() {
     idToName[itemIds[name]] = name;
   });
   var itemPlaceholders = DATA.itemPlaceholders || {};
+  // Same per-(item, player, note) dedupe as buildPriorityNotesTab() -- a
+  // Finger 1/2 or Trinket 1/2 pair with the identical note text is one
+  // raider opinion, not two, so the badge count should match what the tab
+  // actually shows.
+  var seenPlayerNote = {};
   var count = _teamItemPreferences.filter(function (p) {
-    return p.note && p.note.trim() && !itemPlaceholders[idToName[p.item_id]];
+    if (!p.note || !p.note.trim()) return false;
+    var name = idToName[p.item_id];
+    if (itemPlaceholders[name]) return false;
+    var dedupeKey = name + '|' + p.player_id + '|' + p.note.trim();
+    if (seenPlayerNote[dedupeKey]) return false;
+    seenPlayerNote[dedupeKey] = true;
+    return true;
   }).length;
   badge.textContent = count;
   badge.style.display = count > 0 ? '' : 'none';
