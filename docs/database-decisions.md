@@ -8,6 +8,17 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-08-10 -- `submit_bis_link()`: block a second submission while one is pending
+
+Decided directly in conversation (no tracking issue): a raider could resubmit a BiS Source link repeatedly with no guard, piling up duplicate pending `bis_requests` rows in the officer review queue for the same character.
+
+- **Enforced at the RPC, not just the UI.** `submit_bis_link()` is `SECURITY DEFINER`, granted to `anon` (the form runs unauthenticated on the public roster page, per the function's original comment) -- the client never had a reliable way to know its own pending status anyway, since raiders have no read access to `bis_requests` (officer/site-admin only). Added a `raise exception` guard before the insert rather than adding raider-facing read access + client-side hiding, keeping the fix scoped to the actual reported problem.
+- **Mirrors `flag_bis_list_changed()`'s existing dedupe** (`20260726101533_flag_bis_list_changed.sql`), which already no-ops a re-flag of the same still-pending link -- this is the equivalent guard for a genuinely new submission.
+- **Client now surfaces the RPC's actual error message** (`js/common.js` `submitBiSForm()`) instead of a generic "Failed to submit" -- raiders see exactly why (already pending, submissions closed, blank link), all of which the function already raised as distinct exceptions.
+- Implemented in `20260810224022_submit_bis_link_block_duplicate_pending.sql`. Covered by `tests/rls/submit-bis-link.test.js` (rejects while pending, succeeds with none pending, succeeds again once the prior request is resolved).
+
+---
+
 ## 2026-08-10 -- `item_preferences`: extend read access to site admin / guild officer
 
 Decided directly in conversation (no tracking issue): a site admin (assuming the guild officer tier too) couldn't see another team's raider wishlist tags at all -- `item_preferences` was missed when guild-officer tier (`20260730113259_guild_officer_tier.sql`) extended cross-team view access to `audit_log`/`team_members` read.

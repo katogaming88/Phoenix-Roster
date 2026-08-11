@@ -8,6 +8,16 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.3] - 2026-08-10
+
+### Frontend
+
+- The BiS Source submission error message now shows the actual reason (e.g. "You already have a BiS submission pending officer review") instead of a generic "Failed to submit."
+
+### Backend
+
+- Blocked a raider from submitting a second BiS Source link while one is already pending officer review -- `submit_bis_link()` had no guard, so resubmitting piled up duplicate pending requests in the officer queue. See `docs/database-decisions.md` for the full writeup.
+
 ## [3.60.2] - 2026-08-10
 
 ### Frontend

@@ -55,7 +55,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.60.2';
+var VERSION = '3.60.3';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -4350,8 +4350,14 @@ function submitBiSForm(nameRealm, firstName) {
     })
     .then(function (result) {
       if (formEl) {
+        // submit_bis_link() surfaces specific, raider-facing reasons (blank
+        // link, submissions closed, already has a pending request) via
+        // raise exception -- show that text rather than a generic failure
+        // message so the raider actually knows why (#404 follow-up).
         formEl.innerHTML = result.error
-          ? '<p style="font-size:1.07rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>'
+          ? '<p style="font-size:1.07rem;color:var(--melee);padding:0.5rem 0;">' +
+            _esc(result.error.message || 'Failed to submit. Try again.') +
+            '</p>'
           : '<p style="font-size:1.3rem;font-weight:700;color:var(--melee);padding:0.5rem 0;">Submitted -- pending officer review.</p>';
       }
       if (!result.error) {
