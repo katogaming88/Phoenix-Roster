@@ -13,6 +13,7 @@ with each release split into `### Frontend` (drives the version number) and
 ### Frontend
 
 - Wishlist notes now mirror across Finger 1/Finger 2 and Trinket 1/Trinket 2 the same way BiS/Good/OK/Catalyst/Pass status already does -- editing a note on one numbered slot updates the other too (when it's already tagged), instead of the two notes silently drifting apart for what's the same physical item. Weapon/Off Hand stay independent, matching status's own behavior there.
+- Other Sources (M+/Crafted/Catalyst) rows now only show the BiS status button instead of all 5 -- those rows are always BiS the moment they're added and lock permanently from there (a real raid item tagged BiS for the same slot removes the placeholder outright rather than demoting it), so Good/OK/Catalyst Only/Pass could never actually be used and only ever rendered as dead, disabled buttons.
 
 ## [3.60.4] - 2026-08-10
 

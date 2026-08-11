@@ -538,37 +538,52 @@ function wishlistStatusButtonsHTML(itemId, slot, lockOnceSet) {
   // haven't set (or have cleared) an override for that tier.
   var labelOverrides = (DATA && DATA.wishlistStatusLabels) || {};
 
-  return WISHLIST_STATUSES.map(function (s) {
-    var active = current === s.value;
-    var color = WISHLIST_TIER_COLORS[s.value];
-    var style = active
-      ? 'font-size:0.9rem;padding:2px 8px;font-weight:700;color:' +
-        color.css +
-        ';background:rgba(' +
-        color.rgb +
-        ',0.18);border:1px solid ' +
-        color.css +
-        ';'
-      : 'font-size:0.9rem;padding:2px 8px;border:1px solid rgba(' + color.rgb + ',0.4);';
-    return (
-      '<button type="button" class="btn ' +
-      (active ? '' : 'btn-muted') +
-      '" style="' +
-      style +
-      '" ' +
-      disabled +
-      titleAttr +
-      ' onclick="wishlistSetStatus(' +
-      itemId +
-      ",'" +
-      (slot ? slot.replace(/'/g, "\\'") : '') +
-      "','" +
-      s.value +
-      '\')">' +
-      (labelOverrides[s.value] || s.label) +
-      '</button>'
-    );
-  }).join('');
+  // Other Sources rows (lockOnceSet) only ever hold BiS -- they're set to
+  // 'bis' the moment they're added (wishlistRevealPlaceholderSlot) and lock
+  // permanently from that point on, and a real raid item tagged BiS for the
+  // same slot removes the placeholder outright rather than demoting it to a
+  // backup tier. Good/OK/Catalyst Only/Pass could never actually be reached
+  // here, so they'd just render as dead, always-disabled buttons -- only
+  // show the one status that's ever real.
+  var statusesToShow = lockOnceSet
+    ? WISHLIST_STATUSES.filter(function (s) {
+        return s.value === 'bis';
+      })
+    : WISHLIST_STATUSES;
+
+  return statusesToShow
+    .map(function (s) {
+      var active = current === s.value;
+      var color = WISHLIST_TIER_COLORS[s.value];
+      var style = active
+        ? 'font-size:0.9rem;padding:2px 8px;font-weight:700;color:' +
+          color.css +
+          ';background:rgba(' +
+          color.rgb +
+          ',0.18);border:1px solid ' +
+          color.css +
+          ';'
+        : 'font-size:0.9rem;padding:2px 8px;border:1px solid rgba(' + color.rgb + ',0.4);';
+      return (
+        '<button type="button" class="btn ' +
+        (active ? '' : 'btn-muted') +
+        '" style="' +
+        style +
+        '" ' +
+        disabled +
+        titleAttr +
+        ' onclick="wishlistSetStatus(' +
+        itemId +
+        ",'" +
+        (slot ? slot.replace(/'/g, "\\'") : '') +
+        "','" +
+        s.value +
+        '\')">' +
+        (labelOverrides[s.value] || s.label) +
+        '</button>'
+      );
+    })
+    .join('');
 }
 
 function wishlistNoteHTML(itemId, slot) {
@@ -655,8 +670,10 @@ function wishlistRowHTML(name, itemId, slot, rowIndex, lockOnceSet, rankName) {
     itemNameBlockHtml(name, slot) +
     rankHTML +
     '</div>' +
-    '<div style="display:flex;align-items:center;gap:0.3rem;flex-wrap:wrap;margin-top:0.35rem;">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.3rem;flex-wrap:wrap;margin-top:0.35rem;">' +
+    '<span style="display:flex;align-items:center;gap:0.3rem;flex-wrap:wrap;">' +
     wishlistStatusButtonsHTML(itemId, slot, lockOnceSet) +
+    '</span>' +
     removeHTML +
     '</div>' +
     siblingNoteHTML +
