@@ -13,6 +13,7 @@ with each release split into `### Frontend` (drives the version number) and
 ### Frontend
 
 - Clarified the tier-slot BiS-vs-Catalyst-Only guidance shown on Head/Shoulder/Chest/Hands/Legs Wishlist cards -- now explicitly says a non-tier piece with the best stats should be tagged BiS (not Catalyst Only) if you plan to catalyze it, reserving Catalyst Only for a piece you'd only take to fill the set-bonus slot. Made more visually prominent (gold, bolded call to action) since it was getting missed.
+- **Fixed the Finger 1/Finger 2 and Trinket 1/Trinket 2 card headers showing mismatched "N tagged" counts and missing dots/highlighting for the same item.** The previous completeness fix (3.60.1) only corrected the top summary's math -- the card header count, colored dots, and button highlighting still looked up a row's status via an exact-slot-only match, so a ring/trinket tagged under one numbered slot displayed as untagged under its sibling. Also: a slot card now shows green/"all tagged" once its real BiS is covered by an Other Sources (M+/Crafted/Catalyst) tag, even if not every raid item underneath has its own status -- matches the raider's actual plan for that slot instead of asking for redundant tagging.
 
 ## [3.60.1] - 2026-08-10
 
