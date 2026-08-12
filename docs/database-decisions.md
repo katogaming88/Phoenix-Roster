@@ -8,6 +8,17 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-08-12 -- `update_own_signup()`/`get_own_signup()`: don't reset status on a no-op edit, and use the live roster as source of truth once added
+
+Decided directly in conversation (no tracking issue): `update_own_signup()` unconditionally reset an `'approved'`/`'added'` signup back to `'pending'` (clearing `approved_player_id`/`reviewed_*`) on *every* edit call, even one that changed nothing. Confirmed live -- Khaosmagi (Mage/Arcane, already on the roster as Mage/Arcane) opened their already-added signup and hit Submit without changing anything, and it bounced back into the officer review queue with nothing to actually review. A second, related bug surfaced in the same conversation: `get_own_signup()` (the read side, used to pre-fill "Edit signup") only ever read the signup's own stored snapshot, never the live `players` row -- confirmed live when an officer renamed a roster player directly (Noctrana -> Raintotem) and the raider's own edit form kept showing the old name.
+
+- **Root cause for both**: once a signup is `'added'` (linked via `approved_player_id` to a real `players` row), that row -- not the signup's own stored columns -- is the actual source of truth for name/class/spec, since it's the one thing an officer can still edit independently afterward (Roster tab). Nothing kept the two in sync.
+- **`get_own_signup()` fix**: for an `'added'` row, left-joins to the live `players` row via `approved_player_id` and prefers its `name_realm`/`class_spec_id` over the signup's own stored snapshot. `off_specs`/`player_note`/`main_swap`/`swap_from_name_realm` have no roster equivalent to go stale against, so those still come from the signup row as before. A pending/approved-not-yet-added signup has no linked player yet, so it's unaffected -- still reads its own stored values.
+- **`update_own_signup()` fix**: before writing, compares the incoming values against *current truth* -- the live player (via `approved_player_id`) when one exists, the signup's own stored snapshot otherwise -- and only resets `status`/`approved_player_id`/`reviewed_*`/`signup_officer_note` if something actually differs. Getting this right required using the *live* player as the comparison baseline, not the signup's stored snapshot: if an officer had manually changed the roster since the signup was added, comparing against the stale snapshot would let a raider "no-op" back to values that no longer match the roster (silently contradicting the officer's manual change), while comparing against the live row correctly still treats that as a real edit needing review. Matching the *current* live state, even if it differs from what the signup itself last recorded, correctly counts as a no-op.
+- Implemented in `20260812045902_update_own_signup_noop_skip_status_reset.sql`. New tests in `tests/rls/own-signup.test.js` cover both the no-op skip and the live-vs-stale-snapshot distinction directly.
+
+---
+
 ## 2026-08-11 -- `generate_priority_order()`: return raw `wishlist_status`, not pre-formatted text
 
 Decided directly in conversation (no tracking issue): the Priority Order editor showed hardcoded "Wishlist: Good"/"Wishlist: OK"/"Wishlist: Catalyst Only" text, ignoring a team's own custom wishlist status label overrides (`team_settings.config.wishlistStatusLabels`) that every other wishlist display on the site already respects.

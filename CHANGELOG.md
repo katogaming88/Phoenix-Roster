@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.6] - 2026-08-12
+
+### Backend
+
+- Editing a season signup that's already `approved`/`added` no longer bounces it back to `pending` review when the edit doesn't actually change anything -- confirmed live, a raider re-submitted their already-added signup unchanged and it landed back in the officer review queue with nothing to review. Also fixed the edit form (and this new no-op check) showing a stale character name/class/spec after an officer manually renamed/reclassed the linked roster player directly -- it now reflects the roster's current state. See `docs/database-decisions.md` for the full writeup.
+
 ## [3.60.6] - 2026-08-11
 
 ### Frontend

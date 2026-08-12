@@ -131,6 +131,42 @@ describe('get_own_signup', () => {
       await expect(asAnon('select * from public.get_own_signup(1)')).rejects.toThrow();
     });
   });
+
+  // Confirmed live (2026-08-12): an officer renamed a roster player directly
+  // (Noctrana -> Raintotem) after their signup had already been added --
+  // the raider then opened "Edit signup" and it still showed the old,
+  // pre-rename name/class/spec instead of what's actually on the roster now.
+  it("for an added signup, returns the live player's current name/class/spec instead of the signup's stale stored snapshot", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const player = await q(
+        "insert into public.players (team_id, name_realm, class_spec_id) values (1, 'Ownsignuproster-Illidan', 1) returning id"
+      );
+      const { rows } = await insertSignup(q, { status: 'added', approved_player_id: player.rows[0].id });
+      const warriorFury = await q(
+        "insert into public.classes_specs (class, spec, role) values ('Warrior', 'Fury', 'Melee') returning id"
+      );
+      // Officer manually renames/reclasses the player directly -- bypasses
+      // signups entirely, same as a Roster tab edit.
+      await q('update public.players set name_realm = $1, class_spec_id = $2 where id = $3', [
+        'Renamedplayer-Illidan',
+        warriorFury.rows[0].id,
+        player.rows[0].id
+      ]);
+      const res = await getOwn(asUser, SIGNUP_OWNER_T1, 1);
+      expect(res.rows[0].signup_name_realm).toBe('Renamedplayer-Illidan');
+      expect(res.rows[0].class).toBe('Warrior');
+      expect(res.rows[0].spec).toBe('Fury');
+    });
+  });
+
+  it("for a pending signup (no linked player yet), still returns the signup's own stored name/class/spec", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await insertSignup(q, {});
+      const res = await getOwn(asUser, SIGNUP_OWNER_T1, 1);
+      expect(res.rows[0].signup_name_realm).toBe('Ownsignup-Illidan');
+      expect(res.rows[0].class).toBe('Mage');
+    });
+  });
 });
 
 describe('update_own_signup', () => {
@@ -241,6 +277,135 @@ describe('update_own_signup', () => {
           null
         ])
       ).rejects.toThrow();
+    });
+  });
+
+  // Confirmed live (2026-08-12): Khaosmagi (Mage/Arcane, already on the
+  // roster as Mage/Arcane) opened their already-added signup and hit Submit
+  // without changing anything -- it still bounced back to 'pending' and had
+  // to be manually denied since there was nothing to review.
+  describe('no-op edits (#noop)', () => {
+    it('re-submitting an added signup with identical values leaves status/approval untouched', async () => {
+      await withTxn(async ({ q, asUser }) => {
+        const player = await q(
+          "insert into public.players (team_id, name_realm, class_spec_id) values (1, 'Ownsignuproster-Illidan', 1) returning id"
+        );
+        const { rows } = await insertSignup(q, {
+          status: 'added',
+          approved_player_id: player.rows[0].id,
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: 1,
+          signup_officer_note: 'looked fine'
+        });
+        await updateOwn(asUser, SIGNUP_OWNER_T1, rows[0].id, {
+          p_name_realm: 'Ownsignuproster-Illidan',
+          p_class: 'Mage',
+          p_spec: 'Frost',
+          p_player_note: null
+        });
+        const signup = (await q('select * from public.season_signups where id = $1', [rows[0].id])).rows[0];
+        expect(signup.status).toBe('added');
+        expect(signup.approved_player_id).toBe(player.rows[0].id);
+        expect(signup.reviewed_at).not.toBeNull();
+        expect(signup.reviewed_by).toBe(1);
+        expect(signup.signup_officer_note).toBe('looked fine');
+      });
+    });
+
+    it('re-submitting an approved-not-yet-added signup with identical values leaves status untouched', async () => {
+      await withTxn(async ({ q, asUser }) => {
+        const { rows } = await insertSignup(q, {
+          status: 'approved',
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: 1,
+          signup_officer_note: 'looked fine'
+        });
+        await updateOwn(asUser, SIGNUP_OWNER_T1, rows[0].id, {
+          p_name_realm: 'Ownsignup-Illidan',
+          p_class: 'Mage',
+          p_spec: 'Frost',
+          p_player_note: null
+        });
+        const signup = (await q('select * from public.season_signups where id = $1', [rows[0].id])).rows[0];
+        expect(signup.status).toBe('approved');
+        expect(signup.reviewed_at).not.toBeNull();
+      });
+    });
+
+    it('changing even one field (e.g. the note) still counts as a real edit and resets status', async () => {
+      await withTxn(async ({ q, asUser }) => {
+        const player = await q(
+          "insert into public.players (team_id, name_realm, class_spec_id) values (1, 'Ownsignuproster-Illidan', 1) returning id"
+        );
+        const { rows } = await insertSignup(q, {
+          status: 'added',
+          approved_player_id: player.rows[0].id,
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: 1
+        });
+        await updateOwn(asUser, SIGNUP_OWNER_T1, rows[0].id, {
+          p_name_realm: 'Ownsignuproster-Illidan',
+          p_class: 'Mage',
+          p_spec: 'Frost',
+          p_player_note: 'actually a real change'
+        });
+        const signup = (await q('select * from public.season_signups where id = $1', [rows[0].id])).rows[0];
+        expect(signup.status).toBe('pending');
+        expect(signup.approved_player_id).toBeNull();
+      });
+    });
+
+    // The mirror image of the get_own_signup live-truth test above: an
+    // officer renamed/reclassed the linked player directly after the signup
+    // was added, so the signup's own stored snapshot is now stale. Matching
+    // that stale snapshot is NOT a no-op (it would silently contradict the
+    // officer's manual roster change); matching the player's actual current
+    // state IS a no-op.
+    it("matching the signup's stale stored snapshot (not the live, officer-edited player) still counts as a real edit", async () => {
+      await withTxn(async ({ q, asUser }) => {
+        const player = await q(
+          "insert into public.players (team_id, name_realm, class_spec_id) values (1, 'Ownsignuproster-Illidan', 1) returning id"
+        );
+        const { rows } = await insertSignup(q, {
+          status: 'added',
+          approved_player_id: player.rows[0].id,
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: 1
+        });
+        await q("update public.players set name_realm = 'Renamedplayer-Illidan' where id = $1", [player.rows[0].id]);
+        await updateOwn(asUser, SIGNUP_OWNER_T1, rows[0].id, {
+          p_name_realm: 'Ownsignuproster-Illidan', // the OLD, now-stale name
+          p_class: 'Mage',
+          p_spec: 'Frost',
+          p_player_note: null
+        });
+        const signup = (await q('select * from public.season_signups where id = $1', [rows[0].id])).rows[0];
+        expect(signup.status).toBe('pending');
+      });
+    });
+
+    it("matching the live, officer-edited player's current name IS treated as a no-op", async () => {
+      await withTxn(async ({ q, asUser }) => {
+        const player = await q(
+          "insert into public.players (team_id, name_realm, class_spec_id) values (1, 'Ownsignuproster-Illidan', 1) returning id"
+        );
+        const { rows } = await insertSignup(q, {
+          status: 'added',
+          approved_player_id: player.rows[0].id,
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: 1
+        });
+        await q("update public.players set name_realm = 'Renamedplayer-Illidan' where id = $1", [player.rows[0].id]);
+        await updateOwn(asUser, SIGNUP_OWNER_T1, rows[0].id, {
+          p_name_realm: 'Renamedplayer-Illidan', // matches the live player
+          p_class: 'Mage',
+          p_spec: 'Frost',
+          p_player_note: null
+        });
+        const signup = (await q('select * from public.season_signups where id = $1', [rows[0].id])).rows[0];
+        expect(signup.status).toBe('added');
+        expect(signup.reviewed_at).not.toBeNull();
+      });
     });
   });
 });
