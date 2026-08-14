@@ -55,7 +55,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.60.6';
+var VERSION = '3.60.7';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -3621,10 +3621,21 @@ function officerWishlistSectionHTML(player, backTo) {
   // exists in this bundle on index.html, so it silently no-ops there.
   var wishlistCompletion =
     typeof wishlistCompletionForPlayer === 'function' ? wishlistCompletionForPlayer(player) : null;
+  // Item-tagging completeness (every eligible item has *some* status) is a
+  // separate thing from having an actual BiS pick per slot -- a raider can
+  // hit 100% here with everything tagged Good/OK and still have no real BiS
+  // anywhere, silently falling back to a "(Wishlist)" pick on the BiS List
+  // above. Fold missingBisRows into the badge color too so 100% only ever
+  // reads green when every slot also has a real BiS pick.
+  var hasMissingBis = !!(
+    wishlistCompletion &&
+    wishlistCompletion.missingBisRows &&
+    wishlistCompletion.missingBisRows.length
+  );
   var wishlistCompletionHTML =
     wishlistCompletion && wishlistCompletion.total
       ? '<span style="font-size:1.07rem;margin-left:0.5rem;"><span style="color:' +
-        (wishlistCompletion.tagged === wishlistCompletion.total ? 'var(--heal)' : 'var(--melee)') +
+        (wishlistCompletion.tagged === wishlistCompletion.total && !hasMissingBis ? 'var(--heal)' : 'var(--melee)') +
         ';font-weight:600;">' +
         Math.round((wishlistCompletion.tagged / wishlistCompletion.total) * 100) +
         '%</span><span style="color:var(--text-muted);font-weight:400;"> (' +
@@ -3635,6 +3646,11 @@ function officerWishlistSectionHTML(player, backTo) {
       : '';
 
   var html = '<div class="profile-section"><div class="section-label">Wishlist' + wishlistCompletionHTML + '</div>';
+  html += hasMissingBis
+    ? '<p style="font-size:0.95rem;color:var(--melee);margin:0.25rem 0 0.5rem;">No BiS pick tagged for: ' +
+      wishlistCompletion.missingBisRows.join(', ') +
+      '</p>'
+    : '';
 
   var teamPrefs = typeof _teamItemPreferences !== 'undefined' ? _teamItemPreferences : undefined;
   var prefs;
@@ -5298,6 +5314,12 @@ function renderProfile(firstName, backTo, container) {
     : typeof officerWishlistSectionHTML === 'function'
       ? officerWishlistSectionHTML(player, backTo)
       : '';
+  // Wishlist sub-tab badge below -- reads whatever ownWishlistSectionHTML()
+  // just loaded above rather than fetching again; null while that's still
+  // loading (js/wishlist.js's wishlistOwnMissingBisCount), which the badge
+  // markup below treats the same as "nothing to show."
+  var ownMissingBisCount =
+    isOwnWishlistView && typeof wishlistOwnMissingBisCount === 'function' ? wishlistOwnMissingBisCount(player) : null;
 
   // Priority list
   var bisItems = getBisItems(player.nameRealm).filter(function (e) {
@@ -6057,7 +6079,11 @@ function renderProfile(firstName, backTo, container) {
           '" id="profileSubTabBis" onclick="showProfileSubTab(\'bis\')">BiS</button>' +
           '<button class="roster-sub-tab' +
           (_profileSubTab === 'wishlist' ? ' active' : '') +
-          '" id="profileSubTabWishlist" onclick="showProfileSubTab(\'wishlist\')">Wishlist</button>'
+          '" id="profileSubTabWishlist" onclick="showProfileSubTab(\'wishlist\')">Wishlist' +
+          (ownMissingBisCount
+            ? '<span class="nav-notif" title="Slots missing a real BiS pick">' + ownMissingBisCount + '</span>'
+            : '') +
+          '</button>'
         : '') +
       '<button class="roster-sub-tab' +
       (_profileSubTab === 'stream' ? ' active' : '') +

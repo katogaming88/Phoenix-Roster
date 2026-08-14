@@ -8,6 +8,13 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.7] - 2026-08-14
+
+### Frontend
+
+- A raider's wishlist can now hit "100% tagged" (every eligible item has some status) while no slot actually has a real BiS pick -- everything tagged Good/OK, for example -- and the BiS List quietly falls back to a "(Wishlist)" pick for every slot. The Wishlist section (both the raider's own view and the officer profile card) now separately flags which slots are still missing an actual BiS-status tag, and the officer badge no longer reads green 100% when that's the case.
+- Added a notification badge for raiders missing a BiS pick somewhere: a count badge on the logged-in nav button (sitewide) and another on the profile's Wishlist sub-tab, both reflecting the same missing-slot count above.
+
 ## [3.60.6] - 2026-08-12
 
 ### Backend
