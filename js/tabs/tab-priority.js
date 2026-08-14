@@ -711,6 +711,24 @@ function _priorityWishlistMissingRows(prefs, idToName, itemSlots, officerBuckets
     return row !== 'Off Hand' || offHandRequired;
   });
 
+  // Distinct from item-tagging completeness below: every eligible item
+  // having *some* status says nothing about whether any of them is the
+  // raider's actual BiS pick for that slot -- a row can hit 100% tagged with
+  // everything Good/OK and still fall back to a "(Wishlist)" pick on the BiS
+  // List. Mirrors js/wishlist.js's wishlistCompleteness() missingBisRows: a
+  // row counts as covered once the raider has tagged one item 'bis' for it,
+  // or the officer's bis_items grid already has a pick for it.
+  var bisRows = {};
+  prefs.forEach(function (p) {
+    if (p.status !== 'bis') return;
+    _priorityItemRows(p.item_id, p.slot || null, idToName, itemSlots).forEach(function (row) {
+      bisRows[row] = true;
+    });
+  });
+  var missingBisRows = requiredRows.filter(function (row) {
+    return !bisRows[row] && !officerBuckets[row];
+  });
+
   // Same lookup as _priorityWishlistMissingRows' exact-slot match, with two
   // fallbacks -- mirrors js/wishlist.js's wishlistPrefForRow():
   // 1. A legacy slot=null pref (tagged before Finger/Trinket/Weapon/Off Hand
@@ -763,7 +781,8 @@ function _priorityWishlistMissingRows(prefs, idToName, itemSlots, officerBuckets
     missingRows: missingRows,
     missingCounts: missingCounts,
     taggedCount: taggedCount,
-    totalRequired: totalRequired
+    totalRequired: totalRequired,
+    missingBisRows: missingBisRows
   };
 }
 
@@ -802,7 +821,7 @@ function wishlistCompletionForPlayer(player) {
       ? bisEligibleRealItemsBySlot(playerArmorType, playerMainStat, playerRole, player.class || null)
       : {};
   var result = _priorityWishlistMissingRows(prefs, idToName, itemSlots, officerBuckets, eligibleBuckets);
-  return { tagged: result.taggedCount, total: result.totalRequired };
+  return { tagged: result.taggedCount, total: result.totalRequired, missingBisRows: result.missingBisRows };
 }
 
 // roster override (js/tabs/tab-roster.js's Wishlists Completed stat card):

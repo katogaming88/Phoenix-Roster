@@ -936,6 +936,12 @@ function wishlistSectionBodyHTML(player) {
       '</p>'
     : '<p style="font-size:1.02rem;color:var(--heal);margin:0.25rem 0 0.75rem;">' + summaryPrefix + '.</p>';
 
+  html += completeness.missingBisRows.length
+    ? '<p style="font-size:1.02rem;color:var(--melee);margin:0.25rem 0 0.75rem;">No BiS pick yet for: ' +
+      completeness.missingBisRows.join(', ') +
+      ' -- tag one item per slot as BiS so it shows up on your BiS List.</p>'
+    : '';
+
   html += wishlistEditableNow()
     ? ''
     : '<p style="font-size:1.04rem;color:var(--melee);margin:0.25rem 0 0.75rem;">Wishlist editing is currently closed -- your tags below are read-only. Contact an officer if something needs to change.</p>';
@@ -1149,10 +1155,12 @@ function wishlistCompleteness(buckets) {
   });
 
   var taggedRows = {};
+  var bisRows = {};
   var offHandRequired = false;
   _wishlistPrefs.forEach(function (p) {
     wishlistItemRows(p.item_id, p.slot || null).forEach(function (row) {
       taggedRows[row] = true;
+      if (p.status === 'bis') bisRows[row] = true;
     });
     // p.slot is 'Weapon' for anything tagged since WISHLIST_DISAMBIGUATE_SLOTS
     // picked up Weapon/Off Hand (dual-wield fan-out, DUAL_WIELD_CLASSES);
@@ -1183,6 +1191,18 @@ function wishlistCompleteness(buckets) {
     return row !== 'Off Hand' || offHandRequired;
   });
 
+  // Distinct from missingRows below: item-tagging completeness (every
+  // eligible item has *some* status) says nothing about whether any of them
+  // is actually the raider's BiS pick for that slot. A row can be "complete"
+  // with everything tagged Good/OK and still have no real BiS -- the BiS
+  // List then silently falls back to a "(Wishlist)" pick, which shouldn't
+  // read as 100%. A row counts as covered here once either the raider has
+  // tagged one item 'bis' for it, or the officer's bis_items grid already
+  // has a pick for it.
+  var missingBisRows = requiredRows.filter(function (row) {
+    return !bisRows[row] && !officerBuckets[row];
+  });
+
   var missingRows = [];
   var missingCounts = {};
   var totalRequired = 0;
@@ -1211,8 +1231,80 @@ function wishlistCompleteness(buckets) {
     missingCounts: missingCounts,
     taggedCount: taggedCount,
     totalRequired: totalRequired,
-    officerBuckets: officerBuckets
+    officerBuckets: officerBuckets,
+    missingBisRows: missingBisRows
   };
+}
+
+// Shared core for the two "missing BiS pick" badges below (nav login button
+// + profile Wishlist sub-tab) -- both need wishlistCompleteness()'s
+// missingBisRows count for the logged-in raider's own wishlist without
+// duplicating its row logic. Returns null (not 0) if _wishlistPrefs isn't
+// loaded for this player yet, so callers can tell "not ready" apart from
+// "genuinely zero missing."
+function _wishlistMissingBisCount(player) {
+  if (!player || _wishlistPlayerId !== player.id || _wishlistPrefs === null) return null;
+  var playerArmorType = (typeof CLASS_ARMOR_TYPE !== 'undefined' && CLASS_ARMOR_TYPE[player.class]) || null;
+  var playerMainStat = typeof specMainStat === 'function' ? specMainStat(player.class, player.spec) : null;
+  var playerRole = (typeof SPEC_ROLE !== 'undefined' && SPEC_ROLE[player.spec]) || null;
+  var buckets = wishlistBucketRealItems(playerArmorType, playerMainStat, playerRole, player.class);
+  return wishlistCompleteness(buckets).missingBisRows.length;
+}
+
+// Profile Wishlist sub-tab badge (js/common.js's renderProfile) -- called
+// right after ownWishlistSectionHTML() has had a chance to populate
+// _wishlistPrefs for this player, so it's just a read of state that section
+// already loaded rather than a second fetch.
+function wishlistOwnMissingBisCount(player) {
+  if (typeof featureEnabled === 'function' && !featureEnabled('bis')) return null;
+  return _wishlistMissingBisCount(player);
+}
+
+// Sitewide nav badge on the logged-in player's nav button (js/discord.js's
+// renderDiscordNav, same choke point renderNotifBell uses -- covers every
+// login/session-refresh call site at once). Unlike the sub-tab badge above,
+// this has to trigger its own fetch since the raider may not have opened
+// their profile this session at all.
+function refreshWishlistBisNavBadge(session) {
+  var badge = document.getElementById('navDiscordBisBadge');
+  if (!badge) return;
+  if (!session || !session.nameRealm || (typeof featureEnabled === 'function' && !featureEnabled('bis'))) {
+    badge.style.display = 'none';
+    return;
+  }
+  var roster = (typeof DATA !== 'undefined' && DATA.roster) || [];
+  var player = null;
+  for (var i = 0; i < roster.length; i++) {
+    if (normalise(roster[i].nameRealm) === normalise(session.nameRealm)) {
+      player = roster[i];
+      break;
+    }
+  }
+  if (!player) {
+    badge.style.display = 'none';
+    return;
+  }
+  if (_wishlistPlayerId !== player.id) {
+    _wishlistPlayerId = player.id;
+    _wishlistPlayerFirstName = player.firstName;
+    _wishlistPlayerNameRealm = player.nameRealm;
+    _wishlistPrefs = null;
+  }
+  if (_wishlistPrefs === null) {
+    fetchMyItemPreferences(player.id).then(function (rows) {
+      _wishlistPrefs = rows || [];
+      refreshWishlistBisNavBadge(session);
+      // Own profile may already be open (e.g. a page reload while on it) --
+      // refresh it too so the sub-tab badge picks up the now-loaded prefs.
+      if (typeof renderProfile === 'function' && document.getElementById('profileView')) {
+        renderProfile(player.firstName, 'landing');
+      }
+    });
+    return;
+  }
+  var missing = _wishlistMissingBisCount(player) || 0;
+  badge.textContent = missing;
+  badge.style.display = missing > 0 ? '' : 'none';
 }
 
 // Only one item can be BiS per slot at a time: tagging a new one

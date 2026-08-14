@@ -272,7 +272,13 @@ describe('wishlistCompletionForPlayer', () => {
     sandbox._teamItemPreferences = [];
     const player = { id: 11, nameRealm: 'Kat-Illidan' };
 
-    expect(sandbox.wishlistCompletionForPlayer(player)).toEqual({ tagged: 0, total: 2 });
+    const result = sandbox.wishlistCompletionForPlayer(player);
+    expect(result.tagged).toBe(0);
+    expect(result.total).toBe(2);
+    // No 'bis'-status pref anywhere, so every required row (all of BIS_SLOTS
+    // minus Off Hand, which isn't required by default) is still missing a
+    // real BiS pick -- independent of the item-tagging total above.
+    expect(result.missingBisRows).toEqual(BIS_SLOTS.filter((row) => row !== 'Off Hand'));
   });
 
   it('counts a partially-tagged raider correctly', () => {
@@ -282,16 +288,27 @@ describe('wishlistCompletionForPlayer', () => {
     sandbox._teamItemPreferences = [{ player_id: 11, item_id: 1, status: 'good', slot: null }];
     const player = { id: 11, nameRealm: 'Kat-Illidan' };
 
-    expect(sandbox.wishlistCompletionForPlayer(player)).toEqual({ tagged: 1, total: 2 });
+    const result = sandbox.wishlistCompletionForPlayer(player);
+    expect(result.tagged).toBe(1);
+    expect(result.total).toBe(2);
+    // 'good' isn't 'bis' -- item-level tagging progressed but no slot has a
+    // real BiS pick yet.
+    expect(result.missingBisRows).toEqual(BIS_SLOTS.filter((row) => row !== 'Off Hand'));
   });
 
-  it('reports tagged === total for a fully-tagged raider', () => {
+  it('reports tagged === total for a fully-tagged raider, but still flags missing BiS picks elsewhere', () => {
     const itemSlots = { Helm: 'Head' };
     const itemIds = { Helm: 1 };
     const sandbox = makeSandbox({ itemSlots, itemIds });
     sandbox._teamItemPreferences = [{ player_id: 11, item_id: 1, status: 'bis', slot: null }];
     const player = { id: 11, nameRealm: 'Kat-Illidan' };
 
-    expect(sandbox.wishlistCompletionForPlayer(player)).toEqual({ tagged: 1, total: 1 });
+    const result = sandbox.wishlistCompletionForPlayer(player);
+    expect(result.tagged).toBe(1);
+    expect(result.total).toBe(1);
+    // Head got a real 'bis' tag, so it drops out of missingBisRows even
+    // though every other slot (with nothing eligible to tag at all in this
+    // fixture) is still counted as missing one.
+    expect(result.missingBisRows).toEqual(BIS_SLOTS.filter((row) => row !== 'Off Hand' && row !== 'Head'));
   });
 });
