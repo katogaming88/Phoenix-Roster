@@ -99,6 +99,7 @@
 | public.restrict_players_self_update_to_bonus_roll | trigger |  | FUNCTION |
 | public.restrict_item_preferences_officer_update_to_note_clear | trigger |  | FUNCTION |
 | public.generate_priority_order | record | p_team_id integer, p_season text, p_item_id integer, p_track text | FUNCTION |
+| public.wishlist_setup_status | record | p_team_id integer | FUNCTION |
 
 ## Enums
 

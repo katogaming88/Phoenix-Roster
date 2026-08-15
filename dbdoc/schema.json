@@ -4876,6 +4876,12 @@
       "return_type": "record",
       "arguments": "p_team_id integer, p_season text, p_item_id integer, p_track text",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.wishlist_setup_status",
+      "return_type": "record",
+      "arguments": "p_team_id integer",
+      "type": "FUNCTION"
     }
   ],
   "enums": [
