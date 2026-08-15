@@ -615,27 +615,45 @@ function updatePriorityBadges() {
 // fetchMyItemPreferences(), just for the whole team instead of one player.
 var _teamItemPreferences = null;
 
+// PostgREST caps a single request at its project-wide max-rows setting
+// (1000 here) -- a table this size (1200+ rows for one team alone) silently
+// lost whatever fell past that cap with no error, since nothing here ever
+// asked for more than page 1. A raider's wishlist could then read as
+// partially or entirely untagged to officers while their own view (a
+// per-player query, never near the cap) showed it complete. .order('id')
+// makes .range() paging deterministic; without an explicit order, Postgres
+// doesn't guarantee page N+1 picks up where page N left off.
 function fetchTeamItemPreferences() {
   if (!supabaseClient) return Promise.resolve(null);
-  var query = supabaseClient
-    .from('item_preferences')
-    .select('id, player_id, item_id, status, slot, note')
-    .eq('team_id', _teamCfg.supabaseTeamId)
-    .then(function (result) {
-      if (result.error) {
-        console.warn('Supabase item_preferences query failed.', result.error.message);
+  var PAGE_SIZE = 1000;
+
+  function fetchPage(offset, rows) {
+    return supabaseClient
+      .from('item_preferences')
+      .select('id, player_id, item_id, status, slot, note')
+      .eq('team_id', _teamCfg.supabaseTeamId)
+      .order('id')
+      .range(offset, offset + PAGE_SIZE - 1)
+      .then(function (result) {
+        if (result.error) {
+          console.warn('Supabase item_preferences query failed.', result.error.message);
+          return null;
+        }
+        var data = result.data || [];
+        rows = rows.concat(data);
+        return data.length < PAGE_SIZE ? rows : fetchPage(offset + PAGE_SIZE, rows);
+      })
+      .catch(function (err) {
+        console.warn('Supabase item_preferences query failed.', err);
         return null;
-      }
-      return result.data || [];
-    })
-    .catch(function (err) {
-      console.warn('Supabase item_preferences query failed.', err);
-      return null;
-    });
+      });
+  }
+
+  var query = fetchPage(0, []);
   var timeout = new Promise(function (resolve) {
     setTimeout(function () {
       resolve(null);
-    }, 10000);
+    }, 20000);
   });
   return Promise.race([query, timeout]);
 }
