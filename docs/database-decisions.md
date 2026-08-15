@@ -8,6 +8,17 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-08-15 -- `wishlist_setup_status()` function for the Discord bot's missing-data nudge
+
+Tracking issue: [katogaming88/wga-raid-bot#8](https://github.com/katogaming88/wga-raid-bot/issues/8). The bot needs to know, per team, which active raiders are missing a wishlist entirely, missing a BiS source link, or have a wishlist with rows still missing a real BiS pick, so it can DM them without an officer manually checking. Two things were decided:
+
+- **The bot connects directly with the service-role key**, not through a new web-app endpoint. The bot repo doesn't yet have a Supabase dependency, but it's the simplest option -- no new endpoint to build/deploy/auth in this repo, and it matches where the app already is (fully Supabase-native, GAS retirement complete). Revisit if a second bot-facing use case appears and a proper API surface starts to pay for itself.
+- **`missing_bis_rows` reproduces `wishlistCompleteness()`'s "missing a real BiS pick" rule** (`js/wishlist.js`, #690) rather than a simpler "every slot has some tag" check. Confirmed with a live example (WISHLIST 100% (45/45), but 5 slots with no actual BiS-status pick) that the simple check would have missed entirely -- everything Good/OK-tagged reads as "done" even though the BiS List silently falls back to a non-BiS pick. The port includes the Finger/Trinket sibling-mirroring rule, the one-hand-weapon-makes-Off-Hand-required rule (both the raider's own tag and the officer's `bis_items` pick), and `wishlistOfficerRowBuckets`'s greedy legacy-row assignment (explicit `bis_items.slot` claims its row first, unslotted legacy rows fall back to their catalog slot's first open row in `id` order).
+- **No shared source with the client-side logic** -- same accepted tradeoff as `wishlistOfficerRowBuckets`'s own "own copy" comment. If `wishlistCompleteness()` changes, `wishlist_setup_status()` needs a matching update or the bot's nudges will drift from what the Wishlist tab actually shows.
+- Implemented in `20260815162755_wishlist_setup_status_bot.sql`.
+
+---
+
 ## 2026-08-15 -- `is_site_admin()` OR'd into every remaining officer-write policy
 
 Decided directly in conversation (no tracking issue): a site admin without a `team_members` row on a given team hit RLS write rejections there -- surfaced live as "new row violates row-level security policy for table player_wcl_season_perf" when fetching WCL performance for Hellfire from an admin session with no officer role on that team. `is_site_admin()` was already OR'd into most officer-*view* policies (`item_preferences`, `audit_log`, `team_members`) but had never been extended to the officer-*write* policies on ten tables: `players`, `attendance`, `bis_items`, `item_preferences` (note-clear UPDATE), `player_wcl_season_perf`, `priority_order`, `rclc_loot`, `scoring`, `streamers`, `team_raid_progress`.

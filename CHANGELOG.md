@@ -17,6 +17,7 @@ with each release split into `### Frontend` (drives the version number) and
 ### Backend
 
 - `is_site_admin()` is now OR'd into every remaining officer-write RLS policy (`players`, `attendance`, `bis_items`, `item_preferences` note-clear, `player_wcl_season_perf`, `priority_order`, `rclc_loot`, `scoring`, `streamers`, `team_raid_progress`) -- a site admin with no `team_members` row on a given team hit RLS write rejections there, surfaced live as a rejected "Fetch WCL Performance" on a team the admin hadn't personally claimed a character on. See `docs/database-decisions.md` for the full writeup.
+- New `wishlist_setup_status()` function, callable with the service-role key, gives the Discord bot a per-team list of active raiders missing a wishlist, missing a BiS source link, or missing a real BiS pick on one or more wishlist rows -- reproduces `wishlistCompleteness()`'s missing-BiS-pick rule (sibling mirroring, one-hand/off-hand requirement, officer `bis_items` picks) rather than a simpler "every slot tagged" check. See `docs/database-decisions.md` for the full writeup.
 
 ## [3.60.8] - 2026-08-15
 
