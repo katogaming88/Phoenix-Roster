@@ -26,9 +26,11 @@ function _renderOfficerNavLink() {
 }
 
 // ── Player selector gating ────────────────────────────────────────────────────
-// No session / unclaimed  -> hide card entirely
-// Logged in, non-officer  -> "View My Profile" button only
-// Logged in, officer      -> full dropdown + "View My Profile" link
+// No session                          -> hide card entirely
+// Logged in, unclaimed, no officer/admin access -> hide (claim prompt owns this state)
+// Logged in, unclaimed, officer/admin  -> dropdown only, no "View My Profile" (nothing to view)
+// Logged in, claimed, non-officer      -> "View My Profile" button only
+// Logged in, claimed, officer/admin    -> full dropdown + "View My Profile" link
 
 function _renderPlayerSelector() {
   var card = document.getElementById('playerSelectorCard');
@@ -39,16 +41,22 @@ function _renderPlayerSelector() {
   if (!card) return;
 
   var session = typeof getDiscordSession === 'function' && getDiscordSession();
+  var canLookUp = !!(session && (session.isOfficer || session.isAdmin));
 
-  if (!session || !session.nameRealm) {
+  // A site admin (or officer) has no reason to have personally claimed a
+  // character on every team -- they were previously locked out of this
+  // card entirely on any team they hadn't, with no way to open another
+  // raider's profile there at all (the claim-prompt card took over instead).
+  // Gate on lookup access OR an actual claim, not just the claim.
+  if (!session || !(session.nameRealm || canLookUp)) {
     card.style.display = 'none';
     return;
   }
 
   card.style.display = '';
-  var firstName = session.nameRealm.split('-')[0];
+  var firstName = session.nameRealm ? session.nameRealm.split('-')[0] : null;
 
-  if (profileBtn) {
+  if (profileBtn && firstName) {
     profileBtn.onclick = function () {
       if (typeof showView === 'function') showView('profile');
       if (typeof renderProfile === 'function') renderProfile(firstName, 'landing');
@@ -57,10 +65,10 @@ function _renderPlayerSelector() {
     };
   }
 
-  if (session.isOfficer) {
+  if (canLookUp) {
     if (label) label.textContent = 'Look Up a Raider';
     if (dropOuter) dropOuter.style.display = '';
-    if (profileOuter) profileOuter.style.display = '';
+    if (profileOuter) profileOuter.style.display = firstName ? '' : 'none';
   } else {
     if (label) label.textContent = 'Your Profile';
     if (dropOuter) dropOuter.style.display = 'none';

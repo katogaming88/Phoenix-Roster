@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.9] - 2026-08-15
+
+### Frontend
+
+- Site admins (and officers) can now use the "Look Up a Raider" dropdown on index.html for a team they haven't personally claimed a character on -- it used to hide the whole card and show only the "claim your character" prompt whenever the logged-in account had no linked character on the currently-viewed team, which locked admins out of browsing any team's roster except the one they'd personally claimed on. Combined with the existing team switcher, an admin can now switch to any team and look up any of its raiders' profiles.
+
 ## [3.60.8] - 2026-08-15
 
 ### Frontend
