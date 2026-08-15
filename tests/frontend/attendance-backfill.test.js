@@ -15,6 +15,37 @@ const ROSTER_JS = readFileSync(
   'utf8'
 );
 
+// js/common.js owns fetchAllPaged (#694) and tab-roster.js calls it as a
+// global. Load common.js in its own sandbox and hand the real function over,
+// so this suite exercises the shipped helper rather than a stand-in that could
+// drift from it. Same reason writeAuditLog is mirrored below rather than
+// stubbed away.
+const COMMON_JS = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '../../js/common.js'), 'utf8');
+function realFetchAllPaged() {
+  const commonSandbox = {
+    window: {},
+    location: { search: '', pathname: '/' },
+    sessionStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
+    localStorage: { getItem: () => null, setItem: () => {} },
+    document: { getElementById: () => null, createElement: () => ({}), head: { appendChild: () => {} } },
+    console: { log: () => {}, warn: () => {}, error: () => {} },
+    Intl,
+    setTimeout: (fn, ms) => {
+      const t = setTimeout(fn, ms);
+      if (t.unref) t.unref();
+      return t;
+    },
+    clearTimeout,
+    Promise
+  };
+  vm.createContext(commonSandbox);
+  vm.runInContext(COMMON_JS, commonSandbox, { filename: 'common.js' });
+  if (typeof commonSandbox.fetchAllPaged !== 'function') {
+    throw new Error('js/common.js does not define fetchAllPaged');
+  }
+  return commonSandbox.fetchAllPaged;
+}
+
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 // Routes .from(table).select().eq()... / .insert() / .rpc() to per-test
@@ -98,6 +129,7 @@ function loadSandbox(supabaseClient) {
   vm.runInContext(ROSTER_JS, sandbox, { filename: 'tab-roster.js' });
   sandbox.supabaseClient = supabaseClient;
   sandbox._teamCfg = { supabaseTeamId: 1 };
+  sandbox.fetchAllPaged = realFetchAllPaged();
   // js/common.js's real writeAuditLog(), reimplemented here rather than
   // loading that whole file just for this one function.
   sandbox.writeAuditLog = function (action, targetType, targetId, detail) {
@@ -136,10 +168,14 @@ describe('backfillNotOnRosterForPlayer (#241)', () => {
   it('inserts Not on Roster only for dates the player has no row for yet', async () => {
     const { client, calls } = makeSupabase({
       select_all: () => ({
-        data: [{ raid_date: '2026-06-01' }, { raid_date: '2026-06-08' }, { raid_date: '2026-06-08' }],
+        data: [
+          { id: 1, raid_date: '2026-06-01' },
+          { id: 2, raid_date: '2026-06-08' },
+          { id: 3, raid_date: '2026-06-08' }
+        ],
         error: null
       }),
-      select_existing: () => ({ data: [{ raid_date: '2026-06-01' }], error: null }),
+      select_existing: () => ({ data: [{ id: 4, raid_date: '2026-06-01' }], error: null }),
       insert: () => ({ data: null, error: null }),
       rpc: () => ({ data: null, error: null })
     });
@@ -156,8 +192,8 @@ describe('backfillNotOnRosterForPlayer (#241)', () => {
 
   it('never overwrites a date the player already has a real status for', async () => {
     const { client, calls } = makeSupabase({
-      select_all: () => ({ data: [{ raid_date: '2026-06-01' }], error: null }),
-      select_existing: () => ({ data: [{ raid_date: '2026-06-01' }], error: null })
+      select_all: () => ({ data: [{ id: 1, raid_date: '2026-06-01' }], error: null }),
+      select_existing: () => ({ data: [{ id: 2, raid_date: '2026-06-01' }], error: null })
     });
     const sandbox = loadSandbox(client);
     await sandbox.backfillNotOnRosterForPlayer(1, 5, '2026-07-01');
@@ -166,7 +202,13 @@ describe('backfillNotOnRosterForPlayer (#241)', () => {
 
   it('writes a single summary audit log entry, not one per date', async () => {
     const { client, calls } = makeSupabase({
-      select_all: () => ({ data: [{ raid_date: '2026-06-01' }, { raid_date: '2026-06-08' }], error: null }),
+      select_all: () => ({
+        data: [
+          { id: 1, raid_date: '2026-06-01' },
+          { id: 2, raid_date: '2026-06-08' }
+        ],
+        error: null
+      }),
       select_existing: () => ({ data: [], error: null }),
       insert: () => ({ data: null, error: null }),
       rpc: () => ({ data: null, error: null })

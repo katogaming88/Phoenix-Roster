@@ -55,7 +55,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.60.18';
+var VERSION = '3.60.19';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -1689,6 +1689,111 @@ function seasonCodeForDisplay(displayName) {
   var re = new RegExp('^' + _escapeRegExp(_seasonDisplayPrefix()) + ' (\\d+)$');
   var m = re.exec(displayName || '');
   return m ? codePrefix + m[1] : displayName;
+}
+
+// PostgREST caps a response at max-rows (1000 on this project) and returns the
+// truncated page as HTTP 200 with error: null. supabase-js surfaces no
+// partial-content signal, so at the call site a truncated array is
+// indistinguishable from a complete one and renders as confident wrong data
+// rather than as an error. Every team-wide read pages through this (#694).
+var SUPABASE_MAX_ROWS = 1000;
+
+// makeQuery(afterId, limit) builds one page. afterId is null on the first page
+// and the last id seen on every page after, so callers filter .gt('id', afterId)
+// and order by id ascending. Keyset rather than OFFSET: OFFSET re-walks
+// everything it skips, and keyset needs no index beyond the primary key.
+//
+// Callers request count: 'exact' on the first page (afterId === null). That
+// count bounds the loop, which buys two things a short-page check alone cannot:
+// a total that is an exact multiple of the page size costs no extra request
+// past the end, and a page that comes back short while rows remain does not end
+// the loop early. Rows arriving after the count is taken are simply not in this
+// snapshot, which is true of any paged read.
+//
+// The timeout is per page and never one budget across the whole loop. A fixed
+// budget spread over N sequential round trips becomes a truncation mechanism as
+// N grows with the data, which is the failure this helper exists to remove.
+//
+// Returns null on timeout or error, never the rows collected so far: a partial
+// result is silent truncation with extra steps. Callers keep null distinct from
+// [] so "this table is empty" stays distinguishable from "this read failed".
+/**
+ * @param {function(number|null, number): PromiseLike<{data: any[]|null, error: {message: string}|null, count?: number|null}>} makeQuery
+ * @param {{pageSize?: number, timeoutMs?: number, label?: string, maxPages?: number}} [opts]
+ * @returns {Promise<any[]|null>}
+ */
+function fetchAllPaged(makeQuery, opts) {
+  var options = opts || {};
+  var pageSize = options.pageSize || SUPABASE_MAX_ROWS;
+  var timeoutMs = options.timeoutMs || 20000;
+  var maxPages = options.maxPages || 50;
+  var label = options.label || 'paged query';
+  // Sentinel rather than null/undefined so a genuine null result can never be
+  // mistaken for the timer winning the race.
+  var TIMED_OUT = {};
+
+  /**
+   * @param {number|null} afterId
+   * @param {any[]} acc
+   * @param {number|null} total
+   * @param {number} pages
+   * @returns {Promise<any[]|null>}
+   */
+  function fetchPage(afterId, acc, total, pages) {
+    // Runaway guard, not a data ceiling: 50 pages is 50k rows, far past
+    // anything this app reads, so hitting it means the cursor is misbehaving.
+    if (pages >= maxPages) {
+      console.warn('Supabase ' + label + ' exceeded ' + maxPages + ' pages; giving up.');
+      return Promise.resolve(null);
+    }
+    var timer = null;
+    var timeout = new Promise(function (resolve) {
+      timer = setTimeout(function () {
+        resolve(TIMED_OUT);
+      }, timeoutMs);
+    });
+    return Promise.race([Promise.resolve(makeQuery(afterId, pageSize)), timeout]).then(function (result) {
+      if (timer) clearTimeout(timer);
+      if (result === TIMED_OUT) {
+        console.warn('Supabase ' + label + ' timed out after ' + timeoutMs + 'ms.');
+        return null;
+      }
+      if (result.error) {
+        console.warn('Supabase ' + label + ' failed.', result.error.message);
+        return null;
+      }
+      var rows = result.data || [];
+      var known = total;
+      if (known === null && typeof result.count === 'number') known = result.count;
+      var all = acc.concat(rows);
+      // An empty page is the definitive end, with or without a count.
+      if (!rows.length) return all;
+      if (known !== null && all.length >= known) return all;
+
+      var lastId = rows[rows.length - 1] ? rows[rows.length - 1].id : null;
+      if (typeof lastId !== 'number') {
+        console.warn('Supabase ' + label + ' returned a row with no numeric id; cannot page safely.');
+        return null;
+      }
+      // Ordering is the caller's job and there is no way to verify it from
+      // here, but a cursor that fails to advance proves it went wrong, and
+      // continuing would loop on the same page forever.
+      if (afterId !== null && lastId <= afterId) {
+        console.warn('Supabase ' + label + ' cursor did not advance past id ' + afterId + '; giving up.');
+        return null;
+      }
+      // A short page ends the loop only when no count contradicts it. This is
+      // what protects a caller whose page size exceeds the server's max-rows,
+      // where every page looks short and page one would otherwise look final.
+      if (rows.length < pageSize && known === null) return all;
+      return fetchPage(lastId, all, known, pages + 1);
+    });
+  }
+
+  return fetchPage(null, [], null, 0).catch(function (err) {
+    console.warn('Supabase ' + label + ' failed.', err);
+    return null;
+  });
 }
 
 // Public loot reads come from Supabase (#209): all seasons for the team,

@@ -8,6 +8,15 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.19] - 2026-08-19
+
+### Frontend
+
+- Fixed the officer Attendance grid quietly dropping the oldest raid nights once a team passed 1000 attendance rows. The read behind the grid had no pagination, so Supabase's row cap truncated the result and returned it as an ordinary success with no error. Because the read was ordered newest-first, what went missing was the start of the season, both from the grid and from the raid-night dropdown. Phoenix was already past the cap when this was found.
+- Fixed the same truncation in the "Not on Roster" backfill that runs when a player is added mid-season. That path reads every raid night the team has before the player's join date and then writes a row for each one, so a capped read did not just display less: it wrote an incomplete attendance history that afterwards looked like real data. It also read without any ordering, which meant which nights got filled in could vary between runs.
+- Both reads, and the player's own attendance read alongside them, now page through a shared helper. Paging is keyed on row id with an exact count taken on the first page, so a result that is an exact multiple of the page size does not cost a wasted request, a short page part-way through does not end the read early, and each page gets its own timeout rather than sharing one budget across the whole read. A failed or timed-out read now returns nothing at all rather than the rows it had managed to collect, so a partial result can never be mistaken for a complete one.
+
+
 ## [3.60.18] - 2026-08-19
 
 ### Frontend
