@@ -20,6 +20,11 @@ const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 // Routes .from(table).select().eq()... / .insert() / .rpc() to per-test
 // resolvers, keyed by table+kind so a test can distinguish the "all raid
 // dates" read from the "this player's existing dates" read.
+//
+// The kind is resolved at then() time from the accumulated record rather than
+// from call order (#694): once both reads page, each fires several selects, so
+// "first select is the team-wide one" stopped holding. The team-wide read is
+// the one carrying .lt('raid_date', joinDate); the per-player read is not.
 function makeSupabase(config) {
   const calls = { selects: [], inserts: [], rpc: null };
   function builder(kind, record) {
@@ -33,9 +38,25 @@ function makeSupabase(config) {
         record.lt = [col, val];
         return b;
       },
+      gt(col, val) {
+        record.gt = [col, val];
+        return b;
+      },
+      order(col, opts) {
+        record.order = record.order || [];
+        record.order.push([col, !opts || opts.ascending !== false]);
+        return b;
+      },
+      limit(n) {
+        record.limit = n;
+        return b;
+      },
       then(onFulfilled, onRejected) {
         return Promise.resolve()
-          .then(() => (config[kind] ? config[kind](record) : { data: null, error: null }))
+          .then(() => {
+            const resolved = kind === 'select' ? (record.lt ? 'select_all' : 'select_existing') : kind;
+            return config[resolved] ? config[resolved](record) : { data: null, error: null };
+          })
           .then(onFulfilled, onRejected);
       }
     };
@@ -44,10 +65,10 @@ function makeSupabase(config) {
   const client = {
     from(table) {
       return {
-        select(cols) {
-          const record = { table, select: cols };
+        select(cols, opts) {
+          const record = { table, select: cols, countRequested: !!(opts && opts.count) };
           calls.selects.push(record);
-          return builder('select_' + (calls.selects.length === 1 ? 'all' : 'existing'), record);
+          return builder('select', record);
         },
         insert(rows) {
           const record = { table, rows };
@@ -166,5 +187,99 @@ describe('backfillNotOnRosterForPlayer (#241)', () => {
     const sandbox = loadSandbox(client);
     await sandbox.backfillNotOnRosterForPlayer(1, 5, '2026-07-01');
     expect(calls.selects[0].lt).toEqual(['raid_date', '2026-07-01']);
+  });
+
+  // #694: this read drives INSERTs, so a capped read doesn't just display
+  // less -- it writes an incomplete backfill that then looks like real data.
+  describe('paging past the 1000-row cap (#694)', () => {
+    const dateAt = (i) => new Date(Date.UTC(2023, 0, 1) + i * 86400000).toISOString().slice(0, 10);
+
+    // Keyset source with real semantics: honours .gt('id', ...) and .limit(),
+    // and reports the exact count on the first page. A mock that ignored
+    // those would hand an unpaginated implementation a passing grade.
+    function pagedTeamRead(total) {
+      const rows = [];
+      for (let i = 0; i < total; i++) rows.push({ id: i + 1, raid_date: dateAt(i) });
+      return (record) => {
+        const after = record.gt ? record.gt[1] : null;
+        const limit = record.limit || 1000;
+        const slice = rows.filter((r) => after === null || r.id > after).slice(0, limit);
+        return {
+          data: slice.map((r) => ({ id: r.id, raid_date: r.raid_date })),
+          error: null,
+          count: after === null ? rows.length : null
+        };
+      };
+    }
+
+    it('marks every pre-join night when they span more than one page', async () => {
+      const { client, calls } = makeSupabase({
+        select_all: pagedTeamRead(1160),
+        select_existing: () => ({ data: [], error: null }),
+        insert: () => ({ data: null, error: null }),
+        rpc: () => ({ data: null, error: null })
+      });
+      const sandbox = loadSandbox(client);
+      await sandbox.backfillNotOnRosterForPlayer(1, 5, '2026-07-01');
+      await flush();
+
+      expect(calls.inserts).toHaveLength(1);
+      // Unpaginated, this is 1000 and the oldest 160 nights stay blank.
+      expect(calls.inserts[0].rows).toHaveLength(1160);
+      expect(calls.inserts[0].rows[0]).toEqual({
+        team_id: 1,
+        player_id: 5,
+        raid_date: dateAt(0),
+        status: 'Not on Roster',
+        source: 'WCL'
+      });
+    });
+
+    it('orders the team-wide read so paging is deterministic', async () => {
+      const { client, calls } = makeSupabase({
+        select_all: pagedTeamRead(1160),
+        select_existing: () => ({ data: [], error: null }),
+        insert: () => ({ data: null, error: null }),
+        rpc: () => ({ data: null, error: null })
+      });
+      const sandbox = loadSandbox(client);
+      await sandbox.backfillNotOnRosterForPlayer(1, 5, '2026-07-01');
+      await flush();
+
+      const teamReads = calls.selects.filter((s) => s.lt);
+      expect(teamReads.length).toBeGreaterThan(1);
+      // Without an explicit order Postgres gives no guarantee page N+1
+      // resumes where N stopped, so unordered paging skips and duplicates.
+      teamReads.forEach((r) => expect(r.order).toEqual([['id', true]]));
+      expect(teamReads[0].countRequested).toBe(true);
+    });
+
+    it("pages the player's own existing rows too", async () => {
+      const { client, calls } = makeSupabase({
+        select_all: pagedTeamRead(1160),
+        select_existing: pagedTeamRead(1100),
+        insert: () => ({ data: null, error: null }),
+        rpc: () => ({ data: null, error: null })
+      });
+      const sandbox = loadSandbox(client);
+      await sandbox.backfillNotOnRosterForPlayer(1, 5, '2026-07-01');
+      await flush();
+
+      // The player already has the first 1100 of those 1160 nights, so only
+      // the last 60 need filling. A capped read of their existing rows would
+      // see 1000 and re-insert 160 duplicates over real history.
+      expect(calls.inserts).toHaveLength(1);
+      expect(calls.inserts[0].rows).toHaveLength(60);
+    });
+
+    it('writes nothing when the team-wide read fails', async () => {
+      const { client, calls } = makeSupabase({
+        select_all: () => ({ data: null, error: { message: 'boom' } }),
+        select_existing: () => ({ data: [], error: null })
+      });
+      const sandbox = loadSandbox(client);
+      await expect(sandbox.backfillNotOnRosterForPlayer(1, 5, '2026-07-01')).rejects.toThrow();
+      expect(calls.inserts).toHaveLength(0);
+    });
   });
 });
