@@ -1718,7 +1718,7 @@ var SUPABASE_MAX_ROWS = 1000;
 // result is silent truncation with extra steps. Callers keep null distinct from
 // [] so "this table is empty" stays distinguishable from "this read failed".
 /**
- * @param {function(number|null, number): PromiseLike<{data: any[]|null, error: {message: string}|null, count?: number|null}>} makeQuery
+ * @param {(afterId: number|null, limit: number) => PromiseLike<{data: any[]|null, error: {message: string}|null, count?: number|null}>} makeQuery
  * @param {{pageSize?: number, timeoutMs?: number, label?: string, maxPages?: number}} [opts]
  * @returns {Promise<any[]|null>}
  */
