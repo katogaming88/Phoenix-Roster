@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.8] - 2026-08-15
+
+### Frontend
+
+- Fixed the officer/admin Wishlist section silently showing a raider's wishlist as partially or entirely untagged once a team's `item_preferences` grew past 1000 rows -- the team-wide fetch backing that view had no explicit ordering or pagination, so Supabase's row cap quietly dropped whatever fell past it (in practice, whichever rows happened to land outside the returned page, which skewed toward recently-tagged/recently-edited items). The raider's own wishlist view was unaffected since it queries only its own rows. The fetch now pages through all rows for the team.
+
 ## [3.60.7] - 2026-08-14
 
 ### Frontend

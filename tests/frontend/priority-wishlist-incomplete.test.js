@@ -123,7 +123,13 @@ function makeSandbox({
             return this;
           },
           eq() {
-            return Promise.resolve({ data: prefsRows, error: null });
+            return this;
+          },
+          order() {
+            return this;
+          },
+          range(from, to) {
+            return Promise.resolve({ data: prefsRows.slice(from, to + 1), error: null });
           }
         };
       }
