@@ -887,10 +887,19 @@ function onDiscordInitNoSession() {
 // by anyone, so this can't reuse renderProfile()'s no-ownership-check default).
 var _pendingHashProfile = null;
 
+// Optional 3rd hash segment, '#profile/<name>/<subtab>' -- e.g. the bot's
+// missing-setup DM links straight to '.../wishlist' (wga-raid-bot#8) instead
+// of landing on Overview and making the raider click again. Applied after
+// renderProfile() below rather than folded into it, since renderProfile()
+// itself has no subtab parameter and always defaults new views to Overview.
+var _pendingHashProfileSubTab = null;
+
 function _resolveHashProfile(session) {
   if (!_pendingHashProfile) return;
   var target = _pendingHashProfile;
+  var subTab = _pendingHashProfileSubTab;
   _pendingHashProfile = null;
+  _pendingHashProfileSubTab = null;
   var isOwnProfile = session && session.nameRealm && normalise(session.nameRealm.split('-')[0]) === normalise(target);
   var isOfficerViewer = session && (session.isOfficer || session.isAdmin);
   if (!isOwnProfile && !isOfficerViewer) {
@@ -901,6 +910,16 @@ function _resolveHashProfile(session) {
   if (sel) sel.value = target;
   showView('profile');
   renderProfile(target, 'landing');
+  // Only switch if the target tab's button actually rendered -- renderProfile()
+  // (js/common.js) omits Bis/Wishlist entirely when the team's 'bis' feature
+  // flag is off, and showProfileSubTab() has no feature-flag awareness of its
+  // own, it just toggles elements by id. Without this check a stale deep link
+  // to '.../wishlist' on such a team would hide Overview for a tab that was
+  // never rendered, leaving the profile body blank.
+  var subTabId = subTab && 'profileTab' + subTab.charAt(0).toUpperCase() + subTab.slice(1);
+  if (subTab && PROFILE_SUB_TABS.indexOf(subTab) !== -1 && document.getElementById(subTabId)) {
+    showProfileSubTab(subTab);
+  }
 }
 
 // Auto-open the claimed character's profile after Discord login / session restore.
@@ -957,6 +976,7 @@ function bootRosterApp() {
         var hashKey = hashParts[0];
         if (hashKey === 'profile' && hashParts[1]) {
           _pendingHashProfile = decodeURIComponent(hashParts[1]);
+          _pendingHashProfileSubTab = hashParts[2] ? decodeURIComponent(hashParts[2]) : null;
           showView('landing');
         } else {
           var hashView = {

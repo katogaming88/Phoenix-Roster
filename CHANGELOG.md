@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.10] - 2026-08-15
+
+### Frontend
+
+- The `#profile/<name>` URL deep-link now accepts an optional `#profile/<name>/<subtab>` form to land directly on a specific profile sub-tab (Overview/BiS/Wishlist/Stream) instead of always opening on Overview -- added for the Discord bot's missing-setup DM to link straight to a raider's Wishlist tab (wga-raid-bot#8). Falls back to Overview (no error) if the subtab is invalid or unavailable (e.g. a stale `/wishlist` link on a team with the BiS/wishlist feature off).
+
 ## [3.60.9] - 2026-08-15
 
 ### Frontend
