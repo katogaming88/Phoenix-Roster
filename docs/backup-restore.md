@@ -19,6 +19,16 @@ Two objects per run, at `pg/wga-<YYYY-MM-DD>.dump` and `pg/wga-auth-<YYYY-MM-DD>
 
 **Retention**: an R2 lifecycle rule on the bucket (`pg-backup-retention`, prefix `pg/`) deletes objects after 365 days. Set manually in the Cloudflare dashboard (R2 -> bucket -> Settings -> Object lifecycle rules), not by the workflow -- see #546. No `monthly/`-prefix long-term keepers exist past that window; revisit if that's ever needed.
 
+## What the nightly verification proves, and what it does not
+
+Worth being precise about, because "restore verification runs every night" reads stronger than what the check actually asserts.
+
+**It proves**: last night's dump artifact restores into a clean `postgres:17` container, the public schema comes back with at least 20 base tables, and each table in the verify step's `EMPTY_CHECK` list comes back with at least one row. That catches a corrupt or truncated archive, a table that disappeared from the dump, and a table that restored completely empty.
+
+**It does not prove the data is complete.** A floor of one row is cleared by a table that restored 5 of 2402 rows, and nothing compares restored counts against the source database. The `pg_restore` exit code is also discarded (see the comment in the verify step for why it has to be tolerated in this container), so a dump producing many more errors than the nine the 2026-07-23 drill established is indistinguishable from a clean one. Since `pg_restore` creates constraints after loading data, that discarded signal is where a partially restored parent table would otherwise show up.
+
+Both gaps are tracked in [#700](https://github.com/katogaming88/WGA-Raid-Hub/issues/700). Until then, treat a green nightly run as "the archive is intact and nothing is missing wholesale", not as "the data is verified".
+
 ## Coverage map: what's regenerable vs. backup-only
 
 Every `public` base table appears below. That is the point of the list: a table missing from it during an incident reads as "no answer" and gets guessed at, which is how the wrong call gets made under time pressure.
@@ -167,7 +177,7 @@ Re-check when a migration:
 
 **CI nudge**: `schema-docs.yml` fails a PR that adds an `auth.users` FK or renames something in `supabase/migrations/` without also touching this file, mirroring the existing `docs/RLS.md` check in the same workflow.
 
-**What the nudge does not catch**: a migration that adds a table matches neither trigger, so it lands with nothing asking about the coverage map. That is the mechanical reason the five tables named above went unclassified, and it means the new-table item at the top of this list is advisory at review time, exactly like the table-count and RLS-policy cases. Making it enforceable needs a check that asserts the map is complete rather than one that asks for the file to be touched; tracked separately.
+**What the nudge does not catch**: a migration that adds a table matches neither trigger, so it lands with nothing asking about the coverage map. That is the mechanical reason the five tables named above went unclassified, and it means the new-table item at the top of this list is advisory at review time, exactly like the table-count and RLS-policy cases. Making it enforceable needs a check that asserts the map is complete rather than one that asks for the file to be touched, tracked in [#699](https://github.com/katogaming88/WGA-Raid-Hub/issues/699).
 
 As of 2026-07-28 the table count (26 base tables) and the FK list still matched the 2026-07-23 drill baseline exactly. [#607](https://github.com/katogaming88/WGA-Raid-Hub/issues/607) (2026-07-30) added `guild_officers` (27 tables, 5th `auth.users` FK) -- updated above per this section's own checklist rather than a full re-drill, since neither the table-count floor nor the expected-error list needed touching. [#512](https://github.com/katogaming88/WGA-Raid-Hub/issues/512) (2026-08-05) added `no_character_dismissals` (29 tables -- `tier_token_map` from #650 had also landed in between without this doc being updated, caught now -- 6th `auth.users` FK). No re-drill due yet.
 
