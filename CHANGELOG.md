@@ -14,6 +14,10 @@ with each release split into `### Frontend` (drives the version number) and
 
 - Site admins (and officers) can now use the "Look Up a Raider" dropdown on index.html for a team they haven't personally claimed a character on -- it used to hide the whole card and show only the "claim your character" prompt whenever the logged-in account had no linked character on the currently-viewed team, which locked admins out of browsing any team's roster except the one they'd personally claimed on. Combined with the existing team switcher, an admin can now switch to any team and look up any of its raiders' profiles.
 
+### Backend
+
+- `is_site_admin()` is now OR'd into every remaining officer-write RLS policy (`players`, `attendance`, `bis_items`, `item_preferences` note-clear, `player_wcl_season_perf`, `priority_order`, `rclc_loot`, `scoring`, `streamers`, `team_raid_progress`) -- a site admin with no `team_members` row on a given team hit RLS write rejections there, surfaced live as a rejected "Fetch WCL Performance" on a team the admin hadn't personally claimed a character on. See `docs/database-decisions.md` for the full writeup.
+
 ## [3.60.8] - 2026-08-15
 
 ### Frontend

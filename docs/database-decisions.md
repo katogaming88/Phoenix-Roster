@@ -8,6 +8,17 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-08-15 -- `is_site_admin()` OR'd into every remaining officer-write policy
+
+Decided directly in conversation (no tracking issue): a site admin without a `team_members` row on a given team hit RLS write rejections there -- surfaced live as "new row violates row-level security policy for table player_wcl_season_perf" when fetching WCL performance for Hellfire from an admin session with no officer role on that team. `is_site_admin()` was already OR'd into most officer-*view* policies (`item_preferences`, `audit_log`, `team_members`) but had never been extended to the officer-*write* policies on ten tables: `players`, `attendance`, `bis_items`, `item_preferences` (note-clear UPDATE), `player_wcl_season_perf`, `priority_order`, `rclc_loot`, `scoring`, `streamers`, `team_raid_progress`.
+
+- **Full sweep, not a single-table patch.** Given the choice between fixing only `player_wcl_season_perf` (the table that actually errored) or auditing every officer-write policy for the same gap, went with the full sweep -- the same silent rejection would have resurfaced the next time an admin touched a different table on a team they hadn't personally claimed a character on.
+- **Deliberately distinct from the `is_guild_officer()` (#607) scoping.** Guild officer access is narrower by design -- excluded from approvals, season settings, priority generation, and loot import (see the 2026-07-30 guild-officer-tier decision below). `is_site_admin()` carries no such carve-out anywhere else in the schema; every other officer-gated policy already passes a site admin unconditionally, so the write policies were simply catching up to that existing convention, not establishing a new one. `priority_order`/`rclc_loot` in particular now admit `is_site_admin()` while still correctly excluding `is_guild_officer()`.
+- **Reverses part of the 2026-08-10 `item_preferences` decision below**, which deliberately left the note-clear UPDATE policy scoped to `my_team_role` only ("broadening write access... wasn't asked for and wasn't touched"). It's asked for now.
+- Implemented in `20260815010941_site_admin_officer_write_policies.sql`.
+
+---
+
 ## 2026-08-12 -- `update_own_signup()`/`get_own_signup()`: don't reset status on a no-op edit, and use the live roster as source of truth once added
 
 Decided directly in conversation (no tracking issue): `update_own_signup()` unconditionally reset an `'approved'`/`'added'` signup back to `'pending'` (clearing `approved_player_id`/`reviewed_*`) on *every* edit call, even one that changed nothing. Confirmed live -- Khaosmagi (Mage/Arcane, already on the roster as Mage/Arcane) opened their already-added signup and hit Submit without changing anything, and it bounced back into the officer review queue with nothing to actually review. A second, related bug surfaced in the same conversation: `get_own_signup()` (the read side, used to pre-fill "Edit signup") only ever read the signup's own stored snapshot, never the live `players` row -- confirmed live when an officer renamed a roster player directly (Noctrana -> Raintotem) and the raider's own edit form kept showing the old name.
