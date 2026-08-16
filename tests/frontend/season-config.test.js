@@ -21,7 +21,16 @@ function makeEl(extra) {
   return Object.assign({ style: {}, textContent: '', innerHTML: '', disabled: false, value: '', dataset: {} }, extra);
 }
 
-function makeSandbox({ saveTeamSettingImpl, rpcResult, els = {}, data = {} } = {}) {
+// `attendance` models what js/common.js would report for the roster:
+// null means the attendance load has not resolved (or failed), so the
+// archive must refuse rather than freeze a guess; otherwise it is a
+// firstName -> eligible-record-array map, where an empty array is a real
+// "this player has no eligible nights" answer. The two helpers below are
+// stubs for the common.js originals, whose own behavior is covered in
+// tests/frontend/attendance-unknown.test.js -- what matters here is the
+// wiring, i.e. that the snapshot asks for records instead of reading the
+// retired p.attendance field.
+function makeSandbox({ saveTeamSettingImpl, rpcResult, els = {}, data = {}, attendance = {} } = {}) {
   var saveTeamSettingCalls = [];
   var auditLogCalls = [];
   var rpcCalls = [];
@@ -29,7 +38,12 @@ function makeSandbox({ saveTeamSettingImpl, rpcResult, els = {}, data = {} } = {
   var sandbox = {
     console,
     document: { getElementById: (id) => els[id] || null, querySelectorAll: () => [] },
-    DATA: Object.assign({}, data),
+    DATA: Object.assign({ rawAttendanceData: attendance === null ? null : { players: attendance } }, data),
+    getEligibleAttendanceRecs: (firstName) => (attendance === null ? null : attendance[firstName] || []),
+    averageAttendancePct: (recs) => {
+      var sum = recs.reduce((acc, r) => acc + (r.weight != null ? r.weight : 1), 0);
+      return (Math.round((sum / recs.length) * 1000) / 10).toFixed(1) + '%';
+    },
     PROMO_THRESHOLDS: { weeks: 4, attend: 75 },
     populateSeasonSelector: () => {},
     renderRaidProgressionCards: () => {},
@@ -193,16 +207,21 @@ describe('executeArchiveSeason (#221)', () => {
     const { sandbox, rpcCalls, saveTeamSettingCalls } = makeSandbox({
       els,
       rpcResult: { data: newConfig, error: null },
+      // Two eligible nights at full weight and one at half -> 83.3%. The
+      // snapshot computes this at archive time rather than copying a field,
+      // which is what used to freeze a blank column into history (#702).
+      attendance: { Kato: [{ weight: 1 }, { weight: 1 }, { weight: 0.5 }] },
       data: {
         seasonName: 'Archived',
         roster: [
           {
+            id: 42,
             nameRealm: 'Kato-Illidan',
+            firstName: 'Kato',
             role: 'Melee',
             isTrial: false,
             isBench: false,
-            joinDate: '2026-01-01',
-            attendance: '90%'
+            joinDate: '2026-01-01'
           }
         ]
       }
@@ -216,12 +235,13 @@ describe('executeArchiveSeason (#221)', () => {
     expect(rpcCalls[0].params.p_team_id).toBe(1);
     expect(rpcCalls[0].params.p_roster_snapshot).toEqual([
       {
+        playerId: 42,
         nameRealm: 'Kato-Illidan',
         role: 'Melee',
         isTrial: false,
         isBench: false,
         joinDate: '2026-01-01',
-        attendance: '90%'
+        attendance: '83.3%'
       }
     ]);
     expect(sandbox.DATA.seasonHistory).toEqual(newConfig.seasonHistory);
@@ -233,6 +253,87 @@ describe('executeArchiveSeason (#221)', () => {
     expect(sandbox.DATA.seasonName).toBe('Midnight Season 2');
     expect(sandbox.DATA.seasonView).toBe(null);
     expect(els.seasonArchiveStatus.textContent).toBe('Season archived.');
+  });
+
+  // A player with no eligible nights must not inherit the live roster's
+  // optimistic default. computeSeasonAttendancePct() answers '100.0%' there,
+  // which is right on screen (a new add has not missed anything yet) and
+  // wrong frozen into a permanent record, where it makes someone who never
+  // raided indistinguishable from a perfect season.
+  it('stores an empty attendance rather than 100% for a player with no eligible nights', async () => {
+    const els = {
+      seasonArchiveConfirm: makeEl(),
+      seasonArchiveStatus: makeEl(),
+      seasonArchiveExecBtn: makeEl()
+    };
+    const { sandbox, rpcCalls } = makeSandbox({
+      els,
+      rpcResult: { data: { seasonHistory: [] }, error: null },
+      attendance: { Kato: [] },
+      data: {
+        seasonName: 'Archived',
+        roster: [{ id: 42, nameRealm: 'Kato-Illidan', firstName: 'Kato', role: 'Melee', joinDate: '2026-01-01' }]
+      }
+    });
+
+    sandbox.executeArchiveSeason();
+    await flush();
+
+    expect(rpcCalls).toHaveLength(1);
+    expect(rpcCalls[0].params.p_roster_snapshot[0].attendance).toBe('');
+  });
+
+  // The snapshot's only player key used to be nameRealm, so a rename after
+  // the archive was written broke the link back to the roster and #702 had
+  // to reconstruct it from audit_log. playerId makes every future archive
+  // rename-proof; nameRealm stays because renderSeasonHistory() displays it.
+  it('carries playerId through so a later rename cannot orphan the snapshot', async () => {
+    const els = {
+      seasonArchiveConfirm: makeEl(),
+      seasonArchiveStatus: makeEl(),
+      seasonArchiveExecBtn: makeEl()
+    };
+    const { sandbox, rpcCalls } = makeSandbox({
+      els,
+      rpcResult: { data: { seasonHistory: [] }, error: null },
+      attendance: { Kato: [{ weight: 1 }] },
+      data: {
+        seasonName: 'Archived',
+        roster: [{ id: 42, nameRealm: 'Kato-Illidan', firstName: 'Kato', role: 'Melee', joinDate: '2026-01-01' }]
+      }
+    });
+
+    sandbox.executeArchiveSeason();
+    await flush();
+
+    expect(rpcCalls[0].params.p_roster_snapshot[0].playerId).toBe(42);
+    expect(rpcCalls[0].params.p_roster_snapshot[0].nameRealm).toBe('Kato-Illidan');
+  });
+
+  // Archiving is one-way, so an unknown attendance value must stop it rather
+  // than be frozen as a plausible-looking guess (#694).
+  it('refuses to archive, and calls no RPC, while attendance is unknown', async () => {
+    const els = {
+      seasonArchiveConfirm: makeEl(),
+      seasonArchiveStatus: makeEl(),
+      seasonArchiveExecBtn: makeEl()
+    };
+    const { sandbox, rpcCalls } = makeSandbox({
+      els,
+      rpcResult: { data: { seasonHistory: [] }, error: null },
+      attendance: null,
+      data: {
+        seasonName: 'Archived',
+        roster: [{ id: 42, nameRealm: 'Kato-Illidan', firstName: 'Kato', role: 'Melee', joinDate: '2026-01-01' }]
+      }
+    });
+
+    sandbox.executeArchiveSeason();
+    await flush();
+
+    expect(rpcCalls).toEqual([]);
+    expect(els.seasonArchiveStatus.textContent).toMatch(/attendance/i);
+    expect(els.seasonArchiveExecBtn.disabled).toBe(false);
   });
 
   it('shows the RPC error message on failure', async () => {
