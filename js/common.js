@@ -55,7 +55,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.60.11';
+var VERSION = '3.60.12';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -3471,8 +3471,8 @@ function bisDisplaySortKey(entry, itemSlots) {
 // also built specifically to be usable from either page.
 var PROFILE_WISHLIST_STATUS_LABELS = [
   { value: 'bis', label: 'BiS', color: 'var(--gold)', rgb: '214,163,68' },
-  { value: 'good', label: 'Good', color: 'var(--heal)', rgb: '61,220,132' },
-  { value: 'ok', label: 'OK', color: 'var(--tank)', rgb: '74,158,255' },
+  { value: 'good', label: '2nd Choice', color: 'var(--heal)', rgb: '61,220,132' },
+  { value: 'ok', label: 'Sidegrade', color: 'var(--tank)', rgb: '74,158,255' },
   { value: 'catalyst', label: 'Catalyst Only', color: 'var(--ranged)', rgb: '191,140,255' },
   { value: 'pass', label: 'Pass', color: 'var(--melee)', rgb: '255,124,92' }
 ];

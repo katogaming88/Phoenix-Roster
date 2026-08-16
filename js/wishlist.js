@@ -23,8 +23,8 @@ var _wishlistExpandedSlots = {}; // 'Head' -> true, or '__other__' for the M+/Cr
 
 var WISHLIST_STATUSES = [
   { value: 'bis', label: 'BiS' },
-  { value: 'good', label: 'Good' },
-  { value: 'ok', label: 'OK' },
+  { value: 'good', label: '2nd Choice' },
+  { value: 'ok', label: 'Sidegrade' },
   { value: 'catalyst', label: 'Catalyst Only' },
   { value: 'pass', label: 'Pass' }
 ];
@@ -907,7 +907,7 @@ function wishlistSectionBodyHTML(player) {
     '<div id="help-wishlist-' +
     player.firstName +
     '" class="help-tip">Tag every item you\'d want per slot, not just one pick: backups, sidegrades, or drops to pass on. BiS choices marked here save to your BiS List. Slots below are raid drops; use Other Sources for gear you\'ll get elsewhere.' +
-    '<br><br>Swap specs per boss fight (e.g. a warlock alternating Aff/Demo/Destro -- not an off-spec you only play in M+ or a different role)? Only one item per slot can be BiS. Tag your other spec\'s item with whichever tier actually fits (Good/OK/Catalyst Only), and use the note to say it\'s really BiS for that spec, e.g. "BiS for Destro". Officers can see wishlist notes.</div>';
+    '<br><br>Swap specs per boss fight (e.g. a warlock alternating Aff/Demo/Destro -- not an off-spec you only play in M+ or a different role)? Only one item per slot can be BiS. Tag your other spec\'s item with whichever tier actually fits (2nd Choice/Sidegrade/Catalyst Only), and use the note to say it\'s really BiS for that spec, e.g. "BiS for Destro". Officers can see wishlist notes.</div>';
 
   html +=
     '<p style="font-size:1.02rem;color:var(--text-muted);margin:0.25rem 0 0.75rem;">Want to see your Priority rank in-game as items drop? Install the ' +
@@ -985,7 +985,7 @@ function wishlistSectionBodyHTML(player) {
       : '';
     var tierNote =
       WISHLIST_TIER_SET_SLOTS.indexOf(slotName) !== -1
-        ? "<p style=\"font-size:1.04rem;color:var(--gold);margin:0 0 0.5rem;\">Catalyzing keeps an item's stats/cantrip -- if a non-tier piece here has the best stats for this slot and you plan to catalyze it, <strong>tag it BiS, not Catalyst Only</strong>. Catalyst Only is for a piece that isn't your best stat pick but you'd still take just to fill this slot for the set bonus.</p>"
+        ? "<p style=\"font-size:1.04rem;color:var(--gold);margin:0 0 0.5rem;\">Don't default to tagging the tier piece BiS just because it's the tier piece. Catalyzing keeps an item's stats/cantrip -- if a non-tier piece here has the best stats for this slot and you plan to catalyze it, <strong>tag the non-tier piece BiS, and tag the tier piece 2nd Choice/Sidegrade/Pass</strong> (whichever actually fits). Catalyst Only is for a piece that isn't your best stat pick but you'd still take just to fill this slot for the set bonus.</p>"
         : '';
     var body =
       otherSourceNote +
