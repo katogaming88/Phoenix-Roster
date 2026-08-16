@@ -49,8 +49,8 @@ describe('wishlistStatusButtonsHTML lockOnceSet (Other Sources rows)', () => {
     const html = sandbox.wishlistStatusButtonsHTML(1, 'Head', true);
 
     expect(html).toContain('>BiS<');
-    expect(html).not.toContain('>Good<');
-    expect(html).not.toContain('>OK<');
+    expect(html).not.toContain('>2nd Choice<');
+    expect(html).not.toContain('>Sidegrade<');
     expect(html).not.toContain('>Catalyst Only<');
     expect(html).not.toContain('>Pass<');
   });
@@ -60,8 +60,8 @@ describe('wishlistStatusButtonsHTML lockOnceSet (Other Sources rows)', () => {
     const html = sandbox.wishlistStatusButtonsHTML(2, null, false);
 
     expect(html).toContain('>BiS<');
-    expect(html).toContain('>Good<');
-    expect(html).toContain('>OK<');
+    expect(html).toContain('>2nd Choice<');
+    expect(html).toContain('>Sidegrade<');
     expect(html).toContain('>Catalyst Only<');
     expect(html).toContain('>Pass<');
   });

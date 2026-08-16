@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.12] - 2026-08-16
+
+### Frontend
+
+- Renamed the default wishlist tier labels "Good"/"OK" to "2nd Choice"/"Sidegrade" (teams with a custom label override in the admin panel are unaffected). Also reworded the tier-slot wishlist note: raiders were defaulting to tagging the tier-set piece as BiS even when a non-tier piece in the same slot had better stats, since the old note only explained the Catalyst Only tag and never said not to default to the tier piece. It now says explicitly not to default to the tier piece, and to tag the non-tier piece BiS with the tier piece as 2nd Choice/Sidegrade/Pass (whichever fits) instead of reaching for Catalyst Only, which is reserved for a piece that isn't your best stat pick but you'd still take for the set bonus.
+
 ## [3.60.11] - 2026-08-15
 
 ### Frontend

@@ -608,8 +608,8 @@ function toggleAdminFeatureFlag(key, enabled) {
 // documented for the BIS_SLOTS/WISHLIST_SLOTS duplication.
 var WISHLIST_LABEL_DEFAULTS = [
   { value: 'bis', label: 'BiS', dotColor: 'var(--gold)' },
-  { value: 'good', label: 'Good', dotColor: 'var(--heal)' },
-  { value: 'ok', label: 'OK', dotColor: 'var(--tank)' },
+  { value: 'good', label: '2nd Choice', dotColor: 'var(--heal)' },
+  { value: 'ok', label: 'Sidegrade', dotColor: 'var(--tank)' },
   { value: 'catalyst', label: 'Catalyst Only', dotColor: 'var(--ranged)' },
   { value: 'pass', label: 'Pass', dotColor: 'var(--melee)' }
 ];
