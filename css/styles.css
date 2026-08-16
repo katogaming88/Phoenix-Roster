@@ -547,10 +547,10 @@ select#playerSelect option { background:#1a1d27; }
 .prio-export-copy-msg { font-size:0.97rem; color:var(--heal); }
 
 /* Priority Edit Modal */
-.prio-edit-box { max-width:720px; width:95vw; max-height:90vh; overflow-y:auto; }
-.prio-edit-header { display:flex; align-items:center; gap:0.75rem; }
+.prio-edit-box { max-width:720px; width:95vw; max-height:90vh; min-height:0; overflow:hidden; }
+.prio-edit-header { display:flex; align-items:center; gap:0.75rem; flex-shrink:0; }
 .prio-edit-title { font-family:'Cinzel',serif; font-size:1rem; color:var(--gold-light); letter-spacing:0.1em; flex:1; min-width:0; word-break:break-word; }
-.prio-edit-body { display:flex; gap:1.5rem; min-height:260px; margin-top:0.25rem; }
+.prio-edit-body { display:flex; gap:1.5rem; min-height:260px; margin-top:0.25rem; flex:1; overflow-y:auto; }
 .prio-edit-ranked { flex:1; min-width:0; display:flex; flex-direction:column; }
 .prio-edit-pool-col { width:190px; flex-shrink:0; display:flex; flex-direction:column; }
 .prio-edit-section-label { font-size:0.91rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:var(--text-muted); margin-bottom:0.4rem; }

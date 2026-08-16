@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.11] - 2026-08-15
+
+### Frontend
+
+- Fixed the officer Priority Order edit modal ("Set Priority") so a long ranked list no longer overflows past its own scroll boundary and renders behind the Suggest Order / Cancel / Save Priority button row. The player list now scrolls in its own internal region while the header and action buttons stay fixed in place.
+
 ## [3.60.10] - 2026-08-15
 
 ### Frontend
