@@ -130,6 +130,11 @@ function buildStatsBar() {
   var totalAttend = 0,
     attendCount = 0,
     bisCount = 0;
+  // attendanceKnown is separate from attendCount: a roster where every player
+  // is genuinely at 0% still has a real average, but a roster whose attendance
+  // has not loaded has none, and reporting 0 for the second is the confident
+  // wrong number this change removes (#694).
+  var attendanceKnown = !!(DATA && DATA.rawAttendanceData);
   for (var i = 0; i < raiders.length; i++) {
     var p = raiders[i];
     var pct = parseInt(getDisplayAttendancePct(p));
@@ -144,8 +149,9 @@ function buildStatsBar() {
   for (var k = 0; k < roster.length; k++) {
     if (roster[k].bisLink) bisCount++;
   }
-  var avgAttend = attendCount ? Math.round(totalAttend / attendCount) : 0;
+  var avgAttend = attendanceKnown && attendCount ? Math.round(totalAttend / attendCount) : null;
   var avgColor = attendColor(avgAttend);
+  var avgAttendHtml = avgAttend === null ? '-' : avgAttend + '%';
   // DATA.lootCounts carries every season for the team (js/common.js
   // fetchSupabaseLoot has no season filter) -- count/heroicCount/mythicCount
   // are all-time aggregates, so scoping to the active season means walking
@@ -216,8 +222,8 @@ function buildStatsBar() {
     '<div class="stat-card" data-tip="Average attendance % across active raiders this season"><div class="stat-value" style="color:' +
     avgColor +
     ';">' +
-    avgAttend +
-    '%</div><div class="stat-label">Avg Attendance</div></div>' +
+    avgAttendHtml +
+    '</div><div class="stat-label">Avg Attendance</div></div>' +
     '<div class="stat-card" style="position:relative;" data-tip="' +
     diffTip +
     '">' +
@@ -354,7 +360,13 @@ function buildRosterTable() {
 
   for (var i = 0; i < DATA.roster.length; i++) {
     var p = DATA.roster[i];
-    if (activeFilters.lowAttend && (parseInt(getDisplayAttendancePct(p)) || 0) >= 95) continue;
+    // "Low attendance" is a claim about a measured value, so an unknown one
+    // is excluded rather than defaulted. Coercing null to 0 here made the
+    // filter match the entire roster whenever attendance had not loaded (#694).
+    if (activeFilters.lowAttend) {
+      var lowPct = parseInt(getDisplayAttendancePct(p));
+      if (isNaN(lowPct) || lowPct >= 95) continue;
+    }
     if (activeFilters.noBis && p.bisLink) continue;
     if (activeFilters.trial && !p.isTrial) continue;
     if (activeFilters.bench && !p.isBench) continue;
@@ -386,10 +398,15 @@ function buildRosterTable() {
       return activeSort.dir * (a.nick || a.firstName).localeCompare(b.nick || b.firstName);
     };
   } else if (activeSort.key === 'attendance') {
+    // Unknown sorts to the bottom in both directions rather than tying at 0,
+    // which used to flatten the whole comparator into a no-op (#694).
     sortFn = function (a, b) {
-      return (
-        activeSort.dir * ((parseFloat(getDisplayAttendancePct(a)) || 0) - (parseFloat(getDisplayAttendancePct(b)) || 0))
-      );
+      var av = getDisplayAttendancePct(a);
+      var bv = getDisplayAttendancePct(b);
+      if (av === null && bv === null) return 0;
+      if (av === null) return 1;
+      if (bv === null) return -1;
+      return activeSort.dir * ((parseFloat(av) || 0) - (parseFloat(bv) || 0));
     };
   } else if (activeSort.key === 'items') {
     sortFn = function (a, b) {
@@ -419,7 +436,7 @@ function buildRosterTable() {
       var p = players[j];
       var name = p.nick || p.firstName;
       var att = getDisplayAttendancePct(p);
-      var pct = parseFloat(att) || 0;
+      var pct = att === null ? null : parseFloat(att);
       var color = attendColor(pct);
       var lootEntry = getSeasonLootEntry(p.nameRealm);
       var lootCount = lootEntry ? lootEntry.count : 0;
@@ -448,7 +465,9 @@ function buildRosterTable() {
           _esc(p.bonusRollBoss) +
           '</span>';
       if (!statusTags) statusTags = '<span style="color:var(--text);">-</span>';
-      var barPct = pct.toFixed(1) + '%';
+      // Width goes straight into a CSS declaration, so unknown collapses the
+      // bar to nothing rather than rendering a full-width red one at 0%.
+      var barPct = pct === null ? '0%' : pct.toFixed(1) + '%';
       var clsColor = classColor(p.class);
       html +=
         '<tr class="player-row' +
@@ -490,7 +509,7 @@ function buildRosterTable() {
         '<td><div class="attend-mini-cell"><span class="attend-mini" style="color:' +
         color +
         ';">' +
-        (att || '-') +
+        formatAttendancePct(att) +
         '</span>' +
         (pct
           ? '<div class="attend-mini-bar-wrap"><div class="attend-mini-bar" style="width:' +
@@ -789,7 +808,6 @@ function submitAddPlayer() {
           role: role,
           isTrial: isTrial,
           isBench: false,
-          attendance: '',
           bisLink: '',
           joinDate: joinDateVal
         });
@@ -1308,6 +1326,22 @@ function buildTrialPromoAlert() {
   if (DATA && DATA.trialWeeks != null) PROMO_THRESHOLDS.weeks = DATA.trialWeeks;
   if (DATA && DATA.trialAttend != null) PROMO_THRESHOLDS.attend = DATA.trialAttend;
 
+  // Promotion readiness is half an attendance threshold, so with attendance
+  // unknown this list cannot be computed at all. Rendering it empty reads as
+  // "no trials are ready", which is a stronger claim than the data supports
+  // and the same confident-wrong-data failure #694 exists to remove.
+  if (!(DATA && DATA.rawAttendanceData)) {
+    el.innerHTML =
+      '<div class="state-msg' +
+      (DATA && DATA._attendanceLoadFailed ? ' error' : '') +
+      '">' +
+      (DATA && DATA._attendanceLoadFailed
+        ? 'Attendance could not be loaded, so trial promotion readiness is unknown.'
+        : 'Checking trial promotion readiness...') +
+      '</div>';
+    return;
+  }
+
   var minDays = PROMO_THRESHOLDS.weeks * 7;
   var minAttend = PROMO_THRESHOLDS.attend;
   var today = new Date();
@@ -1356,7 +1390,7 @@ function buildTrialPromoAlert() {
     var p = r.p;
     var name = p.nick || p.firstName;
     var pAtt = getDisplayAttendancePct(p);
-    var aColor = attendColor(parseInt(pAtt));
+    var aColor = attendColor(pAtt === null ? null : parseInt(pAtt));
     var roleColor =
       p.role === 'Tank'
         ? 'var(--tank)'
@@ -1389,7 +1423,7 @@ function buildTrialPromoAlert() {
         '</span>';
     html += '</div></div></td>';
     html += '<td style="color:var(--gold-light);font-weight:600;">' + r.ageWeeks + ' wk</td>';
-    html += '<td><span style="color:' + aColor + ';font-weight:700;">' + (pAtt || '-') + '</span></td>';
+    html += '<td><span style="color:' + aColor + ';font-weight:700;">' + formatAttendancePct(pAtt) + '</span></td>';
     html +=
       '<td><button class="btn btn-gold" style="font-size:0.95rem;padding:0.2rem 0.6rem;white-space:nowrap;" onclick="event.stopPropagation();promoteTrialPlayer(\'' +
       nrSafe +

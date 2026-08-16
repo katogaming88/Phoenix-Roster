@@ -1511,16 +1511,18 @@ function saveGuildOfficerBios(bios) {
 /**
  * Maps Supabase players rows to the roster shape the Apps Script core payload
  * emits (see getRoster() in gs/wgaWebApp.gs), so no render code changes.
+ *
+ * No attendance field: it used to be merged in from the Apps Script core
+ * payload, and that payload stopped existing when GAS was retired (#225), so
+ * every roster object carried a permanently empty string that
+ * getDisplayAttendancePct() then read as 0%. Attendance is computed from
+ * DATA.rawAttendanceData now, and is null when that has not loaded (#694).
+ *
  * @param {any[]} rows - players rows with embedded classes_specs
- * @param {any[]} [jsonpRoster] - the Apps Script roster from the core payload
  * @param {Object} [mplusRejections] - player_id -> rejection note, from fetchSupabaseMPlusRejections()
  * @returns {any[]}
  */
-function mapSupabaseRoster(rows, jsonpRoster, mplusRejections) {
-  var jsonpByName = {};
-  (jsonpRoster || []).forEach(function (p) {
-    if (p && p.nameRealm) jsonpByName[String(p.nameRealm).toLowerCase()] = p;
-  });
+function mapSupabaseRoster(rows, mplusRejections) {
   mplusRejections = mplusRejections || {};
   var players = [];
   (rows || []).forEach(function (row) {
@@ -1530,7 +1532,6 @@ function mapSupabaseRoster(rows, jsonpRoster, mplusRejections) {
     // Mirror getRoster(): a row without a role is not a roster entry.
     if (!cs.role) return;
     var parts = nameRealm.split('-');
-    var jsonpRow = jsonpByName[nameRealm.toLowerCase()] || {};
     var mPlusExcluded = !!row.m_plus_excluded;
     var mPlusRejected = !mPlusExcluded && row.id in mplusRejections;
     players.push({
@@ -1542,7 +1543,6 @@ function mapSupabaseRoster(rows, jsonpRoster, mplusRejections) {
       isBench: !!row.is_bench,
       isBackupTank: !!row.is_backup_tank,
       isBackupHealer: !!row.is_backup_healer,
-      attendance: jsonpRow.attendance || '',
       nick: row.nickname || '',
       class: cs.class || '',
       spec: cs.spec || '',
@@ -2793,17 +2793,17 @@ function mapSupabaseItemBosses(rows) {
 // recentAttendanceTrend payload: refreshAttendance (wcl-sync Edge Function)
 // writes into this table now instead of the GAS Attendance sheet those were
 // read from, so that sheet -- and everything derived from it -- stops
-// updating the moment this ships. Falls back to the GAS heavy payload only
-// if the Supabase query itself fails/times out (resultRows === null); an
-// empty-but-successful result is trusted as genuinely no data yet, not
-// reached around, since Supabase is authoritative for attendance from here on.
-// No timeout race against the GAS heavy payload here, unlike this repo's
-// other fetchSupabaseX() helpers -- for those, a slow query racing a stale-
-// but-still-updating GAS fallback is a reasonable tradeoff. For attendance,
-// the GAS fallback is permanently frozen (refreshAttendance stopped writing
-// to that sheet), so silently substituting it on mere slowness would swap
-// correct data for confidently-wrong data instead of just being slow. Only
-// a genuine query failure (caught below) falls back.
+// updating the moment this ships. An empty-but-successful result is trusted
+// as genuinely no data yet, since Supabase is authoritative for attendance
+// from here on; null means the read itself failed.
+//
+// There is no fallback and no timeout race, unlike this repo's other
+// fetchSupabaseX() helpers. Those race a slow query against a stale-but-
+// still-updating GAS payload, which is a reasonable tradeoff. Attendance had
+// no such tradeoff even before GAS was retired outright in #225, because its
+// GAS sheet was already frozen -- substituting it on mere slowness would have
+// swapped correct data for confidently-wrong data instead of just being slow.
+// Callers get null and render it as unknown rather than as zero (#694).
 //
 // Paginated (PostgREST caps an unpaginated select at 1000 rows server-side):
 // a season or two of attendance easily exceeds that for an active team, and
@@ -2952,7 +2952,17 @@ function getSeasonDateRange() {
 // for. GAS itself was inconsistent about this (its commit-to-Scoring
 // calculation already used the player's own night count, not the team's) --
 // this makes both agree on the same definition.
-function computeSeasonAttendancePct(firstName) {
+// The eligible-night filter, split out of computeSeasonAttendancePct() so
+// callers that need the record count can see it (#694). The distinction the
+// percentage alone cannot carry: null means attendance is unknown, [] means
+// it is known and this player has no eligible nights. computeSeasonAttendance
+// Pct() answers '100.0%' for the second case, which is right on screen and
+// wrong to freeze into a season archive -- see buildSeasonArchiveRosterSnapshot().
+/**
+ * @param {string} firstName
+ * @returns {any[]|null}
+ */
+function getEligibleAttendanceRecs(firstName) {
   var raw = DATA && DATA.rawAttendanceData;
   if (!raw) return null;
 
@@ -2965,7 +2975,7 @@ function computeSeasonAttendancePct(firstName) {
   // Determine this player's effective start within the season
   var effectiveStart = joinDate && (!start || joinDate > start) ? joinDate : start || '';
 
-  var eligibleRecs = playerRecs.filter(function (r) {
+  return playerRecs.filter(function (r) {
     return (
       (!effectiveStart || r.date >= effectiveStart) &&
       (!start || r.date >= start) &&
@@ -2978,27 +2988,60 @@ function computeSeasonAttendancePct(firstName) {
       r.status
     );
   });
+}
+
+/**
+ * @param {any[]} recs - non-empty eligible records from getEligibleAttendanceRecs()
+ * @returns {string}
+ */
+function averageAttendancePct(recs) {
+  var sum = recs.reduce(function (acc, r) {
+    var w = ATTENDANCE_WEIGHTS_JS[r.status];
+    return acc + (w != null ? w : 0);
+  }, 0);
+
+  return (Math.round((sum / recs.length) * 1000) / 10).toFixed(1) + '%';
+}
+
+function computeSeasonAttendancePct(firstName) {
+  var eligibleRecs = getEligibleAttendanceRecs(firstName);
+  if (eligibleRecs === null) return null;
   // A player with zero recorded nights yet (brand-new roster add) hasn't
   // missed anything -- default to full credit rather than 0%, which would
   // otherwise read as a red flag before they've had a single chance to raid.
   if (!eligibleRecs.length) return '100.0%';
 
-  var sum = eligibleRecs.reduce(function (acc, r) {
-    var w = ATTENDANCE_WEIGHTS_JS[r.status];
-    return acc + (w != null ? w : 0);
-  }, 0);
-
-  return (Math.round((sum / eligibleRecs.length) * 1000) / 10).toFixed(1) + '%';
+  return averageAttendancePct(eligibleRecs);
 }
 
-// Returns attendance % for a player: prefers computed value from rawAttendanceData
-// (works for any season, including All Seasons); falls back to server p.attendance.
+// Returns attendance % for a player from rawAttendanceData (works for any
+// season, including All Seasons), or null when attendance is unknown --
+// either still loading or failed to load.
+//
+// Null rather than a string is the whole point (#694). This used to fall
+// back to a server-supplied player.attendance, and once GAS was retired
+// (#225) that field was permanently empty, so the fallback was always the
+// literal '0%'. Callers could not tell that apart from a real zero, and the
+// two that checked isNaN happened to survive while four coerced it to 0:
+// the low-attendance filter matched the whole roster, the below-threshold
+// list named everyone, the sort flattened, and the team average read 0.
+// Render it with formatAttendancePct() rather than concatenating it.
+/**
+ * @param {any} player
+ * @returns {string|null}
+ */
 function getDisplayAttendancePct(player) {
-  if (DATA && DATA.rawAttendanceData) {
-    var computed = computeSeasonAttendancePct(player.firstName);
-    if (computed !== null) return computed;
-  }
-  return player.attendance || '0%';
+  return computeSeasonAttendancePct(player.firstName);
+}
+
+// Single placeholder for an unknown attendance value, matching the dash
+// tab-season.js already renders for archived entries with none stored.
+/**
+ * @param {string|null} pct
+ * @returns {string}
+ */
+function formatAttendancePct(pct) {
+  return pct === null || pct === undefined || pct === '' ? '-' : pct;
 }
 
 // onCoreReady fires once the fast core chunk is loaded and the page can render.
@@ -3070,7 +3113,7 @@ function loadData(onCoreReady, onHeavyReady) {
       var settingsConfig = results[1];
       var mplusRejections = results[2];
       var data = { roster: [] };
-      var mapped = rows ? mapSupabaseRoster(rows, data.roster, mplusRejections) : null;
+      var mapped = rows ? mapSupabaseRoster(rows, mplusRejections) : null;
       if (mapped && mapped.length) data.roster = mapped;
       applyTeamSettingsToData(data, settingsConfig);
       DATA = data;
@@ -3132,6 +3175,10 @@ function loadData(onCoreReady, onHeavyReady) {
       DATA.lootCounts = mappedLoot || {};
       var mappedAttendance = attendanceRows !== null ? mapSupabaseAttendanceRaw(attendanceRows, DATA.roster) : null;
       DATA.rawAttendanceData = mappedAttendance || null;
+      // Separates "the attendance read failed" from "it has not resolved
+      // yet" -- rawAttendanceData is falsy for both, and only the first one
+      // should surface an error banner rather than a quiet placeholder (#694).
+      DATA._attendanceLoadFailed = attendanceRows === null;
       DATA.attendanceDetails = mappedAttendance ? mapSupabaseAttendanceDetails(mappedAttendance.players) : {};
       DATA.recentAttendanceTrend = mappedAttendance ? mapSupabaseAttendanceTrend(mappedAttendance.players) : {};
       var mappedBis = bisRows ? mapSupabaseBisItems(bisRows) : null;
@@ -3955,6 +4002,10 @@ function getArmorTypeColor(armorType) {
 }
 
 function attendColor(pct) {
+  // An unknown value is not a bad value. Both comparisons below are false for
+  // null/NaN, so without this guard it fell through to the same red a 0%
+  // player gets and reported a failure nobody has measured (#694).
+  if (pct === null || pct === undefined || isNaN(pct)) return 'var(--text-muted)';
   return pct >= 95 ? 'var(--heal)' : pct >= 75 ? 'var(--gold)' : 'var(--melee)';
 }
 
@@ -5005,7 +5056,9 @@ function renderProfile(firstName, backTo, container) {
 
   // Attendance
   var attendPct = getDisplayAttendancePct(player);
-  var barWidth = attendPct;
+  // The bar's width is this string interpolated straight into a CSS width, so
+  // an unknown value has to collapse the bar rather than reach the stylesheet.
+  var barWidth = attendPct === null ? '0' : attendPct;
   var attendDetail = (DATA.attendanceDetails || {})[player.firstName] || [];
   // Same season-scoping as renderAttendTrend -- mapSupabaseAttendanceDetails
   // returns full history, so without this a new season's "click to expand"
@@ -5907,7 +5960,7 @@ function renderProfile(firstName, backTo, container) {
     '<div class="attend-row"><div class="attend-bar-wrap"><div class="attend-bar" style="width:' +
     barWidth +
     '"></div></div><span class="attend-label">' +
-    attendPct +
+    formatAttendancePct(attendPct) +
     '</span></div>' +
     renderAttendTrend(player.firstName) +
     (backTo === 'officer'

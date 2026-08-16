@@ -546,16 +546,36 @@ function confirmArchiveSeason() {
 // old GAS archiveSeason() read straight off the sheets) and passed to the
 // archive_current_season RPC, which stores it inline on the new history
 // entry rather than in a separate lookup key (#221).
+//
+// attendance is computed here rather than copied off the roster object. It
+// used to read p.attendance, a field fed by the Apps Script core payload that
+// has been permanently empty since GAS was retired (#225), so every archive
+// written since froze a blank attendance column into permanent history. Both
+// prod archives are affected; repairing them is #702, and this stops the next
+// one (#694).
+//
+// It deliberately does not go through getDisplayAttendancePct(), which
+// answers '100.0%' for a player with no eligible nights. That is right on a
+// live roster -- a new add has not missed anything yet -- and wrong frozen
+// into a record, where it would make someone who never raided
+// indistinguishable from a perfect season. Empty string for that case.
+//
+// playerId is stored alongside nameRealm because nameRealm is a display name
+// and renames break it: #702 had to reconstruct nine of them out of
+// audit_log. nameRealm stays because renderSeasonHistory() renders it and the
+// two existing archives have nothing else.
 function buildSeasonArchiveRosterSnapshot() {
   var roster = (DATA && DATA.roster) || [];
   return roster.map(function (p) {
+    var recs = getEligibleAttendanceRecs(p.firstName);
     return {
+      playerId: p.id,
       nameRealm: p.nameRealm,
       role: p.role,
       isTrial: !!p.isTrial,
       isBench: !!p.isBench,
       joinDate: p.joinDate || '',
-      attendance: p.attendance || ''
+      attendance: recs && recs.length ? averageAttendancePct(recs) : ''
     };
   });
 }
@@ -567,6 +587,16 @@ function executeArchiveSeason() {
   if (el) el.style.display = 'none';
   if (btn) {
     btn.disabled = true;
+  }
+  // Archiving is one-way, and the snapshot it writes is the only record of
+  // the season's attendance once the next one starts. Refuse rather than
+  // freeze a guess: a wrong value here is permanent, and unavailable
+  // attendance is exactly how the two blank archives in #702 happened.
+  if (!(DATA && DATA.rawAttendanceData)) {
+    if (btn) btn.disabled = false;
+    if (status)
+      status.textContent = 'Attendance has not loaded, so the season cannot be archived yet. Reload and try again.';
+    return;
   }
   var archivedName = DATA.seasonName;
 

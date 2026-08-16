@@ -190,8 +190,11 @@ describe('roster tab aggregates refuse to report unknown attendance as a number'
         ]
       }
     });
-    // activeFilters lives in js/officer.js, which the sandbox does not load.
+    // activeFilters/activeSort/selectedOfficerPlayer live in js/officer.js,
+    // which this sandbox does not load.
     sandbox.activeFilters = { lowAttend: true, noBis: false, trial: false, bench: false, role: null };
+    sandbox.activeSort = { key: null, dir: 1 };
+    sandbox.selectedOfficerPlayer = null;
     sandbox._fetchTeamScoringIfNeeded = () => {};
     sandbox.buildRosterTable();
     expect(els.rosterTable.innerHTML).not.toContain('Katorri');
@@ -209,6 +212,8 @@ describe('roster tab aggregates refuse to report unknown attendance as a number'
       }
     });
     sandbox.activeFilters = { lowAttend: false, noBis: false, trial: false, bench: false, role: null };
+    sandbox.activeSort = { key: null, dir: 1 };
+    sandbox.selectedOfficerPlayer = null;
     sandbox._fetchTeamScoringIfNeeded = () => {};
     sandbox.buildRosterTable();
     expect(els.rosterTable.innerHTML).toContain('Katorri');
