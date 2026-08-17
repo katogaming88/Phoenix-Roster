@@ -131,3 +131,57 @@ describe('prioEditGenerate avoid-double-#1 re-suggest', () => {
     expect(sandbox.PRIO_EDIT.ranked).toEqual(['Alpha-Realm', 'Bravo-Realm', 'Charlie-Realm']);
   });
 });
+
+describe('prioEditGenerate re-suggest when everyone already has a #1', () => {
+  const roster = [
+    { id: 1, nameRealm: 'Alpha-Realm' },
+    { id: 2, nameRealm: 'Bravo-Realm' },
+    { id: 3, nameRealm: 'Charlie-Realm' }
+  ];
+  const rows = [
+    { player_id: 1, weighted_total: 30 },
+    { player_id: 2, weighted_total: 20 },
+    { player_id: 3, weighted_total: 10 }
+  ];
+  // Alpha holds 3 #1s, Bravo holds 1, Charlie holds 2 -- nobody is at zero,
+  // so a re-click should fall back to whoever has the fewest (Bravo).
+  const priorityOrder = {
+    'Item A': { heroic: ['Alpha-Realm'] },
+    'Item B': { heroic: ['Alpha-Realm'] },
+    'Item C': { mythic: ['Alpha-Realm'] },
+    'Item D': { heroic: ['Bravo-Realm'] },
+    'Item E': { heroic: ['Charlie-Realm'] },
+    'Item F': { mythic: ['Charlie-Realm'] }
+  };
+
+  it('promotes whoever has the fewest #1s elsewhere, not just anyone without one', async () => {
+    const { sandbox, els } = makeSandbox({ roster, rows, priorityOrder });
+
+    sandbox.prioEditGenerate();
+    await flush();
+    sandbox.prioEditGenerate();
+    await flush();
+
+    expect(sandbox.PRIO_EDIT.ranked).toEqual(['Bravo-Realm', 'Alpha-Realm', 'Charlie-Realm']);
+    expect(els.prioEditStatus.textContent).toContain('Bravo-Realm');
+    expect(els.prioEditStatus.textContent).toContain('fewest');
+  });
+
+  it('stops re-promoting once the top pick already has the fewest', async () => {
+    const bravoTopRows = [
+      { player_id: 2, weighted_total: 30 },
+      { player_id: 1, weighted_total: 20 },
+      { player_id: 3, weighted_total: 10 }
+    ];
+    const { sandbox } = makeSandbox({ roster, rows: bravoTopRows, priorityOrder });
+
+    sandbox.prioEditGenerate();
+    await flush();
+    sandbox.prioEditGenerate();
+    await flush();
+
+    // Bravo (1 #1 elsewhere) is already the fewest among the three --
+    // nobody else beats that, so no swap happens.
+    expect(sandbox.PRIO_EDIT.ranked).toEqual(['Bravo-Realm', 'Alpha-Realm', 'Charlie-Realm']);
+  });
+});

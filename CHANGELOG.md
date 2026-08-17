@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.14] - 2026-08-16
+
+### Frontend
+
+- The Priority Order edit modal's "Suggest Order" re-click behavior (3.60.13) now handles the case where every eligible candidate already holds a #1 priority elsewhere: instead of giving up when nobody's at zero, it promotes whichever candidate holds the fewest #1s.
+
 ## [3.60.13] - 2026-08-16
 
 ### Frontend
