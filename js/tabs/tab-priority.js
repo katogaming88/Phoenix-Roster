@@ -1390,7 +1390,14 @@ var PRIO_EDIT = {
   showAllRoster: false,
   dragSrcIdx: -1,
   scores: {},
-  fairnessWarnings: {}
+  fairnessWarnings: {},
+  // Set once prioEditGenerate() has produced a suggestion for this item/
+  // difficulty -- a re-click while true triggers the "avoid stacking two #1
+  // priorities on the same person" swap below. Reset on modal open/diff
+  // switch so the very first suggestion always shows the algorithm's raw
+  // top pick, conflict or not -- the officer can see it and re-click to fix
+  // it rather than have it silently overridden every time.
+  suggestedOnce: false
 };
 
 function openPrioEditModal(item, slot, autoGenerate, difficulty) {
@@ -1410,6 +1417,7 @@ function openPrioEditModal(item, slot, autoGenerate, difficulty) {
   PRIO_EDIT.dragSrcIdx = -1;
   PRIO_EDIT.scores = {};
   PRIO_EDIT.fairnessWarnings = {};
+  PRIO_EDIT.suggestedOnce = false;
 
   document.getElementById('prioEditTitle').textContent = item;
   var slotEl = document.getElementById('prioEditSlot');
@@ -1444,6 +1452,7 @@ function prioEditSwitchDiff(diff) {
   PRIO_EDIT.ranked = (entry[diff] || []).slice();
   PRIO_EDIT.scores = {};
   PRIO_EDIT.fairnessWarnings = {};
+  PRIO_EDIT.suggestedOnce = false;
   PRIO_EDIT.showAllRoster = false;
   document.getElementById('prioEditShowAllBtn').textContent = 'Show all roster';
   document.getElementById('prioEditPoolLabel').textContent = 'BiS Players';
@@ -1842,6 +1851,24 @@ function prioEditDragEnd(e) {
 
 // -- Generate suggested order --
 
+// Names currently holding rank 1 on some OTHER item/difficulty's saved
+// priority order -- used by prioEditGenerate() below to avoid stacking a
+// second #1 priority on the same person on a re-click. Excludes the item/
+// difficulty currently being edited (nothing saved for it yet anyway).
+function prioEditHoldsFirstElsewhere() {
+  var order = DATA.priorityOrder || {};
+  var currentDiff = PRIO_EDIT.difficulty.toLowerCase();
+  var holders = {};
+  Object.keys(order).forEach(function (itemName) {
+    ['heroic', 'mythic'].forEach(function (diff) {
+      if (itemName === PRIO_EDIT.item && diff === currentDiff) return;
+      var arr = (order[itemName] || {})[diff];
+      if (arr && arr.length) holders[arr[0]] = true;
+    });
+  });
+  return holders;
+}
+
 function prioEditGenerate() {
   // #607: priority generation is excluded for a guild-officer-only visitor
   // (the modal that hosts this button never opens for them -- see the same
@@ -1898,9 +1925,35 @@ function prioEditGenerate() {
         };
         ranked.push(nameRealm);
       });
+      var statusMsg = 'Suggested order loaded. Review and adjust as needed.';
+      // Only applied on a re-click (suggestedOnce already true) -- the very
+      // first suggestion always shows the algorithm's raw #1 pick as-is, so
+      // the officer can actually see the conflict before choosing to avoid
+      // it, rather than have it silently swapped every time.
+      if (PRIO_EDIT.suggestedOnce && ranked.length > 1) {
+        var holdsFirstElsewhere = prioEditHoldsFirstElsewhere();
+        if (holdsFirstElsewhere[ranked[0]]) {
+          var swapIdx = -1;
+          for (var i = 1; i < ranked.length; i++) {
+            if (!holdsFirstElsewhere[ranked[i]]) {
+              swapIdx = i;
+              break;
+            }
+          }
+          if (swapIdx !== -1) {
+            var promoted = ranked.splice(swapIdx, 1)[0];
+            ranked.unshift(promoted);
+            statusMsg =
+              'Suggested order loaded -- promoted ' +
+              promoted +
+              " to #1 since the algorithm's top pick already has a #1 priority elsewhere. Review and adjust as needed.";
+          }
+        }
+      }
+      PRIO_EDIT.suggestedOnce = true;
       PRIO_EDIT.scores = scoreMap;
       PRIO_EDIT.ranked = ranked;
-      status.textContent = 'Suggested order loaded. Review and adjust as needed.';
+      status.textContent = statusMsg;
       prioEditRenderList();
       prioEditRenderPool();
     })

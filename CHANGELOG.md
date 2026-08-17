@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.13] - 2026-08-16
+
+### Frontend
+
+- The Priority Order edit modal's "Suggest Order" button now avoids stacking two #1 priorities on the same raider on a re-click. The first suggestion still always shows the algorithm's raw top pick as-is, even if that person already holds rank 1 on another item/difficulty's saved priority order; clicking Suggest Order again promotes the next eligible candidate (no existing #1 elsewhere) into the #1 slot instead, leaving the rest of the ranking untouched.
+
 ## [3.60.12] - 2026-08-16
 
 ### Frontend
