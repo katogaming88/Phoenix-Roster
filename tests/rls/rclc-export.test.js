@@ -1,15 +1,19 @@
 // build_rclc_export() (#335, Phase 5) -- the RCLootCouncil priority export
-// payload, computed live from bis_items/priority_order/items/players instead
-// of the retired Apps Script spreadsheet cache. Covers: slot-key derivation
-// (bis_items.slot override vs. legacy items.slot fallback), placeholder-item
-// exclusion, track-split priority ordering, season scoping, and authorization.
+// payload, computed live from item_preferences/priority_order/items/players
+// instead of the retired Apps Script spreadsheet cache. Covers: slot-key
+// derivation (item_preferences.slot override vs. legacy items.slot
+// fallback), placeholder-item exclusion, track-split priority ordering,
+// season scoping, and authorization.
 import { describe, it, expect } from 'vitest';
 import { pool, withRole, OFFICER_T1, TEAM_LEADER_T1, RAIDER_T1, OFFICER_T2 } from './helpers.js';
 
 // items has no authenticated-write policy (it's a read-only shared catalog,
-// populated only via migrations/import scripts) -- seed test rows as the
-// unrestricted pool connection before withRole() drops to `authenticated`.
-async function withItemsSeeded(role, uid, fn) {
+// populated only via migrations/import scripts), and
+// item_preferences' own "Raiders manage own item_preferences" RLS policy
+// only lets a player insert rows for themselves, not an officer inserting on
+// their behalf -- seed as the unrestricted pool connection, same as items,
+// before withRole() drops to `authenticated`.
+async function withItemsAndBisSeeded(role, uid, fn) {
   const client = await pool.connect();
   try {
     await client.query('begin');
@@ -17,6 +21,17 @@ async function withItemsSeeded(role, uid, fn) {
       `insert into public.items (id, wow_item_id, name, slot, armor_type, is_placeholder) values
          (900, 90001, 'Test Trinket', 'Trinket', null, false),
          (901, 90002, 'Test Placeholder', 'Placeholder', null, true)`
+    );
+    // player 1: explicit slot override (Trinket 2) + a legacy row with no
+    // slot override, falling back to items.slot ('Trinket' -> ambiguous ->
+    // defaults to trinket1) + a placeholder-item row that must be excluded.
+    // Only status='bis' rows feed the export -- 'good'/'ok'/etc are wishlist
+    // entries, not BiS.
+    await client.query(
+      `insert into public.item_preferences (id, team_id, player_id, item_id, status, slot) values
+         (900, 1, 1, 900, 'bis', 'Trinket 2'),
+         (901, 1, 2, 900, 'bis', null),
+         (902, 1, 1, 901, 'bis', 'Trinket 1')`
     );
     if (uid) {
       await client.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: uid, role })]);
@@ -27,18 +42,6 @@ async function withItemsSeeded(role, uid, fn) {
     await client.query('rollback');
     client.release();
   }
-}
-
-async function seedBis(q) {
-  // player 1: explicit slot override (Trinket 2) + a legacy row with no
-  // slot override, falling back to items.slot ('Trinket' -> ambiguous ->
-  // defaults to trinket1) + a placeholder-item row that must be excluded.
-  await q(
-    `insert into public.bis_items (id, player_id, item_id, obtained, slot) values
-       (900, 1, 900, false, 'Trinket 2'),
-       (901, 2, 900, false, null),
-       (902, 1, 901, false, 'Trinket 1')`
-  );
 }
 
 async function seedPriority(q) {
@@ -100,15 +103,14 @@ describe('build_rclc_export excludes already-awarded recipients (#480)', () => {
 });
 
 describe('build_rclc_export', () => {
-  it('an officer gets players built from bis_items with slot-key precedence and placeholders excluded', async () => {
-    await withItemsSeeded('authenticated', OFFICER_T1, async (q) => {
-      await seedBis(q);
+  it('an officer gets players built from item_preferences with slot-key precedence and placeholders excluded', async () => {
+    await withItemsAndBisSeeded('authenticated', OFFICER_T1, async (q) => {
       const res = await q('select public.build_rclc_export(1, $1) as payload', ['export-test']);
       const payload = res.rows[0].payload;
 
       expect(payload.players['Seedraider-Illidan'].trinket2.bis).toEqual([90001]);
-      // Legacy row for player 2 has no bis_items.slot, so it falls back to
-      // items.slot 'Trinket' -> defaults to trinket1.
+      // Legacy row for player 2 has no item_preferences.slot, so it falls
+      // back to items.slot 'Trinket' -> defaults to trinket1.
       expect(payload.players['Seedplayertwo-Illidan'].trinket1.bis).toEqual([90001]);
       // Placeholder item (id 901) must never appear in the export.
       const flatIds = JSON.stringify(payload.players);
@@ -139,8 +141,7 @@ describe('build_rclc_export', () => {
   });
 
   it("an officer with no role on team 2 cannot request team 2's export", async () => {
-    await withItemsSeeded('authenticated', OFFICER_T1, async (q) => {
-      await seedBis(q);
+    await withItemsAndBisSeeded('authenticated', OFFICER_T1, async (q) => {
       await seedPriority(q);
       await expect(q('select public.build_rclc_export(2, $1)', ['export-test'])).rejects.toThrow('Not authorized');
     });
@@ -149,9 +150,9 @@ describe('build_rclc_export', () => {
   it('a team leader is also authorized', async () => {
     await withRole('authenticated', TEAM_LEADER_T1, async (q) => {
       const res = await q('select public.build_rclc_export(1, $1) as payload', ['export-test']);
-      // players isn't season-scoped, so team 1's pre-existing seed bis_items
-      // (unrelated to this test) still surfaces here -- this test only
-      // asserts authorization succeeds and season-scoped priority stays empty.
+      // seed.sql has no item_preferences rows, so players comes back empty
+      // here -- this test only asserts authorization succeeds and
+      // season-scoped priority stays empty.
       expect(res.rows[0].payload.priority).toEqual({});
     });
   });
