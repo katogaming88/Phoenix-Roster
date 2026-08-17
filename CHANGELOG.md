@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.16] - 2026-08-17
+
+### Frontend
+
+- The Priority List sub-tab now shows each ranked player's current wishlist tag for that item (e.g. BiS, 2nd Choice, or "No wishlist tag" if they never tagged it) right next to their name -- previously an officer had to leave the tab and check the raider's own wishlist separately to see what they'd actually set.
+
 ## [3.60.15] - 2026-08-16
 
 ### Frontend

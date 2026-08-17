@@ -1274,11 +1274,46 @@ function getItemGroup(slot) {
   return 'Other';
 }
 
+// Best (BiS-first) wishlist status a player tagged for a given item, across
+// however many item_preferences rows they have for it (Finger 1/2, Trinket
+// 1/2, Weapon/Off Hand all write separate rows for the same item_id). Same
+// tier order generate_priority_order()'s own `wishlist` CTE uses. Returns
+// null if the player never tagged this item at all.
+function _prioBestWishlistStatus(itemId, playerId) {
+  var order = { bis: 1, good: 2, catalyst: 3, ok: 4, pass: 5 };
+  var best = null;
+  (_teamItemPreferences || []).forEach(function (p) {
+    if (p.item_id !== itemId || p.player_id !== playerId) return;
+    if (!best || order[p.status] < order[best]) best = p.status;
+  });
+  return best;
+}
+
 function buildPriorityTab() {
+  var el = document.getElementById('priorityContent');
+  // Wishlist status per ranked row (below) needs the same team-wide
+  // item_preferences fetch the Notes sub-tab and Incomplete Wishlists banner
+  // already use -- lazy-loaded once and cached, same shape as
+  // buildPriorityNotesTab() above.
+  if (_teamItemPreferences === null) {
+    if (el) el.innerHTML = '<p style="color:var(--text-muted);padding:1rem;">Loading...</p>';
+    fetchTeamItemPreferences().then(function (rows) {
+      _teamItemPreferences = rows || [];
+      buildPriorityTab();
+    });
+    return;
+  }
+
   var prioOrder = DATA.priorityOrder || {};
   var itemSlots = DATA.itemSlots || {};
   var itemBosses = DATA.itemBosses || {};
   var roster = DATA.roster || [];
+  var itemIds = DATA.itemIds || {};
+  var labelOverrides = (DATA && DATA.wishlistStatusLabels) || {};
+  var wishlistStatusLabels = {};
+  (typeof WISHLIST_LABEL_DEFAULTS !== 'undefined' ? WISHLIST_LABEL_DEFAULTS : []).forEach(function (t) {
+    wishlistStatusLabels[t.value] = labelOverrides[t.value] || t.label;
+  });
 
   var rosterMap = {};
   for (var i = 0; i < roster.length; i++) {
@@ -1332,6 +1367,7 @@ function buildPriorityTab() {
     if (!entry) return '';
     var slot = itemSlots[item] || '';
     var itemEnc = encodeURIComponent(item).replace(/'/g, '%27');
+    var itemId = itemIds[item];
     var out = '';
     var DIFFS = ['heroic', 'mythic'];
     for (var d = 0; d < DIFFS.length; d++) {
@@ -1388,10 +1424,22 @@ function buildPriorityTab() {
                   ? 'var(--melee)'
                   : 'var(--text)';
         var otherSlotItems = playerOtherSlotItems(player, slot, item, itemSlots);
+        var wishlistStatus = player && itemId != null ? _prioBestWishlistStatus(itemId, player.id) : null;
+        var wishlistColor = wishlistStatus && PRIO_NOTES_TIER_COLORS[wishlistStatus];
+        var wishlistHTML = wishlistStatus
+          ? '<span class="prio-rank-wishlist" style="color:' +
+            wishlistColor.css +
+            ';border-color:' +
+            wishlistColor.css +
+            ';">' +
+            escHtml(wishlistStatusLabels[wishlistStatus] || wishlistStatus) +
+            '</span>'
+          : '<span class="prio-rank-wishlist prio-rank-wishlist-none">No wishlist tag</span>';
         out += '<div class="prio-rank-row">';
         out += '<span class="prio-rank-num">' + (j + 1) + '</span>';
         out += '<span class="prio-rank-name" style="color:' + roleColor + ';">' + display + '</span>';
         if (role) out += '<span class="prio-role-badge prio-role-' + role + '">' + role.toUpperCase() + '</span>';
+        out += wishlistHTML;
         if (otherSlotItems.length) {
           out +=
             '<span style="margin-left:0.5rem;font-size:0.85em;color:var(--melee);" title="Already received ' +
