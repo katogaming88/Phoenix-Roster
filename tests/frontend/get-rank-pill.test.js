@@ -125,3 +125,88 @@ describe('rankPillHTML', () => {
     expect(pillMatches[1]).toContain('var(--ranged)');
   });
 });
+
+// officerWishlistRowHTML() (officer read view of a raider's wishlist) used
+// to render name/slot/status only, with no rank pill at all -- an officer
+// had to leave the card and open the item's Set Priority modal separately
+// just to see where a wishlisted item currently ranked, even though the
+// raider's own wishlist view (js/wishlist.js's wishlistRowHTML) already
+// showed this. Now takes the wishlist owner's nameRealm and reuses the same
+// getRank()/rankPillHTML() pair.
+describe('officerWishlistRowHTML rank pill', () => {
+  function makeSandbox() {
+    const sandbox = loadCommonJs();
+    sandbox.PROFILE_WISHLIST_STATUS_LABELS = [
+      { value: 'bis', label: 'BiS', color: 'var(--gold)', rgb: '214,163,68' },
+      { value: 'good', label: '2nd Choice', color: 'var(--heal)', rgb: '61,220,132' }
+    ];
+    return sandbox;
+  }
+
+  it('shows the raider’s current rank pill for a real catalog item', () => {
+    const sandbox = makeSandbox();
+    sandbox.DATA = {
+      priorityOrder: { 'Signet of the Starved Beast': { heroic: ['Katorri-Stormrage'] } },
+      itemIcons: {},
+      itemWowIds: {},
+      itemIsPtr: {},
+      itemPlaceholders: {}
+    };
+    const html = sandbox.officerWishlistRowHTML(
+      'Signet of the Starved Beast',
+      { status: 'bis', note: null },
+      {},
+      'Trinket 1',
+      'Katorri-Stormrage'
+    );
+    expect(html).toContain('1 H');
+  });
+
+  it('renders a dash when the raider has no rank on that item yet', () => {
+    const sandbox = makeSandbox();
+    sandbox.DATA = { priorityOrder: {}, itemIcons: {}, itemWowIds: {}, itemIsPtr: {}, itemPlaceholders: {} };
+    const html = sandbox.officerWishlistRowHTML(
+      'Signet of the Starved Beast',
+      { status: 'good', note: null },
+      {},
+      'Trinket 1',
+      'Katorri-Stormrage'
+    );
+    expect(html).toContain('-');
+  });
+
+  it('skips the rank pill entirely for an Other Sources placeholder (M+/Crafted/Catalyst)', () => {
+    const sandbox = makeSandbox();
+    sandbox.DATA = {
+      // A rank entry exists for 'M+' itself (unrelated real-world scenario
+      // guard), but placeholders aren't a real raid-drop item with a
+      // priority order worth showing.
+      priorityOrder: { 'M+': { heroic: ['Katorri-Stormrage'] } },
+      itemIcons: {},
+      itemWowIds: {},
+      itemIsPtr: {},
+      itemPlaceholders: { 'M+': true }
+    };
+    const html = sandbox.officerWishlistRowHTML(
+      'M+',
+      { status: 'bis', note: null },
+      {},
+      'Shoulder',
+      'Katorri-Stormrage'
+    );
+    expect(html).not.toContain('rank-pill');
+    expect(html).not.toContain('1 H');
+  });
+
+  it('renders a dash when no nameRealm is passed (defensive, should not throw)', () => {
+    const sandbox = makeSandbox();
+    sandbox.DATA = { priorityOrder: {}, itemIcons: {}, itemWowIds: {}, itemIsPtr: {}, itemPlaceholders: {} };
+    const html = sandbox.officerWishlistRowHTML(
+      'Signet of the Starved Beast',
+      { status: 'good', note: null },
+      {},
+      'Trinket 1'
+    );
+    expect(html).toContain('-');
+  });
+});
