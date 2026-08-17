@@ -15,6 +15,10 @@ with each release split into `### Frontend` (drives the version number) and
 - The Priority Order edit modal's "Suggest Order" re-click behavior (3.60.13) now handles the case where every eligible candidate already holds a #1 priority elsewhere: instead of giving up when nobody's at zero, it promotes whichever candidate holds the fewest #1s.
 - An officer viewing a raider's wishlist (Roster tab profile card) now sees the same rank pill (e.g. "1 H", "2 M") next to each item that the raider already sees on their own wishlist -- previously only visible on the raider's own view, so an officer had to leave the card and open that item's Set Priority modal separately just to see where it currently ranked.
 
+### Backend
+
+- `build_rclc_export()`'s `players` (BiS-fallback wishlist) section always came back empty: it read from `bis_items`, which has been effectively dead since raiders/officers moved to self-service wishlist tagging in `item_preferences` (see `20260725135340_bis_items_item_preferences_season.sql`). Every `/rcpl` export was shipping `players: {}` regardless of team, which the addon's import screen surfaced as "Import succeeded but contained no player entries" even when the ranked priority data came through fine. Now reads `item_preferences` rows tagged `status = 'bis'` instead.
+
 ## [3.60.13] - 2026-08-16
 
 ### Frontend
