@@ -8,6 +8,13 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.14] - 2026-08-16
+
+### Frontend
+
+- The Priority Order edit modal's "Suggest Order" re-click behavior (3.60.13) now handles the case where every eligible candidate already holds a #1 priority elsewhere: instead of giving up when nobody's at zero, it promotes whichever candidate holds the fewest #1s.
+- An officer viewing a raider's wishlist (Roster tab profile card) now sees the same rank pill (e.g. "1 H", "2 M") next to each item that the raider already sees on their own wishlist -- previously only visible on the raider's own view, so an officer had to leave the card and open that item's Set Priority modal separately just to see where it currently ranked.
+
 ## [3.60.13] - 2026-08-16
 
 ### Frontend

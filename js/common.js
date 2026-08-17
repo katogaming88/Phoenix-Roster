@@ -55,7 +55,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.60.13';
+var VERSION = '3.60.14';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -3517,7 +3517,14 @@ function fetchPlayerItemPreferences(playerId) {
 // moves to the row's native title tooltip instead of its own line -- still
 // reachable on hover, without adding a permanent line to every row that has
 // one.
-function officerWishlistRowHTML(name, pref, labelOverrides, slot) {
+// nameRealm: the wishlist owner's identity, for the same getRank()/
+// rankPillHTML() lookup js/wishlist.js's own wishlistRowHTML() already does
+// for the raider's own view (#531) -- officers had no way to see where a
+// raider's wishlisted item currently ranks without leaving this card and
+// opening that item's Set Priority modal separately. Skipped for Other
+// Sources placeholders (M+/Crafted/Catalyst) -- they aren't a real raid-drop
+// item with a priority order to look up, same as the raider's own view.
+function officerWishlistRowHTML(name, pref, labelOverrides, slot, nameRealm) {
   var tier = PROFILE_WISHLIST_STATUS_LABELS.filter(function (t) {
     return t.value === pref.status;
   })[0];
@@ -3560,11 +3567,19 @@ function officerWishlistRowHTML(name, pref, labelOverrides, slot) {
         nameInner +
         '</a>' +
         '</span>';
+  var isPlaceholder = !!((DATA && DATA.itemPlaceholders) || {})[name];
+  var rank = !isPlaceholder && typeof getRank === 'function' && nameRealm ? getRank(nameRealm, name) : [];
+  var rankHTML = isPlaceholder
+    ? ''
+    : typeof rankPillHTML === 'function'
+      ? '<span style="flex-shrink:0;">' + rankPillHTML(rank) + '</span>'
+      : '';
   return (
     '<div style="display:flex;align-items:center;gap:0.5rem;padding:0.25rem 0.5rem;border-radius:4px;' +
     'border:1px solid var(--border);background:var(--bg-card);margin-bottom:2px;"' +
     (pref.note ? ' title="Note: ' + _esc(pref.note) + '"' : '') +
     '>' +
+    rankHTML +
     nameBlock +
     slotHTML +
     '<span style="font-size:0.85rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;white-space:nowrap;">' +
@@ -3708,7 +3723,7 @@ function officerWishlistSectionHTML(player, backTo) {
 
   if (bisEntries.length) {
     bisEntries.forEach(function (e) {
-      html += officerWishlistRowHTML(e.item, e.pref, labelOverrides, e.slot);
+      html += officerWishlistRowHTML(e.item, e.pref, labelOverrides, e.slot, player.nameRealm);
     });
   } else {
     html += '<p style="color:var(--text-muted);padding:0.3rem 0;">No BiS picks tagged yet.</p>';
@@ -3737,7 +3752,7 @@ function officerWishlistSectionHTML(player, backTo) {
       html +=
         '<div style="margin-top:0.3rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:0 0.5rem;">';
       otherEntries.forEach(function (e) {
-        html += officerWishlistRowHTML(e.item, e.pref, labelOverrides, e.slot);
+        html += officerWishlistRowHTML(e.item, e.pref, labelOverrides, e.slot, player.nameRealm);
       });
       html += '</div>';
     }

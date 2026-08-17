@@ -1851,22 +1851,23 @@ function prioEditDragEnd(e) {
 
 // -- Generate suggested order --
 
-// Names currently holding rank 1 on some OTHER item/difficulty's saved
-// priority order -- used by prioEditGenerate() below to avoid stacking a
-// second #1 priority on the same person on a re-click. Excludes the item/
-// difficulty currently being edited (nothing saved for it yet anyway).
-function prioEditHoldsFirstElsewhere() {
+// How many OTHER item/difficulty saved priority orders each name currently
+// holds rank 1 on -- used by prioEditGenerate() below to avoid stacking
+// another #1 priority on someone who already has one on a re-click.
+// Excludes the item/difficulty currently being edited (nothing saved for it
+// yet anyway). Names with zero #1s elsewhere are simply absent from the map.
+function prioEditFirstPriorityCounts() {
   var order = DATA.priorityOrder || {};
   var currentDiff = PRIO_EDIT.difficulty.toLowerCase();
-  var holders = {};
+  var counts = {};
   Object.keys(order).forEach(function (itemName) {
     ['heroic', 'mythic'].forEach(function (diff) {
       if (itemName === PRIO_EDIT.item && diff === currentDiff) return;
       var arr = (order[itemName] || {})[diff];
-      if (arr && arr.length) holders[arr[0]] = true;
+      if (arr && arr.length) counts[arr[0]] = (counts[arr[0]] || 0) + 1;
     });
   });
-  return holders;
+  return counts;
 }
 
 function prioEditGenerate() {
@@ -1931,13 +1932,22 @@ function prioEditGenerate() {
       // the officer can actually see the conflict before choosing to avoid
       // it, rather than have it silently swapped every time.
       if (PRIO_EDIT.suggestedOnce && ranked.length > 1) {
-        var holdsFirstElsewhere = prioEditHoldsFirstElsewhere();
-        if (holdsFirstElsewhere[ranked[0]]) {
+        var firstCounts = prioEditFirstPriorityCounts();
+        var topCount = firstCounts[ranked[0]] || 0;
+        if (topCount > 0) {
+          // Not just "has zero #1s elsewhere" -- if everyone left in the
+          // list already has at least one, fall back to whoever has the
+          // fewest instead of giving up. Scanning left-to-right and only
+          // updating on a strictly lower count keeps the algorithm's own
+          // ordering as the tiebreaker among equally-fewest candidates.
           var swapIdx = -1;
+          var swapCount = topCount;
           for (var i = 1; i < ranked.length; i++) {
-            if (!holdsFirstElsewhere[ranked[i]]) {
+            var c = firstCounts[ranked[i]] || 0;
+            if (c < swapCount) {
               swapIdx = i;
-              break;
+              swapCount = c;
+              if (swapCount === 0) break;
             }
           }
           if (swapIdx !== -1) {
@@ -1946,7 +1956,12 @@ function prioEditGenerate() {
             statusMsg =
               'Suggested order loaded -- promoted ' +
               promoted +
-              " to #1 since the algorithm's top pick already has a #1 priority elsewhere. Review and adjust as needed.";
+              (swapCount === 0
+                ? " to #1 since the algorithm's top pick already has a #1 priority elsewhere."
+                : ' to #1 -- everyone eligible already has a #1 priority elsewhere, so this pick has the fewest (' +
+                  swapCount +
+                  ').') +
+              ' Review and adjust as needed.';
           }
         }
       }
