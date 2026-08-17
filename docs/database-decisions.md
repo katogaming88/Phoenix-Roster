@@ -8,6 +8,18 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-08-17 -- `generate_priority_order()`: `avg_existing_rank` fairness tiebreaker
+
+Decided directly in conversation (no tracking issue), following on from the Suggest Order re-click fixes (3.60.13/3.60.14 -- see CHANGELOG): those fixes only ever nudged the #1 slot away from someone who already held rank 1 on another item, and only on a manual re-click. Two gaps remained: every OTHER rank in a suggested list (not just #1), and every FIRST click, still ignored how much priority a candidate already carried across the rest of the priority order -- and nothing corrected the opposite failure mode either, where a consistently lower-scoring raider could sit near the bottom of *every* list, every time, since two equally-unstacked candidates just fell back to raw score.
+
+- **One metric handles both directions**, rather than two separate mechanisms: `avg_existing_rank`, each candidate's average `rank` across every OTHER item/track they're currently placed on this season (excludes the row for the exact item+track being generated, so a stale self-reference from the row about to be replaced doesn't count against them). Sorted descending with nulls first -- a great average (near 1, already well-prioritized) sorts later here; a poor average (10+, habitually low) sorts earlier, a genuine boost; no placements at all (null) sorts earliest of all, since that candidate has the least existing priority of anyone.
+- **Considered and rejected**: a coarse rank-1/2/3-only weighted bucket sum (rank 1 = 3 points, rank 2 = 2, rank 3 = 1, rank 4+ = 0). Caught in review before shipping -- it only ever discouraged stacking at the very top and treated every rank below 4 identically, so it couldn't distinguish "always rank 10" from "never placed at all," and did nothing for the "boost the habitual bottom-dweller" half of the ask.
+- **Slotted as a new hard sort tier, positioned after tier-piece catch-up (`tier_rank`) and before raw performance score** -- it only breaks ties among candidates who are already equally deserving (same wishlist tag, same tier-piece need). It never overrides an actual BiS/tier need with a fairness nudge; a BiS pick with heavy existing load still outranks a Good-tier pick with none.
+- **Purely an internal sort factor, not a new output column** -- `CREATE OR REPLACE` (not `DROP FUNCTION`) since the return shape is unchanged, so `check_priority_order_drift()`'s hardcoded ordinality column list needed no update this time (contrast the 2026-08-11 entry below, where adding `wishlist_status` as an output column did require that).
+- Implemented in `20260817135343_generate_priority_order_existing_load.sql`. New tests in `tests/rls/priority-existing-load.test.js` cover: no-placements beats holding rank 1 elsewhere; a poor average beats a great average; the current item/track's own stale row is excluded from its holder's average; wishlist tier always wins regardless of existing load.
+
+---
+
 ## 2026-08-15 -- `wishlist_setup_status()` function for the Discord bot's missing-data nudge
 
 Tracking issue: [katogaming88/wga-raid-bot#8](https://github.com/katogaming88/wga-raid-bot/issues/8). The bot needs to know, per team, which active raiders are missing a wishlist entirely, missing a BiS source link, or have a wishlist with rows still missing a real BiS pick, so it can DM them without an officer manually checking. Two things were decided:

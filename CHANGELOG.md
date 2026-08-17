@@ -16,6 +16,10 @@ with each release split into `### Frontend` (drives the version number) and
   - **Priority List** sub-tab: replaced the "players holding 2+ #1 priorities" outlier banner (nearly the whole roster once item count grows) with an always-visible "#1 Priorities Held" table -- every player currently holding at least one #1, their total count, and a flag if any of those #1s share a boss (an actual same-kill scheduling conflict). The narrower "Priority List Conflicts" banner (stale-after-Heroic #1s, same-boss stacking, top-3 drift) stays, just without the redundant duplicate-#1s entries. Rows with 4+ #1s get a red-highlighted count as worth a look.
   - **Contested Items** sub-tab: now merges the officer's BiS grid with every raider's own wishlist BiS tags (previously read the officer grid only, so a team relying mainly on raider self-tagging saw this tab read as almost empty). Items are collapsed by default -- name, slot, and contestion count -- click to expand and see who wants it and their current priority rank. Dropped the old "flags any player holding 1st priority on more than one item" badge here, since that's now the Priority List sub-tab's job. Only lists items wanted by 6+ players -- below that it's not rare enough to be useful information once wishlists fill out.
 
+### Backend
+
+- `generate_priority_order()` now factors in how much priority a candidate already holds across the *rest* of the priority order, not just whether they hold a #1 elsewhere. A new `avg_existing_rank` sort tier (each candidate's average rank across every other item/track they're placed on this season, excluding the exact item/track being generated) sits after tier-piece catch-up and before raw score: someone already well-prioritized elsewhere gets deprioritized against further stacking, and someone who's been sitting at rank 10+ everywhere (or nowhere at all) gets a real boost -- not just avoiding a #1-vs-#1 collision, the whole ranked list now spreads priority more fairly. Never overrides an actual BiS/tier need. See `docs/database-decisions.md` (2026-08-17).
+
 ## [3.60.14] - 2026-08-16
 
 ### Frontend
