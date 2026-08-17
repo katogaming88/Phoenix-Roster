@@ -116,17 +116,26 @@ describe('buildContestedItemMap (wishlist + officer BiS merge)', () => {
   });
 });
 
+// 6 players is the minimum to count as "contested" (CONTESTED_ITEMS_MIN_PLAYERS)
+// -- below that, wanting the same item isn't rare enough to matter. These
+// helpers build a roster/prefs set where every player tags a given item_id
+// BiS, so tests can dial the contesting count up/down past that threshold.
+function makeRoster(count) {
+  return Array.from({ length: count }, (_, i) => ({
+    id: i + 1,
+    firstName: 'Player' + (i + 1),
+    nameRealm: 'Player' + (i + 1) + '-Illidan'
+  }));
+}
+function makePrefsForItem(roster, itemId) {
+  return roster.map((p) => ({ player_id: p.id, item_id: itemId, status: 'bis' }));
+}
+
 describe('buildConflicts', () => {
-  it('only lists items wanted by 2+ players, not a single player’s pick', () => {
-    const roster = [
-      { id: 1, firstName: 'Kat', nameRealm: 'Kat-Illidan' },
-      { id: 2, firstName: 'Snarge', nameRealm: 'Snarge-Illidan' }
-    ];
-    const teamItemPreferences = [
-      { player_id: 1, item_id: 1, status: 'bis' }, // Item A -- only Kat
-      { player_id: 1, item_id: 2, status: 'bis' }, // Item B -- Kat + Snarge
-      { player_id: 2, item_id: 2, status: 'bis' }
-    ];
+  it('only lists items wanted by 6+ players, not a handful of players', () => {
+    const roster = makeRoster(7);
+    // Item A: only the first 5 players (below threshold). Item B: all 7.
+    const teamItemPreferences = makePrefsForItem(roster.slice(0, 5), 1).concat(makePrefsForItem(roster, 2));
     const el = { innerHTML: '' };
     const sandbox = makeSandbox({ roster, teamItemPreferences });
     sandbox.document.getElementById = (id) => (id === 'conflictsContent' ? el : null);
@@ -138,14 +147,8 @@ describe('buildConflicts', () => {
   });
 
   it('renders items collapsed by default with no player names visible', () => {
-    const roster = [
-      { id: 1, firstName: 'Kat', nameRealm: 'Kat-Illidan' },
-      { id: 2, firstName: 'Snarge', nameRealm: 'Snarge-Illidan' }
-    ];
-    const teamItemPreferences = [
-      { player_id: 1, item_id: 1, status: 'bis' },
-      { player_id: 2, item_id: 1, status: 'bis' }
-    ];
+    const roster = makeRoster(6);
+    const teamItemPreferences = makePrefsForItem(roster, 1);
     const el = { innerHTML: '' };
     const sandbox = makeSandbox({ roster, teamItemPreferences });
     sandbox.document.getElementById = (id) => (id === 'conflictsContent' ? el : null);
@@ -153,20 +156,14 @@ describe('buildConflicts', () => {
     sandbox.buildConflicts();
 
     expect(el.innerHTML).toContain('Item A');
-    expect(el.innerHTML).toContain('2 players');
+    expect(el.innerHTML).toContain('6 players');
     expect(el.innerHTML).not.toContain('conflict-player-tag');
-    expect(el.innerHTML).not.toContain('Kat');
+    expect(el.innerHTML).not.toContain('Player1<');
   });
 
   it('toggleContestedItem expands the item to reveal its contesting players', () => {
-    const roster = [
-      { id: 1, firstName: 'Kat', nameRealm: 'Kat-Illidan' },
-      { id: 2, firstName: 'Snarge', nameRealm: 'Snarge-Illidan' }
-    ];
-    const teamItemPreferences = [
-      { player_id: 1, item_id: 1, status: 'bis' },
-      { player_id: 2, item_id: 1, status: 'bis' }
-    ];
+    const roster = makeRoster(6);
+    const teamItemPreferences = makePrefsForItem(roster, 1);
     const el = { innerHTML: '' };
     const sandbox = makeSandbox({ roster, teamItemPreferences });
     sandbox.document.getElementById = (id) => (id === 'conflictsContent' ? el : null);
@@ -175,8 +172,8 @@ describe('buildConflicts', () => {
     sandbox.toggleContestedItem('Item A');
 
     expect(el.innerHTML).toContain('conflict-player-tag');
-    expect(el.innerHTML).toContain('Kat');
-    expect(el.innerHTML).toContain('Snarge');
+    expect(el.innerHTML).toContain('Player1');
+    expect(el.innerHTML).toContain('Player6');
   });
 
   it('shows a loading state and fetches item_preferences when not yet loaded', async () => {

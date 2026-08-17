@@ -1,3 +1,9 @@
+// Below this many players wanting the same item, it isn't rare enough to be
+// useful contested-item information -- most gear ends up wanted by a couple
+// of players once wishlists fill out, so a low bar just re-lists most of the
+// catalog instead of surfacing genuine multi-way competition.
+var CONTESTED_ITEMS_MIN_PLAYERS = 6;
+
 // Which item rows are expanded to show their contesting players -- survives
 // re-renders triggered by toggling (buildConflicts() re-runs in full, same
 // "flip a flag, re-render" convention js/wishlist.js's
@@ -56,11 +62,13 @@ function buildConflicts() {
   var itemMap = buildContestedItemMap();
   var prioOrder = DATA.priorityOrder || {};
 
-  // Only items 2+ players actually want -- a single player's BiS pick isn't
-  // a contest.
+  // Only items CONTESTED_ITEMS_MIN_PLAYERS+ players actually want -- below
+  // that, wanting the same item isn't rare enough to be useful information
+  // (most gear ends up wanted by at least a couple of players once wishlists
+  // fill out).
   var sorted = Object.keys(itemMap)
     .filter(function (item) {
-      return itemMap[item].length >= 2;
+      return itemMap[item].length >= CONTESTED_ITEMS_MIN_PLAYERS;
     })
     .sort(function (a, b) {
       return itemMap[b].length - itemMap[a].length;
@@ -72,7 +80,9 @@ function buildConflicts() {
     '<button class="help-btn" onclick="toggleHelp(\'help-loot-conflicts\')" title="Show help">?</button>' +
     '</span></div>' +
     '<div id="help-loot-conflicts" class="help-tip" style="margin-top:0;margin-bottom:0.75rem;">' +
-    'Items wanted by two or more players (officer BiS picks and raider wishlists combined), sorted by how many players want them. Click an item to see who wants it and their current priority rank.<br>' +
+    'Items wanted by ' +
+    CONTESTED_ITEMS_MIN_PLAYERS +
+    '+ players (officer BiS picks and raider wishlists combined), sorted by how many players want them. Click an item to see who wants it and their current priority rank.<br>' +
     'Ranks show H (Heroic) or M (Mythic). See the Priority List sub-tab for who currently holds multiple #1 priorities.' +
     '</div>';
 
@@ -166,6 +176,9 @@ function buildConflicts() {
   }
 
   if (sorted.length === 0)
-    html += '<p style="color:var(--text);padding:1rem;">No contested items -- nothing wanted by 2+ players yet.</p>';
+    html +=
+      '<p style="color:var(--text);padding:1rem;">No contested items -- nothing wanted by ' +
+      CONTESTED_ITEMS_MIN_PLAYERS +
+      '+ players yet.</p>';
   el.innerHTML = html;
 }
