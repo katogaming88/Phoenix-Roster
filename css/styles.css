@@ -444,24 +444,35 @@ select#playerSelect option { background:#1a1d27; }
 .onboarding-welcome-banner { margin:0.75rem 1.25rem 0; padding:0.6rem 0.85rem; background:rgba(74,158,255,0.06); border:1px solid rgba(74,158,255,0.25); border-radius:4px; font-size:1rem; color:var(--text); }
 .onboarding-welcome-link { margin-left:0.4rem; background:none; border:none; color:var(--tank); font-weight:600; text-decoration:underline; cursor:pointer; padding:0; font-size:1rem; font-family:inherit; }
 
-/* BiS conflicts */
-.conflict-item { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; padding:1rem 1.25rem; margin-bottom:0.75rem; }
-.conflict-item-name { font-size:1.1rem; font-weight:600; color:var(--text); margin-bottom:0.5rem; display:flex; align-items:center; gap:0.75rem; }
-.conflict-count { font-size:1rem; font-weight:600; padding:2px 8px; border-radius:2px; background:rgba(214,163,68,0.12); color:var(--gold); border:1px solid rgba(214,163,68,0.25); }
-.conflict-players { display:flex; flex-wrap:wrap; gap:0.4rem; }
+/* Contested Items -- collapsed-by-default item rows, click to expand */
+.conflict-item { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; margin-bottom:0.75rem; overflow:hidden; }
+.conflict-item-toggle { display:flex; align-items:center; gap:0.75rem; width:100%; background:none; border:none; padding:1rem 1.25rem; cursor:pointer; text-align:left; font-family:inherit; }
+.conflict-item-toggle:hover { background:var(--bg-elevated); }
+.conflict-item-name { font-size:1.1rem; font-weight:600; color:var(--text); display:flex; align-items:center; gap:0.75rem; flex:1; min-width:0; }
+.conflict-count { font-size:1rem; font-weight:600; padding:2px 8px; border-radius:2px; background:rgba(214,163,68,0.12); color:var(--gold); border:1px solid rgba(214,163,68,0.25); flex-shrink:0; }
+.conflict-item-chevron { color:var(--text-dim); font-size:0.9rem; flex-shrink:0; }
+.conflict-players { display:flex; flex-wrap:wrap; gap:0.4rem; padding:0 1.25rem 1rem; }
 .conflict-player-tag { font-size:1.02rem; padding:2px 8px; border-radius:2px; background:var(--bg-elevated); border:1px solid var(--border); color:var(--text); display:inline-flex; align-items:center; gap:0.35rem; }
 .conflict-player-tag.ranked { border-color:rgba(214,163,68,0.3); color:var(--gold-light); }
 .conflict-player-tag.received { opacity:0.5; text-decoration:line-through; }
-.conflict-player-tag.over-allocated { border-color:rgba(214,90,60,0.5); color:#e05a3a; }
-.overalloc-badge { font-size:0.87rem; font-weight:800; padding:0 4px; border-radius:2px; background:rgba(214,90,60,0.18); color:#e05a3a; line-height:1.4; }
 .received-badge { font-size:1rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; padding:1px 5px; border-radius:2px; background:rgba(61,220,132,0.12); color:var(--heal); border:1px solid rgba(61,220,132,0.25); text-decoration:none; display:inline-block; }
-/* Priority over-allocation banner */
+/* Priority List Conflicts banner (stale/same-boss/drift) */
 .prio-overalloc-banner { background:rgba(214,90,60,0.07); border:1px solid rgba(214,90,60,0.28); border-radius:4px; padding:0.85rem 1.1rem; margin-bottom:1rem; }
 .prio-overalloc-title { font-size:1rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#e05a3a; margin-bottom:0.55rem; }
 .prio-overalloc-list { display:flex; flex-direction:column; gap:0.3rem; }
 .prio-overalloc-player { display:flex; flex-wrap:wrap; align-items:center; gap:0.4rem; }
 .prio-overalloc-name { font-size:1rem; font-weight:600; color:var(--text); min-width:80px; }
 .prio-overalloc-item { font-size:0.93rem; padding:1px 6px; border-radius:2px; background:rgba(214,90,60,0.1); color:#e05a3a; border:1px solid rgba(214,90,60,0.22); }
+/* Priority List sub-tab's #1-priorities-held summary table */
+.prio-firstprio-summary { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; padding:0.85rem 1.1rem; margin-bottom:1rem; }
+.prio-firstprio-title { font-size:1rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.55rem; }
+.prio-firstprio-list { display:flex; flex-direction:column; gap:0.3rem; }
+.prio-firstprio-row { display:flex; flex-wrap:wrap; align-items:center; gap:0.5rem; padding:0.2rem 0; border-bottom:1px solid var(--border); }
+.prio-firstprio-row:last-child { border-bottom:none; }
+.prio-firstprio-name { font-size:1rem; font-weight:600; color:var(--text); min-width:140px; }
+.prio-firstprio-count { font-size:0.93rem; font-weight:700; padding:1px 7px; border-radius:2px; background:rgba(214,163,68,0.12); color:var(--gold); border:1px solid rgba(214,163,68,0.25); }
+.prio-firstprio-count-flagged { background:rgba(214,90,60,0.1); color:#e05a3a; border-color:rgba(214,90,60,0.22); }
+.prio-firstprio-sameboss { font-size:0.87rem; padding:1px 6px; border-radius:2px; background:rgba(214,90,60,0.1); color:#e05a3a; border:1px solid rgba(214,90,60,0.22); }
 .prio-overalloc-diff { text-transform:uppercase; font-size:0.87rem; opacity:0.75; margin-left:2px; }
 
 /* Loot fairness */
