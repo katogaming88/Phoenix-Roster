@@ -174,57 +174,73 @@ function populateBossFilters() {
   refresh('unmanagedBossFilter');
 }
 
-// Every kind of fairness/health issue that lives on the Priority List --
-// stale-after-heroic #1s, same-boss #1 conflicts, and players holding 2+ #1s
-// team-wide. Was silently folded into the nav badge with nowhere of its own
-// to live, so a mismatch between the nav total and the Unmanaged Items count
-// looked like a bug rather than "there's 1 conflict on the Priority List" --
-// and even the sub-tab badge was just a bare count, with no way to see which
-// item(s) it referred to. Same-boss and duplicate-#1 groups are derived
-// client-side from priority_order_live_first_prios (item_name/boss already
-// joined) rather than querying priority_order_same_boss_conflicts /
-// priority_order_first_prio_counts directly, so the banner below can name
-// the actual items instead of just a number.
-function getPriorityListConflicts() {
-  var staleEntries = DATA.priorityStaleAfterHeroic || [];
-  var driftEntries = DATA.priorityDrift || [];
+// Groups DATA.priorityLiveFirstPrios (item_name/boss already joined) by
+// player -- shared groundwork for getPriorityListConflicts() (the
+// stale/same-boss/drift "needs attention" banner) and
+// getPriorityFirstPrioSummary() (the full roster-wide #1 count table), both
+// derived from the same rows just presented differently.
+function _priorityFirstPriosByPlayer() {
   var byPlayer = {};
   (DATA.priorityLiveFirstPrios || []).forEach(function (r) {
     var entry = byPlayer[r.player_id] || { nameRealm: r.name_realm, items: [] };
     entry.items.push({ itemName: r.item_name, track: r.track, boss: r.boss });
     byPlayer[r.player_id] = entry;
   });
+  return byPlayer;
+}
+
+// One player's #1s grouped by boss+track -- only returns groups with 2+
+// items, i.e. an actual same-kill scheduling conflict (two guaranteed items
+// both locked behind one boss pull), not just "holds several #1s overall"
+// (that's expected and unavoidable once a raid has 30+ managed items -- see
+// getPriorityFirstPrioSummary()'s own comment for why that stopped being
+// flagged as a conflict here).
+function _priorityFirstPrioSameBossGroups(entry) {
+  var byBossTrack = {};
+  entry.items.forEach(function (it) {
+    if (!it.boss) return;
+    var key = it.boss + '|' + it.track;
+    (byBossTrack[key] = byBossTrack[key] || { boss: it.boss, itemNames: [] }).itemNames.push(it.itemName);
+  });
+  var groups = [];
+  Object.keys(byBossTrack).forEach(function (key) {
+    var group = byBossTrack[key];
+    if (group.itemNames.length > 1) groups.push(group);
+  });
+  return groups;
+}
+
+// Genuine health issues on the Priority List -- stale-after-heroic #1s,
+// same-boss #1 stacking (a real scheduling conflict: two items both locked
+// behind one kill), and top-3 drift since the last save. Was silently
+// folded into the nav badge with nowhere of its own to live, so a mismatch
+// between the nav total and the Unmanaged Items count looked like a bug
+// rather than "there's 1 conflict on the Priority List" -- and even the
+// sub-tab badge was just a bare count, with no way to see which item(s) it
+// referred to.
+//
+// Used to also flag every player holding 2+ #1s team-wide here, but once a
+// raid has 30+ items under management that's nearly the entire roster --
+// not a "conflict" worth an attention banner, just an expected fact about a
+// deep priority list. That's now getPriorityFirstPrioSummary()'s full-roster
+// table instead, always visible rather than only surfacing outliers.
+function getPriorityListConflicts() {
+  var staleEntries = DATA.priorityStaleAfterHeroic || [];
+  var driftEntries = DATA.priorityDrift || [];
+  var byPlayer = _priorityFirstPriosByPlayer();
 
   var sameBossGroups = [];
-  var duplicateGroups = [];
   Object.keys(byPlayer).forEach(function (playerId) {
     var entry = byPlayer[playerId];
-    if (entry.items.length < 2) return;
-    duplicateGroups.push({
-      nameRealm: entry.nameRealm,
-      itemNames: entry.items.map(function (it) {
-        return it.itemName;
-      })
-    });
-    var byBossTrack = {};
-    entry.items.forEach(function (it) {
-      if (!it.boss) return;
-      var key = it.boss + '|' + it.track;
-      (byBossTrack[key] = byBossTrack[key] || { boss: it.boss, itemNames: [] }).itemNames.push(it.itemName);
-    });
-    Object.keys(byBossTrack).forEach(function (key) {
-      var group = byBossTrack[key];
-      if (group.itemNames.length > 1) {
-        sameBossGroups.push({ nameRealm: entry.nameRealm, boss: group.boss, itemNames: group.itemNames });
-      }
+    _priorityFirstPrioSameBossGroups(entry).forEach(function (group) {
+      sameBossGroups.push({ nameRealm: entry.nameRealm, boss: group.boss, itemNames: group.itemNames });
     });
   });
 
   return {
-    count: staleEntries.length + sameBossGroups.length + duplicateGroups.length + driftEntries.length,
+    count: staleEntries.length + sameBossGroups.length + driftEntries.length,
     staleEntries: staleEntries,
     sameBossGroups: sameBossGroups,
-    duplicateGroups: duplicateGroups,
     driftEntries: driftEntries
   };
 }
@@ -253,16 +269,6 @@ function buildPriorityConflictsBannerHtml(conflicts) {
       escHtml(g.boss) +
       ')</span></span></div>';
   });
-  conflicts.duplicateGroups.forEach(function (g) {
-    html +=
-      '<div class="prio-overalloc-player"><span class="prio-overalloc-name">' +
-      escHtml(g.nameRealm) +
-      '</span><span class="prio-overalloc-item">' +
-      escHtml(g.itemNames.join(', ')) +
-      ' <span class="prio-overalloc-diff">holds ' +
-      g.itemNames.length +
-      ' #1 priorities</span></span></div>';
-  });
   (conflicts.driftEntries || []).forEach(function (d) {
     html +=
       '<div class="prio-overalloc-player"><span class="prio-overalloc-name">' +
@@ -277,6 +283,75 @@ function buildPriorityConflictsBannerHtml(conflicts) {
       '</span></span></div>';
   });
 
+  html += '</div></div>';
+  return html;
+}
+
+// Full-roster table (Priority List sub-tab): every player currently holding
+// 1+ #1 priority, with their total count and whether any of those #1s share
+// a boss -- always visible, not just outliers, since "holds 2+ #1s" alone
+// stopped being a meaningful signal once the raid has 30+ managed items
+// (nearly the whole roster clears that bar). Sorted by count descending so
+// the officer can eyeball who's carrying the most guaranteed first-dibs.
+function getPriorityFirstPrioSummary() {
+  var byPlayer = _priorityFirstPriosByPlayer();
+  var rows = Object.keys(byPlayer).map(function (playerId) {
+    var entry = byPlayer[playerId];
+    return {
+      nameRealm: entry.nameRealm,
+      count: entry.items.length,
+      sameBossGroups: _priorityFirstPrioSameBossGroups(entry)
+    };
+  });
+  rows.sort(function (a, b) {
+    return b.count - a.count || a.nameRealm.localeCompare(b.nameRealm);
+  });
+  return rows;
+}
+
+function buildPriorityFirstPrioSummaryHtml(rows) {
+  if (!rows.length) return '';
+  var html = '<div class="prio-firstprio-summary">';
+  html +=
+    '<div class="prio-firstprio-title">#1 Priorities Held (' +
+    rows.length +
+    ' player' +
+    (rows.length !== 1 ? 's' : '') +
+    ')</div>';
+  html += '<div class="prio-firstprio-list">';
+  rows.forEach(function (r) {
+    var sameBossHTML = r.sameBossGroups.length
+      ? '<span class="prio-firstprio-sameboss" title="' +
+        escHtml(
+          r.sameBossGroups
+            .map(function (g) {
+              return g.boss + ': ' + g.itemNames.join(', ');
+            })
+            .join(' | ')
+        ) +
+        '">Same boss: ' +
+        escHtml(
+          r.sameBossGroups
+            .map(function (g) {
+              return g.boss;
+            })
+            .join(', ')
+        ) +
+        '</span>'
+      : '';
+    html +=
+      '<div class="prio-firstprio-row">' +
+      '<span class="prio-firstprio-name">' +
+      escHtml(r.nameRealm) +
+      '</span>' +
+      '<span class="prio-firstprio-count">' +
+      r.count +
+      ' #1' +
+      (r.count !== 1 ? 's' : '') +
+      '</span>' +
+      sameBossHTML +
+      '</div>';
+  });
   html += '</div></div>';
   return html;
 }
@@ -589,6 +664,7 @@ function updatePriorityBadges() {
   var subBadge = document.getElementById('prioSubBadge');
   var listBadge = document.getElementById('prioListBadge');
   var conflictsBanner = document.getElementById('priorityConflictsBanner');
+  var firstPrioSummary = document.getElementById('priorityFirstPrioSummary');
   if (navBadge) {
     var total = unmanagedCount + conflicts.count;
     navBadge.textContent = total;
@@ -605,6 +681,7 @@ function updatePriorityBadges() {
     listBadge.style.display = conflicts.count > 0 ? '' : 'none';
   }
   if (conflictsBanner) conflictsBanner.innerHTML = buildPriorityConflictsBannerHtml(conflicts);
+  if (firstPrioSummary) firstPrioSummary.innerHTML = buildPriorityFirstPrioSummaryHtml(getPriorityFirstPrioSummary());
 }
 
 // Wishlist completeness (#515): officers need to see which raiders haven't
