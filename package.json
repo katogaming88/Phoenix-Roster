@@ -17,10 +17,10 @@
     "db:rls": "psql \"postgres://postgres:postgres@127.0.0.1:54322/postgres?sslmode=disable\" -f docs/rls_policies.sql"
   },
   "devDependencies": {
-    "@supabase/supabase-js": "^2.112.2",
+    "@supabase/supabase-js": "^2.112.3",
     "csv-parse": "^7.0.2",
     "eslint": "^8.57.0",
-    "pg": "^8.16.0",
+    "pg": "^8.23.0",
     "prettier": "^3.9.6",
     "typescript": "^7.0.2",
     "vitest": "^4.1.10"
