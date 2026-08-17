@@ -471,6 +471,7 @@ select#playerSelect option { background:#1a1d27; }
 .prio-firstprio-row:last-child { border-bottom:none; }
 .prio-firstprio-name { font-size:1rem; font-weight:600; color:var(--text); min-width:140px; }
 .prio-firstprio-count { font-size:0.93rem; font-weight:700; padding:1px 7px; border-radius:2px; background:rgba(214,163,68,0.12); color:var(--gold); border:1px solid rgba(214,163,68,0.25); }
+.prio-firstprio-count-flagged { background:rgba(214,90,60,0.1); color:#e05a3a; border-color:rgba(214,90,60,0.22); }
 .prio-firstprio-sameboss { font-size:0.87rem; padding:1px 6px; border-radius:2px; background:rgba(214,90,60,0.1); color:#e05a3a; border:1px solid rgba(214,90,60,0.22); }
 .prio-overalloc-diff { text-transform:uppercase; font-size:0.87rem; opacity:0.75; margin-left:2px; }
 

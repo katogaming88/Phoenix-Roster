@@ -147,4 +147,20 @@ describe('buildPriorityFirstPrioSummaryHtml', () => {
     const sandbox = makeSandbox();
     expect(sandbox.buildPriorityFirstPrioSummaryHtml([])).toBe('');
   });
+
+  it('flags a row at the threshold (4) with the highlighted count class', () => {
+    const sandbox = makeSandbox();
+    const html = sandbox.buildPriorityFirstPrioSummaryHtml([
+      { nameRealm: 'Alpha-Realm', count: 4, sameBossGroups: [] }
+    ]);
+    expect(html).toContain('prio-firstprio-count-flagged');
+  });
+
+  it('does not flag a row just below the threshold', () => {
+    const sandbox = makeSandbox();
+    const html = sandbox.buildPriorityFirstPrioSummaryHtml([
+      { nameRealm: 'Alpha-Realm', count: 3, sameBossGroups: [] }
+    ]);
+    expect(html).not.toContain('prio-firstprio-count-flagged');
+  });
 });

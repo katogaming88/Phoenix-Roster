@@ -287,6 +287,13 @@ function buildPriorityConflictsBannerHtml(conflicts) {
   return html;
 }
 
+// Below this many #1s, holding several isn't unusual enough to flag --
+// nearly the whole roster clears 2-3 once a raid has 30+ managed items (see
+// getPriorityFirstPrioSummary()'s own comment). Used only to visually flag
+// rows in that table; it doesn't filter anyone out of it or add to the
+// Priority List Conflicts banner/badge counts above.
+var PRIORITY_FIRSTPRIO_FLAG_THRESHOLD = 4;
+
 // Full-roster table (Priority List sub-tab): every player currently holding
 // 1+ #1 priority, with their total count and whether any of those #1s share
 // a boss -- always visible, not just outliers, since "holds 2+ #1s" alone
@@ -339,12 +346,15 @@ function buildPriorityFirstPrioSummaryHtml(rows) {
         ) +
         '</span>'
       : '';
+    var overThreshold = r.count >= PRIORITY_FIRSTPRIO_FLAG_THRESHOLD;
     html +=
       '<div class="prio-firstprio-row">' +
       '<span class="prio-firstprio-name">' +
       escHtml(r.nameRealm) +
       '</span>' +
-      '<span class="prio-firstprio-count">' +
+      '<span class="prio-firstprio-count' +
+      (overThreshold ? ' prio-firstprio-count-flagged' : '') +
+      '">' +
       r.count +
       ' #1' +
       (r.count !== 1 ? 's' : '') +
