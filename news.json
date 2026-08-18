@@ -1,5 +1,12 @@
 [
   {
+    "date": "2026-08-18",
+    "category": "Fix",
+    "version": "3.60.17",
+    "title": "\"Catalyst Only\" wishlist status hidden where it can't apply",
+    "body": "It no longer shows on the actual tier piece row (the tier item itself never goes into the catalyst -- it's the other, non-tier item for that slot you'd catalyze) or on Neck/Finger/Trinket/Weapon/Off Hand rows, since the catalyst only ever touches armor slots."
+  },
+  {
     "date": "2026-08-09",
     "category": "Feature",
     "version": "3.59.0",
