@@ -57,7 +57,7 @@ describe('wishlistStatusButtonsHTML lockOnceSet (Other Sources rows)', () => {
 
   it('still renders all 5 buttons for a regular (non-lockOnceSet) row', () => {
     const sandbox = makeSandbox([]);
-    const html = sandbox.wishlistStatusButtonsHTML(2, null, false);
+    const html = sandbox.wishlistStatusButtonsHTML(2, null, false, false, true);
 
     expect(html).toContain('>BiS<');
     expect(html).toContain('>2nd Choice<');

@@ -160,6 +160,13 @@ var WISHLIST_MAIN_STAT_ROWS = { 'Trinket 1': true, 'Trinket 2': true, Weapon: tr
 // surfaces a reminder of that on these 5 slots' cards specifically.
 var WISHLIST_TIER_SET_SLOTS = ['Head', 'Shoulder', 'Chest', 'Hands', 'Legs'];
 
+// The only WISHLIST_SLOTS the catalyst can touch at all: WISHLIST_TIER_SET_SLOTS'
+// 5 tier slots (catalyzable into the set) plus CATALYST_SOURCE_SLOTS' 4
+// non-tier slots (what the catalyst produces). Neck/Finger/Trinket/Weapon/Off
+// Hand never come out of or go into a catalyst, so Catalyst Only is never a
+// real status for them.
+var CATALYST_ELIGIBLE_SLOTS = WISHLIST_TIER_SET_SLOTS.concat(CATALYST_SOURCE_SLOTS);
+
 // Same shape as fetchSupabaseBisItems (js/common.js) -- guard on client,
 // 10s race-timeout, warn+null on any failure. RLS already scopes this to the
 // caller's own rows, but filtering client-side keeps the query cheap.
@@ -386,7 +393,12 @@ function wishlistBucketRealItems(playerArmorType, playerMainStat, playerRole, pl
       if (playerClass && tierTokenMap[name] && tierTokenMap[name][playerClass]) {
         displayName = tierTokenMap[name][playerClass];
       }
-      buckets[row].push({ name: displayName, itemId: itemIds[name], rankName: name });
+      buckets[row].push({
+        name: displayName,
+        itemId: itemIds[name],
+        rankName: name,
+        isTierToken: !!tierTokenMap[name]
+      });
     });
   });
 
@@ -520,7 +532,7 @@ function wishlistEditableNow() {
 // set, every button on that row -- including the active one -- goes
 // permanently disabled. Regular gear-slot rows never pass this, and stay
 // freely re-taggable.
-function wishlistStatusButtonsHTML(itemId, slot, lockOnceSet) {
+function wishlistStatusButtonsHTML(itemId, slot, lockOnceSet, isTierToken, catalystEligible) {
   // A real ring/trinket already BiS on its sibling row shows (and locks in)
   // as BiS here too -- see wishlistLockedBySibling. Every button, not just
   // BiS, is blocked: it's the same physical item, already spoken for by the
@@ -545,11 +557,21 @@ function wishlistStatusButtonsHTML(itemId, slot, lockOnceSet) {
   // backup tier. Good/OK/Catalyst Only/Pass could never actually be reached
   // here, so they'd just render as dead, always-disabled buttons -- only
   // show the one status that's ever real.
+  // A tier token row IS the actual class tier piece (see wishlistBucketRealItems's
+  // isTierToken) -- Catalyst Only makes sense for a non-tier piece a raider
+  // plans to redeem into tier, not for the tier piece itself, which never
+  // goes into the catalyst. Neck/Finger/Trinket/Weapon/Off Hand rows
+  // (!catalystEligible, see CATALYST_ELIGIBLE_SLOTS) drop the button too --
+  // the catalyst only ever touches armor slots.
   var statusesToShow = lockOnceSet
     ? WISHLIST_STATUSES.filter(function (s) {
         return s.value === 'bis';
       })
-    : WISHLIST_STATUSES;
+    : isTierToken || !catalystEligible
+      ? WISHLIST_STATUSES.filter(function (s) {
+          return s.value !== 'catalyst';
+        })
+      : WISHLIST_STATUSES;
 
   return statusesToShow
     .map(function (s) {
@@ -621,7 +643,7 @@ function wishlistNoteHTML(itemId, slot) {
 // token's own item (what rclc_loot logs), so its rank data is keyed to the
 // token's catalog name, not the resolved class item `name` displays here.
 // Defaults to `name` for every other row, where the two are the same thing.
-function wishlistRowHTML(name, itemId, slot, rowIndex, lockOnceSet, rankName) {
+function wishlistRowHTML(name, itemId, slot, rowIndex, lockOnceSet, rankName, isTierToken, catalystEligible) {
   if (itemId == null) return '';
   // Flags (and visually treats as BiS) a row already tagged BiS on its
   // sibling row (Finger 1<->Finger 2, Trinket 1<->Trinket 2) -- the same
@@ -672,7 +694,7 @@ function wishlistRowHTML(name, itemId, slot, rowIndex, lockOnceSet, rankName) {
     '</div>' +
     '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.3rem;flex-wrap:wrap;margin-top:0.35rem;">' +
     '<span style="display:flex;align-items:center;gap:0.3rem;flex-wrap:wrap;">' +
-    wishlistStatusButtonsHTML(itemId, slot, lockOnceSet) +
+    wishlistStatusButtonsHTML(itemId, slot, lockOnceSet, isTierToken, catalystEligible) +
     '</span>' +
     removeHTML +
     '</div>' +
@@ -973,6 +995,7 @@ function wishlistSectionBodyHTML(player) {
     var items = buckets[slotName] || [];
     if (!items.length) continue;
     var rowSlot = WISHLIST_DISAMBIGUATE_SLOTS[slotName] ? slotName : null;
+    var catalystEligible = CATALYST_ELIGIBLE_SLOTS.indexOf(slotName) !== -1;
 
     // Heads-up when this slot's actual BiS is already covered by an Other
     // Sources tag (M+/Crafted/Catalyst) -- easy to miss otherwise, since
@@ -992,7 +1015,16 @@ function wishlistSectionBodyHTML(player) {
       tierNote +
       items
         .map(function (item, i) {
-          return wishlistRowHTML(item.name, item.itemId, rowSlot, i, false, item.rankName);
+          return wishlistRowHTML(
+            item.name,
+            item.itemId,
+            rowSlot,
+            i,
+            false,
+            item.rankName,
+            item.isTierToken,
+            catalystEligible
+          );
         })
         .join('');
     var summaryItems = items.map(function (item) {
