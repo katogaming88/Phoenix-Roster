@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.17] - 2026-08-18
+
+### Frontend
+
+- Wishlist "Catalyst Only" status no longer shows on rows where it can't actually apply: the tier token row itself (the actual class tier piece never goes into the catalyst -- it's the other, non-tier item in that slot that gets catalyzed into it), and any slot the catalyst can't touch at all (Neck, Finger, Trinket, Weapon, Off Hand -- only the 9 armor slots are catalyst-eligible).
+
 ## [3.60.16] - 2026-08-17
 
 ### Frontend
