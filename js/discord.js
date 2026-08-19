@@ -385,6 +385,7 @@ function showDiscordClaimModal(session) {
   // diff. Skip rows without a role the way the roster read does (js/common.js);
   // #357 departed-loot stubs are archived and/or carry no class_spec, so they
   // never surface here.
+  // team-read-guard: one row per roster member, 80 on the largest team.
   supabaseClient
     .from('players')
     .select('name_realm, classes_specs(class, role)')
@@ -554,6 +555,7 @@ function guildOfficerAccessLevel(session) {
 function fetchTeamClaims() {
   if (!supabaseClient) return Promise.resolve([]);
   var teamId = _teamCfg.supabaseTeamId;
+  // team-read-guard: one row per roster member, 80 on the largest team.
   return supabaseClient
     .from('players')
     .select('name_realm, team_members(id, discord_id, auth_user_id, role)')

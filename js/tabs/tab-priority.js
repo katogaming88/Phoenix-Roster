@@ -1692,6 +1692,7 @@ function prioEditFetchFairnessWarnings() {
   var track = PRIO_EDIT.difficulty === 'Mythic' ? 'Myth' : 'Hero';
   var boss = (DATA.itemBosses || {})[PRIO_EDIT.item] || '';
 
+  // team-read-guard: a view, one row per item with a live first priority.
   supabaseClient
     .from('priority_order_live_first_prios')
     .select('player_id, item_id, item_name, track, boss')

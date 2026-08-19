@@ -83,8 +83,58 @@ or add the `chore` label.
 | `gs/*.gs` | Retired Google Apps Script source, kept only as historical record -- no code reads `gasUrl` or writes through GAS anymore; everything is Supabase-only |
 | `supabase/` | Supabase CLI project: local dev stack config and schema migrations |
 | `scripts/import/` | One-off/recurring data import tooling (loot, attendance, etc.) |
+| `scripts/ci/` | CI checks that need more than a workflow step (changelog classification, the team-wide read guard) |
 | `dbdoc/` | Generated schema docs (tbls). Never edit by hand; regenerate with `npm run db:docs` |
 | `docs/RLS.md` | Hand-maintained RLS policy reference (tbls cannot generate this) |
+
+## Reading team-wide data
+
+PostgREST caps any response at 1000 rows and returns the truncated page as an
+ordinary `200` with `error: null`. Nothing in supabase-js surfaces the
+partial-content signal, so a short read is indistinguishable from a complete
+one at the call site: the app renders confidently wrong data rather than an
+error. This has produced real defects more than once, including attendance
+scores computed from part of a season and written to the database as fact.
+
+**Any read filtered by `team_id` goes through `fetchAllPaged()`** (`js/common.js`).
+It pages on `id`, takes an exact count on the first page, gives each page its
+own timeout rather than sharing one budget across the read, and returns `null`
+rather than partial rows if anything fails. Callers must treat `null` as "the
+read failed" and `[]` as "there is nothing there", and must never render the
+two the same way.
+
+```js
+fetchAllPaged(
+  function (afterId, limit) {
+    var q = supabaseClient
+      .from('attendance')
+      .select('id, player_id, status', afterId === null ? { count: 'exact' } : undefined)
+      .eq('team_id', _teamCfg.supabaseTeamId)
+      .order('id', { ascending: true })
+      .limit(limit);
+    return afterId === null ? q : q.gt('id', afterId);
+  },
+  { label: 'attendance grid' }
+);
+```
+
+`scripts/ci/team-wide-read-check.js` enforces this on every PR touching `js/`.
+It parses each file rather than grepping it, so the same call shape inside a
+comment or a string does not trip it. A read is exempt when it cannot reach the
+cap and the code says so: `.single()`/`.maybeSingle()`, a `head: true` count, a
+narrowing `.eq('player_id', ...)`, or a literal `.limit(50)`.
+
+Anything else that genuinely cannot grow past 1000 rows declares why, on or
+just above the read:
+
+```js
+// team-read-guard: one row per roster member, 80 on the largest team.
+```
+
+Write the actual bound, not "this is fine". The annotation is also the escape
+hatch for a `makeQuery` callback declared as a named function somewhere else,
+which the check cannot follow. Run it locally with
+`node scripts/ci/team-wide-read-check.js`.
 
 ## Local development database (Supabase)
 
