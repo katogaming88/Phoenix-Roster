@@ -17,6 +17,7 @@ with each release split into `### Frontend` (drives the version number) and
 ### Backend
 
 - `submit_self_received()` no longer auto-approves a self-tagged receipt when the source is Other, even for a raider tagging their own character -- it now goes to officer review like every other source did before auto-approve existed. Caught live: a raid drop already logged from the RCLC import got self-tagged as Other and auto-approved as a duplicate with no review (`20260819191008_self_received_other_source_requires_review.sql`).
+- Auto-approved self-received submissions now write an Audit Log entry ("Self-Received Auto-Approved", with the item/track/source) -- previously an auto-approved submission left no trace anywhere an officer could see it, since it never appears on the Requests tab (pending only) and never logged the way a manual approve/reject does (`20260819191732_self_received_auto_approve_audit_log.sql`).
 
 ## [3.60.23] - 2026-08-19
 
