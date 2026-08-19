@@ -10,6 +10,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ## [3.60.24] - 2026-08-19
 
+### Backend
+
+- `import_rclc_loot()` matched a raider to their `players` row by an exact name+realm string, but RCLC reads the realm straight from the WoW client, which strips the space from a multi-word realm name (e.g. "WyrmrestAccord", "Area52") while the DB's officer-typed `name_realm` keeps it ("Wyrmrest Accord", "Area 52"). Every multi-word-realm raider's match missed on that space, so the import silently created a new, already-archived duplicate player row for each of them and attributed their loot to it instead of their real character. Caught live: 6 raiders' loot from the same raid night (10 items total) landed on invisible duplicates. The match now ignores whitespace on both sides.
+
+## [3.60.24] - 2026-08-19
+
 ### Frontend
 
 - The self-received request form's note now matches what actually happens: it only says "An officer will review and approve this" when the source is Other (the one source that still requires review), and says the item will be added right away for every other source (M+, Great Vault, Crafted, Catalyst, Bonus Roll). Previously it always said an officer would review, even though tagging your own character auto-approves for every source.
