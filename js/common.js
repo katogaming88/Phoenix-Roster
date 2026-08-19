@@ -2243,29 +2243,31 @@ function fetchSupabasePriorityLiveFirstPrios() {
 
 function fetchSupabasePriorityOrder() {
   if (!supabaseClient) return Promise.resolve(null);
-  var query = supabaseClient
-    .from('priority_order')
-    .select('item_id, track, rank, season, items(name), players(name_realm)')
-    .eq('team_id', _teamCfg.supabaseTeamId)
-    .then(
-      function (result) {
-        if (result.error) {
-          console.warn('Supabase priority_order query failed.', result.error.message);
-          return null;
-        }
-        return result.data && result.data.length ? result.data : null;
-      },
-      function (err) {
-        console.warn('Supabase priority_order query failed.', err);
-        return null;
-      }
-    );
-  var timeout = new Promise(function (resolve) {
-    setTimeout(function () {
-      resolve(null);
-    }, 10000);
+  // Not season-scoped, and a rollover does not clear the table, so this grows
+  // by roughly a season's worth of ranked rows every season (#707). Team 1 was
+  // at 667 across two seasons when this was paged, which is close enough to
+  // the 1000-row cap that the next rollover or two would have truncated it.
+  // The whole-read 10s race this used to carry is gone with the loop: the
+  // helper budgets each page instead, so the timeout does not tighten as the
+  // table grows. Callers still treat an empty result as "nothing saved", the
+  // same as before.
+  return fetchAllPaged(
+    function (afterId, limit) {
+      var q = supabaseClient
+        .from('priority_order')
+        .select(
+          'id, item_id, track, rank, season, items(name), players(name_realm)',
+          afterId === null ? { count: 'exact' } : undefined
+        )
+        .eq('team_id', _teamCfg.supabaseTeamId)
+        .order('id', { ascending: true })
+        .limit(limit);
+      return afterId === null ? q : q.gt('id', afterId);
+    },
+    { label: 'priority_order query' }
+  ).then(function (rows) {
+    return rows && rows.length ? rows : null;
   });
-  return Promise.race([query, timeout]);
 }
 
 // Top-3 saved-vs-current mismatches after a scoring change, so a saved
@@ -6521,66 +6523,76 @@ function renderAddAttendanceNightControl(firstName, history) {
   var existingDates = {};
   for (var h = 0; h < history.length; h++) existingDates[history[h].date] = true;
 
-  supabaseClient
-    .from('attendance')
-    .select('raid_date')
-    .eq('team_id', _teamCfg.supabaseTeamId)
-    .then(function (result) {
-      if (result.error) return;
-      var seen = {};
-      var dates = [];
-      (result.data || []).forEach(function (row) {
-        var d = row.raid_date;
-        if (!d || seen[d] || existingDates[d]) return;
-        if (player.joinDate && d < player.joinDate) return;
-        seen[d] = true;
-        dates.push(d);
-      });
-      if (!dates.length) return;
-      dates.sort();
-
-      var CARD_STATUSES = [
-        'Present',
-        'Bench',
-        'Late (with notice)',
-        'Excused',
-        'Late (no notice)',
-        'No Show',
-        'Extended Leave',
-        'Medical Leave',
-        'Not on Roster'
-      ];
-      var dateOptions = dates
-        .map(function (d) {
-          return '<option value="' + d + '">' + d + '</option>';
-        })
-        .join('');
-      var statusOptions = CARD_STATUSES.map(function (s) {
-        return '<option value="' + s + '">' + s + '</option>';
-      }).join('');
-      var nameSafe = firstName.replace(/'/g, "\\'");
-
-      container.innerHTML =
-        '<div style="display:flex;align-items:center;gap:0.4rem;margin-top:0.5rem;padding-top:0.5rem;border-top:1px solid var(--border);flex-wrap:wrap;">' +
-        '<span style="font-size:1.02rem;color:var(--text-muted);">Add raid night:</span>' +
-        '<select id="attend-add-date-' +
-        firstName +
-        '" style="font-size:1.02rem;padding:0.15rem 0.35rem;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);">' +
-        dateOptions +
-        '</select>' +
-        '<select id="attend-add-status-' +
-        firstName +
-        '" style="font-size:1.02rem;padding:0.15rem 0.35rem;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);">' +
-        statusOptions +
-        '</select>' +
-        '<button class="btn btn-gold" style="font-size:0.97rem;padding:0.2rem 0.6rem;" onclick="addAttendanceNight(\'' +
-        nameSafe +
-        '\')">Add</button>' +
-        '<span id="attend-add-ind-' +
-        firstName +
-        '" style="font-size:0.97rem;"></span>' +
-        '</div>';
+  // Every raid night the team has, so it is over the 1000-row cap on an
+  // active team already (#707); an unpaged read here silently drops the
+  // oldest nights from the list an officer can pick from.
+  fetchAllPaged(
+    function (afterId, limit) {
+      var q = supabaseClient
+        .from('attendance')
+        .select('id, raid_date', afterId === null ? { count: 'exact' } : undefined)
+        .eq('team_id', _teamCfg.supabaseTeamId)
+        .order('id', { ascending: true })
+        .limit(limit);
+      return afterId === null ? q : q.gt('id', afterId);
+    },
+    { label: 'attendance raid dates' }
+  ).then(function (rows) {
+    if (rows === null) return;
+    var seen = {};
+    var dates = [];
+    rows.forEach(function (row) {
+      var d = row.raid_date;
+      if (!d || seen[d] || existingDates[d]) return;
+      if (player.joinDate && d < player.joinDate) return;
+      seen[d] = true;
+      dates.push(d);
     });
+    if (!dates.length) return;
+    dates.sort();
+
+    var CARD_STATUSES = [
+      'Present',
+      'Bench',
+      'Late (with notice)',
+      'Excused',
+      'Late (no notice)',
+      'No Show',
+      'Extended Leave',
+      'Medical Leave',
+      'Not on Roster'
+    ];
+    var dateOptions = dates
+      .map(function (d) {
+        return '<option value="' + d + '">' + d + '</option>';
+      })
+      .join('');
+    var statusOptions = CARD_STATUSES.map(function (s) {
+      return '<option value="' + s + '">' + s + '</option>';
+    }).join('');
+    var nameSafe = firstName.replace(/'/g, "\\'");
+
+    container.innerHTML =
+      '<div style="display:flex;align-items:center;gap:0.4rem;margin-top:0.5rem;padding-top:0.5rem;border-top:1px solid var(--border);flex-wrap:wrap;">' +
+      '<span style="font-size:1.02rem;color:var(--text-muted);">Add raid night:</span>' +
+      '<select id="attend-add-date-' +
+      firstName +
+      '" style="font-size:1.02rem;padding:0.15rem 0.35rem;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);">' +
+      dateOptions +
+      '</select>' +
+      '<select id="attend-add-status-' +
+      firstName +
+      '" style="font-size:1.02rem;padding:0.15rem 0.35rem;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);">' +
+      statusOptions +
+      '</select>' +
+      '<button class="btn btn-gold" style="font-size:0.97rem;padding:0.2rem 0.6rem;" onclick="addAttendanceNight(\'' +
+      nameSafe +
+      '\')">Add</button>' +
+      '<span id="attend-add-ind-' +
+      firstName +
+      '" style="font-size:0.97rem;"></span>' +
+      '</div>';
+  });
 }
 
 // #241: creates the attendance row saveAttendanceFromCard's per-row dropdown

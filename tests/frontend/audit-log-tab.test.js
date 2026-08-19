@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { realFetchAllPaged } from './helpers/common-sandbox.js';
 
 // js/tabs/tab-audit.js is a plain browser script (no exports), so these
 // tests load it into a vm sandbox with just enough browser globals stubbed,
@@ -43,9 +44,31 @@ function makeClient({ tables = {}, rpc = {} } = {}) {
         calls.in.push([c, v]);
         return b;
       },
+      // The audit log pages by keyset through fetchAllPaged since #707.
+      gt(c, v) {
+        calls.gt = [c, v];
+        return b;
+      },
+      limit(n) {
+        calls.limit = n;
+        return b;
+      },
       then(ok, err) {
         return Promise.resolve()
           .then(() => resolve(calls))
+          .then((result) => {
+            // The audit read selects id and pages on it (#707). Fixtures here
+            // are about rendering, so the mock supplies the ids the real query
+            // returns rather than every fixture repeating them.
+            if (table === 'audit_log' && Array.isArray(result.data)) {
+              return {
+                ...result,
+                data: result.data.map((row, i) => (typeof row.id === 'number' ? row : { ...row, id: i + 1 })),
+                count: calls.gt ? null : result.data.length
+              };
+            }
+            return result;
+          })
           .then(ok, err);
       }
     };
@@ -86,6 +109,8 @@ function loadSandbox({ supabaseClient, els = {} } = {}) {
   };
   vm.createContext(sandbox);
   vm.runInContext(TAB_AUDIT_JS, sandbox, { filename: 'tab-audit.js' });
+  // js/common.js owns fetchAllPaged; tab-audit.js calls it as a global.
+  sandbox.fetchAllPaged = realFetchAllPaged();
   return sandbox;
 }
 
@@ -98,18 +123,48 @@ describe('buildAuditTab', () => {
     await flush();
 
     const q = captured.byTable.audit_log[0];
-    expect(q.select).toBe('actor_id, action, target_type, target_id, detail, created_at');
+    // Keyset paging orders by id (#707); the newest-first order this view
+    // wants is applied to the collected rows, not by the query.
+    expect(q.select).toBe('id, actor_id, action, target_type, target_id, detail, created_at');
     expect(q.eq).toEqual([['team_id', 1]]);
-    expect(q.order).toEqual([['created_at', { ascending: false }]]);
+    expect(q.order).toEqual([['id', { ascending: true }]]);
+    expect(q.limit).toBe(1000);
   });
 
-  it('shows an error message on a query error', async () => {
+  it('renders the newest entry first even though the rows are read oldest first', async () => {
+    const { client } = makeClient({
+      tables: {
+        audit_log: () => ({
+          data: [
+            { id: 1, actor_id: null, action: 'Older Action', created_at: '2026-07-01T09:00:00Z' },
+            { id: 2, actor_id: null, action: 'Newer Action', created_at: '2026-07-09T13:45:00Z' }
+          ],
+          error: null
+        })
+      }
+    });
+    const els = { auditContainer: makeEl() };
+    const sandbox = loadSandbox({ supabaseClient: client, els });
+    sandbox.buildAuditTab();
+    await flush();
+    await flush();
+    const html = els.auditContainer.innerHTML;
+    expect(html.indexOf('Newer Action')).toBeLessThan(html.indexOf('Older Action'));
+  });
+
+  // The message itself is no longer surfaced: fetchAllPaged reports a failed
+  // read as null and logs the reason, the same as every other paged read
+  // (#694 settled that a runtime console.warn is where the detail goes,
+  // because officers do not have devtools open). What matters to the officer
+  // is that the tab says it failed rather than rendering an empty log.
+  it('says the log could not be loaded on a query error, rather than showing an empty log', async () => {
     const { client } = makeClient({ tables: { audit_log: () => ({ data: null, error: { message: 'boom' } }) } });
     const els = { auditContainer: makeEl() };
     const sandbox = loadSandbox({ supabaseClient: client, els });
     sandbox.buildAuditTab();
     await flush();
-    expect(els.auditContainer.innerHTML).toContain('boom');
+    await flush();
+    expect(els.auditContainer.innerHTML).toMatch(/could not load/i);
   });
 
   it('shows a not-connected message with no supabase client', () => {

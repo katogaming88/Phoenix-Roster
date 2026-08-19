@@ -36,9 +36,34 @@ function makeSupabase(config) {
         record.eq.push([col, val]);
         return b;
       },
+      // The team-wide raid-date read pages by keyset through fetchAllPaged
+      // since #707, so the builder has to carry the cursor chain too.
+      order(col, opts) {
+        record.order = record.order || [];
+        record.order.push([col, opts]);
+        return b;
+      },
+      gt(col, val) {
+        record.gt = [col, val];
+        return b;
+      },
+      limit(n) {
+        record.limit = n;
+        return b;
+      },
       then(onFulfilled, onRejected) {
         return Promise.resolve()
           .then(() => (config[kind] ? config[kind](record) : { data: null, error: null }))
+          .then((result) => {
+            // The read selects id now; supply the ones the real query returns
+            // so the cursor can advance, and report the count on page one.
+            if (!Array.isArray(result.data)) return result;
+            return {
+              ...result,
+              data: result.data.map((row, i) => (typeof row.id === 'number' ? row : { ...row, id: i + 1 })),
+              count: record.gt ? null : result.data.length
+            };
+          })
           .then(onFulfilled, onRejected);
       }
     };
