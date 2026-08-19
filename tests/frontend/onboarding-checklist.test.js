@@ -7,12 +7,33 @@ import { fileURLToPath } from 'node:url';
 // #478 -- new-raider onboarding checklist gating: isRecentJoiner()/
 // seasonHasStarted()/joinedAfterSeasonStart() decide whether the "wishlist
 // not started" nudge (roster badge, officer dashboard alert, profile banner)
-// shows for a given player. All three take YYYY-MM-DD strings and compare
-// via Date.UTC, so these tests build dates as offsets from "today" rather
-// than hardcoding dates, to stay valid no matter when the suite runs.
+// shows for a given player.
+//
+// #703 -- these run on a fixed clock rather than the wall clock. "Today" in
+// the functions under test is the viewer's LOCAL calendar date pinned to UTC
+// midnight, so a test that builds its dates from UTC getters disagrees with
+// production for part of every day. FIXED_MS is picked so the local and UTC
+// calendar dates differ under the TZ the CI job pins (America/New_York, see
+// .github/workflows/frontend-tests.yml): 2026-02-28 21:00 EST is 2026-03-01
+// in UTC. That gap is what makes these cases fail if the date math here or
+// in production ever flips to UTC getters.
+const FIXED_MS = Date.UTC(2026, 2, 1, 2, 0, 0);
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const COMMON_JS = readFileSync(path.join(HERE, '../../js/common.js'), 'utf8');
+
+// Pins new Date() and Date.now() inside the sandbox to FIXED_MS. The code
+// under test only calls new Date(), Date.UTC() and the local getters, so a
+// host-realm subclass is enough; nothing does an instanceof check.
+class FixedDate extends Date {
+  constructor(...args) {
+    if (args.length) super(...args);
+    else super(FIXED_MS);
+  }
+  static now() {
+    return FIXED_MS;
+  }
+}
 
 function makeSandbox(DATA) {
   const sandbox = {
@@ -23,6 +44,7 @@ function makeSandbox(DATA) {
     document: { getElementById: () => null, createElement: () => ({}), head: { appendChild: () => {} } },
     console,
     Intl,
+    Date: FixedDate,
     setTimeout,
     clearTimeout
   };
@@ -32,11 +54,14 @@ function makeSandbox(DATA) {
   return sandbox;
 }
 
-// YYYY-MM-DD string for "today + offsetDays" (UTC), matching the app's own
-// join_date/seasonStart date math.
+// YYYY-MM-DD string for "today + offsetDays". Today is FIXED_MS read through
+// the LOCAL getters and pinned to UTC midnight, which is exactly what
+// isRecentJoiner() and seasonHasStarted() do. Reading it through the UTC
+// getters instead is the #703 bug: it hands production a date one day ahead
+// of what production calls today, for part of every day.
 function dateOffset(offsetDays) {
-  const ms =
-    Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate()) + offsetDays * 86400000;
+  const f = new Date(FIXED_MS);
+  const ms = Date.UTC(f.getFullYear(), f.getMonth(), f.getDate()) + offsetDays * 86400000;
   return new Date(ms).toISOString().slice(0, 10);
 }
 

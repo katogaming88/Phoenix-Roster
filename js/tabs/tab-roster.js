@@ -1365,6 +1365,8 @@ function buildTrialPromoAlert() {
 
   var minDays = PROMO_THRESHOLDS.weeks * 7;
   var minAttend = PROMO_THRESHOLDS.attend;
+  // #703 -- local getters into Date.UTC() is deliberate: "today" is the viewer's local
+  // calendar date pinned to UTC midnight, matching the stored YYYY-MM-DD join dates.
   var today = new Date();
   var todayMs = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
 

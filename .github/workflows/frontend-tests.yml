@@ -19,6 +19,14 @@ concurrency:
 jobs:
   frontend:
     runs-on: ubuntu-latest
+    # Runners are UTC, where the local and UTC calendar dates always agree, so
+    # the onboarding-checklist clock tests (#703) would pass either way. Pinning
+    # a zone with a real offset is what keeps them able to catch a regression.
+    # America/New_York because it is already the project's canonical zone:
+    # add_signup_to_roster() computes join_date in it (docs/database-decisions.md,
+    # 2026-08-06). The fixed instant in that test file assumes this zone.
+    env:
+      TZ: America/New_York
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7

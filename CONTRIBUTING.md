@@ -59,7 +59,10 @@ or add the `chore` label.
   files as they get touched
 - Frontend logic has unit tests under `tests/frontend/` (they load the plain
   `js/` scripts into a vm sandbox, no browser needed). Run
-  `npm run test:frontend`; CI runs the suite on every `js/` change
+  `npm run test:frontend`; CI runs the suite on every `js/` change. That job
+  pins `TZ=America/New_York`, the project's canonical zone: date logic reads
+  the viewer's local calendar date, so a UTC runner cannot catch a
+  local-vs-UTC regression (#703)
 
 ## Project structure
 

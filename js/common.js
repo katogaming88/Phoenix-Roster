@@ -4405,6 +4405,8 @@ function isRecentJoiner(player, days) {
   if (parts.length !== 3) return false;
   var joinMs = Date.UTC(+parts[0], +parts[1] - 1, +parts[2]);
   if (isNaN(joinMs)) return false;
+  // #703 -- local getters into Date.UTC() is deliberate: "today" is the viewer's local
+  // calendar date pinned to UTC midnight, matching the stored YYYY-MM-DD dates.
   var today = new Date();
   var todayMs = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
   var ageDays = Math.floor((todayMs - joinMs) / 86400000);
@@ -4420,6 +4422,8 @@ function seasonHasStarted() {
   if (parts.length !== 3) return false;
   var startMs = Date.UTC(+parts[0], +parts[1] - 1, +parts[2]);
   if (isNaN(startMs)) return false;
+  // #703 -- local getters into Date.UTC() is deliberate: "today" is the viewer's local
+  // calendar date pinned to UTC midnight, matching the stored YYYY-MM-DD dates.
   var today = new Date();
   var todayMs = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
   return todayMs >= startMs;
