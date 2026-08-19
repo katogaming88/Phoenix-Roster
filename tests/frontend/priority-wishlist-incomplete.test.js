@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { offsetClient } from './helpers/supabase-mock.js';
+import { keysetClient } from './helpers/supabase-mock.js';
+import { realFetchAllPaged } from './helpers/common-sandbox.js';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import path from 'node:path';
@@ -117,15 +118,16 @@ function makeSandbox({
     getBisItems: (firstName) => bisList[firstName] || [],
     bisSlotBuckets: (items) => bisSlotBuckets(items, itemSlots),
     bisEligibleRealItemsBySlot: () => bisEligibleRealItemsBySlot(itemSlots, itemIds),
-    // fetchTeamItemPreferences still pages by OFFSET .range(); the mock that
-    // honours it lives in ./helpers/supabase-mock.js (#695).
-    supabaseClient: offsetClient(prefsRows).client,
+    // fetchTeamItemPreferences pages by keyset through fetchAllPaged (#707);
+    // the mock that honours .gt()/.limit() lives in ./helpers (#695).
+    supabaseClient: keysetClient(prefsRows).client,
     setTimeout,
     clearTimeout,
     Promise
   };
   vm.createContext(sandbox);
   vm.runInContext(PRIORITY_JS, sandbox, { filename: 'tab-priority.js' });
+  sandbox.fetchAllPaged = realFetchAllPaged();
   return sandbox;
 }
 

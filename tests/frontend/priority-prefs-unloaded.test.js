@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { offsetClient, failingClient } from './helpers/supabase-mock.js';
+import { keysetClient, failingClient } from './helpers/supabase-mock.js';
+import { realFetchAllPaged } from './helpers/common-sandbox.js';
 
 // A failed team-wide item_preferences fetch must not read as an empty one
 // (#707 item 2).
@@ -49,6 +50,8 @@ function makeSandbox({ client, roster = [], itemSlots = {}, itemIds = {} } = {})
   };
   vm.createContext(sandbox);
   vm.runInContext(PRIORITY_JS, sandbox, { filename: 'tab-priority.js' });
+  // js/common.js owns fetchAllPaged; tab-priority.js calls it as a global.
+  sandbox.fetchAllPaged = realFetchAllPaged();
   return { sandbox, elements };
 }
 
@@ -132,7 +135,7 @@ describe('a failed team item_preferences fetch is not an empty one (#707)', () =
   });
 
   it('a genuinely empty table still renders the normal zero state, not an error', async () => {
-    const { client } = offsetClient([]);
+    const { client } = keysetClient([]);
     const { sandbox, elements } = makeSandbox({ client, roster: [] });
 
     sandbox.renderWishlistIncompleteBanner();

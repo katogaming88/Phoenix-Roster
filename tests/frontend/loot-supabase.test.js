@@ -42,7 +42,7 @@ function loadCommonJs(supabase, consoleObj, search = '') {
 // queue (one entry per rclc_loot query); the players query gets rosterResult
 // (loadData always fires both).
 function mockSupabase({ lootPages = [], rosterResult } = {}) {
-  const calls = { selects: [], eq: [], orders: [], ranges: [] };
+  const calls = { selects: [], eq: [], orders: [], ranges: [], gts: [], limits: [] };
   let page = 0;
   function makeBuilder(table) {
     const builder = {
@@ -63,6 +63,14 @@ function mockSupabase({ lootPages = [], rosterResult } = {}) {
       },
       range(from, to) {
         calls.ranges.push([from, to]);
+        return builder;
+      },
+      gt(col, val) {
+        if (table === 'rclc_loot') calls.gts.push([col, val]);
+        return builder;
+      },
+      limit(n) {
+        if (table === 'rclc_loot') calls.limits.push(n);
         return builder;
       },
       maybeSingle() {
@@ -118,6 +126,9 @@ function mockSupabase({ lootPages = [], rosterResult } = {}) {
 
 function lootRow(overrides) {
   return {
+    // Keyset paging (#707) needs a numeric id on every row, and the query
+    // selects one now; a row without it is not a shape production can produce.
+    id: 1,
     track: 'Hero',
     season: 'MID1',
     awarded_at: '2026-03-25T04:07:00+00:00',
@@ -207,13 +218,48 @@ describe('fetchSupabaseLoot', () => {
     expect(calls.selects[0]).toContain('items(name)');
     expect(calls.selects[0]).toContain('players(name_realm)');
     expect(calls.eq).toEqual([['team_id', 1]]);
-    expect(calls.orders).toEqual(['awarded_at', 'id']);
-    expect(calls.ranges).toEqual([[0, 999]]);
+    // Keyset paging orders by id ascending (#707); the newest-first order the
+    // callers want is applied to the collected rows, not by the query.
+    expect(calls.orders).toEqual(['id']);
+    expect(calls.limits).toEqual([1000]);
+    expect(calls.ranges).toEqual([]);
   });
 
-  it('pages past the PostgREST row cap until a short page', async () => {
-    const fullPage = Array.from({ length: 1000 }, (_, i) => lootRow({ awarded_at: `2026-01-01T00:00:${i % 60}Z` }));
-    const shortPage = [lootRow(), lootRow()];
+  it('sorts the collected rows newest first, whatever order they were read in', async () => {
+    const oldest = lootRow({ id: 1, awarded_at: '2026-01-01T00:00:00Z' });
+    const newest = lootRow({ id: 2, awarded_at: '2026-03-01T00:00:00Z' });
+    const middle = lootRow({ id: 3, awarded_at: '2026-02-01T00:00:00Z' });
+    const { supabase } = mockSupabase({ lootPages: [{ data: [oldest, newest, middle], error: null }] });
+    const sandbox = loadCommonJs(supabase);
+    const rows = await sandbox.fetchSupabaseLoot();
+    expect(rows.map((r) => r.awarded_at)).toEqual([
+      '2026-03-01T00:00:00Z',
+      '2026-02-01T00:00:00Z',
+      '2026-01-01T00:00:00Z'
+    ]);
+  });
+
+  it('breaks an awarded_at tie by id descending, the order the query used to ask for', async () => {
+    const a = lootRow({ id: 5, awarded_at: '2026-01-01T00:00:00Z' });
+    const b = lootRow({ id: 9, awarded_at: '2026-01-01T00:00:00Z' });
+    const { supabase } = mockSupabase({ lootPages: [{ data: [a, b], error: null }] });
+    const sandbox = loadCommonJs(supabase);
+    const rows = await sandbox.fetchSupabaseLoot();
+    expect(rows.map((r) => r.id)).toEqual([9, 5]);
+  });
+
+  it('sorts rows with no awarded_at last rather than dropping them', async () => {
+    const dated = lootRow({ id: 1, awarded_at: '2026-01-01T00:00:00Z' });
+    const undated = lootRow({ id: 2, awarded_at: null });
+    const { supabase } = mockSupabase({ lootPages: [{ data: [undated, dated], error: null }] });
+    const sandbox = loadCommonJs(supabase);
+    const rows = await sandbox.fetchSupabaseLoot();
+    expect(rows.map((r) => r.id)).toEqual([1, 2]);
+  });
+
+  it('pages past the PostgREST row cap, advancing the cursor by the last row id', async () => {
+    const fullPage = Array.from({ length: 1000 }, (_, i) => lootRow({ id: i + 1 }));
+    const shortPage = [lootRow({ id: 1001 }), lootRow({ id: 1002 })];
     const { calls, supabase } = mockSupabase({
       lootPages: [
         { data: fullPage, error: null },
@@ -223,10 +269,8 @@ describe('fetchSupabaseLoot', () => {
     const sandbox = loadCommonJs(supabase);
     const rows = await sandbox.fetchSupabaseLoot();
     expect(rows).toHaveLength(1002);
-    expect(calls.ranges).toEqual([
-      [0, 999],
-      [1000, 1999]
-    ]);
+    // First page carries no cursor; the second resumes after the last id seen.
+    expect(calls.gts).toEqual([['id', 1000]]);
   });
 
   it('resolves null on a query error result', async () => {
@@ -247,10 +291,14 @@ describe('fetchSupabaseLoot', () => {
     await expect(sandbox.fetchSupabaseLoot()).resolves.toBeNull();
   });
 
-  it('resolves null on an empty result so the fallback applies', async () => {
+  // Was "resolves null on an empty result so the fallback applies". The
+  // fallback it named was the GAS payload, retired in #225, and conflating an
+  // empty table with a failed read is the thing #707 is removing: null now
+  // means only that the read failed.
+  it('resolves an empty array on an empty result, distinct from a failed read', async () => {
     const { supabase } = mockSupabase({ lootPages: [{ data: [], error: null }] });
     const sandbox = loadCommonJs(supabase);
-    await expect(sandbox.fetchSupabaseLoot()).resolves.toBeNull();
+    await expect(sandbox.fetchSupabaseLoot()).resolves.toEqual([]);
   });
 });
 
