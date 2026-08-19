@@ -84,6 +84,7 @@ function buildBisTab() {
     return;
   }
 
+  // team-read-guard: the pending queue only, drained by officers.
   supabaseClient
     .from('bis_requests')
     .select('id, bis_link, player_note, submitted_at, players(name_realm)')

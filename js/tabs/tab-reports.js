@@ -48,6 +48,7 @@ function loadRnlsiReport() {
     return;
   }
   container.innerHTML = '<p style="color:var(--text-muted);">Loading...</p>';
+  // team-read-guard: a view, one row per roster member.
   supabaseClient
     .from('rnlsi')
     .select('*')
@@ -161,6 +162,7 @@ function loadBisDemandReport() {
     return;
   }
   container.innerHTML = '<p style="color:var(--text-muted);">Loading...</p>';
+  // team-read-guard: a view aggregated to one row per item on a BiS list.
   supabaseClient
     .from('bis_demand_vs_awards')
     .select('*')
@@ -244,8 +246,11 @@ function loadPriorityHealthReport() {
   staleContainer.innerHTML = '<p style="color:var(--text-muted);">Loading...</p>';
   gapsContainer.innerHTML = '';
   Promise.all([
+    // team-read-guard: a view of stale ranked entries, far smaller than the table.
     supabaseClient.from('priority_order_stale_entries').select('*').eq('team_id', _teamCfg.supabaseTeamId),
+    // team-read-guard: a view of ranked items missing a priority, far smaller than the table.
     supabaseClient.from('priority_order_gaps').select('*').eq('team_id', _teamCfg.supabaseTeamId),
+    // team-read-guard: a view of stale ranked entries, far smaller than the table.
     supabaseClient.from('priority_order_stale_after_heroic').select('*').eq('team_id', _teamCfg.supabaseTeamId)
   ]).then(function (results) {
     if (results[0].error || results[1].error || results[2].error) {
@@ -353,6 +358,7 @@ function loadLootPaceReport() {
     return;
   }
   container.innerHTML = '<p style="color:var(--text-muted);">Loading...</p>';
+  // team-read-guard: a view aggregated to one row per player per week.
   supabaseClient
     .from('season_loot_pace')
     .select('*')

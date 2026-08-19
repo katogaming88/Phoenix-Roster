@@ -1376,6 +1376,7 @@ function setViewHash(fragment) {
 // rows, or null on any failure so the caller falls back to the JSONP roster.
 function fetchSupabaseRoster() {
   if (!supabaseClient) return Promise.resolve(null);
+  // team-read-guard: one row per roster member, 80 on the largest team.
   var query = supabaseClient
     .from('players')
     .select(
@@ -1414,6 +1415,7 @@ function fetchSupabaseRoster() {
 // the roster load.
 function fetchSupabaseMPlusRejections() {
   if (!supabaseClient) return Promise.resolve({});
+  // team-read-guard: the pending queue only, drained by officers.
   return supabaseClient
     .from('mplus_exclusion_requests')
     .select('player_id, officer_notes, submitted_at')
@@ -1446,6 +1448,7 @@ function fetchSupabaseMPlusRejections() {
 // than blocking the Roster tab.
 function fetchSupabaseIncomingRoster() {
   if (!supabaseClient) return Promise.resolve(null);
+  // team-read-guard: one row per incoming roster member.
   var query = supabaseClient
     .from('incoming_roster')
     .select('signup_id, signup_name_realm, swap_from_name_realm, class, spec, role')
@@ -1981,6 +1984,7 @@ function mapSupabaseBisItems(rows) {
 // caller falls back to the Apps Script heavy chunk's selfReceived.
 function fetchSupabaseSelfReceived() {
   if (!supabaseClient) return Promise.resolve(null);
+  // team-read-guard: approved requests only, one row per item a player self-reported.
   var query = supabaseClient
     .from('self_received_requests')
     .select('track, source, players(name_realm), items(name, slot)')
@@ -2082,6 +2086,7 @@ function mapSupabaseStreamers(rows) {
 // comes from the embedded encounter row.
 function fetchSupabaseRaidProgress() {
   if (!supabaseClient) return Promise.resolve(null);
+  // team-read-guard: one row per raid tier the team has progressed.
   var query = supabaseClient
     .from('team_raid_progress')
     .select(
@@ -2191,6 +2196,7 @@ function mapSupabaseSelfReceived(rows) {
 // rather than erroring.
 function fetchSupabasePriorityStaleAfterHeroic() {
   if (!supabaseClient) return Promise.resolve([]);
+  // team-read-guard: a view of stale ranked entries, far smaller than the table.
   return supabaseClient
     .from('priority_order_stale_after_heroic')
     .select('*')
@@ -2222,6 +2228,7 @@ function fetchSupabasePriorityStaleAfterHeroic() {
 // the badge just shows nothing rather than erroring.
 function fetchSupabasePriorityLiveFirstPrios() {
   if (!supabaseClient) return Promise.resolve([]);
+  // team-read-guard: a view, one row per item with a live first priority.
   return supabaseClient
     .from('priority_order_live_first_prios')
     .select('season, player_id, name_realm, item_id, item_name, track, boss')

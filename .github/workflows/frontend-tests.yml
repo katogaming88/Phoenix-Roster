@@ -28,3 +28,8 @@ jobs:
       - run: npm ci
       - name: Run frontend unit tests
         run: npm run test:frontend
+      # Fails a team-wide Supabase read that does not page (#707). Lives here
+      # rather than in its own workflow because it runs over js/ and this job
+      # already installs and triggers on exactly that.
+      - name: Check team-wide reads page
+        run: node scripts/ci/team-wide-read-check.js

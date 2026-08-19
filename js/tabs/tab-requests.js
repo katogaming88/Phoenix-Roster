@@ -9,6 +9,7 @@ function buildRequestsTab() {
     return;
   }
 
+  // team-read-guard: approved requests only, one row per item a player self-reported.
   supabaseClient
     .from('self_received_requests')
     .select('id, track, source, note, submitted_at, players(name_realm), items(name, slot)')

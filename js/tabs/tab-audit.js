@@ -149,6 +149,7 @@ function resolveAuditTargetNames(rows, teamId) {
       })
   );
   if (!ids.length) return Promise.resolve({});
+  // team-read-guard: one row per roster member, 80 on the largest team.
   return supabaseClient
     .from('players')
     .select('id, name_realm')

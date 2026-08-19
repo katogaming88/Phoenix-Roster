@@ -58,6 +58,7 @@ function buildPendingRosterTab() {
     loaded.entries = true;
     tryRender();
   } else {
+    // team-read-guard: one row per roster member awaiting promotion.
     supabaseClient
       .from('pending_roster')
       .select('*')
@@ -86,6 +87,7 @@ function fetchMissingSignups(callback) {
     callback(null, []);
     return;
   }
+  // team-read-guard: one row per player per season signup.
   supabaseClient
     .from('season_signups')
     .select('signup_name_realm, swap_from_name_realm, status, season')

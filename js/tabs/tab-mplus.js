@@ -73,6 +73,7 @@ function buildMPlusTab() {
     return;
   }
 
+  // team-read-guard: the pending queue only, drained by officers.
   supabaseClient
     .from('mplus_exclusion_requests')
     .select('id, reason, raiderio_url, submitted_at, players(name_realm)')

@@ -69,6 +69,7 @@ function fetchSignups(callback) {
     callback(new Error('Not connected to Supabase.'));
     return;
   }
+  // team-read-guard: one row per player per season signup.
   supabaseClient
     .from('season_signups')
     .select(SIGNUP_SELECT_COLUMNS)

@@ -18,6 +18,7 @@
   },
   "devDependencies": {
     "@supabase/supabase-js": "^2.112.3",
+    "acorn": "^8.17.0",
     "csv-parse": "^7.0.2",
     "eslint": "^8.57.0",
     "pg": "^8.23.0",
