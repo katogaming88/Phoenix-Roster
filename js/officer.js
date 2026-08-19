@@ -547,8 +547,10 @@ checkMaintenanceMode().then(function (maint) {
         buildRosterTable();
         updatePriorityBadges();
         // Attendance-driven, so it can't run correctly until DATA.rawAttendanceData
-        // lands here -- the onCoreReady pass above always sees 0% (getDisplayAttendancePct's
-        // fallback before heavy data arrives), so a trial past threshold never showed.
+        // lands here. The onCoreReady pass above renders a placeholder instead of a
+        // readiness list, because attendance is unknown at that point (#694); this
+        // re-run is what fills it in. Before that it read every player as 0%, so a
+        // trial past threshold never showed.
         buildTrialPromoAlert();
         reopenSelectedPlayer();
         // Same race as the attendance comment above, for the Priority tab:

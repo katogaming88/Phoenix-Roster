@@ -8,6 +8,16 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.18] - 2026-08-19
+
+### Frontend
+
+- Fixed the officer Roster, Attendance and player profile views showing every raider at 0% attendance whenever the attendance data had not finished loading, or had failed to load. The percentage came from a field that was filled in by the old Apps Script payload and has been empty since that was retired, so what the pages actually had was no attendance at all, displayed as a confident zero. The visible damage was mostly in the things built on top of it: the "low attendance" roster filter matched every player on the team, the below-threshold list on the Attendance tab named everyone, sorting by attendance did nothing, the Avg Attendance stat read 0%, and each roster row drew a full red bar. Unknown attendance now shows as a dash, sorts to the bottom, and is left out of the average instead of counted as a zero.
+- The Trial Promotions panel and the Attendance tab's below-threshold list now say when attendance is still loading or could not be loaded, rather than rendering as an empty list. Both of those read as a real answer ("no trials are ready", "everyone is above the threshold") when in fact nothing had been measured yet.
+- Fixed archived seasons storing a blank attendance column for every player. The season archive copied the same empty field, so both archived seasons on the site show a dash for every raider's attendance. Archiving now works the percentage out at the time it runs, and refuses to archive at all while attendance is unavailable, since archiving cannot be undone. A player with no raid nights inside the season is stored as blank rather than 100%, so "never raided" stays distinguishable from a perfect season. Repairing the two archives already stored is tracked separately in #702.
+- Archived season snapshots now record each player's ID alongside their name. The name was the only link back to the roster, so anyone who transferred or renamed after a season was archived no longer matched their own history.
+
+
 ## [3.60.17] - 2026-08-18
 
 ### Frontend

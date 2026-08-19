@@ -36,6 +36,22 @@ function buildAttendanceTab() {
     });
   }
 
+  // With attendance unknown every player's percentage parsed to 0, which is
+  // at or below any threshold, so this list named the entire roster as being
+  // in trouble. Banner instead of guessing in either direction (#694).
+  if (!DATA.rawAttendanceData) {
+    document.getElementById('attendanceContent').innerHTML =
+      '<div class="state-msg' +
+      (DATA._attendanceLoadFailed ? ' error' : '') +
+      '">' +
+      (DATA._attendanceLoadFailed
+        ? 'Attendance could not be loaded, so below-threshold raiders cannot be listed.'
+        : 'Loading attendance...') +
+      '</div>';
+    ensureAttendanceGridLoaded();
+    return;
+  }
+
   var below = [];
   for (var i = 0; i < roster.length; i++) {
     var p = roster[i];

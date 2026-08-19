@@ -100,14 +100,8 @@ describe('mapSupabaseRoster', () => {
   const sandbox = loadCommonJs();
 
   it('maps a players row to the Apps Script roster shape', () => {
-    const jsonp = [
-      {
-        nameRealm: 'Katorri-Stormrage',
-        attendance: '97.3%'
-      }
-    ];
     const row = { ...SUPABASE_ROW, m_plus_excluded: true, m_plus_note: 'weeknight scheduling' };
-    expect(sandbox.mapSupabaseRoster([row], jsonp)).toEqual([
+    expect(sandbox.mapSupabaseRoster([row])).toEqual([
       {
         nameRealm: 'Katorri-Stormrage',
         firstName: 'Katorri',
@@ -116,7 +110,6 @@ describe('mapSupabaseRoster', () => {
         isBench: true,
         isBackupTank: false,
         isBackupHealer: false,
-        attendance: '97.3%',
         nick: 'Kat',
         class: 'Paladin',
         spec: 'Holy',
@@ -140,7 +133,7 @@ describe('mapSupabaseRoster', () => {
 
   it('keeps everything after the first dash as the realm', () => {
     const rows = [{ ...SUPABASE_ROW, name_realm: 'Snarge-Area-52' }];
-    const mapped = sandbox.mapSupabaseRoster(rows, []);
+    const mapped = sandbox.mapSupabaseRoster(rows);
     expect(mapped[0].firstName).toBe('Snarge');
     expect(mapped[0].realm).toBe('Area-52');
   });
@@ -157,7 +150,7 @@ describe('mapSupabaseRoster', () => {
         classes_specs: { class: 'Mage', spec: 'Frost', role: 'Ranged' }
       }
     ];
-    expect(sandbox.mapSupabaseRoster(rows, [])).toEqual([
+    expect(sandbox.mapSupabaseRoster(rows)).toEqual([
       {
         nameRealm: 'Epyon-Stormrage',
         firstName: 'Epyon',
@@ -166,7 +159,6 @@ describe('mapSupabaseRoster', () => {
         isBench: false,
         isBackupTank: false,
         isBackupHealer: false,
-        attendance: '',
         nick: '',
         class: 'Mage',
         spec: 'Frost',
@@ -188,16 +180,10 @@ describe('mapSupabaseRoster', () => {
     ]);
   });
 
-  it('merges the JSONP-only attendance field case-insensitively by nameRealm', () => {
-    const jsonp = [{ nameRealm: 'KATORRI-Stormrage', attendance: '88.0%' }];
-    const mapped = sandbox.mapSupabaseRoster([SUPABASE_ROW], jsonp);
-    expect(mapped[0].attendance).toBe('88.0%');
-  });
-
   it('resolves mPlusRejected/mPlusRejectionNote from the rejections map, keyed by player id', () => {
     const row = { ...SUPABASE_ROW, id: 7 };
     const rejections = { 7: 'resubmit next season' };
-    const mapped = sandbox.mapSupabaseRoster([row], [], rejections);
+    const mapped = sandbox.mapSupabaseRoster([row], rejections);
     expect(mapped[0].mPlusExcluded).toBe(false);
     expect(mapped[0].mPlusRejected).toBe(true);
     expect(mapped[0].mPlusRejectionNote).toBe('resubmit next season');
@@ -206,7 +192,7 @@ describe('mapSupabaseRoster', () => {
   it('mPlusExcluded takes priority over a stale rejection entry', () => {
     const row = { ...SUPABASE_ROW, id: 7, m_plus_excluded: true };
     const rejections = { 7: 'resubmit next season' };
-    const mapped = sandbox.mapSupabaseRoster([row], [], rejections);
+    const mapped = sandbox.mapSupabaseRoster([row], rejections);
     expect(mapped[0].mPlusExcluded).toBe(true);
     expect(mapped[0].mPlusRejected).toBe(false);
     expect(mapped[0].mPlusRejectionNote).toBe('');
@@ -214,7 +200,7 @@ describe('mapSupabaseRoster', () => {
 
   it('skips rows without a role or name, like getRoster() does', () => {
     const rows = [{ ...SUPABASE_ROW, classes_specs: null }, { ...SUPABASE_ROW, name_realm: '  ' }, SUPABASE_ROW];
-    const mapped = sandbox.mapSupabaseRoster(rows, []);
+    const mapped = sandbox.mapSupabaseRoster(rows);
     expect(mapped).toHaveLength(1);
     expect(mapped[0].nameRealm).toBe('Katorri-Stormrage');
   });
