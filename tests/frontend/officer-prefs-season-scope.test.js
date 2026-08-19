@@ -23,9 +23,11 @@ function sandboxWithCatalog() {
     itemSlots: { 'Old Tier Helm': 'Head', 'New Tier Helm': 'Head' },
     itemPlaceholders: { 'M+': true, Crafted: true },
     itemZones: { 'Old Tier Helm': 10, 'New Tier Helm': 20 },
+    // currentZoneIdsForSeason reads wclZoneId, the camelCase name the
+    // raid_zones fetch maps to -- not the raw column name.
     raidZones: [
-      { wcl_zone_id: 10, season: 'Midnight Season 1' },
-      { wcl_zone_id: 20, season: 'Midnight Season 2' }
+      { wclZoneId: 10, season: 'Midnight Season 1' },
+      { wclZoneId: 20, season: 'Midnight Season 2' }
     ],
     seasonName: 'Midnight Season 2'
   };

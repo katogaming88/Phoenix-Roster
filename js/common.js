@@ -3514,6 +3514,15 @@ function bisMergeWishlistPrefs(prefs, officerBisItems, playerId) {
     if (p.status !== 'bis') return;
     var name = idToName[p.item_id];
     if (!name) return;
+    // archive_current_season() never clears item_preferences, so after a
+    // rollover the previous season's rows are still here. Scope them the same
+    // way the raider's own view does (js/wishlist.js): real items by zone,
+    // placeholders by the row's own season, and a row with no season at all
+    // predates the column, so it still counts. Without this an out-of-season
+    // row would both render as a current BiS pick and suppress the officer's
+    // real pick for that slot, since the callers' own season filter runs
+    // before this merge appends to their list.
+    if (typeof isItemInSeasonScope === 'function' && !isItemInSeasonScope(name, p.season)) return;
     var isPlaceholder = !!itemPlaceholders[name];
     if (isPlaceholder) {
       if (p.slot) coveredPlaceholderRows[p.slot] = true;
@@ -3640,7 +3649,10 @@ function fetchPlayerItemPreferences(playerId) {
   // -- needed for the chained .then().catch() below, since PromiseLike
   // itself has no .catch() (same reason as addAttendanceNight() above).
   var query = Promise.resolve(
-    supabaseClient.from('item_preferences').select('player_id, item_id, status, slot, note').eq('player_id', playerId)
+    supabaseClient
+      .from('item_preferences')
+      .select('player_id, item_id, status, slot, season, note')
+      .eq('player_id', playerId)
   )
     .then(function (result) {
       if (result.error) {

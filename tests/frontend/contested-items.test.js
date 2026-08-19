@@ -69,11 +69,27 @@ function makeSandbox({ roster = [], bisList = {}, teamItemPreferences = null, pr
     getSlotColor: () => 'var(--text)',
     getSeasonLootItems: () => [],
     fetchTeamItemPreferences: () => Promise.resolve([]),
+    _teamItemPreferencesFailed: false,
+    TEAM_PREFS_UNAVAILABLE_HTML: '<p>Wishlists could not be loaded.</p>',
     setTimeout,
     clearTimeout,
     Promise
   };
   vm.createContext(sandbox);
+  // tab-priority.js owns the item_preferences cache and, since #707, the
+  // unknown-vs-empty contract around it; tab-conflicts.js reads both as
+  // globals, the same way it already reads _teamItemPreferences itself. These
+  // mirror the real ones rather than no-opping: a setter that records nothing
+  // leaves the cache null, and the render re-enters the fetch forever.
+  sandbox._setTeamItemPreferences = (rows) => {
+    if (rows === null) {
+      sandbox._teamItemPreferencesFailed = true;
+      return;
+    }
+    sandbox._teamItemPreferences = rows;
+  };
+  sandbox._teamItemPreferencesUnavailable = () =>
+    sandbox._teamItemPreferences === null && sandbox._teamItemPreferencesFailed;
   vm.runInContext(CONFLICTS_JS, sandbox, { filename: 'tab-conflicts.js' });
   return sandbox;
 }

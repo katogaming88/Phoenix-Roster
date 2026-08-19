@@ -487,12 +487,16 @@ var PRIO_NOTES_TIER_COLORS = {
 function buildPriorityNotesTab() {
   var el = document.getElementById('priorityNotesContent');
   if (!el) return;
-  if (_teamItemPreferences === null) {
+  if (_teamItemPreferences === null && !_teamItemPreferencesFailed) {
     el.innerHTML = '<p style="color:var(--text-muted);padding:1rem;">Loading...</p>';
     fetchTeamItemPreferences().then(function (rows) {
-      _teamItemPreferences = rows || [];
+      _setTeamItemPreferences(rows);
       buildPriorityNotesTab();
     });
+    return;
+  }
+  if (_teamItemPreferencesUnavailable()) {
+    el.innerHTML = TEAM_PREFS_UNAVAILABLE_HTML;
     return;
   }
 
@@ -701,6 +705,38 @@ function updatePriorityBadges() {
 // same "cache + re-render once loaded" shape as js/wishlist.js's own
 // fetchMyItemPreferences(), just for the whole team instead of one player.
 var _teamItemPreferences = null;
+// Distinct from the null above, which means "not fetched yet" and is what
+// triggers the fetch. fetchTeamItemPreferences() answers null for a failed
+// read too, and every caller used to store `rows || []`, so one failed
+// request became a confident empty wishlist for the rest of the session:
+// every raider incomplete, no notes, and no retry, because the null that
+// would have re-triggered the fetch was gone. Keeping the cache null and
+// recording the failure separately means every existing `=== null` consumer
+// (the stat card's "-", the suppressed completion badge, getIncompleteWishlists'
+// empty answer) already does the right thing for "we don't know", and this
+// flag only stops the render from asking again in a loop.
+var _teamItemPreferencesFailed = false;
+
+// Wishlists could not be fetched. Officer-facing, so it says what to do.
+var TEAM_PREFS_UNAVAILABLE_HTML =
+  '<p style="color:var(--melee);padding:1rem;">Wishlists could not be loaded. Refresh the page to try again.</p>';
+
+// Single place the four lazy-load sites record a fetch result, so the
+// null-means-unknown contract cannot drift between them.
+function _setTeamItemPreferences(rows) {
+  if (rows === null) {
+    _teamItemPreferencesFailed = true;
+    return;
+  }
+  _teamItemPreferencesFailed = false;
+  _teamItemPreferences = rows;
+}
+
+// True once the fetch has settled one way or the other, so a render knows
+// whether waiting is still the right thing to do.
+function _teamItemPreferencesUnavailable() {
+  return _teamItemPreferences === null && _teamItemPreferencesFailed;
+}
 
 // PostgREST caps a single request at its project-wide max-rows setting
 // (1000 here) -- a table this size (1200+ rows for one team alone) silently
@@ -717,7 +753,7 @@ function fetchTeamItemPreferences() {
   function fetchPage(offset, rows) {
     return supabaseClient
       .from('item_preferences')
-      .select('id, player_id, item_id, status, slot, note')
+      .select('id, player_id, item_id, status, slot, season, note')
       .eq('team_id', _teamCfg.supabaseTeamId)
       .order('id')
       .range(offset, offset + PAGE_SIZE - 1)
@@ -1017,9 +1053,9 @@ function buildWishlistIncompleteCompactHtml(data) {
 // it misleading.
 function renderWishlistIncompleteBanner() {
   var compactEl = document.getElementById('wishlistIncompleteBanner');
-  if (_teamItemPreferences === null) {
+  if (_teamItemPreferences === null && !_teamItemPreferencesFailed) {
     fetchTeamItemPreferences().then(function (rows) {
-      _teamItemPreferences = rows || [];
+      _setTeamItemPreferences(rows);
       renderWishlistIncompleteBanner();
       if (typeof buildBisListsTab === 'function' && document.getElementById('bis-lists-container')) {
         buildBisListsTab();
@@ -1034,7 +1070,14 @@ function renderWishlistIncompleteBanner() {
     });
     return;
   }
-  if (compactEl) compactEl.innerHTML = buildWishlistIncompleteCompactHtml(getIncompleteWishlists());
+  if (compactEl) {
+    // Not the same as no incomplete wishlists, which renders empty. Saying so
+    // here is the only signal an officer gets that the banner is silent
+    // because the read failed rather than because everyone is done.
+    compactEl.innerHTML = _teamItemPreferencesUnavailable()
+      ? TEAM_PREFS_UNAVAILABLE_HTML
+      : buildWishlistIncompleteCompactHtml(getIncompleteWishlists());
+  }
   updatePriorityNotesBadge();
 }
 
@@ -1295,12 +1338,16 @@ function buildPriorityTab() {
   // item_preferences fetch the Notes sub-tab and Incomplete Wishlists banner
   // already use -- lazy-loaded once and cached, same shape as
   // buildPriorityNotesTab() above.
-  if (_teamItemPreferences === null) {
+  if (_teamItemPreferences === null && !_teamItemPreferencesFailed) {
     if (el) el.innerHTML = '<p style="color:var(--text-muted);padding:1rem;">Loading...</p>';
     fetchTeamItemPreferences().then(function (rows) {
-      _teamItemPreferences = rows || [];
+      _setTeamItemPreferences(rows);
       buildPriorityTab();
     });
+    return;
+  }
+  if (_teamItemPreferencesUnavailable()) {
+    if (el) el.innerHTML = TEAM_PREFS_UNAVAILABLE_HTML;
     return;
   }
 
