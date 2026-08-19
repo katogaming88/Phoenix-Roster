@@ -8,6 +8,14 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.21] - 2026-08-19
+
+### Frontend
+
+- The loot, attendance and team wishlist reads now page the same way as everything else, through the shared helper added in 3.60.19. Each had its own hand-rolled loop, and they disagreed about what an empty result meant, how long to wait, and when to stop, so a table whose size landed on an exact multiple of 1000 rows cost an extra request every load (#707).
+- The attendance read now has a time limit. It deliberately had none, dating from when a slow read could be answered with the old Google Sheet's data instead, but that sheet has been retired since 3.42.0, so a read that never came back simply left the page waiting forever (#707).
+- Loot with no award date is now listed last instead of in an arbitrary position, and an empty loot history is no longer reported the same way as a failed one (#707).
+
 ## [3.60.20] - 2026-08-19
 
 ### Frontend
