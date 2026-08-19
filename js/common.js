@@ -3482,6 +3482,18 @@ function getBisItems(nameOrNameRealm) {
   });
 }
 
+// A real ring/trinket is always unique-equip, so the same item_id showing up
+// on both its numbered rows (Finger 1 + Finger 2, Trinket 1 + Trinket 2) is
+// never two independent opinions -- it's one physical item that can land in
+// either socket. wishlistSetStatus() (js/wishlist.js) already mirrors
+// whatever status is set into the sibling row for exactly this reason, so
+// any real per-item-id display that isn't slot-numbered itself needs to
+// collapse that pair back down to one entry. Deliberately excludes Weapon/
+// Off Hand: a dual-wield class can legitimately want two copies of the same
+// non-unique one-hander (see wishlist.js's WISHLIST_SIBLING_SLOT comment),
+// so those two rows must stay separate.
+var DEDUPE_SIBLING_SLOTS = { 'Finger 1': true, 'Finger 2': true, 'Trinket 1': true, 'Trinket 2': true };
+
 // Read-time merge for the BiS List display -- never writes to bis_items. A
 // tagged wishlist "BiS" item supersedes the officer's pick for that same
 // slot category; real items compare by catalog slot (Finger, Trinket, ...),
@@ -3506,19 +3518,12 @@ function bisMergeWishlistPrefs(prefs, officerBisItems, playerId) {
   var coveredCatalogSlots = {};
   var coveredPlaceholderRows = {};
   var fromWishlist = [];
-  // A real ring/trinket can legitimately be BiS on both its numbered slots at
-  // once (Finger 1 + Finger 2, Trinket 1 + Trinket 2) -- it's the same
-  // physical item either way (always unique-equip), and this display has no
-  // notion of "which numbered slot" for a real item (`slot` is always ''
-  // below), so without this the same item_id would show up as two identical
-  // rows. Deliberately scoped to just these four rows -- Weapon/Off Hand is
-  // excluded on purpose, since a dual-wield class can legitimately want two
-  // copies of the same non-unique one-hander (see wishlist.js's
-  // WISHLIST_SIBLING_SLOT comment), and collapsing that down to one row would
-  // hide the second copy. Placeholders are exempt too: two different Other
-  // Sources picks (e.g. an M+ item wanted for both rings) are genuinely
-  // distinct rows and keep their own `p.slot` label.
-  var DEDUPE_SIBLING_SLOTS = { 'Finger 1': true, 'Finger 2': true, 'Trinket 1': true, 'Trinket 2': true };
+  // This display has no notion of "which numbered slot" for a real item
+  // (`slot` is always '' below), so a real ring/trinket BiS on both its
+  // numbered rows (DEDUPE_SIBLING_SLOTS above) needs collapsing down to one
+  // entry here or it'd show up as two identical rows. Placeholders are exempt:
+  // two different Other Sources picks (e.g. an M+ item wanted for both rings)
+  // are genuinely distinct rows and keep their own `p.slot` label.
   var seenRealItemIds = {};
 
   (prefs || []).forEach(function (p) {
@@ -3873,12 +3878,37 @@ function officerWishlistSectionHTML(player, backTo) {
     idToName[itemIds[name]] = name;
   });
   var itemSlots = DATA.itemSlots || {};
+  var itemPlaceholders = DATA.itemPlaceholders || {};
   var labelOverrides = (DATA && DATA.wishlistStatusLabels) || {};
 
+  // Same collapse as bisMergeWishlistPrefs() above -- wishlistSetStatus()
+  // mirrors a real ring/trinket's status into its sibling row, so every
+  // tagged ring/trinket would otherwise list twice here (once per numbered
+  // slot) even though it's one raider opinion about one physical item. Picks
+  // whichever sibling row's status ranks best (BiS first) rather than
+  // whichever happens to come first in `prefs` -- the two should always
+  // already agree post-mirror, but this stays correct if they ever don't.
+  var STATUS_RANK = { bis: 1, good: 2, catalyst: 3, ok: 4, pass: 5 };
+  var bestBySiblingItemId = {};
+  prefs.forEach(function (p) {
+    var name = idToName[p.item_id];
+    if (!name || itemPlaceholders[name] || !DEDUPE_SIBLING_SLOTS[p.slot]) return;
+    var current = bestBySiblingItemId[p.item_id];
+    if (!current || STATUS_RANK[p.status] < STATUS_RANK[current.status]) {
+      bestBySiblingItemId[p.item_id] = p;
+    }
+  });
+
   var entries = [];
+  var pushedSiblingItemIds = {};
   prefs.forEach(function (p) {
     var name = idToName[p.item_id];
     if (!name) return;
+    if (!itemPlaceholders[name] && DEDUPE_SIBLING_SLOTS[p.slot]) {
+      if (pushedSiblingItemIds[p.item_id]) return;
+      pushedSiblingItemIds[p.item_id] = true;
+      p = bestBySiblingItemId[p.item_id];
+    }
     entries.push({ item: name, slot: p.slot || itemSlots[name] || '', dbSlot: p.slot || '', pref: p });
   });
   var bySlot = function (a, b) {
