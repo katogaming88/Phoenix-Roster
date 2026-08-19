@@ -1,8 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
-import vm from 'node:vm';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { loadCommonJs, quietConsole } from './helpers/common-sandbox.js';
+import { makeRows, keysetSource } from './helpers/supabase-mock.js';
 
 // fetchAllPaged (#694): the shared helper every team-wide read pages through.
 //
@@ -12,68 +10,9 @@ import { fileURLToPath } from 'node:url';
 // helper and they disagreed on empty-result handling, timeout handling, and
 // how they advanced -- these tests are the executable spec for the one answer.
 //
-// Same vm-sandbox harness as loot-supabase.test.js: js/common.js is a plain
-// browser script, so it loads into a context with the browser globals stubbed
-// and its var/function declarations land on the sandbox.
-
-const COMMON_JS = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '../../js/common.js'), 'utf8');
-
-function loadCommonJs(consoleObj) {
-  const sandbox = {
-    window: {},
-    location: { search: '', pathname: '/' },
-    sessionStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
-    localStorage: { getItem: () => null, setItem: () => {} },
-    document: {
-      getElementById: () => null,
-      createElement: () => ({}),
-      head: { appendChild: () => {} }
-    },
-    console: consoleObj || console,
-    Intl,
-    // Unref'd so a pending page timer never holds the test process open.
-    setTimeout: (fn, ms) => {
-      const t = setTimeout(fn, ms);
-      if (t.unref) t.unref();
-      return t;
-    },
-    clearTimeout,
-    Promise
-  };
-  vm.createContext(sandbox);
-  vm.runInContext(COMMON_JS, sandbox, { filename: 'common.js' });
-  return sandbox;
-}
-
-const quietConsole = { log: () => {}, warn: () => {}, error: () => {} };
-
-// Builds `total` rows with sequential ids, so a test can assert both that
-// every row came back and that they came back exactly once.
-function makeRows(total, startId = 1) {
-  const rows = [];
-  for (let i = 0; i < total; i++) rows.push({ id: startId + i, v: 'row' + (startId + i) });
-  return rows;
-}
-
-// A makeQuery stand-in that serves from a fixed row set using real keyset
-// semantics: it returns rows with id > afterId, capped at `limit`. This is the
-// property that makes the suite able to catch an unpaginated implementation --
-// a mock that ignored afterId and returned everything would let a broken
-// helper pass.
-function keysetSource(rows, { withCount = true, pageOverride = null } = {}) {
-  const calls = [];
-  function makeQuery(afterId, limit) {
-    calls.push({ afterId, limit });
-    const slice = rows.filter((r) => afterId === null || r.id > afterId).slice(0, limit);
-    const page = pageOverride ? pageOverride(calls.length, slice) : slice;
-    return Promise.resolve({
-      data: page,
-      error: null,
-      count: withCount && afterId === null ? rows.length : null
-    });
-  }
-  return { makeQuery, calls };
-}
+// The sandbox loader and the keyset mock both live in ./helpers (#695): the
+// mock encodes the server behavior being tested, so a second copy of it is a
+// second chance to get that spec wrong somewhere nothing would fail.
 
 describe('fetchAllPaged (#694)', () => {
   it('returns every row when the result spans several pages', async () => {
