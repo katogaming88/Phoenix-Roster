@@ -1850,8 +1850,9 @@ function fetchSupabaseLoot() {
  * case, or two Katorri characters on different realms) no longer merge into
  * one entry.
  * Entries carry count/heroicCount/mythicCount and per-item difficulty labels
- * ('Heroic'/'Mythic'/'Other' -- the UI vocabulary for the Hero/Myth/Champion
- * tracks), display dates formatted in the sheet's timezone, and seasons shown
+ * ('Heroic'/'Mythic'/'Normal' -- the UI vocabulary for the Hero/Myth/Champion
+ * tracks; anything else falls back to 'Other'), display dates formatted in
+ * the sheet's timezone, and seasons shown
  * under their display names. Rows without a linked player are skipped; the
  * import stubs departed characters, so every historical row stays attributed
  * (docs/database-decisions.md, 2026-07-08).
@@ -1874,7 +1875,8 @@ function mapSupabaseLoot(rows) {
     if (!nameRealm) return;
     var key = normalise(nameRealm);
     if (!key) return;
-    var difficulty = row.track === 'Hero' ? 'Heroic' : row.track === 'Myth' ? 'Mythic' : 'Other';
+    var difficulty =
+      row.track === 'Hero' ? 'Heroic' : row.track === 'Myth' ? 'Mythic' : row.track === 'Champion' ? 'Normal' : 'Other';
     var date = '';
     if (row.awarded_at) {
       var d = new Date(row.awarded_at);
