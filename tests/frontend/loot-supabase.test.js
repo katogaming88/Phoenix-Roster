@@ -152,13 +152,18 @@ describe('mapSupabaseLoot', () => {
     expect(map['katorri-stormrage'].count).toBe(3);
     expect(map['katorri-stormrage'].heroicCount).toBe(1);
     expect(map['katorri-stormrage'].mythicCount).toBe(1);
-    expect(map['katorri-stormrage'].items.map((i) => i.difficulty)).toEqual(['Heroic', 'Mythic', 'Other']);
+    expect(map['katorri-stormrage'].items.map((i) => i.difficulty)).toEqual(['Heroic', 'Mythic', 'Normal']);
     expect(map['katorri-stormrage'].items[0]).toEqual({
       name: 'Signet of the Starved Beast',
       difficulty: 'Heroic',
       date: 'Mar 25, 2026',
       season: 'Midnight Season 1'
     });
+  });
+
+  it('falls back to Other for an unrecognized track value', () => {
+    const map = sandbox.mapSupabaseLoot([lootRow({ track: 'Unknown' })]);
+    expect(map['katorri-stormrage'].items[0].difficulty).toBe('Other');
   });
 
   it('strips diacritics from the key exactly like the GAS normName', () => {

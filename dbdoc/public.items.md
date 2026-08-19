@@ -120,6 +120,7 @@ erDiagram
   timestamp_with_time_zone updated_at
   timestamp_with_time_zone created_at
   text season
+  boolean synced_bis
 }
 "public.tier_token_map" {
   integer id

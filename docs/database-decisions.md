@@ -844,3 +844,15 @@ Umbrella issue. Original scope, later split into #262 (nullability/duplicate gua
 - Same null-safe convention as every other catalog filter here: a null/unbackfilled `weapon_subtype` shows the item to everyone rather than hiding it, so existing (pre-backfill) items aren't affected until `fetch-item-stats.js` is re-run.
 
 [Full discussion -> #609](https://github.com/katogaming88/WGA-Raid-Hub/issues/609)
+
+---
+
+## #722 -- item_preferences.synced_bis: distinguish explicit vs. mirrored BiS tags on ring/trinket sibling slots
+
+- A real ring/trinket is always unique-equip, so tagging it BiS on one numbered slot (Trinket 1, say) mirrors that same status onto the sibling row (Trinket 2) -- same physical item, can land in either socket. That mirror was previously indistinguishable from an explicit tag: both rows just read `status='bis'`, so the Wishlist card for *either* slot showed "Already your Trinket 2 BiS pick" even on the slot the raider actually clicked.
+- Surfaced by a raw SQL backfill that promoted 74 stale cross-rated rows to `bis` (correct data, done outside the app's normal write path), which exposed this display gap in the BiS List summary, the officer's read-only Wishlist view, and the raider's own interactive Wishlist cards.
+- **New `item_preferences.synced_bis` boolean column** (default `false`). `false` = the row the raider explicitly clicked; `true` = the row the app wrote to keep the sibling slot in sync. `wishlistLockedBySibling()` (`js/wishlist.js`) now locks/shows the note only on the `synced_bis: true` side; the explicit side stays freely editable even though it too reads BiS.
+- Considered inferring direction from `created_at` ordering instead of a schema column -- rejected as fragile: doesn't cleanly handle old/ambiguous data, and relies on the sync write always landing microseconds after the explicit one.
+- Existing pairs backfilled by `created_at` ordering within each same-item Finger/Trinket pair (earlier row = explicit, later = synced) in the same migration, since every current dual-BiS pair in the live data matched exactly that shape.
+
+[Full discussion -> #722](https://github.com/katogaming88/WGA-Raid-Hub/issues/722)

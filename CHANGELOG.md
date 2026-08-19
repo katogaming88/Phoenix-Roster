@@ -8,6 +8,18 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.23] - 2026-08-19
+
+### Frontend
+
+- A ring/trinket BiS'd on both its numbered slots (e.g. Trinket 1 and Trinket 2) no longer shows twice in the BiS List summary or an officer's read-only Wishlist view -- it's the same physical item either way, so it now lists once.
+- On a raider's own Wishlist, the "Already your Trinket 2 BiS pick"-style note and locked buttons now only show on the slot that was auto-synced from the other -- the slot the raider actually tagged stays freely editable with no note, instead of both sides showing the same lock.
+- The loot feed no longer shows Normal-difficulty drops as "Other" -- they now correctly show "Normal".
+
+### Backend
+
+- Added `item_preferences.synced_bis` to distinguish an explicit BiS tag from the row auto-mirrored onto its sibling numbered slot (`20260819183224_item_preferences_synced_bis.sql`).
+
 ## [3.60.22] - 2026-08-19
 
 ### Frontend
@@ -49,7 +61,6 @@ with each release split into `### Frontend` (drives the version number) and
 - The Trial Promotions panel and the Attendance tab's below-threshold list now say when attendance is still loading or could not be loaded, rather than rendering as an empty list. Both of those read as a real answer ("no trials are ready", "everyone is above the threshold") when in fact nothing had been measured yet.
 - Fixed archived seasons storing a blank attendance column for every player. The season archive copied the same empty field, so both archived seasons on the site show a dash for every raider's attendance. Archiving now works the percentage out at the time it runs, and refuses to archive at all while attendance is unavailable, since archiving cannot be undone. A player with no raid nights inside the season is stored as blank rather than 100%, so "never raided" stays distinguishable from a perfect season. Repairing the two archives already stored is tracked separately in #702.
 - Archived season snapshots now record each player's ID alongside their name. The name was the only link back to the roster, so anyone who transferred or renamed after a season was archived no longer matched their own history.
-
 
 ## [3.60.17] - 2026-08-18
 
