@@ -119,3 +119,41 @@ export function offsetClient(rows) {
   };
   return { client, calls };
 }
+
+// A client whose every read fails the way PostgREST reports a real error, for
+// suites asserting that a failed fetch stays distinguishable from an empty
+// one. Mirrors offsetClient's builder surface.
+export function failingClient(message = 'boom') {
+  const calls = { reads: 0 };
+  const client = {
+    from() {
+      const b = {
+        select() {
+          return b;
+        },
+        eq() {
+          return b;
+        },
+        order() {
+          return b;
+        },
+        gt() {
+          return b;
+        },
+        limit() {
+          return b;
+        },
+        range() {
+          calls.reads++;
+          return Promise.resolve({ data: null, error: { message } });
+        },
+        then(onFulfilled, onRejected) {
+          calls.reads++;
+          return Promise.resolve({ data: null, error: { message } }).then(onFulfilled, onRejected);
+        }
+      };
+      return b;
+    }
+  };
+  return { client, calls };
+}
