@@ -33,9 +33,11 @@ name: Nightly Supabase Backup
 # binary dump file itself). The handful of roles the public schema's GRANT
 # statements reference are created first (anon/authenticated/service_role,
 # plus supabase/roles.sql's claude_readers), then pg_restore --no-owner, then
-# asserted against (players has rows, table count clears a floor) rather
-# than just trusting pg_restore's exit code -- a truncated/corrupt dump can
-# still exit 0. The auth dump only gets pg_restore --list (no live
+# asserted against (every table with no other source has rows, table count
+# clears a floor) rather than just trusting pg_restore's exit code -- a
+# truncated/corrupt dump can still exit 0, and a table that restores empty
+# still counts toward the table count. The auth dump only gets
+# pg_restore --list (no live
 # auth.users table exists in the bare container to restore data into) --
 # that alone proves the archive isn't corrupt/truncated. Any failure here
 # fails the whole run.
@@ -145,14 +147,51 @@ jobs:
           # runs. A genuinely broken/truncated dump still fails those.
           /usr/lib/postgresql/17/bin/pg_restore --no-owner -d "$RESTORE_URL" public.dump || true
 
-          player_count=$(psql "$RESTORE_URL" -tAc "select count(*) from public.players")
-          table_count=$(psql "$RESTORE_URL" -tAc "select count(*) from information_schema.tables where table_schema = 'public' and table_type = 'BASE TABLE'")
-          echo "Restored players: $player_count, restored public base tables: $table_count"
+          # Tables with no other source: if one of these restores empty, the
+          # dump is broken and nothing else in the pipeline would notice. A
+          # whole-table wipe is exactly the shape that survives a table-count
+          # check, since the table is still there.
+          #
+          # The floor is 1, not the current row count. These grow and shrink
+          # normally, and a floor tracking real counts would need editing on
+          # every roster change and would go flaky between edits.
+          #
+          # Deliberately NOT listed: bis_items (archive_current_season()
+          # empties it at every rollover, by design), and the request tables
+          # (bis_requests, self_received_requests, mplus_exclusion_requests,
+          # notifications), which legitimately reach zero once everything
+          # outstanding has been resolved. Asserting on those would train
+          # people to ignore this check.
+          #
+          # Adding a table here is a one-line change; see docs/backup-restore.md
+          # "When the schema changes" for when that is warranted.
+          EMPTY_CHECK="players item_preferences season_signups team_settings team_members teams site_admins attendance"
 
-          if [ "$player_count" -lt 1 ]; then
-            echo "Restored players table has no rows -- dump is likely broken."
+          # Accumulate rather than exiting on the first failure, like the
+          # missing-secret guard above: one table empty means one bad table,
+          # but eight empty means the dump itself is truncated, and only a
+          # full list tells those apart. The numeric-parse guard mirrors the
+          # capacity check below -- a table dropped by a migration that nobody
+          # removed from this list should say so, not fail as a bash
+          # comparison error against an empty string.
+          bad=""
+          for t in $EMPTY_CHECK; do
+            n=$(psql "$RESTORE_URL" -tAc "select count(*) from public.$t" 2>/dev/null || echo "")
+            case "$n" in
+              '' | *[!0-9]*) bad="$bad $t(unreadable)" ;;
+              0)             bad="$bad $t(empty)" ;;
+              *)             echo "  $t: $n" ;;
+            esac
+          done
+
+          if [ -n "$bad" ]; then
+            echo "Restored dump is empty or unreadable for:$bad -- dump is likely broken."
             exit 1
           fi
+
+          table_count=$(psql "$RESTORE_URL" -tAc "select count(*) from information_schema.tables where table_schema = 'public' and table_type = 'BASE TABLE'")
+          echo "Restored public base tables: $table_count"
+
           # Floor of 20: real count at the time this workflow was written was
           # 26 -- leaves headroom for normal schema growth while still
           # catching a badly truncated/incomplete dump.
