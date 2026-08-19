@@ -3537,6 +3537,12 @@
           "name": "season",
           "type": "text",
           "nullable": true
+        },
+        {
+          "name": "synced_bis",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
         }
       ],
       "indexes": [

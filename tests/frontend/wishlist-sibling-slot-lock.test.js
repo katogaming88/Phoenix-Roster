@@ -6,9 +6,12 @@ import { fileURLToPath } from 'node:url';
 
 // A ring/trinket item lists under both its numbered cards (Finger 1/Finger 2,
 // Trinket 1/Trinket 2 share one item pool). Once it's BiS on one of the two,
-// its row on the other is fully locked -- every status button, not just
-// BiS -- since it's the same physical item and there's no independent status
-// to give it there until the sibling slot's BiS pick changes.
+// the app mirrors that same status onto the sibling row (item_preferences.
+// synced_bis marks which side is the mirror). Only the *mirrored* row is
+// locked -- every status button, not just BiS -- since it's the same
+// physical item and there's no independent status to give it there. The row
+// the raider actually clicked (synced_bis: false) stays freely editable even
+// though it too reads BiS.
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const COMMON_JS = readFileSync(path.join(HERE, '../../js/common.js'), 'utf8');
@@ -52,14 +55,29 @@ function makeSandbox(existingPrefs) {
 }
 
 describe('wishlistRowHTML sibling-slot BiS note', () => {
-  it('flags a row when the same item is already BiS on its sibling row', () => {
-    const sandbox = makeSandbox([{ id: 1, item_id: 1, status: 'bis', note: null, slot: 'Finger 1' }]);
+  it('flags the mirrored (synced_bis) row, pointing back at the explicit slot', () => {
+    const sandbox = makeSandbox([
+      { id: 1, item_id: 1, status: 'bis', note: null, slot: 'Finger 1', synced_bis: false },
+      { id: 2, item_id: 1, status: 'bis', note: null, slot: 'Finger 2', synced_bis: true }
+    ]);
     const html = sandbox.wishlistRowHTML('Ring A', 1, 'Finger 2', 0);
     expect(html).toContain('Already your Finger 1 BiS pick');
   });
 
-  it('disables the BiS button itself when the sibling row already holds BiS', () => {
-    const sandbox = makeSandbox([{ id: 1, item_id: 1, status: 'bis', note: null, slot: 'Finger 1' }]);
+  it('does NOT flag the explicit row (synced_bis: false), even though it too reads BiS', () => {
+    const sandbox = makeSandbox([
+      { id: 1, item_id: 1, status: 'bis', note: null, slot: 'Finger 1', synced_bis: false },
+      { id: 2, item_id: 1, status: 'bis', note: null, slot: 'Finger 2', synced_bis: true }
+    ]);
+    const html = sandbox.wishlistRowHTML('Ring A', 1, 'Finger 1', 0);
+    expect(html).not.toContain('Already your');
+  });
+
+  it('disables the BiS button itself on the mirrored row', () => {
+    const sandbox = makeSandbox([
+      { id: 1, item_id: 1, status: 'bis', note: null, slot: 'Finger 1', synced_bis: false },
+      { id: 2, item_id: 1, status: 'bis', note: null, slot: 'Finger 2', synced_bis: true }
+    ]);
     const html = sandbox.wishlistRowHTML('Ring A', 1, 'Finger 2', 0);
     const bisButtonMatch = html.match(/<button[^>]*wishlistSetStatus\(1,'Finger 2','bis'\)[^>]*/);
     expect(bisButtonMatch).toBeTruthy();
@@ -69,14 +87,30 @@ describe('wishlistRowHTML sibling-slot BiS note', () => {
     expect(bisButtonTag.slice(tagStart)).toContain('disabled');
   });
 
-  it('also disables the Good button -- the whole row is locked, not just BiS', () => {
-    const sandbox = makeSandbox([{ id: 1, item_id: 1, status: 'bis', note: null, slot: 'Finger 1' }]);
+  it('also disables the Good button on the mirrored row -- the whole row is locked, not just BiS', () => {
+    const sandbox = makeSandbox([
+      { id: 1, item_id: 1, status: 'bis', note: null, slot: 'Finger 1', synced_bis: false },
+      { id: 2, item_id: 1, status: 'bis', note: null, slot: 'Finger 2', synced_bis: true }
+    ]);
     const html = sandbox.wishlistRowHTML('Ring A', 1, 'Finger 2', 0);
     const goodButtonMatch = html.match(/<button[^>]*wishlistSetStatus\(1,'Finger 2','good'\)[^>]*/);
     expect(goodButtonMatch).toBeTruthy();
     const goodButtonTag = html.slice(0, html.indexOf(goodButtonMatch[0]) + goodButtonMatch[0].length);
     const tagStart = goodButtonTag.lastIndexOf('<button');
     expect(goodButtonTag.slice(tagStart)).toContain('disabled');
+  });
+
+  it('does NOT disable the BiS button on the explicit row', () => {
+    const sandbox = makeSandbox([
+      { id: 1, item_id: 1, status: 'bis', note: null, slot: 'Finger 1', synced_bis: false },
+      { id: 2, item_id: 1, status: 'bis', note: null, slot: 'Finger 2', synced_bis: true }
+    ]);
+    const html = sandbox.wishlistRowHTML('Ring A', 1, 'Finger 1', 0);
+    const bisButtonMatch = html.match(/<button[^>]*wishlistSetStatus\(1,'Finger 1','bis'\)[^>]*/);
+    expect(bisButtonMatch).toBeTruthy();
+    const bisButtonTag = html.slice(0, html.indexOf(bisButtonMatch[0]) + bisButtonMatch[0].length);
+    const tagStart = bisButtonTag.lastIndexOf('<button');
+    expect(bisButtonTag.slice(tagStart)).not.toContain('disabled');
   });
 
   it('shows no note when the sibling row has no BiS tag', () => {

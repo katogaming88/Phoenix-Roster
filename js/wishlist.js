@@ -17,7 +17,7 @@
 var _wishlistPlayerId = null;
 var _wishlistPlayerFirstName = null; // kept alongside _wishlistPlayerId so writes can re-render via renderProfile()
 var _wishlistPlayerNameRealm = null; // full identity, for the officer-bis-pick lookup (#529) -- firstName alone is ambiguous for two characters sharing a first name
-var _wishlistPrefs = null; // array of {id, item_id, status, note, slot} once fetched, else null while loading
+var _wishlistPrefs = null; // array of {id, item_id, status, note, slot, synced_bis} once fetched, else null while loading
 var _wishlistSaving = {}; // 'itemId|slot' -> true while a write is in flight, to disable that row's buttons
 var _wishlistExpandedSlots = {}; // 'Head' -> true, or '__other__' for the M+/Crafted card -- survives re-renders
 
@@ -174,7 +174,7 @@ function fetchMyItemPreferences(playerId) {
   if (!supabaseClient) return Promise.resolve(null);
   var query = supabaseClient
     .from('item_preferences')
-    .select('id, item_id, status, note, slot, season')
+    .select('id, item_id, status, note, slot, season, synced_bis')
     .eq('player_id', playerId)
     .then(function (result) {
       if (result.error) {
@@ -449,18 +449,23 @@ function wishlistIsPlaceholderItem(itemId) {
 }
 
 // Returns the sibling slot name (Finger 1<->Finger 2, Trinket 1<->Trinket 2)
-// when a real ring/trinket item is already tagged BiS there -- meaning this
-// row is locked: same physical item, already spoken for by the other slot,
-// so it can't take on a status of its own here. The lock only lifts once a
-// *different* item is promoted to BiS in the sibling slot (the demote logic
-// in wishlistSetStatus), which is the only thing that can knock this item
-// off BiS duty there in the first place. Returns null (unlocked) for
-// placeholders and non-disambiguated slots.
+// when *this* row is the mirrored copy of a BiS tag the raider actually made
+// on the sibling slot -- meaning this row is locked: same physical item,
+// already spoken for by the other slot, so it can't take on a status of its
+// own here. Directional (item_preferences.synced_bis), not a same-status
+// comparison against the sibling: the row the raider explicitly clicked
+// stays freely editable even though its mirrored sibling also reads 'bis' --
+// only the mirror itself shows the "Already your X BiS pick" lock. The lock
+// lifts once a *different* item is promoted to BiS in the sibling slot (the
+// demote logic in wishlistSetStatus), which is the only thing that can knock
+// this item off BiS duty there in the first place. Returns null (unlocked)
+// for placeholders and non-disambiguated slots.
 function wishlistLockedBySibling(itemId, slot) {
   if (wishlistIsPlaceholderItem(itemId)) return null;
   var siblingSlot = WISHLIST_SIBLING_SLOT[slot];
   if (!siblingSlot) return null;
-  return wishlistCurrentStatus(itemId, siblingSlot) === 'bis' ? siblingSlot : null;
+  var pref = wishlistPrefFor(itemId, slot);
+  return pref && pref.status === 'bis' && pref.synced_bis ? siblingSlot : null;
 }
 
 // Rings/trinkets/weapons are the one case where comparing two related slots
@@ -1073,7 +1078,7 @@ function wishlistUpsert(itemId, slot, patch) {
       .eq('player_id', _wishlistPlayerId)
       .eq('item_id', itemId);
     updateQuery = slot ? updateQuery.eq('slot', slot) : updateQuery.is('slot', null);
-    request = updateQuery.select('id, item_id, status, note, slot, season');
+    request = updateQuery.select('id, item_id, status, note, slot, season, synced_bis');
   } else {
     var row = {
       team_id: _teamCfg.supabaseTeamId,
@@ -1087,7 +1092,10 @@ function wishlistUpsert(itemId, slot, patch) {
     Object.keys(patch).forEach(function (k) {
       row[k] = patch[k];
     });
-    request = supabaseClient.from('item_preferences').insert(row).select('id, item_id, status, note, slot, season');
+    request = supabaseClient
+      .from('item_preferences')
+      .insert(row)
+      .select('id, item_id, status, note, slot, season, synced_bis');
   }
 
   request
@@ -1098,6 +1106,7 @@ function wishlistUpsert(itemId, slot, patch) {
         if (existing) {
           existing.status = saved.status;
           existing.note = saved.note;
+          existing.synced_bis = saved.synced_bis;
         } else {
           _wishlistPrefs.push(saved);
         }
@@ -1380,7 +1389,15 @@ function wishlistSetStatus(itemId, slot, status) {
         }
       });
     }
-    wishlistUpsert(itemId, slot || null, { status: status });
+    wishlistUpsert(itemId, slot || null, { status: status, synced_bis: false });
+    // Mirror into the sibling slot's own row too (Finger 1/2, Trinket 1/2) --
+    // same physical item, so it reads BiS there as well -- but flagged
+    // synced_bis so wishlistLockedBySibling() only locks/notes that side,
+    // not the one the raider actually clicked.
+    var bisSiblingSlot = wishlistIsPlaceholderItem(itemId) ? null : WISHLIST_SIBLING_SLOT[slot];
+    if (bisSiblingSlot) {
+      wishlistUpsert(itemId, bisSiblingSlot, { status: status, synced_bis: true });
+    }
     return;
   }
 
@@ -1388,11 +1405,13 @@ function wishlistSetStatus(itemId, slot, status) {
   // once neither numbered slot is this item's dedicated BiS pick, it
   // doesn't matter which one it's "for" -- it's a backup for both, so both
   // rows should read the same tier instead of drifting independently.
+  // synced_bis resets to false on both sides -- the explicit/mirror
+  // distinction only means anything while the item is actually BiS.
   var siblingSlot = wishlistIsPlaceholderItem(itemId) ? null : WISHLIST_SIBLING_SLOT[slot];
   if (siblingSlot) {
-    wishlistUpsert(itemId, siblingSlot, { status: status });
+    wishlistUpsert(itemId, siblingSlot, { status: status, synced_bis: false });
   }
-  wishlistUpsert(itemId, slot || null, { status: status });
+  wishlistUpsert(itemId, slot || null, { status: status, synced_bis: false });
 }
 
 // Mirrors into the sibling slot the same way wishlistSetStatus() does for

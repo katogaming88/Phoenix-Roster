@@ -207,6 +207,17 @@ describe('wishlistSetStatus BiS-per-slot conflict resolution', () => {
     expect(demote).toBeFalsy();
   });
 
+  it('tagging BiS marks the explicit row synced_bis: false and the mirrored sibling synced_bis: true', () => {
+    const { sandbox, requests } = makeSandbox({ 'Ring A': 'Finger' }, { 'Ring A': 1 }, []);
+
+    sandbox.wishlistSetStatus(1, 'Finger 1', 'bis');
+
+    const finger1 = requests.find((r) => r.type === 'insert' && r.row.slot === 'Finger 1');
+    const finger2 = requests.find((r) => r.type === 'insert' && r.row.slot === 'Finger 2');
+    expect(finger1.row).toMatchObject({ status: 'bis', synced_bis: false });
+    expect(finger2.row).toMatchObject({ status: 'bis', synced_bis: true });
+  });
+
   it("mirrors a non-BiS status into a real ring/trinket item's sibling slot", () => {
     const { sandbox, requests } = makeSandbox({ 'Ring A': 'Finger' }, { 'Ring A': 1 }, []);
 
@@ -227,14 +238,26 @@ describe('wishlistSetStatus BiS-per-slot conflict resolution', () => {
     expect(finger2Write).toBeFalsy();
   });
 
-  it('blocks any status change on a ring already BiS on its sibling slot', () => {
+  it('blocks any status change on the mirrored (synced_bis) side of a BiS ring', () => {
     const { sandbox, requests } = makeSandbox({ 'Ring A': 'Finger' }, { 'Ring A': 1 }, [
-      { id: 1, item_id: 1, status: 'bis', note: null, slot: 'Finger 1' }
+      { id: 1, item_id: 1, status: 'bis', note: null, slot: 'Finger 1', synced_bis: false },
+      { id: 2, item_id: 1, status: 'bis', note: null, slot: 'Finger 2', synced_bis: true }
     ]);
 
     sandbox.wishlistSetStatus(1, 'Finger 2', 'good');
 
     expect(requests).toHaveLength(0);
+  });
+
+  it('does NOT block a status change on the explicit (synced_bis: false) side of a BiS ring', () => {
+    const { sandbox, requests } = makeSandbox({ 'Ring A': 'Finger' }, { 'Ring A': 1 }, [
+      { id: 1, item_id: 1, status: 'bis', note: null, slot: 'Finger 1', synced_bis: false },
+      { id: 2, item_id: 1, status: 'bis', note: null, slot: 'Finger 2', synced_bis: true }
+    ]);
+
+    sandbox.wishlistSetStatus(1, 'Finger 1', 'good');
+
+    expect(requests.length).toBeGreaterThan(0);
   });
 
   it('demoting a BiS ring off its slot mirrors the demotion into its sibling slot', () => {

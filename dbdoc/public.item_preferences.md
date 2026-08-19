@@ -14,6 +14,7 @@
 | updated_at | timestamp with time zone |  | true |  |  |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
 | season | text |  | true |  |  |  |
+| synced_bis | boolean | false | false |  |  |  |
 
 ## Constraints
 
@@ -60,6 +61,7 @@ erDiagram
   timestamp_with_time_zone updated_at
   timestamp_with_time_zone created_at
   text season
+  boolean synced_bis
 }
 "public.teams" {
   integer id

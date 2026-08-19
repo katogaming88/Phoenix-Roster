@@ -38,7 +38,7 @@
 | [public.priority_order_first_prio_counts](public.priority_order_first_prio_counts.md) | 5 |  | VIEW |
 | [public.priority_order_same_boss_conflicts](public.priority_order_same_boss_conflicts.md) | 10 |  | VIEW |
 | [public.priority_order_stale_after_heroic](public.priority_order_stale_after_heroic.md) | 7 |  | VIEW |
-| [public.item_preferences](public.item_preferences.md) | 10 |  | BASE TABLE |
+| [public.item_preferences](public.item_preferences.md) | 11 |  | BASE TABLE |
 | [public.site_settings](public.site_settings.md) | 5 |  | BASE TABLE |
 | [public.incoming_roster](public.incoming_roster.md) | 7 |  | VIEW |
 | [public.guild_officers](public.guild_officers.md) | 3 |  | BASE TABLE |
@@ -532,6 +532,7 @@ erDiagram
   timestamp_with_time_zone updated_at
   timestamp_with_time_zone created_at
   text season
+  boolean synced_bis
 }
 "public.site_settings" {
   integer id
