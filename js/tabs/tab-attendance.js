@@ -142,72 +142,98 @@ function loadAttendanceGrid() {
   if (nightRow) nightRow.style.display = 'none';
   if (table) table.innerHTML = '';
 
-  supabaseClient
-    .from('attendance')
-    .select('raid_date, report_title, report_excluded, player_id, status, source')
-    .eq('team_id', _teamCfg.supabaseTeamId)
-    .order('raid_date', { ascending: false })
-    .then(function (result) {
-      if (result.error) {
-        _attendanceGrid = null;
-        if (status) {
-          status.textContent = 'Error: ' + result.error.message;
-          status.style.color = 'var(--melee)';
-        }
-        return;
+  // Paged through fetchAllPaged (#694). This read was unpaginated, so past
+  // 1000 rows PostgREST truncated it and returned that as a normal 200 -- and
+  // ordered raid_date descending, what fell off was the oldest nights, so the
+  // start of the season quietly went missing from the grid and the night
+  // dropdown with nothing reporting a problem. Paging is keyed on id (the only
+  // column guaranteed unique and stable here), so the newest-first display
+  // order is restored below rather than being asked of the query.
+  fetchAllPaged(
+    function (afterId, limit) {
+      var q = supabaseClient
+        .from('attendance')
+        .select(
+          'id, raid_date, report_title, report_excluded, player_id, status, source',
+          afterId === null ? { count: 'exact' } : undefined
+        )
+        .eq('team_id', _teamCfg.supabaseTeamId)
+        .order('id', { ascending: true })
+        .limit(limit);
+      return afterId === null ? q : q.gt('id', afterId);
+    },
+    { label: 'attendance grid' }
+  ).then(function (rows) {
+    if (rows === null) {
+      // null, not [], is the failure signal: an empty grid renders as "no
+      // raid nights recorded yet", which is a different claim entirely.
+      _attendanceGrid = null;
+      if (status) {
+        status.textContent = 'Error: could not load attendance data.';
+        status.style.color = 'var(--melee)';
       }
+      return;
+    }
 
-      var roster = (DATA && DATA.roster) || [];
-      var rosterById = {};
-      roster.forEach(function (p) {
-        rosterById[p.id] = p;
-      });
-
-      var nightsByDate = {};
-      var order = [];
-      (result.data || []).forEach(function (row) {
-        if (!nightsByDate[row.raid_date]) {
-          nightsByDate[row.raid_date] = {
-            date: row.raid_date,
-            title: row.report_title || row.raid_date,
-            excluded: !!row.report_excluded,
-            players: [],
-            seen: {}
-          };
-          order.push(row.raid_date);
-        }
-        var night = nightsByDate[row.raid_date];
-        var p = rosterById[row.player_id];
-        night.players.push({
-          name: p ? p.firstName : 'Player ' + row.player_id,
-          status: row.status,
-          source: row.source
-        });
-        night.seen[row.player_id] = true;
-      });
-
-      // Roster players without a row for this night still need to show up
-      // (no status), so an officer can fill one in from the grid -- matches
-      // GAS's behavior of always listing the full roster per night.
-      order.forEach(function (date) {
-        var night = nightsByDate[date];
-        roster.forEach(function (p) {
-          if (!night.seen[p.id]) night.players.push({ name: p.firstName, status: '', source: '' });
-        });
-        night.players.sort(function (a, b) {
-          return a.name.localeCompare(b.name);
-        });
-        delete night.seen;
-      });
-
-      _attendanceGrid = order.map(function (date) {
-        return nightsByDate[date];
-      });
-      if (status) status.textContent = '';
-      renderAttendanceGrid();
-      var benchEl = document.getElementById('attend-sub-bench');
-      if (benchEl && benchEl.style.display !== 'none') buildBenchFairness();
+    var roster = (DATA && DATA.roster) || [];
+    var rosterById = {};
+    roster.forEach(function (p) {
+      rosterById[p.id] = p;
     });
+
+    var nightsByDate = {};
+    var order = [];
+    rows.forEach(function (row) {
+      if (!nightsByDate[row.raid_date]) {
+        nightsByDate[row.raid_date] = {
+          date: row.raid_date,
+          title: row.report_title || row.raid_date,
+          excluded: !!row.report_excluded,
+          players: [],
+          seen: {}
+        };
+        order.push(row.raid_date);
+      }
+      var night = nightsByDate[row.raid_date];
+      var p = rosterById[row.player_id];
+      night.players.push({
+        name: p ? p.firstName : 'Player ' + row.player_id,
+        status: row.status,
+        source: row.source
+      });
+      night.seen[row.player_id] = true;
+    });
+
+    // The query orders by id so paging is deterministic, so the newest-first
+    // order the grid and the night dropdown both expect is applied here.
+    // raid_date is an ISO date, so a plain string compare is chronological.
+    order.sort(function (a, b) {
+      if (a === b) return 0;
+      return a < b ? 1 : -1;
+    });
+
+    // Roster players without a row for this night still need to show up
+    // (no status), so an officer can fill one in from the grid -- matches
+    // GAS's behavior of always listing the full roster per night.
+    order.forEach(function (date) {
+      var night = nightsByDate[date];
+      roster.forEach(function (p) {
+        if (!night.seen[p.id]) night.players.push({ name: p.firstName, status: '', source: '' });
+      });
+      night.players.sort(function (a, b) {
+        return a.name.localeCompare(b.name);
+      });
+      delete night.seen;
+    });
+
+    _attendanceGrid = order.map(function (date) {
+      return nightsByDate[date];
+    });
+    if (status) status.textContent = '';
+    renderAttendanceGrid();
+    var benchEl = document.getElementById('attend-sub-bench');
+    if (benchEl && benchEl.style.display !== 'none') buildBenchFairness();
+  });
 }
 
 function renderAttendanceGrid() {

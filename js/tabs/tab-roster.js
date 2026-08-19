@@ -897,56 +897,77 @@ function addPlayerToRosterSupabase(payload) {
 // player detail panel. Only fills nights this player has no row for yet
 // (never overwrites a real historical status, which matters for the
 // reactivate-an-archived-player path above).
+// Both reads below page through fetchAllPaged (#694). The team-wide one was
+// the live defect: past 1000 rows PostgREST truncated it to a normal-looking
+// 200, and because this function INSERTs off that read, a capped read didn't
+// just show less -- it wrote an incomplete backfill that then looked like real
+// history. The per-player read is nowhere near the cap today, but it is the
+// same query shape in the same function, so it pages too rather than being
+// left as the next instance of this.
 function backfillNotOnRosterForPlayer(teamId, playerId, joinDate) {
   if (!joinDate) return Promise.resolve();
 
-  return supabaseClient
-    .from('attendance')
-    .select('raid_date')
-    .eq('team_id', teamId)
-    .lt('raid_date', joinDate)
-    .then(function (allResult) {
-      if (allResult.error) throw new Error(allResult.error.message);
-      var seen = {};
-      (allResult.data || []).forEach(function (row) {
-        if (row.raid_date) seen[row.raid_date] = true;
-      });
-      var preJoinDates = Object.keys(seen);
-      if (!preJoinDates.length) return;
+  return fetchAllPaged(
+    function (afterId, limit) {
+      var q = supabaseClient
+        .from('attendance')
+        .select('id, raid_date', afterId === null ? { count: 'exact' } : undefined)
+        .eq('team_id', teamId)
+        .lt('raid_date', joinDate)
+        .order('id', { ascending: true })
+        .limit(limit);
+      return afterId === null ? q : q.gt('id', afterId);
+    },
+    { label: 'pre-join attendance' }
+  ).then(function (allRows) {
+    if (allRows === null) throw new Error("Could not read the team's pre-join attendance.");
+    var seen = {};
+    allRows.forEach(function (row) {
+      if (row.raid_date) seen[row.raid_date] = true;
+    });
+    var preJoinDates = Object.keys(seen);
+    if (!preJoinDates.length) return;
 
+    return fetchAllPaged(
+      function (afterId, limit) {
+        var q = supabaseClient
+          .from('attendance')
+          .select('id, raid_date', afterId === null ? { count: 'exact' } : undefined)
+          .eq('team_id', teamId)
+          .eq('player_id', playerId)
+          .order('id', { ascending: true })
+          .limit(limit);
+        return afterId === null ? q : q.gt('id', afterId);
+      },
+      { label: "this player's attendance" }
+    ).then(function (existingRows) {
+      if (existingRows === null) throw new Error("Could not read this player's existing attendance.");
+      var existing = {};
+      existingRows.forEach(function (row) {
+        if (row.raid_date) existing[row.raid_date] = true;
+      });
+      var missing = preJoinDates.filter(function (d) {
+        return !existing[d];
+      });
+      if (!missing.length) return;
+
+      var rows = missing.map(function (d) {
+        return { team_id: teamId, player_id: playerId, raid_date: d, status: 'Not on Roster', source: 'WCL' };
+      });
       return supabaseClient
         .from('attendance')
-        .select('raid_date')
-        .eq('team_id', teamId)
-        .eq('player_id', playerId)
-        .then(function (existingResult) {
-          if (existingResult.error) throw new Error(existingResult.error.message);
-          var existing = {};
-          (existingResult.data || []).forEach(function (row) {
-            if (row.raid_date) existing[row.raid_date] = true;
-          });
-          var missing = preJoinDates.filter(function (d) {
-            return !existing[d];
-          });
-          if (!missing.length) return;
-
-          var rows = missing.map(function (d) {
-            return { team_id: teamId, player_id: playerId, raid_date: d, status: 'Not on Roster', source: 'WCL' };
-          });
-          return supabaseClient
-            .from('attendance')
-            .insert(rows)
-            .then(function (insertResult) {
-              if (insertResult.error) throw new Error(insertResult.error.message);
-              return writeAuditLog(
-                'Attendance Backfilled',
-                'players',
-                playerId,
-                missing.length + ' pre-join night(s) marked Not on Roster'
-              );
-            });
+        .insert(rows)
+        .then(function (insertResult) {
+          if (insertResult.error) throw new Error(insertResult.error.message);
+          return writeAuditLog(
+            'Attendance Backfilled',
+            'players',
+            playerId,
+            missing.length + ' pre-join night(s) marked Not on Roster'
+          );
         });
     });
+  });
 }
 
 function confirmRemovePlayer(nameRealm, firstName) {
