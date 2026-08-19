@@ -151,6 +151,22 @@ describe('bisMergeWishlistPrefs (shared merge core)', () => {
     ]);
   });
 
+  it('does not dedupe a dual-wielder BiS on the same one-hander for both Weapon and Off Hand (wants 2 copies)', () => {
+    const sandbox = makeSandbox();
+    sandbox.DATA = {
+      itemIds: { "Jan'thrazet, the Soul Fang": 400 },
+      itemSlots: { "Jan'thrazet, the Soul Fang": 'One-Hand' },
+      itemPlaceholders: {}
+    };
+    const prefs = [
+      { item_id: 400, status: 'bis', slot: 'Weapon' },
+      { item_id: 400, status: 'bis', slot: 'Off Hand' }
+    ];
+
+    const result = sandbox.bisMergeWishlistPrefs(prefs, [], 175);
+    expect(result.fromWishlist).toHaveLength(2);
+  });
+
   it('does not dedupe two different placeholder rows for the same catalog item (e.g. M+ wanted on both rings)', () => {
     const sandbox = makeSandbox();
     sandbox.DATA = {

@@ -3506,14 +3506,19 @@ function bisMergeWishlistPrefs(prefs, officerBisItems, playerId) {
   var coveredCatalogSlots = {};
   var coveredPlaceholderRows = {};
   var fromWishlist = [];
-  // A real ring/trinket/dual-wield weapon can legitimately be BiS on both its
-  // numbered slots at once (Finger 1 + Finger 2, Trinket 1 + Trinket 2,
-  // Weapon + Off Hand for classes that can dual-wield) -- it's the same
-  // physical item either way, and this display has no notion of "which
-  // numbered slot" for a real item (`slot` is always '' below), so without
-  // this the same item_id would show up as two identical rows. Placeholders
-  // are exempt: two different Other Sources picks (e.g. an M+ item wanted for
-  // both rings) are genuinely distinct rows and keep their own `p.slot` label.
+  // A real ring/trinket can legitimately be BiS on both its numbered slots at
+  // once (Finger 1 + Finger 2, Trinket 1 + Trinket 2) -- it's the same
+  // physical item either way (always unique-equip), and this display has no
+  // notion of "which numbered slot" for a real item (`slot` is always ''
+  // below), so without this the same item_id would show up as two identical
+  // rows. Deliberately scoped to just these four rows -- Weapon/Off Hand is
+  // excluded on purpose, since a dual-wield class can legitimately want two
+  // copies of the same non-unique one-hander (see wishlist.js's
+  // WISHLIST_SIBLING_SLOT comment), and collapsing that down to one row would
+  // hide the second copy. Placeholders are exempt too: two different Other
+  // Sources picks (e.g. an M+ item wanted for both rings) are genuinely
+  // distinct rows and keep their own `p.slot` label.
+  var DEDUPE_SIBLING_SLOTS = { 'Finger 1': true, 'Finger 2': true, 'Trinket 1': true, 'Trinket 2': true };
   var seenRealItemIds = {};
 
   (prefs || []).forEach(function (p) {
@@ -3533,8 +3538,10 @@ function bisMergeWishlistPrefs(prefs, officerBisItems, playerId) {
     if (isPlaceholder) {
       if (p.slot) coveredPlaceholderRows[p.slot] = true;
     } else {
-      if (seenRealItemIds[p.item_id]) return;
-      seenRealItemIds[p.item_id] = true;
+      if (DEDUPE_SIBLING_SLOTS[p.slot]) {
+        if (seenRealItemIds[p.item_id]) return;
+        seenRealItemIds[p.item_id] = true;
+      }
       var catalogSlot = itemSlots[name] || '';
       if (catalogSlot) coveredCatalogSlots[catalogSlot] = true;
     }
