@@ -55,7 +55,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.60.23';
+var VERSION = '3.60.24';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -4915,6 +4915,31 @@ function _selfReceivedTrackFromDiff(diff) {
   return diff === 'Mythic' ? 'Myth' : diff === 'Heroic' ? 'Hero' : diff;
 }
 
+// A raider self-tagging their own receipt auto-approves instantly (see
+// submit_self_received()'s auth.uid() check) for every source except 'Other'
+// -- that one still routes through officer review, since it's the catch-all
+// for anything not cleanly attributable to a real loot source. Shared by the
+// form's initial render and selfReceivedSourceChanged() below so the note
+// text can update live as the raider picks a source, instead of staying
+// wrong for whichever source they picked after page load.
+function selfReceivedNoteText(source) {
+  return source === 'Other'
+    ? 'An officer will review and approve this. Once approved it will appear on your profile.'
+    : 'This will be added to your profile right away.';
+}
+
+// Live-updates the self-received form's note as the raider changes the
+// source dropdown -- see selfReceivedNoteText() for why 'Other' differs from
+// every other source. No-ops for the officer's Mark Received form, which
+// never renders this note (Direct Mark Received is instant regardless of
+// source).
+function selfReceivedSourceChanged(rowId) {
+  var sourceEl = /** @type {HTMLSelectElement} */ (document.getElementById('src-' + rowId));
+  var noteEl = document.getElementById('note-' + rowId);
+  if (!sourceEl || !noteEl) return;
+  noteEl.textContent = selfReceivedNoteText(sourceEl.value);
+}
+
 // dbSlot is the raw bis_items.slot of the row this button was rendered for, as
 // distinct from `slot` (the display slot, which prefers the item catalog's own
 // slot name). They diverge routinely -- the catalog says "Boots"/"Gloves"/
@@ -4976,7 +5001,7 @@ function showSelfReceivedForm(firstName, nameRealm, item, slot, rowId, defaultSo
   var submitLabel = isOfficer ? 'Mark received' : 'Submit request';
   var noteText = isOfficer
     ? ''
-    : '<p class="self-received-note">An officer will review and approve this. Once approved it will appear on your profile.</p>';
+    : '<p class="self-received-note" id="note-' + rowId + '">' + selfReceivedNoteText(defaultSource) + '</p>';
   var formHtml =
     '<div class="self-received-form-inner" onclick="event.stopPropagation()">' +
     '<div style="display:flex;gap:0.5rem;margin-bottom:0.4rem;">' +
@@ -4990,7 +5015,9 @@ function showSelfReceivedForm(firstName, nameRealm, item, slot, rowId, defaultSo
     '</select>' +
     '<select class="self-received-source" id="src-' +
     rowId +
-    '" style="flex:1;">' +
+    '" style="flex:1;" onchange="selfReceivedSourceChanged(\'' +
+    rowId +
+    '\')">' +
     opts +
     '</select>' +
     '</div>' +
