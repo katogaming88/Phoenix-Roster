@@ -557,16 +557,31 @@ function executeCommitScores() {
   }
   if (status) status.textContent = '';
 
-  supabaseClient
-    .from('attendance')
-    .select('player_id, raid_date, status, report_excluded')
-    .eq('team_id', _teamCfg.supabaseTeamId)
-    .then(function (result) {
-      if (result.error) throw new Error(result.error.message);
+  // This read drives a write: every player's committed attendance score is
+  // computed from it. Unpaged it silently stopped at the 1000-row cap, and
+  // team 1 was at 1160 rows when this was found (#707), so committing scores
+  // was averaging over part of the season and storing the result as fact.
+  // Same shape as the "Not on Roster" backfill #696 fixed.
+  fetchAllPaged(
+    function (afterId, limit) {
+      var q = supabaseClient
+        .from('attendance')
+        .select('id, player_id, raid_date, status, report_excluded', afterId === null ? { count: 'exact' } : undefined)
+        .eq('team_id', _teamCfg.supabaseTeamId)
+        .order('id', { ascending: true })
+        .limit(limit);
+      return afterId === null ? q : q.gt('id', afterId);
+    },
+    { label: 'attendance commit scores' }
+  )
+    .then(function (attendanceRows) {
+      // null, not [], is the failure signal. Committing scores off a failed
+      // read would write zeros over everyone.
+      if (attendanceRows === null) throw new Error('Could not read the team attendance history.');
 
       var byPlayer = {};
       var nightSet = {};
-      (result.data || []).forEach(function (row) {
+      attendanceRows.forEach(function (row) {
         if (row.report_excluded) return;
         var weight = ATTENDANCE_WEIGHTS_JS[row.status];
         if (weight === undefined) return;

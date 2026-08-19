@@ -60,35 +60,52 @@ function buildAuditTab() {
   }
 
   var teamId = _teamCfg.supabaseTeamId;
-  supabaseClient
-    .from('audit_log')
-    .select('actor_id, action, target_type, target_id, detail, created_at')
-    .eq('team_id', teamId)
-    .order('created_at', { ascending: false })
-    .then(function (result) {
-      if (result.error) {
-        container.innerHTML =
-          '<p style="color:var(--melee);font-size:1rem;margin-top:1.5rem;">' + escHtml(result.error.message) + '</p>';
-        return;
-      }
-      var rows = result.data || [];
-      return Promise.all([resolveAuditActorNames(rows, teamId), resolveAuditTargetNames(rows, teamId)]).then(
-        function (maps) {
-          var actorNames = maps[0];
-          var targetNames = maps[1];
-          _auditEntries = rows.map(function (row) {
-            return {
-              ts: row.created_at,
-              changedBy: row.actor_id ? actorNames[row.actor_id] || '' : '',
-              action: row.action || '',
-              target: auditTargetName(row, targetNames),
-              detail: formatAuditDetail(row.detail)
-            };
-          });
-          renderAuditLog();
-        }
-      );
+  // audit_log only ever grows: every officer action appends a row and nothing
+  // prunes it. Team 1 was at 944 of the 1000-row cap when this was paged
+  // (#707), so the oldest entries were about to start disappearing from the
+  // log with no error. Keyset paging orders by id, so the newest-first order
+  // this view wants is applied to the collected rows below.
+  fetchAllPaged(
+    function (afterId, limit) {
+      var q = supabaseClient
+        .from('audit_log')
+        .select(
+          'id, actor_id, action, target_type, target_id, detail, created_at',
+          afterId === null ? { count: 'exact' } : undefined
+        )
+        .eq('team_id', teamId)
+        .order('id', { ascending: true })
+        .limit(limit);
+      return afterId === null ? q : q.gt('id', afterId);
+    },
+    { label: 'audit log' }
+  ).then(function (collected) {
+    if (collected === null) {
+      container.innerHTML =
+        '<p style="color:var(--melee);font-size:1rem;margin-top:1.5rem;">Could not load the audit log.</p>';
+      return;
+    }
+    var rows = collected.slice().sort(function (a, b) {
+      if (a.created_at === b.created_at) return b.id - a.id;
+      return a.created_at < b.created_at ? 1 : -1;
     });
+    return Promise.all([resolveAuditActorNames(rows, teamId), resolveAuditTargetNames(rows, teamId)]).then(
+      function (maps) {
+        var actorNames = maps[0];
+        var targetNames = maps[1];
+        _auditEntries = rows.map(function (row) {
+          return {
+            ts: row.created_at,
+            changedBy: row.actor_id ? actorNames[row.actor_id] || '' : '',
+            action: row.action || '',
+            target: auditTargetName(row, targetNames),
+            detail: formatAuditDetail(row.detail)
+          };
+        });
+        renderAuditLog();
+      }
+    );
+  });
 }
 
 // Resolves each distinct actor_id through resolve_actor_name() (#376). A

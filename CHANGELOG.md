@@ -8,6 +8,15 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.22] - 2026-08-19
+
+### Frontend
+
+- Fixed Commit Scores computing attendance from only part of the season on a team past 1000 attendance rows, and writing that as each player's stored score. Phoenix was already past it, so a player who attended 1000 nights and missed the next 160 was being scored as if they had attended everything. Committing now reads the whole history, and refuses to write anything at all if that read fails (#707).
+- Fixed the officer audit log quietly dropping its oldest entries once a team passed 1000 logged actions. The log only ever grows, and Phoenix was at 944 (#707).
+- Fixed the "add a raid night" dropdown on a player's attendance panel missing the oldest raid nights on a team past the same cap (#707).
+- Fixed the saved priority order truncating once a team accumulates about 1000 ranked rows across seasons. A rollover does not clear the old ones, so this was a season or two away (#707).
+
 ## [3.60.21] - 2026-08-19
 
 ### Frontend
