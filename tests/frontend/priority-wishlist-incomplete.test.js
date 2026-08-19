@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { offsetClient } from './helpers/supabase-mock.js';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import path from 'node:path';
@@ -116,24 +117,9 @@ function makeSandbox({
     getBisItems: (firstName) => bisList[firstName] || [],
     bisSlotBuckets: (items) => bisSlotBuckets(items, itemSlots),
     bisEligibleRealItemsBySlot: () => bisEligibleRealItemsBySlot(itemSlots, itemIds),
-    supabaseClient: {
-      from() {
-        return {
-          select() {
-            return this;
-          },
-          eq() {
-            return this;
-          },
-          order() {
-            return this;
-          },
-          range(from, to) {
-            return Promise.resolve({ data: prefsRows.slice(from, to + 1), error: null });
-          }
-        };
-      }
-    },
+    // fetchTeamItemPreferences still pages by OFFSET .range(); the mock that
+    // honours it lives in ./helpers/supabase-mock.js (#695).
+    supabaseClient: offsetClient(prefsRows).client,
     setTimeout,
     clearTimeout,
     Promise

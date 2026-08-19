@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { realFetchAllPaged } from './helpers/common-sandbox.js';
 
 // js/tabs/tab-roster.js is a plain browser script (no exports); this test
 // loads it into a vm sandbox to reach backfillNotOnRosterForPlayer (#241) --
@@ -16,35 +17,10 @@ const ROSTER_JS = readFileSync(
 );
 
 // js/common.js owns fetchAllPaged (#694) and tab-roster.js calls it as a
-// global. Load common.js in its own sandbox and hand the real function over,
-// so this suite exercises the shipped helper rather than a stand-in that could
-// drift from it. Same reason writeAuditLog is mirrored below rather than
-// stubbed away.
-const COMMON_JS = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '../../js/common.js'), 'utf8');
-function realFetchAllPaged() {
-  const commonSandbox = {
-    window: {},
-    location: { search: '', pathname: '/' },
-    sessionStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
-    localStorage: { getItem: () => null, setItem: () => {} },
-    document: { getElementById: () => null, createElement: () => ({}), head: { appendChild: () => {} } },
-    console: { log: () => {}, warn: () => {}, error: () => {} },
-    Intl,
-    setTimeout: (fn, ms) => {
-      const t = setTimeout(fn, ms);
-      if (t.unref) t.unref();
-      return t;
-    },
-    clearTimeout,
-    Promise
-  };
-  vm.createContext(commonSandbox);
-  vm.runInContext(COMMON_JS, commonSandbox, { filename: 'common.js' });
-  if (typeof commonSandbox.fetchAllPaged !== 'function') {
-    throw new Error('js/common.js does not define fetchAllPaged');
-  }
-  return commonSandbox.fetchAllPaged;
-}
+// global. realFetchAllPaged (./helpers/common-sandbox.js) hands over the
+// shipped helper, so this suite exercises the real function rather than a
+// stand-in that could drift from it. Same reason writeAuditLog is mirrored
+// below rather than stubbed away.
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 

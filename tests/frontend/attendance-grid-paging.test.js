@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { realFetchAllPaged } from './helpers/common-sandbox.js';
+import { keysetClient } from './helpers/supabase-mock.js';
 
 // loadAttendanceGrid (#694): the officer Attendance grid read the whole team's
 // attendance with no paging, so past 1000 rows PostgREST truncated the result
@@ -18,62 +20,6 @@ const ATTENDANCE_JS = readFileSync(
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 const dateAt = (i) => new Date(Date.UTC(2023, 0, 1) + i * 86400000).toISOString().slice(0, 10);
-
-// Keyset source with real semantics: honours .gt('id', ...) and .limit(), and
-// reports the exact count on the first page. A mock whose .limit() returned
-// everything regardless would let an unpaginated implementation pass, which
-// is the one property this suite cannot afford to lose.
-function makeSupabase(rows) {
-  const calls = { selects: [], orders: [], gts: [], limits: [] };
-  function builder(record) {
-    const b = {
-      eq() {
-        return b;
-      },
-      gt(col, val) {
-        record.gt = [col, val];
-        calls.gts.push([col, val]);
-        return b;
-      },
-      order(col, opts) {
-        record.order = record.order || [];
-        record.order.push([col, !opts || opts.ascending !== false]);
-        calls.orders.push(col);
-        return b;
-      },
-      limit(n) {
-        record.limit = n;
-        calls.limits.push(n);
-        return b;
-      },
-      then(onFulfilled, onRejected) {
-        return Promise.resolve()
-          .then(() => {
-            const after = record.gt ? record.gt[1] : null;
-            const limit = record.limit || 1000;
-            const slice = rows.filter((r) => after === null || r.id > after).slice(0, limit);
-            return { data: slice, error: null, count: after === null ? rows.length : null };
-          })
-          .then(onFulfilled, onRejected);
-      }
-    };
-    return b;
-  }
-  return {
-    calls,
-    client: {
-      from() {
-        return {
-          select(cols, opts) {
-            const record = { select: cols, countRequested: !!(opts && opts.count) };
-            calls.selects.push(record);
-            return builder(record);
-          }
-        };
-      }
-    }
-  };
-}
 
 function loadSandbox(client, roster) {
   const elements = {};
@@ -113,35 +59,9 @@ function loadSandbox(client, roster) {
 }
 
 // js/common.js owns fetchAllPaged and tab-attendance.js calls it as a global.
-// Load common.js once in its own sandbox (same harness as loot-supabase.test.js)
-// and hand the real function to the attendance sandbox, so this suite exercises
-// the shipped helper rather than a copy that could drift from it.
-const COMMON_JS = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '../../js/common.js'), 'utf8');
-function realFetchAllPaged() {
-  const commonSandbox = {
-    window: {},
-    location: { search: '', pathname: '/' },
-    sessionStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
-    localStorage: { getItem: () => null, setItem: () => {} },
-    document: { getElementById: () => null, createElement: () => ({}), head: { appendChild: () => {} } },
-    console: { log: () => {}, warn: () => {}, error: () => {} },
-    Intl,
-    setTimeout: (fn, ms) => {
-      const t = setTimeout(fn, ms);
-      if (t.unref) t.unref();
-      return t;
-    },
-    clearTimeout,
-    Promise
-  };
-  vm.createContext(commonSandbox);
-  vm.runInContext(COMMON_JS, commonSandbox, { filename: 'common.js' });
-  if (typeof commonSandbox.fetchAllPaged !== 'function') {
-    throw new Error('js/common.js does not define fetchAllPaged');
-  }
-  return commonSandbox.fetchAllPaged;
-}
-
+// realFetchAllPaged (./helpers/common-sandbox.js) loads the shipped helper out
+// of common.js and hands it over, so this suite exercises the real function
+// rather than a copy that could drift from it.
 function attachFetchAllPaged(sandbox) {
   sandbox.fetchAllPaged = realFetchAllPaged();
 }
@@ -174,7 +94,7 @@ describe('loadAttendanceGrid paging (#694)', () => {
   it('keeps the oldest raid nights when the team is past the 1000-row cap', async () => {
     // 580 nights x 2 players = 1160 rows, matching Phoenix at the time this
     // was found. Unpaginated, the last 80 nights never arrive.
-    const { client } = makeSupabase(makeRows(580, 2));
+    const { client } = keysetClient(makeRows(580, 2));
     const { sandbox } = loadSandbox(client, roster);
     attachFetchAllPaged(sandbox);
 
@@ -191,7 +111,7 @@ describe('loadAttendanceGrid paging (#694)', () => {
   });
 
   it('still lists nights newest first after paging by id', async () => {
-    const { client } = makeSupabase(makeRows(580, 2));
+    const { client } = keysetClient(makeRows(580, 2));
     const { sandbox } = loadSandbox(client, roster);
     attachFetchAllPaged(sandbox);
 
@@ -210,7 +130,7 @@ describe('loadAttendanceGrid paging (#694)', () => {
   });
 
   it('orders and counts the read so paging is deterministic', async () => {
-    const { client, calls } = makeSupabase(makeRows(580, 2));
+    const { client, calls } = keysetClient(makeRows(580, 2));
     const { sandbox } = loadSandbox(client, roster);
     attachFetchAllPaged(sandbox);
 
