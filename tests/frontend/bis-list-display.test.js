@@ -125,6 +125,49 @@ describe('bisMergeWishlistPrefs (shared merge core)', () => {
     expect(result.officerSet).toEqual(officerBisItems);
   });
 
+  it('dedupes a real item BiS on both numbered slots (Trinket 1 + Trinket 2) into a single row', () => {
+    const sandbox = makeSandbox();
+    sandbox.DATA = {
+      itemIds: { 'Soulcoiler Ritual Vessel': 320 },
+      itemSlots: { 'Soulcoiler Ritual Vessel': 'Trinket' },
+      itemPlaceholders: {}
+    };
+    const prefs = [
+      { item_id: 320, status: 'bis', slot: 'Trinket 1' },
+      { item_id: 320, status: 'bis', slot: 'Trinket 2' }
+    ];
+
+    const result = sandbox.bisMergeWishlistPrefs(prefs, [], 175);
+    expect(result.fromWishlist).toEqual([
+      {
+        item: 'Soulcoiler Ritual Vessel',
+        slot: '',
+        dbSlot: '',
+        obtained: false,
+        playerId: 175,
+        itemId: 320,
+        fromWishlist: true
+      }
+    ]);
+  });
+
+  it('does not dedupe two different placeholder rows for the same catalog item (e.g. M+ wanted on both rings)', () => {
+    const sandbox = makeSandbox();
+    sandbox.DATA = {
+      itemIds: { 'M+': 1 },
+      itemSlots: {},
+      itemPlaceholders: { 'M+': true }
+    };
+    const prefs = [
+      { item_id: 1, status: 'bis', slot: 'Finger 1' },
+      { item_id: 1, status: 'bis', slot: 'Finger 2' }
+    ];
+
+    const result = sandbox.bisMergeWishlistPrefs(prefs, [], 175);
+    expect(result.fromWishlist).toHaveLength(2);
+    expect(result.fromWishlist.map((e) => e.slot).sort()).toEqual(['Finger 1', 'Finger 2']);
+  });
+
   it('ignores non-BiS wishlist tags (Good/OK/etc. never supersede the officer pick)', () => {
     const sandbox = makeSandbox();
     sandbox.DATA = {

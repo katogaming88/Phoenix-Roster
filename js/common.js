@@ -3506,6 +3506,15 @@ function bisMergeWishlistPrefs(prefs, officerBisItems, playerId) {
   var coveredCatalogSlots = {};
   var coveredPlaceholderRows = {};
   var fromWishlist = [];
+  // A real ring/trinket/dual-wield weapon can legitimately be BiS on both its
+  // numbered slots at once (Finger 1 + Finger 2, Trinket 1 + Trinket 2,
+  // Weapon + Off Hand for classes that can dual-wield) -- it's the same
+  // physical item either way, and this display has no notion of "which
+  // numbered slot" for a real item (`slot` is always '' below), so without
+  // this the same item_id would show up as two identical rows. Placeholders
+  // are exempt: two different Other Sources picks (e.g. an M+ item wanted for
+  // both rings) are genuinely distinct rows and keep their own `p.slot` label.
+  var seenRealItemIds = {};
 
   (prefs || []).forEach(function (p) {
     if (p.status !== 'bis') return;
@@ -3524,6 +3533,8 @@ function bisMergeWishlistPrefs(prefs, officerBisItems, playerId) {
     if (isPlaceholder) {
       if (p.slot) coveredPlaceholderRows[p.slot] = true;
     } else {
+      if (seenRealItemIds[p.item_id]) return;
+      seenRealItemIds[p.item_id] = true;
       var catalogSlot = itemSlots[name] || '';
       if (catalogSlot) coveredCatalogSlots[catalogSlot] = true;
     }
