@@ -50,12 +50,16 @@ function buildConflicts() {
   // needs the same team-wide item_preferences fetch, not part of the main
   // DATA load since it's an officer-only feature (see _teamItemPreferences's
   // own comment above).
-  if (_teamItemPreferences === null) {
+  if (_teamItemPreferences === null && !_teamItemPreferencesFailed) {
     el.innerHTML = '<p style="color:var(--text-muted);padding:1rem;">Loading...</p>';
     fetchTeamItemPreferences().then(function (rows) {
-      _teamItemPreferences = rows || [];
+      _setTeamItemPreferences(rows);
       buildConflicts();
     });
+    return;
+  }
+  if (_teamItemPreferencesUnavailable()) {
+    el.innerHTML = TEAM_PREFS_UNAVAILABLE_HTML;
     return;
   }
 

@@ -8,6 +8,13 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.20] - 2026-08-19
+
+### Frontend
+
+- Officer wishlist views now read each item preference's season, so a pick tagged in a previous season no longer shows up as a current BiS entry or hides the officer's own pick for that slot. The raider's own view already filtered these out; the officer side could not, because it never fetched the column (#707).
+- A failed wishlist load now says so instead of showing every raider as having an incomplete wishlist. One failed request used to read as "nobody tagged anything" for the rest of the session, with the notes tab empty and the Wishlists Completed card at zero, and nothing retried (#707).
+
 ## [3.60.19] - 2026-08-19
 
 ### Frontend
