@@ -16,10 +16,17 @@
 -- touch what gets stored when a row is inserted (the real name_realm, as
 -- typed on the Roster tab, is unaffected) or the create-if-unmatched
 -- fallback below it, which still exists for genuinely new/unrostered names.
-create or replace function public.import_rclc_loot(p_team_id integer, p_season text, p_rows jsonb)
-returns jsonb
+--
+-- Based on 20260806214054's body (the flex-track-suffix word-boundary track
+-- parser) -- only the player-matching predicate changes here.
+create or replace function public.import_rclc_loot(
+  p_team_id integer,
+  p_season text,
+  p_rows jsonb
+) returns jsonb
 language plpgsql
-set search_path to 'public'
+security invoker
+set search_path = public
 as $$
 declare
   v_row jsonb;
@@ -28,7 +35,6 @@ declare
   v_item_id integer;
   v_track text;
   v_instance text;
-  v_suffix text;
   v_awarded_at timestamptz;
   v_rclc_id text;
   v_dedupe_key text;
@@ -87,18 +93,18 @@ begin
       v_unresolved_item := v_unresolved_item + 1;
     end if;
 
-    -- Track from the instance string's difficulty suffix (e.g. "The
-    -- Dreamrift-Mythic" -> Myth), the same parseTrack() logic the one-time
-    -- historical import already proved out (scripts/import/tables/loot.js).
-    -- The RCLC itemString technically encodes the true track in its bonus
-    -- IDs, but decoding those needs a maintained Blizzard bonus-ID reference
-    -- table this repo doesn't have -- deferred, not attempted here.
+    -- Track: search anywhere in the instance string for a standalone
+    -- difficulty word (e.g. "The Dreamrift-Mythic" -> Myth, "Sporefall-Mythic
+    -- - Flexible Raiding" -> Myth too) rather than assuming a fixed
+    -- "<Name>-<Difficulty>" shape (20260806214054). The RCLC itemString
+    -- technically encodes the true track in its bonus IDs, but decoding
+    -- those needs a maintained Blizzard bonus-ID reference table this repo
+    -- doesn't have -- deferred, not attempted here.
     v_instance := coalesce(v_row->>'instance', '');
-    v_suffix := lower(trim(both from regexp_replace(v_instance, '^.*-', '')));
-    v_track := case v_suffix
-      when 'mythic' then 'Myth'
-      when 'heroic' then 'Hero'
-      when 'normal' then 'Champion'
+    v_track := case
+      when v_instance ~* '\mmythic\M' then 'Myth'
+      when v_instance ~* '\mheroic\M' then 'Hero'
+      when v_instance ~* '\mnormal\M' then 'Champion'
       else null
     end;
 
