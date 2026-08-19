@@ -135,18 +135,21 @@ describe('fetchAllPaged (#694)', () => {
   it('gives each page its own timeout budget rather than one across the loop', async () => {
     const sandbox = loadCommonJs(quietConsole);
     const rows = makeRows(3000);
-    // Every page takes most of a single page's budget. Under one overall
-    // budget this run would be cut short partway, which is truncation by
-    // another name; per-page, it completes.
+    // Every page takes half of a single page's budget, and three of them take
+    // more than one whole budget. Under one overall budget this run would be
+    // cut short partway, which is truncation by another name; per-page, it
+    // completes. The two numbers are far enough apart that scheduler jitter
+    // under a loaded suite cannot push one page past its own budget, which it
+    // could when these were 30ms against 60ms.
     const makeQuery = (afterId, limit) =>
       new Promise((resolve) => {
         setTimeout(() => {
           const slice = rows.filter((r) => afterId === null || r.id > afterId).slice(0, limit);
           resolve({ data: slice, error: null, count: afterId === null ? rows.length : null });
-        }, 30);
+        }, 100);
       });
 
-    const out = await sandbox.fetchAllPaged(makeQuery, { pageSize: 1000, timeoutMs: 60 });
+    const out = await sandbox.fetchAllPaged(makeQuery, { pageSize: 1000, timeoutMs: 200 });
 
     expect(out).not.toBeNull();
     expect(out.length).toBe(3000);

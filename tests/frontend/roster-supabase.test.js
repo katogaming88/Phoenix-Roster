@@ -60,9 +60,16 @@ function mockSupabase(result) {
       calls.order.push(col);
       return builder;
     },
-    // loadData also fires the loot query (#209); these tests only assert the
-    // roster path, but the builder must accept the loot chain's range().
+    // loadData also fires the loot and attendance queries (#209, #694); these
+    // tests only assert the roster path, but the builder must accept those
+    // chains, which page by keyset through fetchAllPaged since #707.
     range() {
+      return builder;
+    },
+    gt() {
+      return builder;
+    },
+    limit() {
       return builder;
     },
     // ...and the team_settings query (#221); result().data here is either

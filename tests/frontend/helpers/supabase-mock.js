@@ -93,33 +93,6 @@ export function keysetClient(rows) {
   };
 }
 
-// A supabase client whose builder honours OFFSET .range(from, to), for reads
-// that still page that way. Records each range window requested.
-export function offsetClient(rows) {
-  const calls = { ranges: [] };
-  const client = {
-    from() {
-      const b = {
-        select() {
-          return b;
-        },
-        eq() {
-          return b;
-        },
-        order() {
-          return b;
-        },
-        range(from, to) {
-          calls.ranges.push([from, to]);
-          return Promise.resolve({ data: rows.slice(from, to + 1), error: null });
-        }
-      };
-      return b;
-    }
-  };
-  return { client, calls };
-}
-
 // A client whose every read fails the way PostgREST reports a real error, for
 // suites asserting that a failed fetch stays distinguishable from an empty
 // one. Mirrors offsetClient's builder surface.

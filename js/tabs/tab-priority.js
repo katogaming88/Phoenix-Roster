@@ -743,42 +743,28 @@ function _teamItemPreferencesUnavailable() {
 // lost whatever fell past that cap with no error, since nothing here ever
 // asked for more than page 1. A raider's wishlist could then read as
 // partially or entirely untagged to officers while their own view (a
-// per-player query, never near the cap) showed it complete. .order('id')
-// makes .range() paging deterministic; without an explicit order, Postgres
-// doesn't guarantee page N+1 picks up where page N left off.
+// per-player query, never near the cap) showed it complete.
+//
+// Pages through js/common.js's fetchAllPaged (#707), which was the third
+// hand-rolled loop here: it advanced by page size rather than by rows
+// received, so an exact multiple of the page size cost a request past the
+// end, and it raced one 20s budget against the whole read rather than
+// against each page. A fixed budget across N sequential round trips becomes
+// a truncation mechanism as N grows.
 function fetchTeamItemPreferences() {
   if (!supabaseClient) return Promise.resolve(null);
-  var PAGE_SIZE = 1000;
-
-  function fetchPage(offset, rows) {
-    return supabaseClient
-      .from('item_preferences')
-      .select('id, player_id, item_id, status, slot, season, note')
-      .eq('team_id', _teamCfg.supabaseTeamId)
-      .order('id')
-      .range(offset, offset + PAGE_SIZE - 1)
-      .then(function (result) {
-        if (result.error) {
-          console.warn('Supabase item_preferences query failed.', result.error.message);
-          return null;
-        }
-        var data = result.data || [];
-        rows = rows.concat(data);
-        return data.length < PAGE_SIZE ? rows : fetchPage(offset + PAGE_SIZE, rows);
-      })
-      .catch(function (err) {
-        console.warn('Supabase item_preferences query failed.', err);
-        return null;
-      });
-  }
-
-  var query = fetchPage(0, []);
-  var timeout = new Promise(function (resolve) {
-    setTimeout(function () {
-      resolve(null);
-    }, 20000);
-  });
-  return Promise.race([query, timeout]);
+  return fetchAllPaged(
+    function (afterId, limit) {
+      var q = supabaseClient
+        .from('item_preferences')
+        .select('id, player_id, item_id, status, slot, season, note', afterId === null ? { count: 'exact' } : undefined)
+        .eq('team_id', _teamCfg.supabaseTeamId)
+        .order('id', { ascending: true })
+        .limit(limit);
+      return afterId === null ? q : q.gt('id', afterId);
+    },
+    { label: 'item_preferences query' }
+  );
 }
 
 // Own copy of js/wishlist.js's wishlistItemRows()/wishlistCompleteness()

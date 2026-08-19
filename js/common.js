@@ -55,7 +55,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.60.20';
+var VERSION = '3.60.21';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -1803,47 +1803,40 @@ function fetchAllPaged(makeQuery, opts) {
 // empty loot feed, not a fallback to the old source.
 function fetchSupabaseLoot() {
   if (!supabaseClient) return Promise.resolve(null);
-  var PAGE = 1000;
-  /**
-   * @param {number} from
-   * @param {any[]} acc
-   * @returns {Promise<any[]|null>}
-   */
-  function fetchPage(from, acc) {
-    // Promise.resolve() unwraps the query builder's PromiseLike into a real
-    // Promise (same resolution, no behavior change) -- needed here since
-    // this return type is declared Promise<any[]|null> above and the call
-    // site chains .catch() on it.
-    return Promise.resolve(
-      supabaseClient
+  // Keyset paging orders by id, so the newest-first order this read is for
+  // gets applied below rather than by the query. Sorting after the fact is
+  // equivalent here because the read collects the whole table for the team
+  // either way, and it is what lets the shared helper page safely: awarded_at
+  // is nullable and not unique, which is not a cursor.
+  return fetchAllPaged(
+    function (afterId, limit) {
+      var q = supabaseClient
         .from('rclc_loot')
-        .select('track, season, awarded_at, items(name), players(name_realm)')
+        .select(
+          'id, track, season, awarded_at, items(name), players(name_realm)',
+          afterId === null ? { count: 'exact' } : undefined
+        )
         .eq('team_id', _teamCfg.supabaseTeamId)
-        .order('awarded_at', { ascending: false })
-        .order('id', { ascending: false })
-        .range(from, from + PAGE - 1)
-        .then(function (/** @type {{data: any[]|null, error: {message: string}|null}} */ result) {
-          if (result.error) {
-            console.warn('Supabase loot query failed.', result.error.message);
-            return null;
-          }
-          var rows = result.data || [];
-          var all = acc.concat(rows);
-          if (rows.length < PAGE) return all.length ? all : null;
-          return fetchPage(from + PAGE, all);
-        })
-    );
-  }
-  var query = fetchPage(0, []).catch(function (err) {
-    console.warn('Supabase loot query failed.', err);
-    return null;
+        .order('id', { ascending: true })
+        .limit(limit);
+      return afterId === null ? q : q.gt('id', afterId);
+    },
+    { label: 'loot query' }
+  ).then(function (rows) {
+    if (rows === null) return null;
+    return rows.slice().sort(function (a, b) {
+      // Undated rows sort last rather than dropping out of the list. Date
+      // parsing is done per comparison rather than cached because this runs
+      // once per load on a list the size of one team's loot history.
+      var at = a.awarded_at ? Date.parse(a.awarded_at) : NaN;
+      var bt = b.awarded_at ? Date.parse(b.awarded_at) : NaN;
+      var aBad = isNaN(at);
+      var bBad = isNaN(bt);
+      if (aBad !== bBad) return aBad ? 1 : -1;
+      if (!aBad && at !== bt) return bt - at;
+      return b.id - a.id;
+    });
   });
-  var timeout = new Promise(function (resolve) {
-    setTimeout(function () {
-      resolve(null);
-    }, 10000);
-  });
-  return Promise.race([query, timeout]);
 }
 
 /**
@@ -2902,13 +2895,21 @@ function mapSupabaseItemBosses(rows) {
 // as genuinely no data yet, since Supabase is authoritative for attendance
 // from here on; null means the read itself failed.
 //
-// There is no fallback and no timeout race, unlike this repo's other
-// fetchSupabaseX() helpers. Those race a slow query against a stale-but-
-// still-updating GAS payload, which is a reasonable tradeoff. Attendance had
-// no such tradeoff even before GAS was retired outright in #225, because its
-// GAS sheet was already frozen -- substituting it on mere slowness would have
-// swapped correct data for confidently-wrong data instead of just being slow.
-// Callers get null and render it as unknown rather than as zero (#694).
+// There is no fallback, unlike this repo's other fetchSupabaseX() helpers.
+// Those raced a slow query against a stale-but-still-updating GAS payload,
+// which was a reasonable tradeoff. Attendance had no such tradeoff even
+// before GAS was retired outright in #225, because its GAS sheet was already
+// frozen -- substituting it on mere slowness would have swapped correct data
+// for confidently-wrong data instead of just being slow. Callers get null and
+// render it as unknown rather than as zero (#694, #705).
+//
+// It does now have a timeout, which it deliberately did not before. The old
+// rationale was about what to substitute on slowness, and there is nothing
+// left to substitute; what remained was an unbounded chain that could hang
+// for the life of the page, since fetch() has no default timeout. The shared
+// helper below bounds each page rather than the whole read, so the budget
+// does not become a truncation mechanism as the table grows, and a read that
+// blows it returns null rather than the rows it happened to collect.
 //
 // Paginated (PostgREST caps an unpaginated select at 1000 rows server-side):
 // a season or two of attendance easily exceeds that for an active team, and
@@ -2916,33 +2917,20 @@ function mapSupabaseItemBosses(rows) {
 // isn't even guaranteed stable -- silently truncating produced different,
 // wrong attendance percentages on different page loads instead of an
 // obvious failure.
-var ATTENDANCE_FETCH_PAGE_SIZE = 1000;
 function fetchSupabaseAttendanceRaw() {
   if (!supabaseClient) return Promise.resolve(null);
-
-  function fetchPage(offset, accumulated) {
-    return supabaseClient
-      .from('attendance')
-      .select('player_id, raid_date, status, report_excluded')
-      .eq('team_id', _teamCfg.supabaseTeamId)
-      .order('id', { ascending: true })
-      .range(offset, offset + ATTENDANCE_FETCH_PAGE_SIZE - 1)
-      .then(function (result) {
-        if (result.error) {
-          console.warn('Supabase attendance query failed.', result.error.message);
-          return null;
-        }
-        var rows = result.data || [];
-        var all = accumulated.concat(rows);
-        if (rows.length < ATTENDANCE_FETCH_PAGE_SIZE) return all;
-        return fetchPage(offset + ATTENDANCE_FETCH_PAGE_SIZE, all);
-      });
-  }
-
-  return fetchPage(0, []).catch(function (err) {
-    console.warn('Supabase attendance query failed.', err);
-    return null;
-  });
+  return fetchAllPaged(
+    function (afterId, limit) {
+      var q = supabaseClient
+        .from('attendance')
+        .select('id, player_id, raid_date, status, report_excluded', afterId === null ? { count: 'exact' } : undefined)
+        .eq('team_id', _teamCfg.supabaseTeamId)
+        .order('id', { ascending: true })
+        .limit(limit);
+      return afterId === null ? q : q.gt('id', afterId);
+    },
+    { label: 'attendance query' }
+  );
 }
 
 // Builds the {raidDates, players, joinDates} shape GAS's getRawAttendanceData
