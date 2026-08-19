@@ -41,9 +41,13 @@ function attendanceRows(nights, playerId = 7) {
 }
 
 function loadSandbox(client) {
+  // Both the success and failure paths write style.color and set a timer, so
+  // the stubs carry style objects; without them the chain rejects after the
+  // assertions have already passed, which surfaces as an unhandled rejection
+  // rather than a failing test.
   const els = {
-    commitScoresBtn: { disabled: false, textContent: '' },
-    commitScoresStatus: { textContent: '' }
+    commitScoresBtn: { disabled: false, textContent: '', style: {} },
+    commitScoresStatus: { textContent: '', style: {} }
   };
   const upserts = [];
   const sandbox = {
@@ -55,7 +59,13 @@ function loadSandbox(client) {
     ATTENDANCE_WEIGHTS_JS: { Present: 1, Bench: 1, 'No Show': 0 },
     seasonCodeForDisplay: () => 'MID2',
     writeAuditLog: () => Promise.resolve(),
-    setTimeout,
+    // Unref'd so the success path's 6s status-reset timer never holds the
+    // test process open.
+    setTimeout: (fn, ms) => {
+      const t = setTimeout(fn, ms);
+      if (t.unref) t.unref();
+      return t;
+    },
     clearTimeout,
     Promise
   };
