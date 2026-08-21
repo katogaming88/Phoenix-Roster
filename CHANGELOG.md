@@ -14,6 +14,10 @@ with each release split into `### Frontend` (drives the version number) and
 
 - Marking a wishlist-tagged "Crafted" (or M+/Catalyst) BiS pick as received no longer also marks every other slot tagged with that same source as received. A raider's own wishlist BiS entries never carried the specific slot a "Mark received" click was for, so the request went out with no slot recorded -- and since M+/Crafted/Catalyst are placeholder sources that can legitimately cover several different gear slots at once under the exact same name, an approval for one slot lit up all of them.
 
+### Backend
+
+- `wcl-progression-sync` silently stopped writing any boss progress data weeks ago -- its `reports()` query was hitting WCL's max query complexity limit (50000) on every single call, every team, every cron tick, and failing outright with no thrown error anywhere in the pipeline, so `team_raid_progress` just quietly stopped updating with no indication why. Caught live via diagnostic logging after a raid night with 3 confirmed Heroic kills still showed 0/8 on the public progression card. Halved `REPORT_LIMIT` (100 -> 50 reports per page) to bring the query back under the complexity cap with real headroom against the same regression recurring as the season's report/fight history grows.
+
 ## [3.60.24] - 2026-08-19
 
 ### Frontend
