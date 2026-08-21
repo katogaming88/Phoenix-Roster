@@ -808,6 +808,11 @@ function _wclReportUrl(reportCode, fightId) {
 // that pull/kill on WCL.
 function _renderPullsBadge(progress, killed) {
   if (!progress || progress.pulls == null) return '';
+  // A boss with 0 Mythic pulls and no kill has nothing to say here -- showing
+  // "0 pulls" reads as a bare duplicate of the real Heroic pull count on the
+  // row right below it (_renderHeroicRow) while the team is still working
+  // Heroic and hasn't touched Mythic at all yet.
+  if (!killed && progress.pulls === 0) return '';
   var text = progress.pulls + (progress.pulls === 1 ? ' pull' : ' pulls');
   if (!killed && progress.bestPct != null) {
     text += ' -- best ' + progress.bestPct + '%';

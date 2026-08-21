@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.27] - 2026-08-21
+
+### Frontend
+
+- The public landing page's raid progression card showed a bare "0 pulls" on every boss row before AOTC, reading as a confusing duplicate of the real Heroic pull count on the line right below it. That badge is the Mythic pull count specifically -- always 0 while a team is still working Heroic and hasn't touched Mythic at all -- so it's now hidden whenever there's genuinely nothing to report (0 pulls, not killed), matching what the header/progress bar already do for the same pre-AOTC state.
+
 ## [3.60.26] - 2026-08-21
 
 ### Frontend
