@@ -55,7 +55,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.60.24';
+var VERSION = '3.60.25';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -1989,7 +1989,7 @@ function fetchSupabaseSelfReceived() {
   // team-read-guard: approved requests only, one row per item a player self-reported.
   var query = supabaseClient
     .from('self_received_requests')
-    .select('track, source, players(name_realm), items(name, slot)')
+    .select('track, source, slot, players(name_realm), items(name, slot)')
     .eq('team_id', _teamCfg.supabaseTeamId)
     .eq('status', 'approved')
     .then(
@@ -2172,7 +2172,14 @@ function mapSupabaseSelfReceived(rows) {
     if (!map[firstName]) map[firstName] = [];
     map[firstName].push({
       item: itemRow.name,
-      slot: itemRow.slot || '',
+      // row.slot is this specific request's own bis_items.slot (#386),
+      // not the catalog's -- itemRow.slot is only a fallback for rows
+      // predating that column. Falling back to itemRow.slot here would be
+      // wrong for a placeholder source (M+/Crafted/Catalyst): every such
+      // item shares one catalog row whose slot is the literal 'Placeholder'
+      // sentinel, so it can't tell an Off Hand request from any other slot
+      // tagged with the same source.
+      slot: row.slot || itemRow.slot || '',
       source: (diff ? diff + ': ' : '') + (row.source || '')
     });
   });
@@ -3555,7 +3562,15 @@ function bisMergeWishlistPrefs(prefs, officerBisItems, playerId) {
     fromWishlist.push({
       item: name,
       slot: isPlaceholder ? p.slot || '' : '',
-      dbSlot: '',
+      // A placeholder source (M+/Crafted/Catalyst) can be tagged BiS on
+      // several rows at once, all sharing the same item name -- dbSlot is
+      // what "Mark received" sends as p_slot and what
+      // selfReceivedEntryForRow() disambiguates on, so it has to carry the
+      // same per-row slot as `slot` above rather than always going out
+      // empty (that was the actual #726-adjacent bug: marking one
+      // Crafted-tagged slot received also lit up every other one, because
+      // every submission sent p_slot: '').
+      dbSlot: isPlaceholder ? p.slot || '' : '',
       obtained: false,
       playerId: playerId,
       itemId: p.item_id,
@@ -3993,6 +4008,29 @@ function getSelfReceivedItems(firstName) {
   return [];
 }
 
+// Finds the self-received entry (if any) for one BiS row. A placeholder
+// source (M+/Crafted/Catalyst) can legitimately sit in several slots at once
+// (#386's bis_items uniqueness note), and every such row shares the exact
+// same item name -- so a name-only match would light up every slot tagged
+// with that source the moment any one of them got approved. Prefer an entry
+// whose own slot lines up with this row's dbSlot; only fall back to a
+// slot-less (pre-#386) entry when it's the sole candidate for that name,
+// mirroring sync_bis_obtained_from_self_received()'s own "don't guess across
+// slots" caution on the DB side.
+function selfReceivedEntryForRow(selfRecItems, item, dbSlot) {
+  var norm = normalise(item);
+  var matches = [];
+  for (var i = 0; i < selfRecItems.length; i++) {
+    if (normalise(selfRecItems[i].item) === norm) matches.push(selfRecItems[i]);
+  }
+  if (!matches.length) return null;
+  for (var j = 0; j < matches.length; j++) {
+    if (matches[j].slot && matches[j].slot === dbSlot) return matches[j];
+  }
+  if (matches.length === 1 && !matches[0].slot) return matches[0];
+  return null;
+}
+
 function refreshBisCompletion(firstName, nameRealm) {
   var el = document.getElementById('bis-completion-' + firstName);
   if (!el) return;
@@ -4001,8 +4039,6 @@ function refreshBisCompletion(firstName, nameRealm) {
   });
   if (!bisItems.length) return;
   var selfRecItems = getSelfReceivedItems(firstName);
-  var selfRecMap = {};
-  for (var i = 0; i < selfRecItems.length; i++) selfRecMap[normalise(selfRecItems[i].item)] = true;
   var lootEntry = getLootEntry(nameRealm || firstName);
   var receivedMap = {};
   if (lootEntry && lootEntry.items) {
@@ -4013,7 +4049,11 @@ function refreshBisCompletion(firstName, nameRealm) {
   }
   var count = 0;
   for (var k = 0; k < bisItems.length; k++) {
-    if (receivedMap[normalise(bisItems[k].item)] || selfRecMap[normalise(bisItems[k].item)]) count++;
+    if (
+      receivedMap[normalise(bisItems[k].item)] ||
+      selfReceivedEntryForRow(selfRecItems, bisItems[k].item, bisItems[k].dbSlot)
+    )
+      count++;
   }
   var pct = Math.round((count / bisItems.length) * 100);
   el.innerHTML =
@@ -5089,7 +5129,9 @@ function submitSelfReceivedRequest(firstName, nameRealm, item, slot, rowId, dbSl
       var autoApproved = !!(row && row.auto_approved);
       if (autoApproved && DATA && DATA.selfReceived) {
         if (!DATA.selfReceived[firstName]) DATA.selfReceived[firstName] = [];
-        DATA.selfReceived[firstName].push({ item: item, slot: slot, source: diff + ': ' + sourceEl.value });
+        // dbSlot, not the display `slot` -- selfReceivedEntryForRow() matches
+        // on the raw bis_items.slot, same as the server-side row this mirrors.
+        DATA.selfReceived[firstName].push({ item: item, slot: dbSlot || '', source: diff + ': ' + sourceEl.value });
       } else {
         supabaseClient.functions.invoke('discord-bot-webhook', {
           body: {
@@ -5167,7 +5209,9 @@ function submitDirectMarkReceived(firstName, nameRealm, item, slot, rowId, dbSlo
       }
       if (DATA && DATA.selfReceived) {
         if (!DATA.selfReceived[firstName]) DATA.selfReceived[firstName] = [];
-        DATA.selfReceived[firstName].push({ item: item, slot: slot, source: source });
+        // dbSlot, not the display `slot` -- selfReceivedEntryForRow() matches
+        // on the raw bis_items.slot, same as the server-side row this mirrors.
+        DATA.selfReceived[firstName].push({ item: item, slot: dbSlot || '', source: source });
       }
       var markedPlayer = findRosterPlayerByNameRealm(nameRealm);
       writeAuditLog('Loot Marked Received', 'players', markedPlayer ? markedPlayer.id : null, item);
@@ -5544,12 +5588,8 @@ function renderProfile(firstName, backTo, container) {
     receivedMap[ri_key].push(typeof ri_obj === 'object' ? ri_obj : { name: ri_name });
   }
 
-  // Self-received (officer-approved) lookup
+  // Self-received (officer-approved) lookup -- see selfReceivedEntryForRow()
   var selfRecItems = getSelfReceivedItems(player.firstName);
-  var selfRecMap = {};
-  for (var sr = 0; sr < selfRecItems.length; sr++) {
-    selfRecMap[normalise(selfRecItems[sr].item)] = selfRecItems[sr];
-  }
 
   // Computed here (rather than down where streamSectionHTML is) so
   // _wishlistPrefs is already populated by the time the BiS List merge below
@@ -5662,7 +5702,7 @@ function renderProfile(firstName, backTo, container) {
     var dbSlot = entry.dbSlot || '';
     var isGen = item === 'M+' || item === 'Crafted' || item === 'Catalyst';
     var received = receivedMap[normalise(item)] || null;
-    var selfRec = selfRecMap[normalise(item)] || null;
+    var selfRec = selfReceivedEntryForRow(selfRecItems, item, dbSlot);
     var isReceived = received || selfRec;
     // Mythic received outranks Heroic for the row's own highlight -- green
     // for Mythic (or any non-Hero/Myth track, e.g. Champion), gold for a
@@ -5777,7 +5817,8 @@ function renderProfile(firstName, backTo, container) {
   var bisReceivedCount = 0;
   for (var bci = 0; bci < bisItems.length; bci++) {
     var bci_key = normalise(bisItems[bci].item);
-    if (receivedMap[bci_key] || selfRecMap[bci_key]) bisReceivedCount++;
+    if (receivedMap[bci_key] || selfReceivedEntryForRow(selfRecItems, bisItems[bci].item, bisItems[bci].dbSlot))
+      bisReceivedCount++;
   }
   var bisCompletionHTML = bisItems.length
     ? '<span id="bis-completion-' +

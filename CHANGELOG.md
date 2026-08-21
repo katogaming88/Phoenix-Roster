@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.25] - 2026-08-20
+
+### Frontend
+
+- Marking a wishlist-tagged "Crafted" (or M+/Catalyst) BiS pick as received no longer also marks every other slot tagged with that same source as received. A raider's own wishlist BiS entries never carried the specific slot a "Mark received" click was for, so the request went out with no slot recorded -- and since M+/Crafted/Catalyst are placeholder sources that can legitimately cover several different gear slots at once under the exact same name, an approval for one slot lit up all of them.
+
 ## [3.60.24] - 2026-08-19
 
 ### Frontend
