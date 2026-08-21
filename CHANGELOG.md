@@ -16,6 +16,7 @@ with each release split into `### Frontend` (drives the version number) and
 
 ### Backend
 
+- `wcl-progression-sync` silently stopped writing any boss progress data weeks ago -- its `reports()` query was hitting WCL's max query complexity limit (50000) on every single call, every team, every cron tick, and failing outright with no thrown error anywhere in the pipeline, so `team_raid_progress` just quietly stopped updating with no indication why. Caught live via diagnostic logging after a raid night with 3 confirmed Heroic kills still showed 0/8 on the public progression card. Halved `REPORT_LIMIT` (100 -> 50 reports per page) to bring the query back under the complexity cap with real headroom against the same regression recurring as the season's report/fight history grows.
 - `wcl-progression-sync`'s pg_cron raid-hours window widened from 9:30pm-midnight Eastern to 8pm-2am Eastern -- the old window was too tight around the raid's actual start/end times, so a raid running past its usual bounds could tick past the window before the boss-progress sync ever ran (`20260821010329_wcl_progression_sync_wider_window.sql`). Still DST-safe year-round with no manual twice-a-year edit needed; raid days unchanged.
 
 ## [3.60.24] - 2026-08-19

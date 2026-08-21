@@ -113,10 +113,23 @@ async function wclQuery(token: string, query: string): Promise<any | null> {
   }
 }
 
-const REPORT_LIMIT = 100;
-// 20 pages * 100/page = 2000 reports per zone per run -- far beyond any real
-// season's report count, just a guard against an unexpected has_more_pages
-// loop (e.g. a WCL response that never actually terminates).
+// WCL rejects the reports() query outright once its computed complexity
+// exceeds 50000 -- confirmed live via diagnostic logging (2026-08-21):
+// "Max query complexity should be 50000 but got 50401" at limit=100, for
+// every single team/zone, on every cron tick, silently. wclQuery() returns
+// null on any GraphQL error, so the report-fetch loop broke on page 1 with
+// zero reports every time -- no thrown error anywhere, which is exactly why
+// this went unnoticed: team_raid_progress simply never got written to,
+// starting from whenever the guild's logged reports/fights grew enough to
+// push a 100-report page over the limit. Complexity scales with both the
+// requested page size and each report's own (variable, growing-over-time)
+// fights array, so halving the limit isn't just "get back under 50000 today" --
+// it buys real headroom against the same regression recurring later in the
+// season as more fights accumulate.
+const REPORT_LIMIT = 50;
+// 20 pages * 50/page = 1000 reports per zone per run -- still far beyond any
+// real season's report count, just a guard against an unexpected
+// has_more_pages loop (e.g. a WCL response that never actually terminates).
 const MAX_REPORT_PAGES = 20;
 const MYTHIC_DIFF = 5;
 const HEROIC_DIFF = 4;
