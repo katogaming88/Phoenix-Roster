@@ -22,18 +22,21 @@ name: WCL Progression Sync
 # WCL credential itself. Without it matching, the function returns 401.
 #
 # Cadence (now enforced by the pg_cron job, unchanged from before): every 30
-# minutes, only during raid hours -- Tue/Thu/Mon, 9:30pm-midnight Eastern
-# (the Monday slot is the team's standing makeup/extra-day night; update the
-# migration's cron expression if that day ever changes). Kat's call:
-# boss-pull progress only actually changes during raid nights, so there's no
-# reason to poll WCL the other 4.5 days a week.
+# minutes, only during raid hours -- Tue/Thu/Mon, 8pm-2am Eastern (widened
+# from the original 9:30pm-midnight per Kat's request, 2026-08-21 --
+# 20260821010329_wcl_progression_sync_wider_window.sql) (the Monday slot is
+# the team's standing makeup/extra-day night; update the migration's cron
+# expression if that day ever changes). Kat's call: boss-pull progress only
+# actually changes during raid nights, so there's no reason to poll WCL the
+# other 4.5 days a week.
 #
 # pg_cron (like GitHub Actions cron) is UTC-only and does not adjust for US
-# DST, so the schedule is intentionally padded by an hour on each side to
-# cover both offsets year-round without needing a manual twice-a-year edit:
-#   EDT (Mar-Nov, UTC-4): 9:30pm-midnight ET = 01:30-04:00 UTC next day
-#   EST (Nov-Mar, UTC-5): 9:30pm-midnight ET = 02:30-05:00 UTC next day
-#   -> polls 01:00-05:30 UTC to cover both with buffer room either side.
+# DST, so the schedule covers both offsets year-round without needing a
+# manual twice-a-year edit:
+#   EDT (Mar-Nov, UTC-4): 8pm-2am ET = 00:00-06:00 UTC next day
+#   EST (Nov-Mar, UTC-5): 8pm-2am ET = 01:00-07:00 UTC next day
+#   -> polls 00:00-07:30 UTC to cover both (the trailing :30 tick is the
+#      normal half-hour grid overshoot, not extra padding).
 # A UTC weekday is one calendar day ahead of the Eastern evening it follows,
 # so Mon/Tue/Thu ET nights land on Tue/Wed/Fri UTC (cron dow 2,3,5).
 on:
