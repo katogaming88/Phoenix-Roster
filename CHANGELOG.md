@@ -14,6 +14,10 @@ with each release split into `### Frontend` (drives the version number) and
 
 - Marking a wishlist-tagged "Crafted" (or M+/Catalyst) BiS pick as received no longer also marks every other slot tagged with that same source as received. A raider's own wishlist BiS entries never carried the specific slot a "Mark received" click was for, so the request went out with no slot recorded -- and since M+/Crafted/Catalyst are placeholder sources that can legitimately cover several different gear slots at once under the exact same name, an approval for one slot lit up all of them.
 
+### Backend
+
+- `wcl-progression-sync`'s pg_cron raid-hours window widened from 9:30pm-midnight Eastern to 8pm-2am Eastern -- the old window was too tight around the raid's actual start/end times, so a raid running past its usual bounds could tick past the window before the boss-progress sync ever ran (`20260821010329_wcl_progression_sync_wider_window.sql`). Still DST-safe year-round with no manual twice-a-year edit needed; raid days unchanged.
+
 ## [3.60.24] - 2026-08-19
 
 ### Frontend
