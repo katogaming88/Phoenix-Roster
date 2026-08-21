@@ -1151,6 +1151,7 @@ function renderRaidProgressionCards() {
           ')"' +
           ' ondragend="raidBossDragEnd(event)"' +
           '>';
+        html += '<div class="prio-drag-item-row">';
         html += '<span class="prio-drag-handle" title="Drag to reorder">&#8942;&#8942;</span>';
         html +=
           '<span style="font-size:0.93rem;color:var(--text-muted);min-width:1.2rem;text-align:right;">' +
@@ -1171,6 +1172,7 @@ function renderRaidProgressionCards() {
           ',' +
           j +
           ')">&times;</button>';
+        html += '</div>';
         html += '</div>';
       }
       html += '</div>';

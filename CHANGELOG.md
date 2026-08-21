@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.26] - 2026-08-21
+
+### Frontend
+
+- Fixed the Season Settings > Progression tab's boss rows rendering as a stack of full-width lines instead of one compact row -- the drag handle, boss name, "Mythic kill" date, and remove button each landed on their own line, and the small remove button stretched to fill the whole row width (showing as a big empty-looking box with a tiny "x" in it). The row reused `.prio-drag-item`, a CSS class meant to hold a nested `.prio-drag-item-row` for its actual horizontal layout (see `js/tabs/tab-priority.js`'s priority editor), but never added that inner wrapper.
+
 ## [3.60.25] - 2026-08-20
 
 ### Frontend
