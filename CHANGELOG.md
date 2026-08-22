@@ -8,6 +8,19 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.30] - 2026-08-22
+
+### Frontend
+
+- The Loot Import tab's "Recent RCLC Imports" history used to show a flat list of every individual item ever imported, capped at the last 100 rows -- confirming "did my paste go through" meant scrolling through a long item list with no sense of when an import ran or who ran it. Rebuilt into one row per *import event* (Time, Imported By, # of Items), grouped from `audit_log` by the fact that every item from one `import_rclc_loot()` call shares the exact same `created_at` (Postgres freezes `now()` for the whole transaction). Click a row to expand a per-player breakdown (name and item count only, not the items themselves). The list is season-scoped via a dropdown, defaulting to the currently active season.
+
+### Backend
+
+- `import_rclc_loot()` now writes `{summary, season}` as its audit-log detail instead of a bare summary string, so the season filter above has something to filter by -- `audit_log` has no season column of its own and `rclc_loot.season` has no reference back to which import wrote it, so this was the only way to make season-scoping possible going forward. Entries imported before this change keep their old plain-string detail and show up under an explicit "Unknown season" bucket rather than being dropped or guessed at (`20260822163718_import_rclc_loot_audit_season.sql`). See `docs/database-decisions.md`.
+- The Attendance tab's "Refresh from WCL" was silently excluding real raid nights for teams whose logs mix M+ keys with raid pulls in one continuous WCL session (Hellfire's Aug 18/20 "Normal"/"Normal/Heroic" reports) -- `wcl-sync`'s `refreshAttendance` classified a report's zone from the report's single top-level `zone` field, which reflects whichever zone WCL considers primary for the whole log and can land on the dungeon's zone instead of the raid's for a mixed session. Added a fallback check: a report whose top-level zone doesn't match now gets one more look at its actual fight-level `encounterID`s against the configured raid's boss list before being excluded, so a real boss pull anywhere in the log is enough to count the night.
+
+---
+
 ## [3.60.29] - 2026-08-22
 
 ### Frontend

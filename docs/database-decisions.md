@@ -8,6 +8,17 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-08-22 -- `import_rclc_loot()` carries season into its audit detail
+
+Decided directly in conversation (no tracking issue): the Loot Import tab's history view (previously a flat per-item table) was rebuilt to group entries into one row per import event and needed to season-scope that list, but `audit_log` has no season column and `rclc_loot.season` (already written by this same call) has no reference back to which import wrote it -- there's no reliable way to join the two after the fact.
+
+- `import_rclc_loot()`'s `write_audit_log()` call now writes `{summary, season}` as the detail jsonb instead of a bare summary string, since `p_season` is already available in that same function call. One extra field, no new column.
+- **Rows written before this migration keep their old plain-string detail and have no season to filter by.** Retroactively backfilling one is not feasible: correlating a specific `audit_log` row back to the exact `rclc_loot` row it came from would require reconstructing insertion-order pairing across two separate id sequences, which is fragile enough (and unverifiable after the fact) that it was ruled out rather than attempted. The history view surfaces these under an explicit "Unknown season" bucket instead of guessing one, so nothing silently disappears or gets misattributed to whichever season happens to be active now.
+- This changes what "Loot Imported (RCLC)" actions render as on the general Audit Log tab too (`formatAuditDetail()` flattens the new `{summary, season}` object into "Summary: ..., Season: ..." instead of the old bare string) -- accepted as a minor side effect of the same detail column, not worth a separate code path just to preserve the old rendering for one action type.
+- Implemented in `20260822163718_import_rclc_loot_audit_season.sql`.
+
+---
+
 ## 2026-08-22 -- `restrict_players_self_update_to_bonus_roll()` trigger missed the `is_site_admin()` catch-up
 
 Decided directly in conversation (no tracking issue): a site admin with no `team_members` row on Hellfire and no `guild_officers` row hit a 400 on every `players` PATCH while running the Reports tab's bulk Raider.IO tier sync (`syncRosterTierCounts()`) against that team -- the RLS policy on `players` already allows `is_site_admin()` through (per the 2026-08-15 sweep below), but this trigger is a hand-mirrored copy of that predicate living in a separate function, not a `CREATE POLICY` statement, so the 2026-08-15 sweep's own audit (which looked for officer-write policies) never touched it.
