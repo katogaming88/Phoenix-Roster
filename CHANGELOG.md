@@ -14,6 +14,10 @@ with each release split into `### Frontend` (drives the version number) and
 
 - Fixed the Season Loot Pace report's season dropdown showing "Midnight Season 1" twice. `rclc_loot.season` is supposed to store the compact season code (`MID1`), same convention as `priority_order.season`/`scoring.season`, but both RCLC paste-import call sites (`js/tabs/tab-loot-import.js`'s officer Loot Import tab and `js/officer-quick-actions.js`'s public-page quick-actions widget) wrote the raw display name straight through instead of running it through `seasonCodeForDisplay()` first -- so imports landed as literal `"Midnight Season 1"`/`"Midnight Season 2"` rows sitting alongside correctly-coded `MID1` rows, and the dropdown's season translation showed the same label twice (once translated from the code, once passed through unchanged since it didn't match the code pattern). Existing mislabeled rows need a one-time manual data fix (see PR).
 
+### Backend
+
+- A site admin with no `team_members` row on a given team and no `guild_officers` row hit a 400 on every single `players` write against that team -- surfaced live running the Reports tab's bulk Raider.IO tier sync against Hellfire from a Phoenix-team-leader/site-admin session. The RLS policy on `players` already lets `is_site_admin()` through (2026-08-15 sweep), but `restrict_players_self_update_to_bonus_roll()`'s hand-mirrored copy of that same predicate was never updated to match, so it fell through to its raise-exception path on every row. Added the missing `is_site_admin()` clause (`20260822194907_players_self_update_trigger_site_admin.sql`). See `docs/database-decisions.md`.
+
 ---
 
 ## [3.60.28] - 2026-08-22
