@@ -366,7 +366,10 @@ function qaSubmitLoot() {
     return;
   }
 
-  var season = window.DATA && DATA.seasonName ? DATA.seasonName.trim() : '';
+  // rclc_loot.season stores the compact code ('MID1'), same convention as
+  // priority_order.season/scoring.season -- see js/tabs/tab-loot-import.js's
+  // matching call site for why this needs seasonCodeForDisplay().
+  var season = window.DATA && DATA.seasonName ? seasonCodeForDisplay(DATA.seasonName.trim()) : '';
   if (importBtn) importBtn.disabled = true;
   setStatus('Importing ' + rows.length + ' entries...', 'var(--text-muted)');
 

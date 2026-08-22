@@ -112,7 +112,14 @@ function submitLootImport() {
     return;
   }
 
-  var season = window.DATA && DATA.seasonName ? DATA.seasonName.trim() : '';
+  // rclc_loot.season stores the compact code ('MID1'), same convention as
+  // priority_order.season/scoring.season (see js/common.js's
+  // seasonCodeForDisplay block comment) -- this used to write the raw
+  // display name straight through, which is why season_loot_pace's season
+  // dropdown showed "Midnight Season 1" twice (once as the correctly-coded
+  // "MID1" translated back for display, once as the raw un-translated
+  // string sitting in the same column).
+  var season = window.DATA && DATA.seasonName ? seasonCodeForDisplay(DATA.seasonName.trim()) : '';
 
   setLootImportStatus('Importing ' + rows.length + ' entries...', 'var(--text-muted)');
 
