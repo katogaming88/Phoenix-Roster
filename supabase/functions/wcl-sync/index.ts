@@ -476,12 +476,24 @@ async function getReportParticipants(token: string, reportCode: string): Promise
 // `fights` list includes wipes too and is already in chronological order by
 // fight ID, so the first difficulty-tagged (real pull, not trash) entry is
 // the actual first pull regardless of whether it was a kill.
-async function getFirstPullParticipants(token: string, reportCode: string): Promise<Set<string> | null> {
+//
+// `difficulty` alone isn't enough to tell a real raid pull from an M+
+// dungeon pull -- both carry a difficulty value, so a session that also has
+// keys logged before the raid (the same mixed-log shape the isMain zone
+// fallback above handles) picked the first *dungeon* pull as "the first
+// pull," and flagged everyone not in that 5-person key as late. Filtering to
+// `validEncounterIds` (the configured raid's own boss list) when it's
+// populated rules dungeon pulls out the same way the zone fallback does.
+async function getFirstPullParticipants(
+  token: string,
+  reportCode: string,
+  validEncounterIds: Set<number>
+): Promise<Set<string> | null> {
   const fightsQuery = `
     query {
       reportData {
         report(code: "${reportCode}") {
-          fights { id startTime difficulty }
+          fights { id startTime difficulty encounterID }
         }
       }
     }
@@ -489,7 +501,7 @@ async function getFirstPullParticipants(token: string, reportCode: string): Prom
   const fightsResult = await wclQuery(token, fightsQuery);
   const fights = fightsResult?.data?.reportData?.report?.fights || [];
   const firstPull = fights
-    .filter((f: any) => f.difficulty != null)
+    .filter((f: any) => f.difficulty != null && (validEncounterIds.size === 0 || validEncounterIds.has(f.encounterID)))
     .sort((a: any, b: any) => a.startTime - b.startTime)[0];
   if (!firstPull) return null;
 
@@ -682,7 +694,7 @@ async function refreshAttendance(
     // fail open to the normal Present/WCL path rather than flagging anyone,
     // same "don't let a detection gap silently penalize someone" principle
     // as computeSeasonAttendancePct's treatment of an unset status.
-    const firstPullParticipants = await getFirstPullParticipants(token, report.code);
+    const firstPullParticipants = await getFirstPullParticipants(token, report.code, validEncounterIds);
 
     for (const player of roster) {
       if (officerLocked.has(`${date}|${player.playerId}`)) continue;
