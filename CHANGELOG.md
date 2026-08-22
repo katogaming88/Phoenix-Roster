@@ -17,6 +17,7 @@ with each release split into `### Frontend` (drives the version number) and
 ### Backend
 
 - A site admin with no `team_members` row on a given team and no `guild_officers` row hit a 400 on every single `players` write against that team -- surfaced live running the Reports tab's bulk Raider.IO tier sync against Hellfire from a Phoenix-team-leader/site-admin session. The RLS policy on `players` already lets `is_site_admin()` through (2026-08-15 sweep), but `restrict_players_self_update_to_bonus_roll()`'s hand-mirrored copy of that same predicate was never updated to match, so it fell through to its raise-exception path on every row. Added the missing `is_site_admin()` clause (`20260822194907_players_self_update_trigger_site_admin.sql`). See `docs/database-decisions.md`.
+- The Attendance tab's "Refresh from WCL" was silently excluding real raid nights for teams whose logs mix M+ keys with raid pulls in one continuous WCL session (Hellfire's Aug 18/20 "Normal"/"Normal/Heroic" reports) -- `wcl-sync`'s `refreshAttendance` classified a report's zone from the report's single top-level `zone` field, which reflects whichever zone WCL considers primary for the whole log and can land on the dungeon's zone instead of the raid's for a mixed session. Added a fallback check: a report whose top-level zone doesn't match now gets one more look at its actual fight-level `encounterID`s against the configured raid's boss list before being excluded, so a real boss pull anywhere in the log is enough to count the night.
 
 ---
 

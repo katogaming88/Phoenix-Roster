@@ -403,6 +403,32 @@ async function getReportZone(token: string, reportCode: string): Promise<number 
   return result?.data?.reportData?.report?.zone?.id ?? null;
 }
 
+// A report's single top-level `zone` field reflects whatever zone WCL
+// considers primary for the report as a whole -- reliable for a
+// dungeons-only or raid-only log, but a raid night that also has M+ keys
+// logged in the same continuous session (before pull, during a break, etc.)
+// can come back tagged with the dungeon's zone instead of the raid's,
+// silently excluding a real raid night that has boss pulls in it. Checked as
+// a fallback only (one extra query, just for reports the zone check already
+// rejected) rather than replacing the zone check outright, since it needs
+// `raidProgression` to actually have bosses configured with wclEncounterId
+// and a zone-only report (wipes on a brand-new boss with no ranked kill yet)
+// wouldn't show up here either.
+async function getReportEncounterIds(token: string, reportCode: string): Promise<Set<number>> {
+  const query = `
+    query {
+      reportData {
+        report(code: "${reportCode}") {
+          fights(killType: Kills) { encounterID }
+        }
+      }
+    }
+  `;
+  const result = await wclQuery(token, query);
+  const fights = result?.data?.reportData?.report?.fights || [];
+  return new Set(fights.map((f: any) => f.encounterID).filter((id: any) => typeof id === 'number'));
+}
+
 // Ported from gs/Attendance.gs's getReportParticipants: combines ranked-fight
 // characters (mythic->heroic fallback, unlike refreshPerformance this is NOT
 // role-filtered -- any character in the log counts as present) with a
@@ -515,6 +541,12 @@ async function refreshAttendance(
   const validZoneIds = new Set(
     raidProgression.map((r) => parseInt(r.wclZoneId, 10)).filter((id) => !Number.isNaN(id))
   );
+  const validEncounterIds = new Set(
+    raidProgression
+      .flatMap((r) => (Array.isArray(r.bosses) ? r.bosses : []))
+      .map((b: any) => parseInt(b.wclEncounterId, 10))
+      .filter((id) => !Number.isNaN(id))
+  );
   const startTimeMs = seasonStart && !Number.isNaN(Date.parse(seasonStart)) ? Date.parse(seasonStart) : null;
 
   const reportsQuery = `
@@ -623,6 +655,15 @@ async function refreshAttendance(
     let isMain: boolean;
     if (validZoneIds.size > 0) {
       isMain = zoneId != null && validZoneIds.has(zoneId);
+      // The report-level zone can come back as a M+ dungeon's zone instead
+      // of the raid's when a night's log also has keys pushed in the same
+      // continuous session -- a real raid boss kill in the log is a more
+      // reliable signal than that single top-level field, so a
+      // zone-mismatch gets one more check before being excluded.
+      if (!isMain && validEncounterIds.size > 0) {
+        const encounterIds = await getReportEncounterIds(token, report.code);
+        isMain = [...encounterIds].some((id) => validEncounterIds.has(id));
+      }
     } else if (startTimeMs) {
       isMain = true;
     } else {
