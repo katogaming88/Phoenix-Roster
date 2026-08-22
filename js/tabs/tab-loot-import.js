@@ -314,7 +314,10 @@ function renderLootHistoryPanel(actorNames) {
     return imp.season === _lootHistorySeasonFilter;
   });
 
-  var html = '<div class="signup-officer-panel">';
+  // .signup-officer-panel's shared max-width:400px (css/styles.css) is
+  // sized for the form-like panels it was built for elsewhere in this tab --
+  // too narrow for a data table, so this instance overrides it wider.
+  var html = '<div class="signup-officer-panel" style="max-width:none;">';
   html +=
     '<div class="signup-status-row"><span class="signup-status-label">Recent RCLC Imports<button class="help-btn" onclick="toggleHelp(\'help-loot-history\')" title="Show help">?</button></span></div>';
   html += '<div id="help-loot-history" class="help-tip" style="margin-bottom:0.5rem;">';
