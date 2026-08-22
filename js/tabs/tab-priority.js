@@ -409,14 +409,22 @@ function checkPriorityDrift() {
 // idiom. A player with no Raider.IO data (never scanned, stale name_realm)
 // is skipped and tallied rather than overwriting their last-known count with
 // a false 0.
+//
+// Two triggers share this now (Priority tab's #syncRosterTierBtn and the
+// Reports tab's Tier Sets sub-report, both tagged with the .tier-sync-btn/
+// .tier-sync-status classes) -- driven by querySelectorAll instead of a
+// single getElementById so whichever trigger fired still gets its own
+// disabled/progress state, and the other stays in sync too if visible.
 function syncRosterTierCounts() {
-  var btn = document.getElementById('syncRosterTierBtn');
-  var status = document.getElementById('syncRosterTierStatus');
+  var btns = document.querySelectorAll('.tier-sync-btn');
+  var statuses = document.querySelectorAll('.tier-sync-status');
   var roster = (DATA.roster || []).filter(function (p) {
     return p.firstName && p.realm;
   });
   if (!roster.length) return;
-  if (btn) btn.disabled = true;
+  btns.forEach(function (btn) {
+    btn.disabled = true;
+  });
 
   var synced = 0;
   var skipped = 0;
@@ -424,21 +432,24 @@ function syncRosterTierCounts() {
 
   function next() {
     if (i >= roster.length) {
-      if (btn) {
+      btns.forEach(function (btn) {
         btn.disabled = false;
         btn.textContent = 'Sync Roster Tier Counts';
-      }
-      if (status) {
+      });
+      statuses.forEach(function (status) {
         status.textContent =
           synced + ' synced' + (skipped ? ', ' + skipped + ' skipped (no Raider.IO data)' : '') + '.';
         status.style.color = skipped ? 'var(--gold)' : 'var(--heal)';
-      }
+      });
       buildPriorityTab();
+      if (document.getElementById('reportsTierSetContent')) renderTierSetTable();
       return;
     }
     var player = roster[i];
     i++;
-    if (btn) btn.textContent = 'Syncing ' + i + '/' + roster.length + '...';
+    btns.forEach(function (btn) {
+      btn.textContent = 'Syncing ' + i + '/' + roster.length + '...';
+    });
 
     fetchRaiderIoGear(player.firstName, player.realm)
       .then(function (gearItems) {
@@ -457,7 +468,9 @@ function syncRosterTierCounts() {
       });
   }
 
-  if (status) status.textContent = '';
+  statuses.forEach(function (status) {
+    status.textContent = '';
+  });
   next();
 }
 
