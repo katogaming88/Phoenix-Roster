@@ -8,6 +8,14 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.28] - 2026-08-22
+
+### Frontend
+
+- Added a "Tier Sets" sub-report to the officer Reports tab: a roster-wide table of each active player's tier-set piece count, so officers can see who's behind on tier without opening every profile card individually. Reads the same `tier_pieces_equipped`/`tier_pieces_synced_at` data the profile badge already shows, with its own "Sync Roster Tier Counts" button (`syncRosterTierCounts()`, shared with the Priority tab's) to refresh from Raider.IO in place.
+
+---
+
 ## [3.60.27] - 2026-08-21
 
 ### Frontend

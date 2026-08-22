@@ -11,7 +11,9 @@ var REPORTS_STATE = {
   staleRows: [],
   gapRows: [],
   staleAfterHeroicRows: [],
-  lootPaceRows: []
+  lootPaceRows: [],
+  tierSetRoleFilter: null,
+  tierSetSort: { key: 'count', dir: 1 }
 };
 
 function buildReportsTab() {
@@ -453,6 +455,110 @@ function renderLootPaceTable() {
       (curMap[w] || 0) +
       '</td><td>' +
       (prevSeason ? prevMap[w] || 0 : '&mdash;') +
+      '</td></tr>';
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+// -- Tier set progress --
+// No fetch needed, unlike the reports above -- js/common.js's roster load
+// already carries tierPiecesEquipped/tierPiecesSyncedAt on every DATA.roster
+// player (synced separately via Sync Roster Tier Counts, tab-priority.js).
+// This just renders what's already in memory.
+
+function loadTierSetReport() {
+  renderTierSetTable();
+}
+
+function toggleTierSetRole(role) {
+  REPORTS_STATE.tierSetRoleFilter = REPORTS_STATE.tierSetRoleFilter === role ? null : role;
+  ['Tank', 'Heal', 'Melee', 'Ranged'].forEach(function (r) {
+    document.getElementById('tierSet-chip-role-' + r).classList.toggle('active', REPORTS_STATE.tierSetRoleFilter === r);
+  });
+  renderTierSetTable();
+}
+
+function toggleTierSetSort(key) {
+  var sort = REPORTS_STATE.tierSetSort;
+  if (sort.key === key) sort.dir *= -1;
+  else {
+    sort.key = key;
+    sort.dir = key === 'syncedAt' ? -1 : 1;
+  }
+  ['player', 'count', 'syncedAt'].forEach(function (k) {
+    var chip = document.getElementById('tierSet-chip-sort-' + k);
+    var isActive = sort.key === k;
+    chip.classList.toggle('active', isActive);
+    chip.textContent =
+      { player: 'Player', count: 'Tier Count', syncedAt: 'Last Synced' }[k] +
+      (isActive ? (sort.dir === 1 ? ' ↑' : ' ↓') : '');
+  });
+  renderTierSetTable();
+}
+
+// Low count is the concerning end (not yet geared into tier), so the color
+// scale runs the opposite direction from rnlsiSeverityColor's "high is bad".
+function tierCountColor(count) {
+  if (count == null) return 'var(--text-muted)';
+  if (count <= 1) return 'var(--melee)';
+  if (count <= 3) return 'var(--gold-light)';
+  return 'var(--heal)';
+}
+
+function renderTierSetTable() {
+  var container = document.getElementById('reportsTierSetContent');
+  if (!container) return;
+  var roster = (window.DATA && DATA.roster) || [];
+  if (!roster.length) {
+    container.innerHTML = '<p style="color:var(--text-muted);">No active roster players found.</p>';
+    return;
+  }
+
+  var filtered = REPORTS_STATE.tierSetRoleFilter
+    ? roster.filter(function (p) {
+        return p.role === REPORTS_STATE.tierSetRoleFilter;
+      })
+    : roster;
+  if (!filtered.length) {
+    container.innerHTML = '<p style="color:var(--text-muted);">No players in this role.</p>';
+    return;
+  }
+
+  var sort = REPORTS_STATE.tierSetSort;
+  var sorted = filtered.slice().sort(function (a, b) {
+    if (sort.key === 'player') return sort.dir * a.nameRealm.localeCompare(b.nameRealm);
+    if (sort.key === 'syncedAt') {
+      var at = a.tierPiecesSyncedAt ? new Date(a.tierPiecesSyncedAt).getTime() : -Infinity;
+      var bt = b.tierPiecesSyncedAt ? new Date(b.tierPiecesSyncedAt).getTime() : -Infinity;
+      return sort.dir * (at - bt);
+    }
+    // Never-synced (null) sorts as -1 so it doesn't masquerade as 0/5 (fully
+    // missing) among players who've actually been checked and have 0.
+    var ac = a.tierPiecesEquipped == null ? -1 : a.tierPiecesEquipped;
+    var bc = b.tierPiecesEquipped == null ? -1 : b.tierPiecesEquipped;
+    return sort.dir * (ac - bc);
+  });
+
+  var html =
+    '<table class="roster-table"><thead><tr><th>Player</th><th>Class / Spec</th><th>Tier Count</th><th>Last Synced</th></tr></thead><tbody>';
+  sorted.forEach(function (p) {
+    var count = p.tierPiecesEquipped;
+    html +=
+      '<tr><td>' +
+      (p.nick || p.firstName) +
+      '</td><td style="color:' +
+      classColor(p.class) +
+      ';">' +
+      p.class +
+      ' &middot; ' +
+      p.spec +
+      '</td><td style="color:' +
+      tierCountColor(count) +
+      ';font-weight:600;">' +
+      (count == null ? 'Not synced' : count + '/5') +
+      '</td><td>' +
+      (p.tierPiecesSyncedAt ? new Date(p.tierPiecesSyncedAt).toLocaleDateString() : 'Never') +
       '</td></tr>';
   });
   html += '</tbody></table>';

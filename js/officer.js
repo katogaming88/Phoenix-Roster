@@ -194,7 +194,7 @@ function resetReportsSubTab() {
   });
   var defaultBtn = document.getElementById('reports-subtab-btn-rnlsi');
   if (defaultBtn) defaultBtn.classList.add('active');
-  ['rnlsi', 'bisDemand', 'priorityHealth', 'lootPace'].forEach(function (name) {
+  ['rnlsi', 'bisDemand', 'priorityHealth', 'lootPace', 'tierSet'].forEach(function (name) {
     var sub = document.getElementById('reports-sub-' + name);
     if (sub) sub.style.display = name === 'rnlsi' ? '' : 'none';
   });
@@ -205,7 +205,7 @@ function switchReportsSubTab(name, btnEl) {
     b.classList.remove('active');
   });
   if (btnEl) btnEl.classList.add('active');
-  ['rnlsi', 'bisDemand', 'priorityHealth', 'lootPace'].forEach(function (subName) {
+  ['rnlsi', 'bisDemand', 'priorityHealth', 'lootPace', 'tierSet'].forEach(function (subName) {
     var sub = document.getElementById('reports-sub-' + subName);
     if (sub) sub.style.display = subName === name ? '' : 'none';
   });
@@ -213,6 +213,7 @@ function switchReportsSubTab(name, btnEl) {
   if (name === 'bisDemand') loadBisDemandReport();
   if (name === 'priorityHealth') loadPriorityHealthReport();
   if (name === 'lootPace') loadLootPaceReport();
+  if (name === 'tierSet') loadTierSetReport();
 }
 
 // Defaults to Import, unless #231's loot flag is off and fairness isn't --
