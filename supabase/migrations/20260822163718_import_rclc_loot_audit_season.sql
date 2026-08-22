@@ -13,6 +13,10 @@
 -- view treats those as "legacy / unknown season" rather than trying to
 -- retroactively guess one, since there's no reliable way to match an
 -- existing audit_log row back to the specific rclc_loot row it came from.
+--
+-- Based on 20260819200706's body (realm-space-match player lookup, itself
+-- based on 20260806214054's flex-track word-boundary parser) -- only the
+-- write_audit_log() detail argument changes here.
 create or replace function public.import_rclc_loot(
   p_team_id integer,
   p_season text,
@@ -29,7 +33,6 @@ declare
   v_item_id integer;
   v_track text;
   v_instance text;
-  v_suffix text;
   v_awarded_at timestamptz;
   v_rclc_id text;
   v_dedupe_key text;
@@ -52,14 +55,27 @@ begin
       continue;
     end if;
 
+    -- Player: name_realm match, ignoring case and whitespace. RCLC's
+    -- UnitName()-sourced realm strips spaces from multi-word realms
+    -- ("Wyrmrest Accord" -> "WyrmrestAccord"); the DB's officer-typed
+    -- name_realm keeps them. Comparing with spaces stripped from both sides
+    -- makes either shape resolve to the same row. Unknown names still get
+    -- an archived stub (same shape as the #320 import's stub rows), never
+    -- a null player_id.
     select id into v_player_id from public.players
-     where team_id = p_team_id and lower(name_realm) = lower(v_name_realm);
+     where team_id = p_team_id
+       and lower(replace(name_realm, ' ', '')) = lower(replace(v_name_realm, ' ', ''));
     if v_player_id is null then
       insert into public.players (team_id, name_realm, archived_at)
       values (p_team_id, v_name_realm, now())
       returning id into v_player_id;
     end if;
 
+    -- Item: wow_item_id first (RCLC provides itemID directly and it's
+    -- unambiguous), item name as fallback. Left null, not auto-created, when
+    -- neither resolves -- a genuinely unresolved item means the season's Item
+    -- Lookup needs updating, not something to paper over with a placeholder
+    -- row (see docs/database-decisions.md).
     v_item_id := null;
     if (v_row->>'itemID') is not null and (v_row->>'itemID') ~ '^\d+$' then
       select id into v_item_id from public.items
@@ -75,15 +91,26 @@ begin
       v_unresolved_item := v_unresolved_item + 1;
     end if;
 
+    -- Track: search anywhere in the instance string for a standalone
+    -- difficulty word (e.g. "The Dreamrift-Mythic" -> Myth, "Sporefall-Mythic
+    -- - Flexible Raiding" -> Myth too) rather than assuming a fixed
+    -- "<Name>-<Difficulty>" shape (20260806214054). The RCLC itemString
+    -- technically encodes the true track in its bonus IDs, but decoding
+    -- those needs a maintained Blizzard bonus-ID reference table this repo
+    -- doesn't have -- deferred, not attempted here.
     v_instance := coalesce(v_row->>'instance', '');
-    v_suffix := lower(trim(both from regexp_replace(v_instance, '^.*-', '')));
-    v_track := case v_suffix
-      when 'mythic' then 'Myth'
-      when 'heroic' then 'Hero'
-      when 'normal' then 'Champion'
+    v_track := case
+      when v_instance ~* '\mmythic\M' then 'Myth'
+      when v_instance ~* '\mheroic\M' then 'Hero'
+      when v_instance ~* '\mnormal\M' then 'Champion'
       else null
     end;
 
+    -- awarded_at: RCLC's date/time are the raid's local wall-clock time, same
+    -- assumption the rest of the site already makes for this data (see
+    -- mapSupabaseLoot()'s America/New_York formatting in js/common.js).
+    -- Falls back to the import moment if either field is unparseable rather
+    -- than failing the whole row.
     begin
       v_awarded_at := (
         to_date(replace(coalesce(v_row->>'date', ''), '/', '-'), 'YYYY-MM-DD')

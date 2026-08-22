@@ -406,10 +406,15 @@ function lootHistoryDetailHtml(imp) {
     .sort(function (a, b) {
       return b.count - a.count || a.name.localeCompare(b.name);
     });
-  var html = '<div style="display:flex;flex-wrap:wrap;gap:0.4rem 1.25rem;margin:0.35rem 0;">';
+  // Fixed 10 rows, flowing into as many columns as needed -- a flex-wrap
+  // list here used to wrap ragged (2 names on one line, 1 on the next)
+  // since each name's width differs; a column-flowing grid keeps every row
+  // the same height regardless of name length.
+  var html =
+    '<div style="display:grid;grid-auto-flow:column;grid-template-rows:repeat(10,auto);column-gap:1.5rem;row-gap:0.4rem;margin:0.35rem 0;">';
   rows.forEach(function (r) {
     html +=
-      '<span style="font-size:0.98rem;">' +
+      '<span style="font-size:0.98rem;white-space:nowrap;">' +
       escHtml(r.name) +
       ' <span style="color:var(--text-muted);">(' +
       r.count +
