@@ -409,9 +409,14 @@ function lootHistoryDetailHtml(imp) {
   // Fixed 10 rows, flowing into as many columns as needed -- a flex-wrap
   // list here used to wrap ragged (2 names on one line, 1 on the next)
   // since each name's width differs; a column-flowing grid keeps every row
-  // the same height regardless of name length.
+  // the same height regardless of name length. grid-auto-columns:max-content
+  // stops columns from being squeezed/truncated once there are enough of
+  // them to overflow the panel -- the outer overflow-x:auto scrolls instead.
+  // .roster-table td:not(:first-child) centers text by default, which this
+  // cell (2nd td, colspan 3) would otherwise inherit -- text-align:left
+  // overrides that back to a normal left-aligned list.
   var html =
-    '<div style="display:grid;grid-auto-flow:column;grid-template-rows:repeat(10,auto);column-gap:1.5rem;row-gap:0.4rem;margin:0.35rem 0;">';
+    '<div style="overflow-x:auto;text-align:left;"><div style="display:inline-grid;grid-auto-flow:column;grid-auto-columns:max-content;grid-template-rows:repeat(10,auto);column-gap:1.5rem;row-gap:0.4rem;margin:0.35rem 0;">';
   rows.forEach(function (r) {
     html +=
       '<span style="font-size:0.98rem;white-space:nowrap;">' +
@@ -420,7 +425,7 @@ function lootHistoryDetailHtml(imp) {
       r.count +
       ')</span></span>';
   });
-  html += '</div>';
+  html += '</div></div>';
   return html;
 }
 
