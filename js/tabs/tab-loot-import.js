@@ -165,6 +165,31 @@ function setLootImportStatus(text, color) {
 // misrepresent old history as recent imports. No "Clear All" in this
 // version for the same reason: there's no safe way yet to select only
 // paste-imported rows for deletion (see docs/database-decisions.md).
+//
+// Grouped into one row per *import event*, not one row per item -- a single
+// paste can add dozens of rows, and the per-item table used to bury "did my
+// paste go through" under a long item list. Every row from one
+// import_rclc_loot() call shares the exact same audit_log.created_at:
+// that column defaults to now(), and Postgres freezes now() for the whole
+// transaction, so every write_audit_log() call inside the same RPC
+// invocation gets an identical timestamp down to the microsecond -- grouping
+// on (actor_id, created_at) reliably reconstructs "one paste" with no new
+// column needed.
+// Module state for the click-to-expand per-player breakdown and season
+// filter below -- resolved once up front alongside the grouped rows, so
+// expanding a row or switching seasons is a pure re-render, no extra fetch.
+var _lootHistoryImports = [];
+var _lootHistoryPlayerNames = {};
+var _lootHistoryActorNames = {};
+var _lootHistorySeasonFilter = '';
+// Rows written before 20260822203445_import_rclc_loot_audit_season.sql kept
+// their old plain-string detail with no season recorded -- there's no
+// reliable way to match one of those back to the specific rclc_loot row it
+// came from after the fact (see that migration's header comment), so they
+// sit in this bucket rather than being silently dropped or misattributed to
+// whichever season happens to be active now.
+var LOOT_HISTORY_UNKNOWN_SEASON = '__unknown__';
+
 function buildLootHistoryTab() {
   var el = document.getElementById('loot-sub-history');
   if (!el) return;
@@ -175,39 +200,148 @@ function buildLootHistoryTab() {
   }
 
   var teamId = _teamCfg.supabaseTeamId;
-  supabaseClient
-    .from('audit_log')
-    .select('target_type, target_id, detail, created_at')
-    .eq('team_id', teamId)
-    .eq('action', 'Loot Imported (RCLC)')
-    .order('created_at', { ascending: false })
-    .limit(100)
-    .then(function (result) {
-      if (result.error) {
-        el.innerHTML =
-          '<p style="font-size:1.04rem;color:var(--melee);padding:0.5rem 0;">' + escHtml(result.error.message) + '</p>';
-        return;
+  _lootHistorySeasonFilter = window.DATA && DATA.seasonName ? seasonCodeForDisplay(DATA.seasonName.trim()) : '';
+  // Every import ever run, not a capped recent window -- fetchAllPaged
+  // (js/common.js, same cursor-by-id pattern as the Audit Log tab) rather
+  // than a single limited select, since a season's worth of imports can
+  // exceed Supabase's per-request row cap.
+  fetchAllPaged(
+    function (afterId, limit) {
+      var q = supabaseClient
+        .from('audit_log')
+        .select(
+          'id, actor_id, target_type, target_id, detail, created_at',
+          afterId === null ? { count: 'exact' } : undefined
+        )
+        .eq('team_id', teamId)
+        .eq('action', 'Loot Imported (RCLC)')
+        .order('id', { ascending: true })
+        .limit(limit);
+      return afterId === null ? q : q.gt('id', afterId);
+    },
+    { label: 'loot import history' }
+  ).then(function (rows) {
+    if (rows === null) {
+      el.innerHTML =
+        '<p style="font-size:1.04rem;color:var(--melee);padding:0.5rem 0;">Could not load import history.</p>';
+      return;
+    }
+    var imports = groupLootImportEvents(rows);
+    return Promise.all([resolveAuditActorNames(imports, teamId), resolveAuditTargetNames(rows, teamId)]).then(
+      function (maps) {
+        _lootHistoryImports = imports;
+        _lootHistoryPlayerNames = maps[1];
+        renderLootHistoryPanel(maps[0]);
       }
-      var rows = result.data || [];
-      return resolveAuditTargetNames(rows, teamId).then(function (targetNames) {
-        renderLootHistoryPanel(rows, targetNames);
-      });
+    );
+  });
+}
+
+// Collapses raw per-item audit_log rows into one entry per (actor_id,
+// created_at) group -- every row from one import_rclc_loot() call shares the
+// exact same created_at (see the block comment above), so that pair
+// reliably reconstructs "one paste" with no new column needed. Sorted
+// newest-first for display; rows arrive id-ascending from the paged fetch,
+// so each group's own playerCounts stay in original insertion order too.
+function groupLootImportEvents(rows) {
+  var order = [];
+  var byKey = {};
+  rows.forEach(function (row) {
+    var key = (row.actor_id || 'unknown') + '|' + row.created_at;
+    if (!byKey[key]) {
+      var season =
+        row.detail && typeof row.detail === 'object' && row.detail.season
+          ? row.detail.season
+          : LOOT_HISTORY_UNKNOWN_SEASON;
+      byKey[key] = {
+        actor_id: row.actor_id,
+        created_at: row.created_at,
+        season: season,
+        itemCount: 0,
+        playerCounts: {}
+      };
+      order.push(key);
+    }
+    var group = byKey[key];
+    group.itemCount++;
+    if (row.target_type === 'players' && row.target_id != null) {
+      group.playerCounts[row.target_id] = (group.playerCounts[row.target_id] || 0) + 1;
+    }
+  });
+  return order
+    .map(function (key) {
+      return byKey[key];
+    })
+    .sort(function (a, b) {
+      return a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0;
     });
 }
 
-function renderLootHistoryPanel(rows, targetNames) {
+function lootHistorySeasonLabel(season) {
+  if (season === LOOT_HISTORY_UNKNOWN_SEASON) return 'Unknown season (imported before season tracking)';
+  return (typeof seasonDisplayName === 'function' && seasonDisplayName(season)) || season;
+}
+
+function setLootHistorySeasonFilter(season) {
+  _lootHistorySeasonFilter = season;
+  renderLootHistoryPanel(_lootHistoryActorNames);
+}
+
+function renderLootHistoryPanel(actorNames) {
   var el = document.getElementById('loot-sub-history');
   if (!el) return;
+  _lootHistoryActorNames = actorNames;
+
+  var allImports = _lootHistoryImports;
+  var seasons = reportsUniqueSorted(
+    allImports.map(function (imp) {
+      return imp.season;
+    }),
+    function (a, b) {
+      if (a === LOOT_HISTORY_UNKNOWN_SEASON) return 1;
+      if (b === LOOT_HISTORY_UNKNOWN_SEASON) return -1;
+      return a < b ? 1 : a > b ? -1 : 0;
+    }
+  );
+  // The season computed at load time (the currently active one) may not
+  // actually appear in this team's import history yet -- e.g. Season Settings
+  // has no name set, or nothing's been imported this season -- fall back to
+  // the most recent season that does.
+  if (seasons.length && seasons.indexOf(_lootHistorySeasonFilter) === -1) {
+    _lootHistorySeasonFilter = seasons[0];
+  }
+  var imports = allImports.filter(function (imp) {
+    return imp.season === _lootHistorySeasonFilter;
+  });
 
   var html = '<div class="signup-officer-panel">';
   html +=
     '<div class="signup-status-row"><span class="signup-status-label">Recent RCLC Imports<button class="help-btn" onclick="toggleHelp(\'help-loot-history\')" title="Show help">?</button></span></div>';
   html += '<div id="help-loot-history" class="help-tip" style="margin-bottom:0.5rem;">';
   html +=
-    'Shows the most recent loot entries imported via the Import tab (up to the last 100), so any officer can confirm a paste went through. Sourced from the audit log -- every successful import logs one entry per item.';
+    'Every paste imported via the Import tab, grouped into one row per import so an officer can confirm a paste went through and see who ran it. Click a row to see who received loot from that import (name and item count only). Sourced from the audit log.';
   html += '</div>';
 
-  if (!rows.length) {
+  if (seasons.length) {
+    html +=
+      '<div style="margin:0.5rem 0;"><select id="lootHistorySeasonFilter" onchange="setLootHistorySeasonFilter(this.value)">';
+    html += seasons
+      .map(function (s) {
+        return (
+          '<option value="' +
+          escHtml(s) +
+          '"' +
+          (s === _lootHistorySeasonFilter ? ' selected' : '') +
+          '>' +
+          escHtml(lootHistorySeasonLabel(s)) +
+          '</option>'
+        );
+      })
+      .join('');
+    html += '</select></div>';
+  }
+
+  if (!allImports.length) {
     html +=
       '<p class="signup-officer-note" style="margin-top:0.35rem;">No loot imported yet. Go to the <a href="#" onclick="switchLootSubTab(\'import\', document.getElementById(\'loot-subtab-btn-import\'));return false;">Import</a> tab to add entries.</p>';
     html += '</div>';
@@ -215,29 +349,83 @@ function renderLootHistoryPanel(rows, targetNames) {
     return;
   }
 
+  if (!imports.length) {
+    html += '<p class="signup-officer-note" style="margin-top:0.35rem;">No loot imported for this season yet.</p>';
+    html += '</div>';
+    el.innerHTML = html;
+    return;
+  }
+
   html +=
     '<div style="font-size:1rem;color:var(--text-muted);margin:0.5rem 0;">' +
-    rows.length +
-    ' recent import' +
-    (rows.length !== 1 ? 's' : '') +
+    imports.length +
+    ' import' +
+    (imports.length !== 1 ? 's' : '') +
     '</div>';
   html +=
-    '<div style="overflow-x:auto;"><table class="roster-table" style="width:100%;"><thead><tr><th>Time</th><th>Player</th><th>Item</th></tr></thead><tbody>';
-  rows.forEach(function (row) {
-    var player = row.target_type === 'players' && row.target_id != null ? targetNames[row.target_id] || '' : '';
+    '<div style="overflow-x:auto;"><table class="roster-table" style="width:100%;"><thead><tr><th></th><th>Time</th><th>Imported By</th><th># of Items</th></tr></thead><tbody>';
+  imports.forEach(function (imp, idx) {
+    var importedBy = imp.actor_id ? actorNames[imp.actor_id] || '' : '';
     html +=
-      '<tr><td style="white-space:nowrap;">' +
-      escHtml(auditFormatTs(row.created_at)) +
+      '<tr style="cursor:pointer;" onclick="toggleLootHistoryDetail(' +
+      idx +
+      ')"><td id="loot-history-caret-' +
+      idx +
+      '" style="width:1.5rem;color:var(--text-muted);">&#9656;</td><td style="white-space:nowrap;">' +
+      escHtml(auditFormatTs(imp.created_at)) +
       '</td><td>' +
-      escHtml(player) +
+      escHtml(importedBy) +
       '</td><td>' +
-      escHtml(typeof row.detail === 'string' ? row.detail : '') +
+      imp.itemCount +
+      '</td></tr>';
+    html +=
+      '<tr id="loot-history-detail-' +
+      idx +
+      '" style="display:none;"><td></td><td colspan="3">' +
+      lootHistoryDetailHtml(imp) +
       '</td></tr>';
   });
   html += '</tbody></table></div>';
   html += '</div>';
 
   el.innerHTML = html;
+}
+
+// Name + item count per player for one import, sourced entirely from data
+// already fetched by buildLootHistoryTab -- expanding a row is a pure
+// re-render, no additional round trip.
+function lootHistoryDetailHtml(imp) {
+  var playerIds = Object.keys(imp.playerCounts);
+  if (!playerIds.length) {
+    return '<p class="signup-officer-note" style="margin:0.35rem 0;">No player breakdown available for this import.</p>';
+  }
+  var rows = playerIds
+    .map(function (id) {
+      return { name: _lootHistoryPlayerNames[id] || 'Unknown', count: imp.playerCounts[id] };
+    })
+    .sort(function (a, b) {
+      return b.count - a.count || a.name.localeCompare(b.name);
+    });
+  var html = '<div style="display:flex;flex-wrap:wrap;gap:0.4rem 1.25rem;margin:0.35rem 0;">';
+  rows.forEach(function (r) {
+    html +=
+      '<span style="font-size:0.98rem;">' +
+      escHtml(r.name) +
+      ' <span style="color:var(--text-muted);">(' +
+      r.count +
+      ')</span></span>';
+  });
+  html += '</div>';
+  return html;
+}
+
+function toggleLootHistoryDetail(idx) {
+  var row = document.getElementById('loot-history-detail-' + idx);
+  var caret = document.getElementById('loot-history-caret-' + idx);
+  if (!row) return;
+  var isOpen = row.style.display !== 'none';
+  row.style.display = isOpen ? 'none' : '';
+  if (caret) caret.innerHTML = isOpen ? '&#9656;' : '&#9662;';
 }
 
 // Legacy alias — called by old code paths that still reference buildLootImportTab
