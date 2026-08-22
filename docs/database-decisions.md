@@ -8,6 +8,16 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-08-22 -- `restrict_players_self_update_to_bonus_roll()` trigger missed the `is_site_admin()` catch-up
+
+Decided directly in conversation (no tracking issue): a site admin with no `team_members` row on Hellfire and no `guild_officers` row hit a 400 on every `players` PATCH while running the Reports tab's bulk Raider.IO tier sync (`syncRosterTierCounts()`) against that team -- the RLS policy on `players` already allows `is_site_admin()` through (per the 2026-08-15 sweep below), but this trigger is a hand-mirrored copy of that predicate living in a separate function, not a `CREATE POLICY` statement, so the 2026-08-15 sweep's own audit (which looked for officer-write policies) never touched it.
+
+- `is_site_admin()` added to the trigger's bypass check, alongside the existing `my_team_role`/`is_guild_officer()` clauses, matching the RLS policy it's meant to mirror.
+- `20260809220657_players_bonus_roll_target.sql`'s own comment already flagged this exact drift risk ("if that policy's predicate changes, update this to match... starts getting wrongly blocked here") -- it just wasn't caught when the 2026-08-15 sweep landed.
+- Implemented in `20260822194907_players_self_update_trigger_site_admin.sql`.
+
+---
+
 ## 2026-08-17 -- `generate_priority_order()`: `avg_existing_rank` fairness tiebreaker
 
 Decided directly in conversation (no tracking issue), following on from the Suggest Order re-click fixes (3.60.13/3.60.14 -- see CHANGELOG): those fixes only ever nudged the #1 slot away from someone who already held rank 1 on another item, and only on a manual re-click. Two gaps remained: every OTHER rank in a suggested list (not just #1), and every FIRST click, still ignored how much priority a candidate already carried across the rest of the priority order -- and nothing corrected the opposite failure mode either, where a consistently lower-scoring raider could sit near the bottom of *every* list, every time, since two equally-unstacked candidates just fell back to raw score.
