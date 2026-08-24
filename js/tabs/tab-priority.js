@@ -333,7 +333,7 @@ function buildPriorityDriftBannerHtml(driftInfo, expanded) {
 
   if (expanded) {
     html +=
-      '<div class="prio-drift-explainer">A saved top 3 no longer matches what scoring ranks today -- someone\'s performance changed enough since it was saved to reorder or bump them out of the top 3. Not automatically wrong, just worth a look before re-saving.</div>';
+      '<div class="prio-drift-explainer">A saved top 3 no longer matches what the scoring generator suggests today -- either scores shifted since it was saved, or it was intentionally hand-adjusted away from the generator\'s suggestion. Not automatically wrong, just worth a look before re-saving.</div>';
     html += '<div class="prio-overalloc-list">';
     driftInfo.entries.forEach(function (d) {
       html +=
