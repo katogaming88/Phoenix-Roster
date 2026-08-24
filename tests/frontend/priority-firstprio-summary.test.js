@@ -83,14 +83,29 @@ describe('getPriorityListConflicts (no longer flags plain #1-count holders)', ()
     expect(sandbox.getPriorityListConflicts().sameBossGroups).toEqual([]);
   });
 
-  it('still surfaces stale-after-heroic and drift entries', () => {
+  it('still surfaces stale-after-heroic entries', () => {
     const stale = [{ name_realm: 'Alpha-Realm', item_name: 'Item A' }];
-    const drift = [{ item_name: 'Item B', track: 'Hero', saved_top3: ['Alpha'], current_top3: ['Bravo'] }];
-    const sandbox = makeSandbox({ priorityStaleAfterHeroic: stale, priorityDrift: drift });
+    const sandbox = makeSandbox({ priorityStaleAfterHeroic: stale });
     const conflicts = sandbox.getPriorityListConflicts();
-    expect(conflicts.count).toBe(2);
+    expect(conflicts.count).toBe(1);
     expect(conflicts.staleEntries).toEqual(stale);
-    expect(conflicts.driftEntries).toEqual(drift);
+    expect(conflicts).not.toHaveProperty('driftEntries');
+  });
+});
+
+// Drift moved out of getPriorityListConflicts() into its own section (its
+// own collapsible banner, see buildPriorityDriftBannerHtml()) rather than a
+// third entry type mixed into the stale/same-boss conflicts list.
+describe('getPriorityDriftInfo', () => {
+  it('reports the drift count and entries from DATA.priorityDrift', () => {
+    const drift = [{ item_name: 'Item B', track: 'Hero', saved_top3: ['Alpha'], current_top3: ['Bravo'] }];
+    const sandbox = makeSandbox({ priorityDrift: drift });
+    expect(sandbox.getPriorityDriftInfo()).toEqual({ count: 1, entries: drift });
+  });
+
+  it('reports zero when there is no drift', () => {
+    const sandbox = makeSandbox();
+    expect(sandbox.getPriorityDriftInfo()).toEqual({ count: 0, entries: [] });
   });
 });
 
@@ -129,13 +144,13 @@ describe('getPriorityFirstPrioSummary (full-roster #1 count table)', () => {
 });
 
 describe('buildPriorityFirstPrioSummaryHtml', () => {
-  it('renders a row per player with their count and a same-boss badge when applicable', () => {
+  it('renders a row per player with their count and a same-boss badge when applicable, when expanded', () => {
     const sandbox = makeSandbox();
     const rows = [
       { nameRealm: 'Alpha-Realm', count: 3, sameBossGroups: [{ boss: 'Boss 1', itemNames: ['Item A', 'Item B'] }] },
       { nameRealm: 'Bravo-Realm', count: 1, sameBossGroups: [] }
     ];
-    const html = sandbox.buildPriorityFirstPrioSummaryHtml(rows);
+    const html = sandbox.buildPriorityFirstPrioSummaryHtml(rows, true);
     expect(html).toContain('Alpha-Realm');
     expect(html).toContain('3 #1s');
     expect(html).toContain('Bravo-Realm');
@@ -143,24 +158,40 @@ describe('buildPriorityFirstPrioSummaryHtml', () => {
     expect(html).toContain('Same boss: Boss 1');
   });
 
+  it('starts collapsed by default, hiding the per-player rows behind a summary line', () => {
+    const sandbox = makeSandbox();
+    const rows = [
+      { nameRealm: 'Alpha-Realm', count: 4, sameBossGroups: [{ boss: 'Boss 1', itemNames: ['Item A', 'Item B'] }] },
+      { nameRealm: 'Bravo-Realm', count: 1, sameBossGroups: [] }
+    ];
+    const html = sandbox.buildPriorityFirstPrioSummaryHtml(rows, false);
+    expect(html).not.toContain('Alpha-Realm');
+    expect(html).not.toContain('prio-firstprio-row');
+    expect(html).toContain('#1 Priorities Held (2 players)');
+    expect(html).toContain('1 at 4+');
+    expect(html).toContain('1 same-boss');
+  });
+
   it('renders nothing when there are no rows', () => {
     const sandbox = makeSandbox();
-    expect(sandbox.buildPriorityFirstPrioSummaryHtml([])).toBe('');
+    expect(sandbox.buildPriorityFirstPrioSummaryHtml([], true)).toBe('');
   });
 
   it('flags a row at the threshold (4) with the highlighted count class', () => {
     const sandbox = makeSandbox();
-    const html = sandbox.buildPriorityFirstPrioSummaryHtml([
-      { nameRealm: 'Alpha-Realm', count: 4, sameBossGroups: [] }
-    ]);
+    const html = sandbox.buildPriorityFirstPrioSummaryHtml(
+      [{ nameRealm: 'Alpha-Realm', count: 4, sameBossGroups: [] }],
+      true
+    );
     expect(html).toContain('prio-firstprio-count-flagged');
   });
 
   it('does not flag a row just below the threshold', () => {
     const sandbox = makeSandbox();
-    const html = sandbox.buildPriorityFirstPrioSummaryHtml([
-      { nameRealm: 'Alpha-Realm', count: 3, sameBossGroups: [] }
-    ]);
+    const html = sandbox.buildPriorityFirstPrioSummaryHtml(
+      [{ nameRealm: 'Alpha-Realm', count: 3, sameBossGroups: [] }],
+      true
+    );
     expect(html).not.toContain('prio-firstprio-count-flagged');
   });
 });

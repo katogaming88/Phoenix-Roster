@@ -8,6 +8,14 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.31] - 2026-08-23
+
+### Frontend
+
+- **Split Drift into its own section on the Priority List sub-tab** -- it used to be a third entry type mixed into the "Priority List Conflicts" banner alongside stale-after-Heroic #1s and same-boss stacking, with no dedicated explanation of what it meant. It's now its own collapsible banner with a help-panel entry: a saved item/track priority order (committed via the Priority Edit modal) whose top 3 no longer matches what the scoring formula ranks today, because a scoring update after the save reordered someone's performance enough to bump them in or out of the top 3.
+- **"Priority List Conflicts", "Drift", and "#1 Priorities Held" now start collapsed**, showing a one-line overview (e.g. "2 stale-after-Heroic, 1 same-boss") instead of the full list -- click a section's header to expand it. Previously all three rendered their entire detail list inline every time, which got long once a raid had 30+ managed items.
+- Clarified the "Already has this slot" hover tooltip on the Priority List's ranked-player rows -- it used to just restate which item(s) the player already has, without saying why that's worth noticing. Now reads "flagged in case someone else needs this item more."
+
 ## [3.60.30] - 2026-08-22
 
 ### Frontend

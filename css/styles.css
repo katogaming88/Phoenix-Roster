@@ -456,17 +456,25 @@ select#playerSelect option { background:#1a1d27; }
 .conflict-player-tag.ranked { border-color:rgba(214,163,68,0.3); color:var(--gold-light); }
 .conflict-player-tag.received { opacity:0.5; text-decoration:line-through; }
 .received-badge { font-size:1rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; padding:1px 5px; border-radius:2px; background:rgba(61,220,132,0.12); color:var(--heal); border:1px solid rgba(61,220,132,0.25); text-decoration:none; display:inline-block; }
-/* Priority List Conflicts banner (stale/same-boss/drift) */
+/* Collapsible section header shared by the Priority List sub-tab's
+   Conflicts/Drift/#1s-held banners -- collapsed by default, click to expand */
+.prio-section-toggle { display:flex; align-items:center; gap:0.5rem; width:100%; background:none; border:none; padding:0; margin:0; cursor:pointer; text-align:left; font-family:inherit; }
+.prio-section-chevron { color:var(--text-dim); font-size:0.85rem; flex-shrink:0; }
+.prio-section-summary { font-size:0.9rem; font-weight:400; text-transform:none; letter-spacing:normal; color:var(--text-muted); }
+/* Priority List Conflicts banner (stale/same-boss) */
 .prio-overalloc-banner { background:rgba(214,90,60,0.07); border:1px solid rgba(214,90,60,0.28); border-radius:4px; padding:0.85rem 1.1rem; margin-bottom:1rem; }
 .prio-overalloc-title { font-size:1rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#e05a3a; margin-bottom:0.55rem; }
-.prio-overalloc-list { display:flex; flex-direction:column; gap:0.3rem; }
+.prio-overalloc-list { display:flex; flex-direction:column; gap:0.3rem; margin-top:0.55rem; }
 .prio-overalloc-player { display:flex; flex-wrap:wrap; align-items:center; gap:0.4rem; }
 .prio-overalloc-name { font-size:1rem; font-weight:600; color:var(--text); min-width:80px; }
 .prio-overalloc-item { font-size:0.93rem; padding:1px 6px; border-radius:2px; background:rgba(214,90,60,0.1); color:#e05a3a; border:1px solid rgba(214,90,60,0.22); }
+/* Drift banner (saved priority order vs. current scoring, its own section) */
+.prio-drift-banner { background:rgba(214,163,68,0.07); border:1px solid rgba(214,163,68,0.28); border-radius:4px; padding:0.85rem 1.1rem; margin-bottom:1rem; }
+.prio-drift-title { font-size:1rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:var(--gold); margin-bottom:0.55rem; }
 /* Priority List sub-tab's #1-priorities-held summary table */
 .prio-firstprio-summary { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; padding:0.85rem 1.1rem; margin-bottom:1rem; }
 .prio-firstprio-title { font-size:1rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.55rem; }
-.prio-firstprio-list { display:flex; flex-direction:column; gap:0.3rem; }
+.prio-firstprio-list { display:flex; flex-direction:column; gap:0.3rem; margin-top:0.55rem; }
 .prio-firstprio-row { display:flex; flex-wrap:wrap; align-items:center; gap:0.5rem; padding:0.2rem 0; border-bottom:1px solid var(--border); }
 .prio-firstprio-row:last-child { border-bottom:none; }
 .prio-firstprio-name { font-size:1rem; font-weight:600; color:var(--text); min-width:140px; }

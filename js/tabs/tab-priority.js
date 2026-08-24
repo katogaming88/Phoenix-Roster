@@ -226,7 +226,6 @@ function _priorityFirstPrioSameBossGroups(entry) {
 // table instead, always visible rather than only surfacing outliers.
 function getPriorityListConflicts() {
   var staleEntries = DATA.priorityStaleAfterHeroic || [];
-  var driftEntries = DATA.priorityDrift || [];
   var byPlayer = _priorityFirstPriosByPlayer();
 
   var sameBossGroups = [];
@@ -238,52 +237,119 @@ function getPriorityListConflicts() {
   });
 
   return {
-    count: staleEntries.length + sameBossGroups.length + driftEntries.length,
+    count: staleEntries.length + sameBossGroups.length,
     staleEntries: staleEntries,
-    sameBossGroups: sameBossGroups,
-    driftEntries: driftEntries
+    sameBossGroups: sameBossGroups
   };
 }
 
-function buildPriorityConflictsBannerHtml(conflicts) {
+// Separated out from getPriorityListConflicts()/its banner -- drift is its
+// own section now (see buildPriorityDriftBannerHtml()) rather than a third
+// entry type mixed into the stale/same-boss conflicts list.
+function getPriorityDriftInfo() {
+  var entries = DATA.priorityDrift || [];
+  return { count: entries.length, entries: entries };
+}
+
+// All three Priority List banners (conflicts, drift, #1s held) start
+// collapsed and re-render in full on toggle -- same "flip a flag, re-render"
+// convention tab-conflicts.js's toggleContestedItem() uses. Collapsed state
+// shows a one-line summary only; expanding reveals the full per-entry list.
+var _priorityConflictsExpanded = false;
+var _priorityDriftExpanded = false;
+var _priorityFirstPrioExpanded = false;
+
+function togglePriorityConflicts() {
+  _priorityConflictsExpanded = !_priorityConflictsExpanded;
+  updatePriorityBadges();
+}
+
+function togglePriorityDrift() {
+  _priorityDriftExpanded = !_priorityDriftExpanded;
+  updatePriorityBadges();
+}
+
+function togglePriorityFirstPrio() {
+  _priorityFirstPrioExpanded = !_priorityFirstPrioExpanded;
+  updatePriorityBadges();
+}
+
+function buildPriorityConflictsBannerHtml(conflicts, expanded) {
   if (!conflicts.count) return '';
+  var summaryParts = [];
+  if (conflicts.staleEntries.length) summaryParts.push(conflicts.staleEntries.length + ' stale-after-Heroic');
+  if (conflicts.sameBossGroups.length) summaryParts.push(conflicts.sameBossGroups.length + ' same-boss');
+
   var html = '<div class="prio-overalloc-banner">';
-  html += '<div class="prio-overalloc-title">Priority List Conflicts (' + conflicts.count + ')</div>';
-  html += '<div class="prio-overalloc-list">';
+  html +=
+    '<button type="button" class="prio-section-toggle" onclick="togglePriorityConflicts()">' +
+    '<span class="prio-section-chevron">' +
+    (expanded ? '▾' : '▸') +
+    '</span><span class="prio-overalloc-title" style="margin-bottom:0;">Priority List Conflicts (' +
+    conflicts.count +
+    ')</span><span class="prio-section-summary">' +
+    escHtml(summaryParts.join(', ')) +
+    '</span></button>';
 
-  conflicts.staleEntries.forEach(function (e) {
-    html +=
-      '<div class="prio-overalloc-player"><span class="prio-overalloc-name">' +
-      escHtml(e.name_realm) +
-      '</span><span class="prio-overalloc-item">' +
-      escHtml(e.item_name) +
-      ' <span class="prio-overalloc-diff">may be stale -- already has Heroic</span></span></div>';
-  });
-  conflicts.sameBossGroups.forEach(function (g) {
-    html +=
-      '<div class="prio-overalloc-player"><span class="prio-overalloc-name">' +
-      escHtml(g.nameRealm) +
-      '</span><span class="prio-overalloc-item">' +
-      escHtml(g.itemNames.join(', ')) +
-      ' <span class="prio-overalloc-diff">same boss (' +
-      escHtml(g.boss) +
-      ')</span></span></div>';
-  });
-  (conflicts.driftEntries || []).forEach(function (d) {
-    html +=
-      '<div class="prio-overalloc-player"><span class="prio-overalloc-name">' +
-      escHtml(d.item_name) +
-      ' (' +
-      escHtml(d.track === 'Myth' ? 'Mythic' : 'Heroic') +
-      ')</span><span class="prio-overalloc-item">' +
-      ' <span class="prio-overalloc-diff">saved: ' +
-      escHtml((d.saved_top3 || []).join(', ') || 'none') +
-      ' -- now: ' +
-      escHtml((d.current_top3 || []).join(', ') || 'none') +
-      '</span></span></div>';
-  });
+  if (expanded) {
+    html += '<div class="prio-overalloc-list">';
+    conflicts.staleEntries.forEach(function (e) {
+      html +=
+        '<div class="prio-overalloc-player"><span class="prio-overalloc-name">' +
+        escHtml(e.name_realm) +
+        '</span><span class="prio-overalloc-item">' +
+        escHtml(e.item_name) +
+        ' <span class="prio-overalloc-diff">may be stale -- already has Heroic</span></span></div>';
+    });
+    conflicts.sameBossGroups.forEach(function (g) {
+      html +=
+        '<div class="prio-overalloc-player"><span class="prio-overalloc-name">' +
+        escHtml(g.nameRealm) +
+        '</span><span class="prio-overalloc-item">' +
+        escHtml(g.itemNames.join(', ')) +
+        ' <span class="prio-overalloc-diff">same boss (' +
+        escHtml(g.boss) +
+        ')</span></span></div>';
+    });
+    html += '</div>';
+  }
 
-  html += '</div></div>';
+  html += '</div>';
+  return html;
+}
+
+function buildPriorityDriftBannerHtml(driftInfo, expanded) {
+  if (!driftInfo.count) return '';
+  var html = '<div class="prio-drift-banner">';
+  html +=
+    '<button type="button" class="prio-section-toggle" onclick="togglePriorityDrift()">' +
+    '<span class="prio-section-chevron">' +
+    (expanded ? '▾' : '▸') +
+    '</span><span class="prio-drift-title">Drift (' +
+    driftInfo.count +
+    ')</span><span class="prio-section-summary">' +
+    driftInfo.count +
+    ' item(s) drifted from their saved order</span></button>';
+
+  if (expanded) {
+    html += '<div class="prio-overalloc-list">';
+    driftInfo.entries.forEach(function (d) {
+      html +=
+        '<div class="prio-overalloc-player"><span class="prio-overalloc-name">' +
+        escHtml(d.item_name) +
+        ' (' +
+        escHtml(d.track === 'Myth' ? 'Mythic' : 'Heroic') +
+        ')</span><span class="prio-overalloc-item">' +
+        ' <span class="prio-overalloc-diff">saved: ' +
+        escHtml((d.saved_top3 || []).join(', ') || 'none') +
+        ' -- now: ' +
+        escHtml((d.current_top3 || []).join(', ') || 'none') +
+        '</span></span></div>';
+    });
+    html += '</div>';
+  }
+
+  html += '</div>';
   return html;
 }
 
@@ -316,15 +382,36 @@ function getPriorityFirstPrioSummary() {
   return rows;
 }
 
-function buildPriorityFirstPrioSummaryHtml(rows) {
+function buildPriorityFirstPrioSummaryHtml(rows, expanded) {
   if (!rows.length) return '';
+  var flaggedCount = rows.filter(function (r) {
+    return r.count >= PRIORITY_FIRSTPRIO_FLAG_THRESHOLD;
+  }).length;
+  var sameBossCount = rows.filter(function (r) {
+    return r.sameBossGroups.length > 0;
+  }).length;
+  var summaryParts = [];
+  if (flaggedCount) summaryParts.push(flaggedCount + ' at 4+');
+  if (sameBossCount) summaryParts.push(sameBossCount + ' same-boss');
+
   var html = '<div class="prio-firstprio-summary">';
   html +=
-    '<div class="prio-firstprio-title">#1 Priorities Held (' +
+    '<button type="button" class="prio-section-toggle" onclick="togglePriorityFirstPrio()">' +
+    '<span class="prio-section-chevron">' +
+    (expanded ? '▾' : '▸') +
+    '</span><span class="prio-firstprio-title" style="margin-bottom:0;">#1 Priorities Held (' +
     rows.length +
     ' player' +
     (rows.length !== 1 ? 's' : '') +
-    ')</div>';
+    ')</span><span class="prio-section-summary">' +
+    escHtml(summaryParts.join(', ')) +
+    '</span></button>';
+
+  if (!expanded) {
+    html += '</div>';
+    return html;
+  }
+
   html += '<div class="prio-firstprio-list">';
   rows.forEach(function (r) {
     var sameBossHTML = r.sameBossGroups.length
@@ -687,28 +774,36 @@ function refreshVisiblePriorityTab() {
 function updatePriorityBadges() {
   var unmanagedCount = getUnmanagedItems().length;
   var conflicts = getPriorityListConflicts();
+  var driftInfo = getPriorityDriftInfo();
   var navBadge = document.getElementById('prioNavBadge');
   var subBadge = document.getElementById('prioSubBadge');
   var listBadge = document.getElementById('prioListBadge');
   var conflictsBanner = document.getElementById('priorityConflictsBanner');
+  var driftBanner = document.getElementById('priorityDriftBanner');
   var firstPrioSummary = document.getElementById('priorityFirstPrioSummary');
+  var listIssues = conflicts.count + driftInfo.count;
   if (navBadge) {
-    var total = unmanagedCount + conflicts.count;
+    var total = unmanagedCount + listIssues;
     navBadge.textContent = total;
     navBadge.style.display = total > 0 ? '' : 'none';
-    navBadge.title =
-      conflicts.count > 0 ? conflicts.count + ' Priority List conflict(s) -- see the Priority List tab' : '';
+    navBadge.title = listIssues > 0 ? listIssues + ' Priority List conflict(s) -- see the Priority List tab' : '';
   }
   if (subBadge) {
     subBadge.textContent = unmanagedCount;
     subBadge.style.display = unmanagedCount > 0 ? '' : 'none';
   }
   if (listBadge) {
-    listBadge.textContent = conflicts.count;
-    listBadge.style.display = conflicts.count > 0 ? '' : 'none';
+    listBadge.textContent = listIssues;
+    listBadge.style.display = listIssues > 0 ? '' : 'none';
   }
-  if (conflictsBanner) conflictsBanner.innerHTML = buildPriorityConflictsBannerHtml(conflicts);
-  if (firstPrioSummary) firstPrioSummary.innerHTML = buildPriorityFirstPrioSummaryHtml(getPriorityFirstPrioSummary());
+  if (conflictsBanner)
+    conflictsBanner.innerHTML = buildPriorityConflictsBannerHtml(conflicts, _priorityConflictsExpanded);
+  if (driftBanner) driftBanner.innerHTML = buildPriorityDriftBannerHtml(driftInfo, _priorityDriftExpanded);
+  if (firstPrioSummary)
+    firstPrioSummary.innerHTML = buildPriorityFirstPrioSummaryHtml(
+      getPriorityFirstPrioSummary(),
+      _priorityFirstPrioExpanded
+    );
 }
 
 // Wishlist completeness (#515): officers need to see which raiders haven't
@@ -1488,9 +1583,9 @@ function buildPriorityTab() {
         out += wishlistHTML;
         if (otherSlotItems.length) {
           out +=
-            '<span style="margin-left:0.5rem;font-size:0.85em;color:var(--melee);" title="Already received ' +
+            '<span style="margin-left:0.5rem;font-size:0.85em;color:var(--melee);cursor:help;border-bottom:1px dotted var(--melee);" title="Already received ' +
             escHtml(otherSlotItems.join(', ')) +
-            ' this season -- same slot">Already has this slot (' +
+            ' this season -- flagged in case someone else needs this item more">Already has this slot (' +
             escHtml(otherSlotItems.join(', ')) +
             ')</span>';
         }
