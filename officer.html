@@ -11,8 +11,8 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=3.60.30">
-  <link rel="stylesheet" href="css/officer.css?v=3.60.30">
+  <link rel="stylesheet" href="css/styles.css?v=3.60.31">
+  <link rel="stylesheet" href="css/officer.css?v=3.60.31">
   <!-- Hover tooltips for Buff Coverage's spell links (#491) and item links
        (Priority tab/BiS grid, itemNameBlockHtml(), #567). Auto-attaches to
        any <a class="wowhead">. whTooltips must be set before power.js loads
@@ -234,7 +234,8 @@
             </div>
             <div id="help-priority" class="help-tip" style="margin-bottom:0.75rem;">
               <strong>RCLootCouncil Export String</strong> -- click Generate to build an encoded string from the current priority order and roster. Copy it and paste it into RCLootCouncil in-game to sync loot priorities to your council.<br>
-              <strong>Priority List</strong> -- read-only view of every item's ranked priority order as set in the Priority Order sheet. Each ranked player shows their current wishlist tag for that item (or "No wishlist tag" if they never tagged it), so you don't have to leave the tab to check what they actually set. Use the search box to jump to a specific item. Also shows a "#1 Priorities Held" table (every player currently holding at least one #1, with their count and a flag if any of those #1s share a boss -- two items both locked behind the same kill). Counts of 4+ are highlighted in red as worth a look. The badge count is narrower: stale-after-Heroic #1s, same-boss #1 stacking, and items whose top 3 has drifted from a scoring update since it was last saved -- not the full #1 table, since holding several #1s is expected once the raid has 30+ managed items. Use "Check for Drift" to re-check on demand -- it also runs automatically right after committing Scoring tab performance updates.<br>
+              <strong>Priority List</strong> -- read-only view of every item's ranked priority order as set in the Priority Order sheet. Each ranked player shows their current wishlist tag for that item (or "No wishlist tag" if they never tagged it), so you don't have to leave the tab to check what they actually set. Use the search box to jump to a specific item. Above the list sit three collapsible summary sections, each starting collapsed with a one-line overview -- click a section's header to expand it for the full detail: "Priority List Conflicts" (stale-after-Heroic #1s and same-boss #1 stacking), "Drift" (see below), and "#1 Priorities Held" (every player currently holding at least one #1, with their count and a flag if any of those #1s share a boss -- two items both locked behind the same kill; counts of 4+ are highlighted in red as worth a look). The badge count on this sub-tab covers just the Conflicts and Drift sections, not the full #1 table, since holding several #1s is expected once the raid has 30+ managed items.<br>
+              <strong>Drift</strong> -- a saved item/track priority order (the one committed via the Priority Edit modal) whose top 3 no longer matches what the scoring generator would suggest today. This can mean scores shifted enough since the save to reorder or bump a player in/out of the top 3, but it's just as often a saved order that was intentionally hand-adjusted away from the generator's suggestion in the first place -- the check has no way to tell those two apart, since it only compares the saved order against today's generator output, not against what the generator suggested at save time. "Check for Drift" recomputes and compares live; it also runs automatically right after committing Scoring tab performance updates. A drift flag isn't automatically wrong -- it's worth an officer's eyes to confirm the saved order is still the intended one, not a signal that something needs fixing.<br>
               <strong>Unmanaged Items</strong> -- items that appear in players' BiS lists but have no priority order assigned yet in the sheet. The badge count shows how many need attention.<br>
               <strong>Contested Items</strong> -- items wanted by 6+ players (officer BiS picks and raider wishlists combined), collapsed by default -- click an item to see who wants it and their current priority rank.<br>
               <strong>Notes</strong> -- every item with a raider-written wishlist note, and who wrote it (e.g. a pure-DPS raider explaining an off-spec BiS want). The gold badge is just a "something's here" flag, not a problem to fix. Read-only context for sequencing calls -- doesn't affect the generated priority order itself.<br>
@@ -242,12 +243,13 @@
             </div>
             <div id="prio-sub-list">
               <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.5rem;">
-                <button class="btn btn-muted" id="checkPriorityDriftBtn" onclick="checkPriorityDrift()">Check for Drift</button>
+                <button class="btn btn-muted" id="checkPriorityDriftBtn" onclick="checkPriorityDrift()" title="Re-checks every saved item's top 3 against what the scoring formula ranks today, flagging any that no longer match (see the Drift help entry above).">Check for Drift</button>
                 <span id="checkPriorityDriftStatus" style="font-size:0.92rem;"></span>
                 <button class="btn btn-muted tier-sync-btn" id="syncRosterTierBtn" onclick="syncRosterTierCounts()" style="display:none;" title="Pulls equipped gear from Raider.IO for the whole roster and updates each player's tier-piece count, which weights tier-token priority order below. Run this before generating priority for a tier-token drop.">Sync Roster Tier Counts</button>
                 <span id="syncRosterTierStatus" class="tier-sync-status" style="font-size:0.92rem;"></span>
               </div>
               <div id="priorityConflictsBanner"></div>
+              <div id="priorityDriftBanner"></div>
               <div id="priorityFirstPrioSummary"></div>
               <div id="wishlistIncompleteBanner"></div>
               <div class="filter-bar" style="margin-bottom:0.75rem;">
@@ -1176,27 +1178,27 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/common.js?v=3.60.30"></script>
-  <script src="js/discord.js?v=3.60.30"></script>
-  <script src="js/officer.js?v=3.60.30"></script>
-  <script src="js/tabs/tab-roster.js?v=3.60.30"></script>
-  <script src="js/tabs/tab-conflicts.js?v=3.60.30"></script>
-  <script src="js/tabs/tab-fairness.js?v=3.60.30"></script>
-  <script src="js/tabs/tab-attendance.js?v=3.60.30"></script>
-  <script src="js/tabs/tab-bench-fairness.js?v=3.60.30"></script>
-  <script src="js/tabs/tab-signups.js?v=3.60.30"></script>
-  <script src="js/tabs/tab-requests.js?v=3.60.30"></script>
-  <script src="js/tabs/tab-bis.js?v=3.60.30"></script>
-  <script src="js/tabs/tab-pending-roster.js?v=3.60.30"></script>
-  <script src="js/tabs/tab-mplus.js?v=3.60.30"></script>
-  <script src="js/tabs/tab-priority.js?v=3.60.30"></script>
-  <script src="js/tabs/tab-audit.js?v=3.60.30"></script>
-  <script src="js/tabs/tab-reports.js?v=3.60.30"></script>
-  <script src="js/tabs/tab-season.js?v=3.60.30"></script>
-  <script src="js/tabs/tab-bios.js?v=3.60.30"></script>
-  <script src="js/tabs/tab-loot-import.js?v=3.60.30"></script>
-  <script src="js/tabs/tab-scoring.js?v=3.60.30"></script>
-  <script src="js/tabs/tab-admin.js?v=3.60.30"></script>
+  <script src="js/common.js?v=3.60.31"></script>
+  <script src="js/discord.js?v=3.60.31"></script>
+  <script src="js/officer.js?v=3.60.31"></script>
+  <script src="js/tabs/tab-roster.js?v=3.60.31"></script>
+  <script src="js/tabs/tab-conflicts.js?v=3.60.31"></script>
+  <script src="js/tabs/tab-fairness.js?v=3.60.31"></script>
+  <script src="js/tabs/tab-attendance.js?v=3.60.31"></script>
+  <script src="js/tabs/tab-bench-fairness.js?v=3.60.31"></script>
+  <script src="js/tabs/tab-signups.js?v=3.60.31"></script>
+  <script src="js/tabs/tab-requests.js?v=3.60.31"></script>
+  <script src="js/tabs/tab-bis.js?v=3.60.31"></script>
+  <script src="js/tabs/tab-pending-roster.js?v=3.60.31"></script>
+  <script src="js/tabs/tab-mplus.js?v=3.60.31"></script>
+  <script src="js/tabs/tab-priority.js?v=3.60.31"></script>
+  <script src="js/tabs/tab-audit.js?v=3.60.31"></script>
+  <script src="js/tabs/tab-reports.js?v=3.60.31"></script>
+  <script src="js/tabs/tab-season.js?v=3.60.31"></script>
+  <script src="js/tabs/tab-bios.js?v=3.60.31"></script>
+  <script src="js/tabs/tab-loot-import.js?v=3.60.31"></script>
+  <script src="js/tabs/tab-scoring.js?v=3.60.31"></script>
+  <script src="js/tabs/tab-admin.js?v=3.60.31"></script>
   <script>
 renderSiteNav('officer');
 document.getElementById('versionNum').textContent = VERSION;
