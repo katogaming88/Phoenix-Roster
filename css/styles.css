@@ -471,6 +471,7 @@ select#playerSelect option { background:#1a1d27; }
 /* Drift banner (saved priority order vs. current scoring, its own section) */
 .prio-drift-banner { background:rgba(214,163,68,0.07); border:1px solid rgba(214,163,68,0.28); border-radius:4px; padding:0.85rem 1.1rem; margin-bottom:1rem; }
 .prio-drift-title { font-size:1rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:var(--gold); margin-bottom:0.55rem; }
+.prio-drift-explainer { font-size:0.87rem; color:var(--text-muted); margin:0.55rem 0 0.6rem; max-width:60em; }
 /* Priority List sub-tab's #1-priorities-held summary table */
 .prio-firstprio-summary { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; padding:0.85rem 1.1rem; margin-bottom:1rem; }
 .prio-firstprio-title { font-size:1rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.55rem; }

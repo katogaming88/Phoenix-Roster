@@ -332,6 +332,8 @@ function buildPriorityDriftBannerHtml(driftInfo, expanded) {
     ' item(s) drifted from their saved order</span></button>';
 
   if (expanded) {
+    html +=
+      '<div class="prio-drift-explainer">A saved top 3 no longer matches what scoring ranks today -- someone\'s performance changed enough since it was saved to reorder or bump them out of the top 3. Not automatically wrong, just worth a look before re-saving.</div>';
     html += '<div class="prio-overalloc-list">';
     driftInfo.entries.forEach(function (d) {
       html +=
