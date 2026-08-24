@@ -1403,6 +1403,15 @@ function playerOtherSlotItems(player, slot, currentItem, itemSlots) {
   return out;
 }
 
+function playerReceivedItem(player, item, difficulty) {
+  if (!player) return false;
+  var seasonItems = getSeasonLootItems(player.firstName);
+  return seasonItems.some(function (it) {
+    if (typeof it === 'string') return false;
+    return it.name === item && it.difficulty === difficulty;
+  });
+}
+
 function getItemGroup(slot) {
   var s = (slot || '').toUpperCase();
   if (s === 'TRINKET' || s === 'TRINKET 1' || s === 'TRINKET 2') return 'Trinket';
@@ -1567,6 +1576,7 @@ function buildPriorityTab() {
                   ? 'var(--melee)'
                   : 'var(--text)';
         var otherSlotItems = playerOtherSlotItems(player, slot, item, itemSlots);
+        var received = playerReceivedItem(player, item, diffLabel);
         var wishlistStatus = player && itemId != null ? _prioBestWishlistStatus(itemId, player.id) : null;
         var wishlistColor = wishlistStatus && PRIO_NOTES_TIER_COLORS[wishlistStatus];
         var wishlistHTML = wishlistStatus
@@ -1583,6 +1593,12 @@ function buildPriorityTab() {
         out += '<span class="prio-rank-name" style="color:' + roleColor + ';">' + display + '</span>';
         if (role) out += '<span class="prio-role-badge prio-role-' + role + '">' + role.toUpperCase() + '</span>';
         out += wishlistHTML;
+        if (received) {
+          out +=
+            '<span class="prio-rank-received" title="Already received this item on ' +
+            escHtml(diffLabel) +
+            ' this season">RECEIVED</span>';
+        }
         if (otherSlotItems.length) {
           out +=
             '<span style="margin-left:0.5rem;font-size:0.85em;color:var(--melee);cursor:help;border-bottom:1px dotted var(--melee);" title="Already received ' +

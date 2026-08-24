@@ -8,6 +8,14 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.32] - 2026-08-24
+
+### Frontend
+
+- Added a "RECEIVED" badge to the officer Priority List's ranked-player rows -- flags when a player has already been awarded that exact item on that exact difficulty this season, so officers can weigh it during discretion calls. Purely informational; doesn't affect ranking.
+
+---
+
 ## [3.60.31] - 2026-08-23
 
 ### Frontend
