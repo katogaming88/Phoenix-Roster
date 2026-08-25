@@ -9,11 +9,15 @@
 | maintenance_message | text |  | true |  |  |  |
 | updated_at | timestamp with time zone | now() | false |  |  |  |
 | guild_officer_bios | jsonb | '[]'::jsonb | false |  |  |  |
+| boe_payout_floor | bigint | 20000 | false |  |  |  |
+| boe_payout_pivot | bigint | 100000 | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| site_settings_boe_payout_floor_nonneg | CHECK | CHECK ((boe_payout_floor >= 0)) |
+| site_settings_boe_payout_pivot_positive | CHECK | CHECK ((boe_payout_pivot > 0)) |
 | site_settings_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
@@ -34,6 +38,8 @@ erDiagram
   text maintenance_message
   timestamp_with_time_zone updated_at
   jsonb guild_officer_bios
+  bigint boe_payout_floor
+  bigint boe_payout_pivot
 }
 ```
 

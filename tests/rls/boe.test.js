@@ -152,9 +152,7 @@ describe('submit_boe_found', () => {
     await withTxn(async ({ q, asAnon }) => {
       const res = await asAnon(submit("1, 'Stranger-Proudmoore', 'Unknown Green Blade', null, null"));
       const row = (
-        await q('select player_id, finder_name, item_id, status from public.boe_items where id = $1', [
-          res.rows[0].id
-        ])
+        await q('select player_id, finder_name, item_id, status from public.boe_items where id = $1', [res.rows[0].id])
       ).rows[0];
       expect(row).toMatchObject({
         player_id: null,
@@ -182,9 +180,7 @@ describe('submit_boe_found', () => {
 
   it('an empty character name is rejected', async () => {
     await withTxn(async ({ asAnon }) => {
-      await expect(asAnon(submit("1, '', 'Some BoE Cloak', null, null"))).rejects.toThrow(
-        /Character name is required/
-      );
+      await expect(asAnon(submit("1, '', 'Some BoE Cloak', null, null"))).rejects.toThrow(/Character name is required/);
     });
   });
 
@@ -198,9 +194,7 @@ describe('submit_boe_found', () => {
 
   it('the submit snapshots the seasonName in force', async () => {
     await withTxn(async ({ q, asAnon }) => {
-      await q(
-        `update public.team_settings set config = config || '{"seasonName": "Test Season 3"}' where team_id = 1`
-      );
+      await q(`update public.team_settings set config = config || '{"seasonName": "Test Season 3"}' where team_id = 1`);
       const res = await asAnon(submit("1, 'Seedraider-Illidan', 'Season Snapshot Blade', null, null"));
       const row = (await q('select season from public.boe_items where id = $1', [res.rows[0].id])).rows[0];
       expect(row.season).toBe('Test Season 3');
@@ -227,27 +221,21 @@ describe('the manager gate on every lifecycle RPC', () => {
 
   it('an other-team officer is denied on a team 1 row', async () => {
     await withTxn(async ({ asUser }) => {
-      await expect(asUser(OFFICER_T2, 'select public.boe_record_listing(1, 100000)')).rejects.toThrow(
-        /Not authorized/
-      );
+      await expect(asUser(OFFICER_T2, 'select public.boe_record_listing(1, 100000)')).rejects.toThrow(/Not authorized/);
     });
   });
 
   it('a grant on another team does not reach across teams', async () => {
     await withTxn(async ({ q, asUser }) => {
       await q('insert into public.boe_managers (team_member_id) values (4)');
-      await expect(asUser(OFFICER_T2, 'select public.boe_record_listing(1, 100000)')).rejects.toThrow(
-        /Not authorized/
-      );
+      await expect(asUser(OFFICER_T2, 'select public.boe_record_listing(1, 100000)')).rejects.toThrow(/Not authorized/);
     });
   });
 
   it('a grant attached to a raider-role member does not pass', async () => {
     await withTxn(async ({ q, asUser }) => {
       await q('insert into public.boe_managers (team_member_id) values (3)');
-      await expect(asUser(RAIDER_T1, 'select public.boe_record_listing(1, 100000)')).rejects.toThrow(
-        /Not authorized/
-      );
+      await expect(asUser(RAIDER_T1, 'select public.boe_record_listing(1, 100000)')).rejects.toThrow(/Not authorized/);
     });
   });
 
@@ -332,9 +320,7 @@ describe('lifecycle transitions', () => {
 
   it('a negative listing price is rejected', async () => {
     await withTxn(async ({ asUser }) => {
-      await expect(asUser(OFFICER_T1, 'select public.boe_record_listing(1, -1)')).rejects.toThrow(
-        /Listing price/
-      );
+      await expect(asUser(OFFICER_T1, 'select public.boe_record_listing(1, -1)')).rejects.toThrow(/Listing price/);
     });
   });
 
@@ -438,9 +424,8 @@ describe('revert walks the correction edges', () => {
       await asUser(OFFICER_T1, 'select public.boe_mark_paid(2)');
       const res = await asUser(OFFICER_T1, 'select public.boe_revert(2) as status');
       expect(res.rows[0].status).toBe('sold');
-      const row = (
-        await q('select status, payout_paid_at, sale_price::int as sp from public.boe_items where id = 2')
-      ).rows[0];
+      const row = (await q('select status, payout_paid_at, sale_price::int as sp from public.boe_items where id = 2'))
+        .rows[0];
       expect(row).toMatchObject({ status: 'sold', payout_paid_at: null, sp: 150000 });
     });
   });
@@ -510,9 +495,9 @@ describe('plain UPDATE is metadata-only and DELETE is manager-gated', () => {
       await asUser(OFFICER_T1, 'update public.boe_items set player_id = 2 where id = 1');
       const row = (await q('select note, player_id from public.boe_items where id = 1')).rows[0];
       expect(row).toMatchObject({ note: 'checked with the bank', player_id: 2 });
-      await expect(
-        asUser(OFFICER_T1, "update public.boe_items set status = 'paid' where id = 1")
-      ).rejects.toThrow(/go through the BoE RPCs/);
+      await expect(asUser(OFFICER_T1, "update public.boe_items set status = 'paid' where id = 1")).rejects.toThrow(
+        /go through the BoE RPCs/
+      );
     });
   });
 

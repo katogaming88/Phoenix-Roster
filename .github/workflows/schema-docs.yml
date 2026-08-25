@@ -68,7 +68,7 @@ jobs:
       # docs together.
       - uses: supabase/setup-cli@v3
         with:
-          version: 2.111.0
+          version: 2.115.0
       - name: Start local database
         run: |
           supabase db start
@@ -77,7 +77,7 @@ jobs:
       # (my_team_role, is_site_admin, the updated_at and team-consistency
       # triggers) against the schema the migrations just built. Catches a
       # migration renaming a column that a function still references. Does
-      # not cover grants or policies. Baseline was clean at 2.111.0, so any
+      # not cover grants or policies. Baseline was clean at 2.115.0, so any
       # warning fails the build.
       - name: Lint database functions
         run: supabase db lint --local --schema public --level warning --fail-on warning

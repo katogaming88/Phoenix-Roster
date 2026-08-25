@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer | nextval('teams_id_seq'::regclass) | false | [public.attendance](public.attendance.md) [public.audit_log](public.audit_log.md) [public.bis_requests](public.bis_requests.md) [public.rclc_loot](public.rclc_loot.md) [public.mplus_exclusion_requests](public.mplus_exclusion_requests.md) [public.player_wcl_season_perf](public.player_wcl_season_perf.md) [public.players](public.players.md) [public.priority_order](public.priority_order.md) [public.season_signups](public.season_signups.md) [public.self_received_requests](public.self_received_requests.md) [public.team_members](public.team_members.md) [public.team_settings](public.team_settings.md) [public.streamers](public.streamers.md) [public.notifications](public.notifications.md) [public.team_raid_progress](public.team_raid_progress.md) [public.item_preferences](public.item_preferences.md) |  |  |
+| id | integer | nextval('teams_id_seq'::regclass) | false | [public.attendance](public.attendance.md) [public.audit_log](public.audit_log.md) [public.bis_requests](public.bis_requests.md) [public.rclc_loot](public.rclc_loot.md) [public.mplus_exclusion_requests](public.mplus_exclusion_requests.md) [public.player_wcl_season_perf](public.player_wcl_season_perf.md) [public.players](public.players.md) [public.priority_order](public.priority_order.md) [public.season_signups](public.season_signups.md) [public.self_received_requests](public.self_received_requests.md) [public.team_members](public.team_members.md) [public.team_settings](public.team_settings.md) [public.streamers](public.streamers.md) [public.notifications](public.notifications.md) [public.team_raid_progress](public.team_raid_progress.md) [public.item_preferences](public.item_preferences.md) [public.boe_items](public.boe_items.md) [public.boe_listings](public.boe_listings.md) |  |  |
 | name | text |  | false |  |  |  |
 | slug | text |  | false |  |  |  |
 | archived_at | timestamp with time zone |  | true |  |  |  |
@@ -47,6 +47,8 @@ erDiagram
 "public.notifications" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.team_raid_progress" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.item_preferences" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.boe_items" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.boe_listings" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 
 "public.teams" {
   integer id
@@ -246,6 +248,39 @@ erDiagram
   timestamp_with_time_zone created_at
   text season
   boolean synced_bis
+}
+"public.boe_items" {
+  integer id
+  integer team_id FK
+  integer player_id FK
+  text finder_name
+  integer item_id FK
+  text item_name
+  text track
+  text season
+  text note
+  text status
+  timestamp_with_time_zone found_at
+  timestamp_with_time_zone sold_at
+  timestamp_with_time_zone payout_paid_at
+  timestamp_with_time_zone retired_at
+  bigint sale_price
+  bigint finder_payout
+  bigint guild_cut
+  bigint payout_floor
+  bigint payout_pivot
+  timestamp_with_time_zone updated_at
+  timestamp_with_time_zone created_at
+}
+"public.boe_listings" {
+  integer id
+  integer team_id FK
+  integer boe_item_id FK
+  timestamp_with_time_zone listed_at
+  bigint price
+  text note
+  timestamp_with_time_zone updated_at
+  timestamp_with_time_zone created_at
 }
 ```
 

@@ -24,7 +24,7 @@ jobs:
       # there for why the CLI version is tied to the tbls docs).
       - uses: supabase/setup-cli@v3
         with:
-          version: 2.111.0
+          version: 2.115.0
       # db reset applies roles.sql, every migration, and supabase/seed.sql,
       # so a broken seed fails here before the tests run.
       - name: Build database (roles, migrations, seed)
