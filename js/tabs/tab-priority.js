@@ -2110,10 +2110,6 @@ function prioEditRenderPool() {
 }
 
 function prioEditAdd(nameRealm) {
-  if (PRIO_EDIT.ranked.length >= 10) {
-    document.getElementById('prioEditStatus').textContent = 'Maximum 10 players per item.';
-    return;
-  }
   if (prioEditIsBlocked(nameRealm)) {
     var blockedPlayer = (DATA.roster || []).filter(function (p) {
       return normalise(p.nameRealm) === normalise(nameRealm);

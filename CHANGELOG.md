@@ -8,6 +8,14 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.36] - 2026-08-25
+
+### Frontend
+
+- Removed the 10-player cap on the Priority Edit modal's ranked list. It was a leftover client-side limit with no matching database constraint, and it silently blocked officers from adding an 11th eligible player to an item's priority order (with a "Maximum 10 players per item." message) once bench depth or wishlist interest ran past 10.
+
+---
+
 ## [3.60.35] - 2026-08-25
 
 ### Frontend

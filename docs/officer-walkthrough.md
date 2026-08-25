@@ -178,8 +178,8 @@ Clicking Edit (or Set Heroic/Set Mythic on an unmanaged item) opens the priority
 - Heroic/Mythic toggle at the top
 - **Suggest Order** auto-ranks eligible players by blended score (role x attendance x WCL
   performance)
-- Drag to reorder manually; add players from the pool on the right (defaults to BiS players
-  for that item, toggle "Show all roster" to widen it); max 10 players per item
+- Drag to reorder manually; add players from the pool on the right (defaults to BiS/wishlist
+  players for that item, toggle "Show all roster" to widen it); no limit on players per item
 - A warning appears if someone ranked below a player who already has the Heroic version is
   themselves marked "No Version" -- worth a manual review before saving
 - Save
