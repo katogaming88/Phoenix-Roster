@@ -8,6 +8,14 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.35] - 2026-08-25
+
+### Frontend
+
+- The Priority Edit modal's "BiS Players" pool (#742) only surfaced wishlist entries tagged 'bis'. A raider who tagged an item "2nd Choice" or "Sidegrade" instead was still real signal of genuine interest, so the pool now includes 'good' and 'ok' wishlist tiers too, alongside 'bis'. 'catalyst' (wants it only via the Catalyst) and 'pass' (explicitly doesn't want it) remain excluded, since neither is a candidate for a priority order.
+
+---
+
 ## [3.60.34] - 2026-08-25
 
 ### Frontend

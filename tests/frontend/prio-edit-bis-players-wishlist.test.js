@@ -4,13 +4,16 @@ import vm from 'node:vm';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// A raider who just filled out their wishlist ('bis' tier) had no bis_items
-// row yet, so the priority-edit modal's "BiS Players" pool -- sourced only
-// from DATA.bisList -- never surfaced them. An officer wanting to hand-add a
+// A raider who just filled out their wishlist had no bis_items row yet, so
+// the priority-edit modal's "BiS Players" pool -- sourced only from
+// DATA.bisList -- never surfaced them. An officer wanting to hand-add a
 // brand-new team member to the bottom of an existing priority order without
 // regenerating the whole list via "Suggest Order" had to fall back to "Show
-// all roster" and hunt them down in the full roster instead. prioEditGetBisPlayers()
-// now also includes anyone with a wishlist status of 'bis' for the item.
+// all roster" and hunt them down in the full roster instead.
+// prioEditGetBisPlayers() now also includes anyone with a wishlist status of
+// 'bis', 'good', or 'ok' for the item -- genuine interest in winning it off
+// the priority list -- but not 'catalyst' (wants it only via the Catalyst)
+// or 'pass' (explicitly doesn't want it).
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PRIORITY_JS = readFileSync(path.join(HERE, '../../js/tabs/tab-priority.js'), 'utf8');
@@ -72,13 +75,33 @@ describe('prioEditGetBisPlayers wishlist inclusion', () => {
     expect(result).toHaveLength(1);
   });
 
-  it('ignores non-bis wishlist statuses and other items', () => {
+  it('includes good and ok wishlist tiers alongside bis', () => {
     const sandbox = makeSandbox({
       roster,
       itemIds,
       bisList: {},
       teamItemPreferences: [
+        { player_id: 1, item_id: 42, status: 'bis' },
         { player_id: 2, item_id: 42, status: 'good' },
+        { player_id: 3, item_id: 42, status: 'ok' }
+      ]
+    });
+    sandbox.PRIO_EDIT.item = 'Test Item';
+
+    const result = sandbox.prioEditGetBisPlayers();
+
+    expect(result).toEqual(expect.arrayContaining(['Alpha-Realm', 'Bravo-Realm', 'Charlie-Realm']));
+    expect(result).toHaveLength(3);
+  });
+
+  it('excludes catalyst and pass wishlist tiers, and other items', () => {
+    const sandbox = makeSandbox({
+      roster,
+      itemIds,
+      bisList: {},
+      teamItemPreferences: [
+        { player_id: 1, item_id: 42, status: 'catalyst' },
+        { player_id: 2, item_id: 42, status: 'pass' },
         { player_id: 3, item_id: 99, status: 'bis' }
       ]
     });
