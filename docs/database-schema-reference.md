@@ -35,6 +35,9 @@ Includes notes on redundancies and why they exist.
 - [self_received_requests](#self_received_requests)
 - [bis_requests](#bis_requests)
 - [mplus_exclusion_requests](#mplus_exclusion_requests)
+- [boe_items](#boe_items)
+- [boe_listings](#boe_listings)
+- [boe_managers](#boe_managers)
 - [Triggers](#triggers)
 - [Redundancies & Design Notes](#redundancies--design-notes)
 
@@ -351,6 +354,65 @@ Season-long M+ exemption request queue. Players submit a request when they have 
 | `raiderio_url`  | text        | Raider.IO profile link for officer to verify key count |
 | `officer_notes` | text        | Internal officer note on the decision                  |
 | `updated_at`    | timestamptz | Auto-set on every UPDATE via trigger                   |
+
+---
+
+## `boe_items`
+
+One row per found Bind-on-Equip, carrying the lifecycle (found -> listed -> sold -> paid, plus retired) and the money receipt once sold. Grant-only writes through the BoE RPCs; no direct INSERT ([#745](https://github.com/katogaming88/WGA-Raid-Hub/issues/745)).
+
+| Column           | Type        | Purpose                                                                 |
+| ---------------- | ----------- | ----------------------------------------------------------------------- |
+| `id`             | int4        | PK                                                                      |
+| `team_id`        | int4        | FK -> `teams.id`                                                        |
+| `player_id`      | int4        | FK -> `players.id`, null when the finder is not resolved                |
+| `finder_name`    | text        | Raw name-realm as submitted; kept even when `player_id` resolves        |
+| `item_id`        | int4        | FK -> `items.id`, opportunistic exact-name match (BoEs are mostly absent from the loot catalog) |
+| `item_name`      | text        | The identity, since `item_id` is usually null                          |
+| `track`          | text        | CHECK Champion/Hero/Myth, or null                                       |
+| `season`         | text        | `team_settings.config->>'seasonName'` snapshot at submit                |
+| `note`           | text        | Free-text note                                                          |
+| `status`         | text        | CHECK found/listed/sold/paid/retired                                    |
+| `found_at`       | timestamptz | When the find was submitted                                             |
+| `sold_at`        | timestamptz | Set on sale                                                            |
+| `payout_paid_at` | timestamptz | Set when the finder is paid                                            |
+| `retired_at`     | timestamptz | Set on retire                                                          |
+| `sale_price`     | int8        | Gross sale in gold, present iff sold/paid                              |
+| `finder_payout`  | int8        | The finder's cut, present iff sold/paid                               |
+| `guild_cut`      | int8        | `sale_price - finder_payout`, present iff sold/paid                    |
+| `payout_floor`   | int8        | Snapshot of the payout floor in force at sale                         |
+| `payout_pivot`   | int8        | Snapshot of the payout pivot in force at sale                         |
+| `updated_at`     | timestamptz | Auto-set on every UPDATE via trigger                                  |
+| `created_at`     | timestamptz | Row creation                                                          |
+
+---
+
+## `boe_listings`
+
+One row per AH listing event, so relists keep their history instead of collapsing into a lifecycle column ([#745](https://github.com/katogaming88/WGA-Raid-Hub/issues/745)).
+
+| Column        | Type        | Purpose                                    |
+| ------------- | ----------- | ------------------------------------------ |
+| `id`          | int4        | PK                                         |
+| `team_id`     | int4        | FK -> `teams.id`, must match the item team |
+| `boe_item_id` | int4        | FK -> `boe_items.id` (cascade)             |
+| `listed_at`   | timestamptz | When it was listed                         |
+| `price`       | int8        | Listing price in gold                      |
+| `note`        | text        | Free-text note                             |
+| `updated_at`  | timestamptz | Auto-set on every UPDATE via trigger       |
+| `created_at`  | timestamptz | Row creation                               |
+
+---
+
+## `boe_managers`
+
+The standalone grant that scopes BoE money mutations, same shape as `guild_officers` ([#745](https://github.com/katogaming88/WGA-Raid-Hub/issues/745)). Team scope derives from the member row.
+
+| Column           | Type        | Purpose                                      |
+| ---------------- | ----------- | -------------------------------------------- |
+| `id`             | int4        | PK                                           |
+| `team_member_id` | int4        | FK -> `team_members.id`, unique              |
+| `created_at`     | timestamptz | Row creation                                 |
 
 ---
 

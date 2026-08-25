@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer | nextval('players_id_seq'::regclass) | false | [public.attendance](public.attendance.md) [public.bis_items](public.bis_items.md) [public.bis_requests](public.bis_requests.md) [public.rclc_loot](public.rclc_loot.md) [public.mplus_exclusion_requests](public.mplus_exclusion_requests.md) [public.player_wcl_season_perf](public.player_wcl_season_perf.md) [public.priority_order](public.priority_order.md) [public.scoring](public.scoring.md) [public.season_signups](public.season_signups.md) [public.self_received_requests](public.self_received_requests.md) [public.streamers](public.streamers.md) [public.notifications](public.notifications.md) [public.item_preferences](public.item_preferences.md) |  |  |
+| id | integer | nextval('players_id_seq'::regclass) | false | [public.attendance](public.attendance.md) [public.bis_items](public.bis_items.md) [public.bis_requests](public.bis_requests.md) [public.rclc_loot](public.rclc_loot.md) [public.mplus_exclusion_requests](public.mplus_exclusion_requests.md) [public.player_wcl_season_perf](public.player_wcl_season_perf.md) [public.priority_order](public.priority_order.md) [public.scoring](public.scoring.md) [public.season_signups](public.season_signups.md) [public.self_received_requests](public.self_received_requests.md) [public.streamers](public.streamers.md) [public.notifications](public.notifications.md) [public.item_preferences](public.item_preferences.md) [public.boe_items](public.boe_items.md) |  |  |
 | team_id | integer |  | false |  | [public.teams](public.teams.md) |  |
 | name_realm | text |  | false |  |  |  |
 | class_spec_id | integer |  | true |  | [public.classes_specs](public.classes_specs.md) |  |
@@ -71,6 +71,7 @@ erDiagram
 "public.streamers" |o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.notifications" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.item_preferences" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+"public.boe_items" }o--o| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL"
 "public.players" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.players" }o--o| "public.classes_specs" : "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE"
 "public.players" }o--o| "public.team_members" : "FOREIGN KEY (team_member_id) REFERENCES team_members(id) ON DELETE SET NULL"
@@ -248,6 +249,29 @@ erDiagram
   timestamp_with_time_zone created_at
   text season
   boolean synced_bis
+}
+"public.boe_items" {
+  integer id
+  integer team_id FK
+  integer player_id FK
+  text finder_name
+  integer item_id FK
+  text item_name
+  text track
+  text season
+  text note
+  text status
+  timestamp_with_time_zone found_at
+  timestamp_with_time_zone sold_at
+  timestamp_with_time_zone payout_paid_at
+  timestamp_with_time_zone retired_at
+  bigint sale_price
+  bigint finder_payout
+  bigint guild_cut
+  bigint payout_floor
+  bigint payout_pivot
+  timestamp_with_time_zone updated_at
+  timestamp_with_time_zone created_at
 }
 "public.teams" {
   integer id

@@ -77,6 +77,26 @@ insert into public.season_signups (id, team_id, signup_name_realm, class_spec_id
 insert into public.self_received_requests (id, team_id, player_id, self_item_id, status) values
   (1, 1, 1, 2, 'pending');
 
+-- BoE tracker (#745): item 1 is found and owned by (unlinked) player 1 so
+-- own-row read tests can link and see it; item 2 is sold with an unresolved
+-- finder and a split satisfying the policy formula (150000 -> 30000/120000
+-- at floor 20000 / pivot 100000); listing 1 hangs off the sold item. The
+-- manager grant goes to the team-1 officer (member 1); the team-1 leader
+-- (member 2) stays ungranted to prove grant-only writes.
+insert into public.boe_items (id, team_id, player_id, finder_name, item_id, item_name, track, season, status, found_at) values
+  (1, 1, 1, 'Seedraider-Illidan', 1, 'Seed Test Staff', 'Hero', 'seed-season', 'found', '2026-01-02T00:00:00Z');
+
+insert into public.boe_items (id, team_id, player_id, finder_name, item_id, item_name, track, season, status,
+    found_at, sold_at, sale_price, finder_payout, guild_cut, payout_floor, payout_pivot) values
+  (2, 1, null, 'Oldfinder-Illidan', null, 'Seed Sold Sash', 'Myth', 'seed-season', 'sold',
+    '2026-01-01T00:00:00Z', '2026-01-03T00:00:00Z', 150000, 30000, 120000, 20000, 100000);
+
+insert into public.boe_listings (id, team_id, boe_item_id, price, listed_at) values
+  (1, 1, 2, 160000, '2026-01-02T12:00:00Z');
+
+insert into public.boe_managers (id, team_member_id) values
+  (1, 1);
+
 -- Rows for public-read tables the matrix test asserts are visible.
 
 insert into public.attendance (id, team_id, player_id, raid_date, status) values
@@ -123,3 +143,6 @@ select setval('public.bis_items_id_seq', 10);
 select setval('public.scoring_id_seq', 10);
 select setval('public.priority_order_id_seq', 10);
 select setval('public.loot_id_seq', 10);
+select setval('public.boe_items_id_seq', 10);
+select setval('public.boe_listings_id_seq', 10);
+select setval('public.boe_managers_id_seq', 10);

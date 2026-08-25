@@ -14,6 +14,10 @@ with each release split into `### Frontend` (drives the version number) and
 
 - Removed the 10-player cap on the Priority Edit modal's ranked list. It was a leftover client-side limit with no matching database constraint, and it silently blocked officers from adding an 11th eligible player to an item's priority order (with a "Maximum 10 players per item." message) once bench depth or wishlist interest ran past 10.
 
+### Backend
+
+- Added the BoE tracker backend (`20260825225243_boe_tracker.sql`, #745): three tables (`boe_items`, `boe_listings`, `boe_managers`), the `is_boe_manager()` grant predicate, and the found/listed/sold/paid/retired lifecycle RPCs with grant-only writes and a per-row snapshot of the guild split (a 20% or 20,000g floor payout on the gross sale, computed from guild-wide `site_settings` constants). Officers without a manager grant are read-only, and the BoE tables carry no public read. Bumped the CI Supabase CLI pin to 2.115.0 to match the regenerated schema docs.
+
 ---
 
 ## [3.60.35] - 2026-08-25

@@ -8,6 +8,22 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-08-25 -- BoE tracker backend: two-table lifecycle, grant-only writes, gross-sale split
+
+Tracking issue: [katogaming88/WGA-Raid-Hub#745](https://github.com/katogaming88/WGA-Raid-Hub/issues/745). Folds the guild-bank BoE workflow (found -> listed -> sold -> paid, plus retire and revert) into the site, replacing a Google Form, an Apps Script relay bot, and a hand-kept sale spreadsheet.
+
+- **Two tables, not one.** `boe_items` holds one row per found BoE with its lifecycle and money receipt; `boe_listings` holds one row per AH listing event. Relists are repeating events with their own timestamp and price, so folding them into lifecycle columns on `boe_items` would lose the history the sheet never captured.
+- **No public read.** `boe_items` and `boe_listings` are officer/manager-only (the `item_preferences` privacy call, not the `rclc_loot` transparency call): payouts owed per person and live listing prices are undercutting intel. A finder reads their own rows via `is_own_player(player_id)`.
+- **Grant-only writes via a standalone `boe_managers` table**, same shape as `guild_officers` (#607). Every money mutation requires a `boe_managers` grant (held by an officer or team leader, so `is_boe_manager()` self-revokes on demotion) or `is_site_admin()`. Plain officers are read-only, and site admins assign grants. Managing the guild bank is a deliberate assignment, not blanket officer access, and `is_guild_officer()` passes no BoE gate, matching its exclusion from approvals and loot import.
+- **The split formula (guild policy) computes on the gross sale.** finder_payout = 20% of the gross sale or a 20,000g floor, whichever is larger, capped at the sale itself; guild_cut is the rest and is never negative. The 5% AH cut is not modeled: the guild absorbs it, which keeps the math the managers do by hand simple. Verified against last season's 46-row tracking sheet, both rounding directions included; a sub-floor sale (the sheet never had one) pays the finder the whole sale and the guild takes zero.
+- **Considered and rejected: a percent-of-net guild cut with `ah_cut`/`ah_cut_pct`/`guild_cut_pct` snapshot columns** (the issue's original design). The real policy is a floor-or-percentage on the gross, so those columns came out; `payout_floor` and `payout_pivot` snapshot the two constants that actually drive it.
+- **Payout constants are guild-wide, not per-team.** `boe_payout_floor` and `boe_payout_pivot` live on the `site_settings` singleton (public read, `set_boe_payout_settings()` SECURITY DEFINER site-admin-only write), not `team_settings`, because the guild runs one policy across every team. Each sold row snapshots the values in force, so history survives a policy change.
+- **Finder free-text fallback.** `submit_boe_found()` resolves the name to a `players` row when it can but is non-fatal otherwise (null `player_id`, raw `finder_name` kept), and resolves the item against the catalog opportunistically (`item_id` usually null, `item_name` is the identity). A found BoE is a fact, not a request, so there is no approval state.
+- **Lifecycle edges live in the RPCs, not an unconditional trigger.** `check_boe_status_transition` blocks a plain UPDATE from moving status/money/timestamps (metadata edits still pass), but the legal-edge set is enforced per-RPC with a `select ... for update` lock first, because `boe_revert`'s correction edges run backwards and an unconditional forward-edge trigger (the `restrict_bis_items_update_to_obtained` shape) would block the revert itself.
+- Implemented in `20260825225243_boe_tracker.sql`. Tests in `tests/rls/boe.test.js` cover the RLS matrix, the manager gate on every RPC, the lifecycle transitions, the split formula (vectors transcribed from the sheet), and the revert edges; the shared `write-policies` and `read-matrix` suites gained the three tables.
+
+---
+
 ## 2026-08-22 -- `import_rclc_loot()` carries season into its audit detail
 
 Decided directly in conversation (no tracking issue): the Loot Import tab's history view (previously a flat per-item table) was rebuilt to group entries into one row per import event and needed to season-scope that list, but `audit_log` has no season column and `rclc_loot.season` (already written by this same call) has no reference back to which import wrote it -- there's no reliable way to join the two after the fact.
