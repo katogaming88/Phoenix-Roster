@@ -8,6 +8,14 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.33] - 2026-08-25
+
+### Frontend
+
+- Removed the "N slots missing a BiS pick" red count badge from the logged-in nav button. It only ever had a hover title (no click action, easy to mistake for the notification bell's own unread badge right next to it), and its count could be actively wrong -- reported live, a raider with every slot genuinely BiS-tagged saw "7 slots missing," because the badge is computed right after login, before the roster's item catalog has actually finished loading. Rather than patch a confusing, easy-to-break nav element, it's gone; the equivalent count still shows in context on the profile's own Wishlist sub-tab.
+
+---
+
 ## [3.60.32] - 2026-08-25
 
 ### Backend
