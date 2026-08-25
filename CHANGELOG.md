@@ -8,6 +8,14 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.32] - 2026-08-25
+
+### Backend
+
+- A raider marking a self-received item (e.g. a crafted piece) never saw it take effect on their own BiS list, even though the request had already been auto-approved -- `self_received_requests` only had SELECT policies for officers/team_leaders/site_admins, so a raider's own browser query for their own approved rows was silently blocked by RLS and came back empty, while an officer looking at the same player's profile saw it fine. Added a `is_own_player(player_id)` SELECT policy so a raider can read their own rows (`20260824233302_own_self_received_requests_read.sql`). See `docs/RLS.md`.
+
+---
+
 ## [3.60.32] - 2026-08-24
 
 ### Frontend
