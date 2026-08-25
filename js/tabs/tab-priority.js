@@ -1728,7 +1728,7 @@ function openPrioEditModal(item, slot, autoGenerate, difficulty) {
   prioEditRenderPool();
   document.getElementById('prioEditModal').classList.add('active');
   prioEditFetchFairnessWarnings();
-  // Wishlist 'bis' tags feed the BiS Players pool (prioEditGetBisPlayers) so
+  // Wishlist tags feed the BiS Players pool (prioEditGetBisPlayers) so
   // a raider who just filled out their wishlist shows up here without an
   // officer first adding them to bis_items -- fetch on demand since not
   // every path into this modal has already loaded it (buildPriorityNotesTab
@@ -1774,14 +1774,20 @@ function closePrioEditModal() {
   document.getElementById('prioEditModal').classList.remove('active');
 }
 
+// Wishlist statuses worth surfacing here -- genuine interest in winning the
+// item off the priority list. 'catalyst' (wants it only via the Catalyst,
+// not this drop) and 'pass' (explicitly doesn't want it) aren't candidates
+// for a priority order and are deliberately excluded.
+var PRIO_EDIT_WISHLIST_POOL_STATUSES = { bis: true, good: true, ok: true };
+
 // Returns the full name_realm identity of every player whose BiS list has
 // this item (#529: DATA.bisList is keyed by identity, not first name), plus
-// anyone who has self-tagged the item as 'bis' on their raider wishlist but
-// has no matching officer-curated bis_items row yet -- otherwise a raider who
-// just filled out their wishlist is invisible here until an officer also
-// adds them to bis_items, and the only way to hand-rank a brand-new team
-// member without regenerating the whole list is the "Show all roster"
-// toggle.
+// anyone who has self-tagged the item 'bis', 'good', or 'ok' on their raider
+// wishlist but has no matching officer-curated bis_items row yet --
+// otherwise a raider who just filled out their wishlist is invisible here
+// until an officer also adds them to bis_items, and the only way to
+// hand-rank a brand-new team member without regenerating the whole list is
+// the "Show all roster" toggle.
 function prioEditGetBisPlayers() {
   var bisList = DATA.bisList || {};
   var itemLower = PRIO_EDIT.item.toLowerCase();
@@ -1804,7 +1810,7 @@ function prioEditGetBisPlayers() {
       rosterById[p.id] = p.nameRealm;
     });
     _teamItemPreferences.forEach(function (p) {
-      if (p.item_id !== itemId || p.status !== 'bis') return;
+      if (p.item_id !== itemId || !PRIO_EDIT_WISHLIST_POOL_STATUSES[p.status]) return;
       var nameRealm = rosterById[p.player_id];
       if (!nameRealm || seen[normalise(nameRealm)]) return;
       seen[normalise(nameRealm)] = true;
