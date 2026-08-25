@@ -66,6 +66,7 @@ season_signups,Officers update signups,public,UPDATE,PERMISSIVE,"((my_team_role(
 self_received_requests,Claude readers read self_received_requests,claude_readers,SELECT,PERMISSIVE,true,
 self_received_requests,Officers read self_received_requests,public,SELECT,PERMISSIVE,"((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())",
 self_received_requests,Officers update self_received_requests,public,UPDATE,PERMISSIVE,"((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())","((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())"
+self_received_requests,Raiders read own self_received_requests,public,SELECT,PERMISSIVE,is_own_player(player_id),
 site_admins,Claude readers read site_admins,claude_readers,SELECT,PERMISSIVE,true,
 site_admins,Site Admins read site_admins,public,SELECT,PERMISSIVE,is_site_admin(),
 site_admins,Site Admins write site_admins,public,ALL,PERMISSIVE,is_site_admin(),is_site_admin()
