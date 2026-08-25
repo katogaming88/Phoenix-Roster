@@ -50,7 +50,6 @@ function renderDiscordNav(session) {
     var existing = document.getElementById('discordNavDropdown');
     if (existing) existing.parentNode.removeChild(existing);
     if (typeof renderNotifBell === 'function') renderNotifBell(null);
-    if (typeof refreshWishlistBisNavBadge === 'function') refreshWishlistBisNavBadge(null);
     return;
   }
 
@@ -60,7 +59,6 @@ function renderDiscordNav(session) {
   btn.title = 'Logged in as ' + session.username + (session.nameRealm ? ' (' + session.nameRealm + ')' : '');
   btn.classList.add('discord-logged-in');
   if (typeof renderNotifBell === 'function') renderNotifBell(session);
-  if (typeof refreshWishlistBisNavBadge === 'function') refreshWishlistBisNavBadge(session);
 
   // Wire click to show a tiny logout dropdown
   btn.onclick = function (ev) {

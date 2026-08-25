@@ -1301,53 +1301,6 @@ function wishlistOwnMissingBisCount(player) {
   return _wishlistMissingBisCount(player);
 }
 
-// Sitewide nav badge on the logged-in player's nav button (js/discord.js's
-// renderDiscordNav, same choke point renderNotifBell uses -- covers every
-// login/session-refresh call site at once). Unlike the sub-tab badge above,
-// this has to trigger its own fetch since the raider may not have opened
-// their profile this session at all.
-function refreshWishlistBisNavBadge(session) {
-  var badge = document.getElementById('navDiscordBisBadge');
-  if (!badge) return;
-  if (!session || !session.nameRealm || (typeof featureEnabled === 'function' && !featureEnabled('bis'))) {
-    badge.style.display = 'none';
-    return;
-  }
-  var roster = (typeof DATA !== 'undefined' && DATA.roster) || [];
-  var player = null;
-  for (var i = 0; i < roster.length; i++) {
-    if (normalise(roster[i].nameRealm) === normalise(session.nameRealm)) {
-      player = roster[i];
-      break;
-    }
-  }
-  if (!player) {
-    badge.style.display = 'none';
-    return;
-  }
-  if (_wishlistPlayerId !== player.id) {
-    _wishlistPlayerId = player.id;
-    _wishlistPlayerFirstName = player.firstName;
-    _wishlistPlayerNameRealm = player.nameRealm;
-    _wishlistPrefs = null;
-  }
-  if (_wishlistPrefs === null) {
-    fetchMyItemPreferences(player.id).then(function (rows) {
-      _wishlistPrefs = rows || [];
-      refreshWishlistBisNavBadge(session);
-      // Own profile may already be open (e.g. a page reload while on it) --
-      // refresh it too so the sub-tab badge picks up the now-loaded prefs.
-      if (typeof renderProfile === 'function' && document.getElementById('profileView')) {
-        renderProfile(player.firstName, 'landing');
-      }
-    });
-    return;
-  }
-  var missing = _wishlistMissingBisCount(player) || 0;
-  badge.textContent = missing;
-  badge.style.display = missing > 0 ? '' : 'none';
-}
-
 // Only one item can be BiS per slot at a time: tagging a new one
 // auto-demotes whatever was previously BiS in an overlapping row to Good,
 // so it stays tracked as a backup instead of two items both claiming BiS.
