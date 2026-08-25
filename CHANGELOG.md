@@ -8,6 +8,14 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.60.34] - 2026-08-25
+
+### Frontend
+
+- The Priority Edit modal's "BiS Players" pool (used to hand-add someone to the bottom of an existing item priority order without regenerating the whole list via "Suggest Order") only ever pulled from officer-curated `bis_items`. A raider who joined the team and filled out their own wishlist with a "BiS" tag had no `bis_items` row yet, so they were invisible there -- an officer had to fall back to "Show all roster" and hunt for them in the full roster. The pool now also includes anyone with a wishlist status of 'bis' for that item.
+
+---
+
 ## [3.60.33] - 2026-08-25
 
 ### Frontend

@@ -1728,6 +1728,17 @@ function openPrioEditModal(item, slot, autoGenerate, difficulty) {
   prioEditRenderPool();
   document.getElementById('prioEditModal').classList.add('active');
   prioEditFetchFairnessWarnings();
+  // Wishlist 'bis' tags feed the BiS Players pool (prioEditGetBisPlayers) so
+  // a raider who just filled out their wishlist shows up here without an
+  // officer first adding them to bis_items -- fetch on demand since not
+  // every path into this modal has already loaded it (buildPriorityNotesTab
+  // is the usual trigger).
+  if (_teamItemPreferences === null && !_teamItemPreferencesFailed) {
+    fetchTeamItemPreferences().then(function (rows) {
+      _setTeamItemPreferences(rows);
+      if (!PRIO_EDIT.showAllRoster) prioEditRenderPool();
+    });
+  }
 
   if (autoGenerate) prioEditGenerate();
 }
@@ -1764,20 +1775,42 @@ function closePrioEditModal() {
 }
 
 // Returns the full name_realm identity of every player whose BiS list has
-// this item (#529: DATA.bisList is keyed by identity, not first name).
+// this item (#529: DATA.bisList is keyed by identity, not first name), plus
+// anyone who has self-tagged the item as 'bis' on their raider wishlist but
+// has no matching officer-curated bis_items row yet -- otherwise a raider who
+// just filled out their wishlist is invisible here until an officer also
+// adds them to bis_items, and the only way to hand-rank a brand-new team
+// member without regenerating the whole list is the "Show all roster"
+// toggle.
 function prioEditGetBisPlayers() {
   var bisList = DATA.bisList || {};
   var itemLower = PRIO_EDIT.item.toLowerCase();
   var result = [];
+  var seen = {};
   Object.keys(bisList).forEach(function (nameRealm) {
     var items = bisList[nameRealm] || [];
     for (var i = 0; i < items.length; i++) {
       if ((items[i].item || '').toLowerCase() === itemLower) {
         result.push(nameRealm);
+        seen[normalise(nameRealm)] = true;
         break;
       }
     }
   });
+  var itemId = (DATA.itemIds || {})[PRIO_EDIT.item];
+  if (itemId && _teamItemPreferences) {
+    var rosterById = {};
+    (DATA.roster || []).forEach(function (p) {
+      rosterById[p.id] = p.nameRealm;
+    });
+    _teamItemPreferences.forEach(function (p) {
+      if (p.item_id !== itemId || p.status !== 'bis') return;
+      var nameRealm = rosterById[p.player_id];
+      if (!nameRealm || seen[normalise(nameRealm)]) return;
+      seen[normalise(nameRealm)] = true;
+      result.push(nameRealm);
+    });
+  }
   return result;
 }
 
