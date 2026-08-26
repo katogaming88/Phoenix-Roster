@@ -173,8 +173,12 @@ function _qaRefresh() {
 // defines it for the profile deep-link feature, and a second same-named function
 // declaration would silently win and shadow this one (#371). roster.js's version
 // calls _qaRefresh() itself instead.
+// The refreshBoeIdentity() calls belong here rather than in js/boe.js: that
+// file loads last, so declaring these hooks there would shadow these (#371,
+// the same collision the comment above describes). index.html only.
 function onDiscordLoginComplete(session) {
   _qaRefresh();
+  if (typeof refreshBoeIdentity === 'function') refreshBoeIdentity();
 }
 function onDiscordLogout() {
   _qaRefresh();
@@ -184,6 +188,7 @@ function onDiscordInitNoSession() {
 }
 function onDiscordClaimComplete(session) {
   _qaRefresh();
+  if (typeof refreshBoeIdentity === 'function') refreshBoeIdentity();
 }
 function onDiscordSessionResolving() {
   _renderClaimPromptLoading();
