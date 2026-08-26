@@ -53,6 +53,10 @@ function switchTab(name) {
   if (name === 'teams') loadTeams();
   if (name === 'siteadmins') loadSiteAdmins();
   if (name === 'guildofficers') loadGuildOfficers();
+  if (name === 'boe') {
+    loadBoeManagers();
+    loadBoePayoutSettings();
+  }
   if (name === 'flags') loadTeams().then(loadFeatureFlags);
   if (name === 'audit') loadAuditLog();
   if (name === 'maintenance') loadMaintenanceStatus();
@@ -87,6 +91,8 @@ function checkAdminAccess() {
       });
       loadSiteAdmins();
       loadGuildOfficers();
+      loadBoeManagers();
+      loadBoePayoutSettings();
       loadMaintenanceStatus();
     });
   });
@@ -352,6 +358,234 @@ function submitRevokeGuildOfficer(discordId) {
       return;
     }
     loadGuildOfficers();
+  });
+}
+
+// ── BoE (#748) ────────────────────────────────────────────────────────────
+//
+// Two halves that both belong to a site admin and to nobody else: the
+// boe_managers grant, which gates every BoE money mutation, and the two payout
+// constants the sale split is computed from. Both are guild-wide, which is why
+// they live here rather than on a team's officer dashboard.
+//
+// admin.html loads this file and nothing else, so common.js's and
+// tab-boe.js's helpers are not reachable here. The two gold helpers below are
+// private copies for that reason, the same situation js/signup.js documents.
+
+// ── BoE managers
+
+var _adminBoeManagers = [];
+
+// The grant is guild-wide since #766, so there is no team or roster row to
+// name a manager by -- only the Discord account the grant was issued to.
+// admin_list_boe_managers() joins auth.users for a display name, and returns
+// auth_user_id so this panel can tell a live grant from one that has not
+// activated yet. A grant issued before its holder's first sign-in has a null
+// auth_user_id and authorizes nothing until link_auth_user_to_member() fills
+// it on their first login. Rendering that identically to a live grant is the
+// gap #768 tracks for guild officers; this panel does not repeat it.
+function boeManagerActivated(row) {
+  return !!(row && row.auth_user_id);
+}
+
+// Three states, not two. A row can have activated and still carry no name,
+// when the Discord account has neither full_name nor name in its metadata --
+// falling back to a single "(not yet logged in)" string there would put a
+// contradiction next to the Active badge in the following column.
+function boeManagerDisplayName(row) {
+  if (row && row.display_name) return row.display_name;
+  if (boeManagerActivated(row)) return '(no name on file)';
+  return '(not yet logged in)';
+}
+
+function loadBoeManagers() {
+  return supabaseClient.rpc('admin_list_boe_managers').then(function (result) {
+    _adminBoeManagers = result.data || [];
+    renderBoeManagerRows();
+  });
+}
+
+function renderBoeManagerRows() {
+  var tbody = document.getElementById('adminBoeManagerRows');
+  tbody.innerHTML = _adminBoeManagers
+    .map(function (bm) {
+      var activated = boeManagerActivated(bm);
+      return (
+        '<tr>' +
+        '<td>' +
+        escapeHtml(boeManagerDisplayName(bm)) +
+        '</td>' +
+        '<td class="admin-discord-id">' +
+        escapeHtml(bm.discord_id) +
+        '</td>' +
+        '<td><span class="admin-status-badge ' +
+        (activated ? 'admin-status-active' : 'admin-status-archived') +
+        '">' +
+        (activated ? 'Active' : 'Not activated') +
+        '</span></td>' +
+        '<td class="admin-row-actions">' +
+        '<button class="btn btn-danger" onclick="submitRevokeBoeManager(\'' +
+        escapeHtml(bm.discord_id) +
+        '\')">Revoke</button>' +
+        '</td>' +
+        '</tr>'
+      );
+    })
+    .join('');
+}
+
+function submitGrantBoeManager() {
+  var input = document.getElementById('grantBoeManagerDiscordId');
+  var discordId = input.value.trim();
+  var errorEl = document.getElementById('grantBoeManagerError');
+  errorEl.style.display = 'none';
+
+  if (!discordId) {
+    errorEl.textContent = 'Discord user ID is required.';
+    errorEl.style.display = '';
+    return;
+  }
+
+  return supabaseClient.rpc('admin_grant_boe_manager', { p_discord_id: discordId }).then(function (result) {
+    if (result.error) {
+      errorEl.textContent = result.error.message;
+      errorEl.style.display = '';
+      return;
+    }
+    input.value = '';
+    return loadBoeManagers();
+  });
+}
+
+function submitRevokeBoeManager(discordId) {
+  if (!confirm('Revoke BoE manager access for this Discord account? They keep any officer role they hold.')) return;
+
+  return supabaseClient.rpc('admin_revoke_boe_manager', { p_discord_id: discordId }).then(function (result) {
+    if (result.error) {
+      alert(result.error.message);
+      return;
+    }
+    return loadBoeManagers();
+  });
+}
+
+// ── BoE payout constants
+
+// Private copies of tab-boe.js's parseGoldInput()/formatGold() -- that bundle
+// is the officer dashboard's and isn't loaded on this page. Named distinctly
+// so a grep for either original still finds only the officer-side call sites.
+// This one adds the safe-integer bound the officer inputs don't need: floor
+// and pivot are bigint server-side, and parseInt past 2^53 rounds silently, so
+// a large enough entry would be saved as a different number than was typed.
+function adminParseGold(value) {
+  var cleaned = String(value == null ? '' : value)
+    .replace(/[,\s]/g, '')
+    .replace(/g$/i, '');
+  if (!/^\d+$/.test(cleaned)) return null;
+  var parsed = parseInt(cleaned, 10);
+  return Number.isSafeInteger(parsed) ? parsed : null;
+}
+
+function adminFormatGold(n) {
+  return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+// boe_record_sale pays least(sale, greatest(floor, round(sale * floor /
+// pivot))). Two exact identities fall out of that, and they are all this line
+// states: the rate is floor/pivot, and the percentage overtakes the floor
+// exactly when sale > pivot (S * floor/pivot > floor <=> S > pivot, whatever
+// the values). Neither restates the round/greatest/least logic itself, so
+// there is no second copy of the money formula here to drift against the SQL.
+//
+// It exists because the raw numbers hide what they mean: nobody reading
+// "pivot: 100000" can see that it is the sale price where the split switches
+// from a flat fee to a percentage.
+function boePayoutSummary(floorValue, pivotValue) {
+  var floor = adminParseGold(floorValue);
+  var pivot = adminParseGold(pivotValue);
+  if (floor === null || pivot === null || pivot <= 0) return '';
+  var rate = Math.round((floor / pivot) * 10000) / 100;
+  return (
+    'Finder gets ' +
+    rate +
+    '% on sales above ' +
+    adminFormatGold(pivot) +
+    'g, or a flat ' +
+    adminFormatGold(floor) +
+    'g below that, never more than the sale itself.'
+  );
+}
+
+// Recomputed on every keystroke, so both inputs pass through blank and 0 on
+// the way to any new value -- boePayoutSummary() returns '' for those rather
+// than dividing by zero.
+function renderBoePayoutSummary() {
+  document.getElementById('boePayoutSummary').textContent = boePayoutSummary(
+    document.getElementById('boePayoutFloor').value,
+    document.getElementById('boePayoutPivot').value
+  );
+}
+
+function loadBoePayoutSettings() {
+  var errorEl = document.getElementById('boePayoutError');
+  return supabaseClient
+    .from('site_settings')
+    .select('boe_payout_floor, boe_payout_pivot')
+    .eq('id', 1)
+    .maybeSingle()
+    .then(function (result) {
+      // Deliberately no default fallback here, unlike loadMaintenanceStatus().
+      // Nothing writes the maintenance defaults back, but a Save on top of a
+      // failed read would write these, overwriting the real payout policy with
+      // whatever the page happened to be displaying.
+      if (result.error || !result.data) {
+        renderBoePayoutSettings(null);
+        errorEl.textContent = result.error ? result.error.message : 'Could not read the payout settings.';
+        errorEl.style.display = '';
+        return;
+      }
+      errorEl.style.display = 'none';
+      renderBoePayoutSettings(result.data);
+    });
+}
+
+function renderBoePayoutSettings(row) {
+  var floor = row && row.boe_payout_floor != null ? String(row.boe_payout_floor) : '';
+  var pivot = row && row.boe_payout_pivot != null ? String(row.boe_payout_pivot) : '';
+  document.getElementById('boePayoutFloor').value = floor;
+  document.getElementById('boePayoutPivot').value = pivot;
+  renderBoePayoutSummary();
+}
+
+function submitBoePayoutSettings() {
+  var errorEl = document.getElementById('boePayoutError');
+  var statusEl = document.getElementById('boePayoutStatus');
+  errorEl.style.display = 'none';
+  statusEl.textContent = '';
+
+  // set_boe_payout_settings() checks the same bounds; these run first only so
+  // the feedback is immediate and no round trip is spent on a typo.
+  var floor = adminParseGold(document.getElementById('boePayoutFloor').value);
+  var pivot = adminParseGold(document.getElementById('boePayoutPivot').value);
+  if (floor === null) {
+    errorEl.textContent = 'Payout floor must be a whole number of gold, zero or more.';
+    errorEl.style.display = '';
+    return;
+  }
+  if (pivot === null || pivot <= 0) {
+    errorEl.textContent = 'Payout pivot must be a whole number of gold, greater than zero.';
+    errorEl.style.display = '';
+    return;
+  }
+
+  return supabaseClient.rpc('set_boe_payout_settings', { p_floor: floor, p_pivot: pivot }).then(function (result) {
+    if (result.error) {
+      errorEl.textContent = result.error.message;
+      errorEl.style.display = '';
+      return;
+    }
+    statusEl.textContent = 'Saved.';
+    return loadBoePayoutSettings();
   });
 }
 

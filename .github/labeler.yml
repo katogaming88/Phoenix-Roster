@@ -64,10 +64,14 @@ audit:
     - any-glob-to-any-file:
       - js/tabs/tab-audit.js
 
+# Both admin surfaces: the officer dashboard's Admin tab and the standalone
+# site-admin dashboard. admin.html is deliberately absent -- every version
+# stamp retags all three HTML files, so listing it here would label every PR.
 admin:
   - changed-files:
     - any-glob-to-any-file:
       - js/tabs/tab-admin.js
+      - js/admin.js
 
 boe:
   - changed-files:
