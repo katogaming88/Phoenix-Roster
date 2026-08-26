@@ -70,6 +70,23 @@ describe('selfReceivedEntryForRow does not collapse same-name placeholder rows',
     ];
     expect(sandbox.selfReceivedEntryForRow(selfRecItems, 'Crafted', 'Off Hand')).toBeFalsy();
   });
+
+  // #745: a raider (real item, so dbSlot is always '' -- bisMergeWishlistPrefs
+  // never sets one) accidentally double-submitted the same helm because the
+  // first confirmation wasn't seen. Both submissions were approved, leaving
+  // two slot-less rows for the same item -- the old `matches.length === 1`
+  // guard then matched neither, and the row went right back to showing "Mark
+  // received" despite both being approved. A row with no dbSlot of its own
+  // has no numbered-slot ambiguity to guess across, so any duplicate count
+  // should still resolve to a match.
+  it('still matches when a real item has been duplicate-submitted (no dbSlot on either side)', () => {
+    const sandbox = loadSandbox();
+    const selfRecItems = [
+      { item: 'Gaze of the Coiled Watcher', slot: '', source: 'Hero: Great Vault' },
+      { item: 'Gaze of the Coiled Watcher', slot: '', source: 'Hero: Great Vault' }
+    ];
+    expect(sandbox.selfReceivedEntryForRow(selfRecItems, 'Gaze of the Coiled Watcher', '')).toBeTruthy();
+  });
 });
 
 describe('mapSupabaseSelfReceived carries the request-level slot, not the catalog slot', () => {
@@ -144,5 +161,73 @@ describe('optimistic DATA.selfReceived pushes store dbSlot, not the display slot
     };
     await sandbox.submitDirectMarkReceived('Kat', 'Kat-Stormrage', 'Crafted', 'Crafted', 'row1', 'Off Hand');
     expect(sandbox.DATA.selfReceived['Kat'][0].slot).toBe('Off Hand');
+  });
+});
+
+// #745: a rejected/thrown promise from the RPC call used to leave the form
+// frozen on "Submitting..."/"Saving..." with no feedback -- a raider had no
+// way to tell their click didn't go through, so they'd resubmit and create a
+// duplicate request. Both submit paths now surface a failure message instead.
+describe('submit failures surface an error instead of hanging silently', () => {
+  function makeSandbox() {
+    const els = {};
+    function el(id) {
+      if (!els[id]) els[id] = { value: '', innerHTML: '', style: {} };
+      return els[id];
+    }
+    const sandbox = {
+      window: {},
+      location: { search: '', pathname: '/' },
+      sessionStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
+      localStorage: { getItem: () => null, setItem: () => {} },
+      document: {
+        getElementById: (id) => els[id] || null,
+        querySelector: () => null,
+        querySelectorAll: () => [],
+        createElement: () => ({}),
+        head: { appendChild: () => {} }
+      },
+      console,
+      Intl,
+      setTimeout: (fn, ms) => {
+        const t = setTimeout(fn, ms);
+        if (t.unref) t.unref();
+        return t;
+      },
+      clearTimeout
+    };
+    vm.createContext(sandbox);
+    vm.runInContext(COMMON_JS, sandbox, { filename: 'common.js' });
+    el('src-row1').value = 'Crafted';
+    el('notes-row1').value = '';
+    el('diff-row1').value = 'Mythic';
+    el('form-row1');
+    sandbox.DATA = { selfReceived: {}, roster: [] };
+    return { sandbox, els };
+  }
+
+  function flush() {
+    return new Promise((resolve) => setTimeout(resolve, 0));
+  }
+
+  it('submitSelfReceivedRequest shows an error when the RPC promise rejects', async () => {
+    const { sandbox, els } = makeSandbox();
+    sandbox.supabaseClient = {
+      rpc: () => Promise.reject(new Error('network drop'))
+    };
+    sandbox.submitSelfReceivedRequest('Kat', 'Kat-Stormrage', 'Crafted', 'Crafted', 'row1', 'Off Hand');
+    await flush();
+    expect(els['form-row1'].innerHTML).toContain('Failed to submit');
+  });
+
+  it('submitDirectMarkReceived shows an error when the RPC promise rejects', async () => {
+    const { sandbox, els } = makeSandbox();
+    sandbox.supabaseClient = {
+      rpc: () => Promise.reject(new Error('network drop')),
+      functions: { invoke: () => Promise.resolve({}) }
+    };
+    sandbox.submitDirectMarkReceived('Kat', 'Kat-Stormrage', 'Crafted', 'Crafted', 'row1', 'Off Hand');
+    await flush();
+    expect(els['form-row1'].innerHTML).toContain('Failed');
   });
 });

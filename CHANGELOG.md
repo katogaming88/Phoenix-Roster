@@ -8,6 +8,15 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.61.1] - 2026-08-26
+
+### Frontend
+
+- Fixed a raider's "Mark received" row going permanently back to unreceived after a duplicate submission. `selfReceivedEntryForRow()` only trusted a slot-less match when it was the *only* candidate for that item name -- a real (non-placeholder) item never carries a slot of its own, so two duplicate submissions for the same item (e.g. the first confirmation wasn't seen, so the raider tried again) left two slot-less rows that the check then refused to match either of, even though both were approved. A row with no slot of its own now matches any slot-less duplicate, since there's no numbered-slot ambiguity to guess across for a real item in the first place.
+- `submitSelfReceivedRequest()`/`submitDirectMarkReceived()` (Mark Received / Submit Request) now show a "Failed to submit. Try again." error if the request promise itself rejects (network drop, etc.) instead of leaving the form frozen on "Submitting..."/"Saving..." with no feedback -- previously only a `result.error` from a *successful* round trip was handled, so a raider with no visible confirmation had no way to tell whether their click actually went through.
+
+---
+
 ## [3.61.0] - 2026-08-25
 
 ### Frontend
