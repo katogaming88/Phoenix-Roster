@@ -8,6 +8,20 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-08-25 -- Self-received corrections: delete is an RPC, revert is the existing UPDATE policy
+
+Tracking issue: [katogaming88/WGA-Raid-Hub#756](https://github.com/katogaming88/WGA-Raid-Hub/issues/756). Approve/reject on the Requests tab were one-way doors: approved rows vanished from every UI surface, and 8 exact duplicate approved rows (raiders resubmitting when feedback failed, the v3.61.1 bug) had no cleanup path short of the site-admin whole-team wipe.
+
+- **Delete is a SECURITY DEFINER RPC (`delete_self_received_request(p_id)`), not a new DELETE policy.** The table deliberately has no DELETE policy for anyone, and the docs/RLS.md contract is that request-table writes go through definer functions only; a policy would loosen that for every ad-hoc client query. The RPC is the per-row officer-tier complement to `danger_clear_self_received_requests()` (site-admin, whole-team).
+- **Revert-to-pending needs no backend at all.** The existing `Officers update self_received_requests` policy carries a plain status UPDATE (the same shape approve/reject already use), and `check_team_id_matches_player` re-validating on the way through is a feature: a row whose player changed teams refuses to revert with a clear error instead of silently landing in the wrong team's queue.
+- **Any status is deletable.** Restricting to approved/rejected would only force a reject-then-delete two-step for a pending duplicate, with the same end state and no added safety.
+- **Null-player rows delete fine.** `player_id` is ON DELETE SET NULL by schema design, so refusing would strand exactly the rows most in need of cleanup; the audit detail carries a "player no longer on roster" marker instead.
+- **The audit entry is written inside the RPC**, action `Self-Received Deleted`, because the row is gone afterwards and a failed client-side follow-up would leave an unlogged delete (`write_audit_log`'s gate is identical to the RPC's own, and a raise there rolls the delete back, failing safe). Target is `players`, never the request row: the Audit tab resolves targets against live tables, and a deleted row would blank TARGET forever. The gate wraps `my_team_role()` in coalesce so a no-role caller is refused rather than slipping through on a null comparison (the #752 shape); `is_guild_officer()` stays excluded like every approval surface here.
+- **The one-way `bis_items.obtained` sync stays one-way.** Deleting or reverting an approved row does not untick the BiS Manager box (the 20260725100000 decision stands: an officer may have ticked it by hand for an unrelated reason). The Requests tab compensates with a passive hint on approved rows whose matching `bis_items` row is obtained, pointing at BiS Manager where untick is already an officer action. The two fairness views subquery this table live, so a delete or revert lifts a player's priority exclusion on its own.
+- Implemented in `20260826030444_delete_self_received_request.sql`. Tests in `tests/rls/self-received-corrections.test.js` cover the role matrix, the audit entry, null-player deletes, the direct-DELETE dead end, and the revert path including the one-way sync and re-approve edges.
+
+---
+
 ## 2026-08-25 -- BoE tracker backend: two-table lifecycle, grant-only writes, gross-sale split
 
 Tracking issue: [katogaming88/WGA-Raid-Hub#745](https://github.com/katogaming88/WGA-Raid-Hub/issues/745). Folds the guild-bank BoE workflow (found -> listed -> sold -> paid, plus retire and revert) into the site, replacing a Google Form, an Apps Script relay bot, and a hand-kept sale spreadsheet.

@@ -5593,6 +5593,12 @@
       "return_type": "void",
       "arguments": "p_floor bigint, p_pivot bigint",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.delete_self_received_request",
+      "return_type": "void",
+      "arguments": "p_id integer",
+      "type": "FUNCTION"
     }
   ],
   "enums": [

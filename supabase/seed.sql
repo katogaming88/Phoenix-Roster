@@ -77,6 +77,19 @@ insert into public.season_signups (id, team_id, signup_name_realm, class_spec_id
 insert into public.self_received_requests (id, team_id, player_id, self_item_id, status) values
   (1, 1, 1, 2, 'pending');
 
+-- Corrections fixtures (#756): an approved and a rejected row on team 1 plus
+-- an approved row on team 2, so delete_self_received_request() and the
+-- revert-to-pending UPDATE path have per-role targets. Placed before the
+-- bis_items block below on purpose: the approved inserts fire
+-- trg_self_received_sync_bis_obtained, and with no matching bis_items row
+-- existing yet the seed's obtained flags stay false. Row 2 shares
+-- (player 1, item 1) with the bis_items seed row so the sync tests can
+-- exercise the trigger against it.
+insert into public.self_received_requests (id, team_id, player_id, self_item_id, status, track, source, slot) values
+  (2, 1, 1, 1, 'approved', 'Hero', 'M+', null),
+  (3, 1, 2, 2, 'rejected', 'Champion', 'Great Vault', null),
+  (4, 2, 3, 1, 'approved', 'Myth', 'Crafted', null);
+
 -- BoE tracker (#745): item 1 is found and owned by (unlinked) player 1 so
 -- own-row read tests can link and see it; item 2 is sold with an unresolved
 -- finder and a split satisfying the policy formula (150000 -> 30000/120000

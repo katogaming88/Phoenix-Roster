@@ -2133,6 +2133,10 @@ export type Database = {
         Args: { p_team_id: number };
         Returns: number;
       };
+      delete_self_received_request: {
+        Args: { p_id: number };
+        Returns: undefined;
+      };
       direct_mark_received: {
         Args: {
           p_item_name: string;
