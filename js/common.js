@@ -55,7 +55,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.60.36';
+var VERSION = '3.60.37';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -4017,6 +4017,15 @@ function getSelfReceivedItems(firstName) {
 // slot-less (pre-#386) entry when it's the sole candidate for that name,
 // mirroring sync_bis_obtained_from_self_received()'s own "don't guess across
 // slots" caution on the DB side.
+//
+// A row with no dbSlot of its own (every real, non-placeholder item -- see
+// bisMergeWishlistPrefs) has no numbered-slot ambiguity to guess across in
+// the first place, so *any* slot-less match counts, no matter how many exist.
+// Without this, a raider who accidentally double-submitted the same real
+// item (#745 -- e.g. the first submission's confirmation wasn't seen) ended
+// up with two slot-less rows for it, `matches.length === 1` stopped matching
+// either one, and the row went right back to showing "Mark received" despite
+// both submissions having been approved.
 function selfReceivedEntryForRow(selfRecItems, item, dbSlot) {
   var norm = normalise(item);
   var matches = [];
@@ -4027,7 +4036,13 @@ function selfReceivedEntryForRow(selfRecItems, item, dbSlot) {
   for (var j = 0; j < matches.length; j++) {
     if (matches[j].slot && matches[j].slot === dbSlot) return matches[j];
   }
-  if (matches.length === 1 && !matches[0].slot) return matches[0];
+  if (!dbSlot) {
+    for (var k = 0; k < matches.length; k++) {
+      if (!matches[k].slot) return matches[k];
+    }
+  } else if (matches.length === 1 && !matches[0].slot) {
+    return matches[0];
+  }
   return null;
 }
 
@@ -5156,6 +5171,17 @@ function submitSelfReceivedRequest(firstName, nameRealm, item, slot, rowId, dbSl
       );
       if (btn) btn.style.display = 'none';
       if (autoApproved) refreshBisCompletion(firstName, nameRealm);
+    })
+    // A thrown/rejected promise here (network drop, an unhandled exception in
+    // the .then above) used to leave the form frozen on "Submitting..." with
+    // no feedback at all -- a raider (e.g. #745, Bearsdh's helm) would assume
+    // it silently failed and resubmit, creating a duplicate request. Surface
+    // it instead of leaving the raider guessing.
+    .catch(function (err) {
+      if (!formEl) return;
+      console.warn('submit_self_received failed.', err);
+      formEl.innerHTML =
+        '<p style="font-size:1.07rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
     });
 }
 
@@ -5216,6 +5242,13 @@ function submitDirectMarkReceived(firstName, nameRealm, item, slot, rowId, dbSlo
       var markedPlayer = findRosterPlayerByNameRealm(nameRealm);
       writeAuditLog('Loot Marked Received', 'players', markedPlayer ? markedPlayer.id : null, item);
       refreshBisCompletion(firstName, nameRealm);
+    })
+    // See submitSelfReceivedRequest's matching .catch -- a rejected/thrown
+    // promise here otherwise leaves the form frozen with no feedback at all.
+    .catch(function (err) {
+      if (!formEl) return;
+      console.warn('direct_mark_received failed.', err);
+      formEl.innerHTML = '<p style="font-size:1.07rem;color:var(--melee);padding:0.5rem 0;">Failed. Try again.</p>';
     });
 }
 
