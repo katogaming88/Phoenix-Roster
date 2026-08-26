@@ -14,6 +14,10 @@ with each release split into `### Frontend` (drives the version number) and
 
 - Added a "Recent decisions" section to the officer Requests tab (#756): approved and rejected self-received requests, previously invisible the moment they were decided, now list below the pending queue with two per-row actions. "Revert to pending" sends a decision back to the queue (and notifies the raider); "Delete" removes the row entirely via the new `delete_self_received_request()` RPC, the cleanup path for duplicate submissions. Neither action unticks a BiS Manager "obtained" box the approval may have set -- approved rows whose BiS entry is obtained carry a hint pointing there instead. Approve/reject audit entries now record which item was decided (they previously logged no detail), and the tab's help text no longer claims approval touches loot history or fairness scores.
 
+### Backend
+
+- `build_rclc_export()` now attaches each ranked player's wishlist status (bis/good/ok, from `item_preferences`) to the priority payload as new `<track>_status` sibling keys, plus a top-level `statusLabels` object merging each team's configured Wishlist Tier Labels over the site defaults (#760). Lets the RCLootCouncil_PriorityLoot addon's officer voting frame show whether a rank is a raider's real BiS pick, a lower-tier pick, or not wishlist-backed at all -- previously invisible in the export. Additive only; an addon client that hasn't picked up the new fields keeps working unchanged.
+
 ---
 
 ## [3.61.1] - 2026-08-26
