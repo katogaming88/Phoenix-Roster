@@ -489,14 +489,19 @@
               <div id="help-requests" class="help-tip">
                 Raiders submit requests for items received outside of raid (M+, Great Vault, Crafted, Catalyst, Bonus
                 Roll).<br>
-                <strong>Approve</strong> marks the item as received in their loot history, which affects loot fairness
-                scores and priority standing.<br>
+                <strong>Approve</strong> records the item on the raider's profile, ticks the matching BiS Manager entry
+                as obtained, and removes them from priority fairness warnings for that item.<br>
                 <strong>Reject</strong> dismisses the request with no change to their record.<br>
+                <strong>Recent decisions</strong> below the queue lists approved and rejected requests. Revert sends
+                one back to the pending queue; Delete removes it (the usual fix for a duplicate submission). Neither
+                unticks the BiS Manager obtained box -- do that in BiS Manager if the approval itself was the
+                mistake.<br>
                 Officers can also mark items received directly from a player's profile card on the Roster tab -- this
                 bypasses the approval queue and takes effect immediately.
               </div>
             </div>
             <div id="requestsContainer"></div>
+            <div id="requestsDecisions"></div>
           </div>
 
           <!-- Audit Log tab -->
