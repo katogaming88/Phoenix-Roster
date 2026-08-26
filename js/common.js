@@ -5127,70 +5127,77 @@ function submitSelfReceivedRequest(firstName, nameRealm, item, slot, rowId, dbSl
     return;
   }
 
-  supabaseClient
-    .rpc('submit_self_received', {
-      p_team_id: _teamCfg.supabaseTeamId,
-      p_name_realm: nameRealm,
-      p_item_name: item,
-      p_track: _selfReceivedTrackFromDiff(diff),
-      p_source: sourceEl.value,
-      p_note: notesEl ? notesEl.value : '',
-      // The raw bis_items.slot, not the display slot -- approval flips exactly
-      // this row (#386). Empty for legacy rows that never had a slot, which the
-      // trigger handles by only inferring a target when the item occupies a
-      // single slot for that player.
-      p_slot: dbSlot || ''
-    })
-    .then(function (result) {
-      if (!formEl) return;
-      if (result.error) {
+  // Promise.resolve() unwraps the builder's PromiseLike into a real Promise
+  // -- needed for the .catch() below, since PromiseLike itself has no
+  // .catch() (same reason as fetchPlayerItemPreferences() above). Returned
+  // so callers (tests) can await the whole chain; the onclick sites ignore it.
+  return (
+    Promise.resolve(
+      supabaseClient.rpc('submit_self_received', {
+        p_team_id: _teamCfg.supabaseTeamId,
+        p_name_realm: nameRealm,
+        p_item_name: item,
+        p_track: _selfReceivedTrackFromDiff(diff),
+        p_source: sourceEl.value,
+        p_note: notesEl ? notesEl.value : '',
+        // The raw bis_items.slot, not the display slot -- approval flips exactly
+        // this row (#386). Empty for legacy rows that never had a slot, which the
+        // trigger handles by only inferring a target when the item occupies a
+        // single slot for that player.
+        p_slot: dbSlot || ''
+      })
+    )
+      .then(function (result) {
+        if (!formEl) return;
+        if (result.error) {
+          formEl.innerHTML =
+            '<p style="font-size:1.07rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
+          return;
+        }
+        var row = result.data && result.data[0];
+        var autoApproved = !!(row && row.auto_approved);
+        if (autoApproved && DATA && DATA.selfReceived) {
+          if (!DATA.selfReceived[firstName]) DATA.selfReceived[firstName] = [];
+          // dbSlot, not the display `slot` -- selfReceivedEntryForRow() matches
+          // on the raw bis_items.slot, same as the server-side row this mirrors.
+          DATA.selfReceived[firstName].push({ item: item, slot: dbSlot || '', source: diff + ': ' + sourceEl.value });
+        } else {
+          supabaseClient.functions.invoke('discord-bot-webhook', {
+            body: {
+              action: 'selfreceived',
+              team: TEAM_SLUG,
+              payload: {
+                player: nameRealm,
+                item: item,
+                slot: slot,
+                source: sourceEl.value,
+                notes: notesEl ? notesEl.value : ''
+              }
+            }
+          });
+        }
+        formEl.innerHTML =
+          '<p style="font-size:1.07rem;color:var(--text-muted);padding:0.5rem 0;">' +
+          (autoApproved ? 'Marked as received.' : 'Request submitted -- pending officer approval.') +
+          '</p>';
+        var btn = /** @type {HTMLElement} */ (
+          document.querySelector('#bisrow-' + firstName + '-' + rowId.split('-').pop() + ' .mark-received-btn')
+        );
+        if (btn) btn.style.display = 'none';
+        if (autoApproved) refreshBisCompletion(firstName, nameRealm);
+      })
+      // A thrown/rejected promise here (network drop, an unhandled exception in
+      // the .then above) used to leave the form frozen on "Submitting..." with
+      // no feedback at all -- a raider (e.g. #745, Bearsdh's helm) would assume
+      // it silently failed and resubmit, creating a duplicate request. Surface
+      // it instead of leaving the raider guessing.
+      .catch(function (err) {
+        if (!formEl) return;
+        console.warn('submit_self_received failed.', err);
         formEl.innerHTML =
           '<p style="font-size:1.07rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
-        return;
-      }
-      var row = result.data && result.data[0];
-      var autoApproved = !!(row && row.auto_approved);
-      if (autoApproved && DATA && DATA.selfReceived) {
-        if (!DATA.selfReceived[firstName]) DATA.selfReceived[firstName] = [];
-        // dbSlot, not the display `slot` -- selfReceivedEntryForRow() matches
-        // on the raw bis_items.slot, same as the server-side row this mirrors.
-        DATA.selfReceived[firstName].push({ item: item, slot: dbSlot || '', source: diff + ': ' + sourceEl.value });
-      } else {
-        supabaseClient.functions.invoke('discord-bot-webhook', {
-          body: {
-            action: 'selfreceived',
-            team: TEAM_SLUG,
-            payload: {
-              player: nameRealm,
-              item: item,
-              slot: slot,
-              source: sourceEl.value,
-              notes: notesEl ? notesEl.value : ''
-            }
-          }
-        });
-      }
-      formEl.innerHTML =
-        '<p style="font-size:1.07rem;color:var(--text-muted);padding:0.5rem 0;">' +
-        (autoApproved ? 'Marked as received.' : 'Request submitted -- pending officer approval.') +
-        '</p>';
-      var btn = /** @type {HTMLElement} */ (
-        document.querySelector('#bisrow-' + firstName + '-' + rowId.split('-').pop() + ' .mark-received-btn')
-      );
-      if (btn) btn.style.display = 'none';
-      if (autoApproved) refreshBisCompletion(firstName, nameRealm);
-    })
-    // A thrown/rejected promise here (network drop, an unhandled exception in
-    // the .then above) used to leave the form frozen on "Submitting..." with
-    // no feedback at all -- a raider (e.g. #745, Bearsdh's helm) would assume
-    // it silently failed and resubmit, creating a duplicate request. Surface
-    // it instead of leaving the raider guessing.
-    .catch(function (err) {
-      if (!formEl) return;
-      console.warn('submit_self_received failed.', err);
-      formEl.innerHTML =
-        '<p style="font-size:1.07rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
-    });
+      })
+  );
 }
 
 function submitDirectMarkReceived(firstName, nameRealm, item, slot, rowId, dbSlot) {
@@ -5216,48 +5223,54 @@ function submitDirectMarkReceived(firstName, nameRealm, item, slot, rowId, dbSlo
     return;
   }
 
-  supabaseClient
-    .rpc('direct_mark_received', {
-      p_team_id: _teamCfg.supabaseTeamId,
-      p_name_realm: nameRealm,
-      p_item_name: item,
-      p_track: _selfReceivedTrackFromDiff(diff),
-      p_source: sourceEl.value,
-      p_note: notesEl ? notesEl.value : '',
-      // See submitSelfReceivedRequest: the raw bis_items.slot, targeting the
-      // exact row this button was rendered for (#386).
-      p_slot: dbSlot || ''
-    })
-    .then(function (result) {
-      if (!formEl) return;
-      if (result.error) {
+  // Promise.resolve(): see submitSelfReceivedRequest's matching wrapper --
+  // PromiseLike itself has no .catch(), and the return lets tests await the
+  // chain.
+  return (
+    Promise.resolve(
+      supabaseClient.rpc('direct_mark_received', {
+        p_team_id: _teamCfg.supabaseTeamId,
+        p_name_realm: nameRealm,
+        p_item_name: item,
+        p_track: _selfReceivedTrackFromDiff(diff),
+        p_source: sourceEl.value,
+        p_note: notesEl ? notesEl.value : '',
+        // See submitSelfReceivedRequest: the raw bis_items.slot, targeting the
+        // exact row this button was rendered for (#386).
+        p_slot: dbSlot || ''
+      })
+    )
+      .then(function (result) {
+        if (!formEl) return;
+        if (result.error) {
+          formEl.innerHTML = '<p style="font-size:1.07rem;color:var(--melee);padding:0.5rem 0;">Failed. Try again.</p>';
+          return;
+        }
+        formEl.style.display = 'none';
+        var rowEl = document.getElementById(rowId);
+        if (rowEl) {
+          rowEl.classList.add('bis-received');
+          var btn = rowEl.querySelector('.mark-received-btn');
+          if (btn) btn.outerHTML = '<span class="bis-self-received-badge">' + source + '</span>';
+        }
+        if (DATA && DATA.selfReceived) {
+          if (!DATA.selfReceived[firstName]) DATA.selfReceived[firstName] = [];
+          // dbSlot, not the display `slot` -- selfReceivedEntryForRow() matches
+          // on the raw bis_items.slot, same as the server-side row this mirrors.
+          DATA.selfReceived[firstName].push({ item: item, slot: dbSlot || '', source: source });
+        }
+        var markedPlayer = findRosterPlayerByNameRealm(nameRealm);
+        writeAuditLog('Loot Marked Received', 'players', markedPlayer ? markedPlayer.id : null, item);
+        refreshBisCompletion(firstName, nameRealm);
+      })
+      // See submitSelfReceivedRequest's matching .catch -- a rejected/thrown
+      // promise here otherwise leaves the form frozen with no feedback at all.
+      .catch(function (err) {
+        if (!formEl) return;
+        console.warn('direct_mark_received failed.', err);
         formEl.innerHTML = '<p style="font-size:1.07rem;color:var(--melee);padding:0.5rem 0;">Failed. Try again.</p>';
-        return;
-      }
-      formEl.style.display = 'none';
-      var rowEl = document.getElementById(rowId);
-      if (rowEl) {
-        rowEl.classList.add('bis-received');
-        var btn = rowEl.querySelector('.mark-received-btn');
-        if (btn) btn.outerHTML = '<span class="bis-self-received-badge">' + source + '</span>';
-      }
-      if (DATA && DATA.selfReceived) {
-        if (!DATA.selfReceived[firstName]) DATA.selfReceived[firstName] = [];
-        // dbSlot, not the display `slot` -- selfReceivedEntryForRow() matches
-        // on the raw bis_items.slot, same as the server-side row this mirrors.
-        DATA.selfReceived[firstName].push({ item: item, slot: dbSlot || '', source: source });
-      }
-      var markedPlayer = findRosterPlayerByNameRealm(nameRealm);
-      writeAuditLog('Loot Marked Received', 'players', markedPlayer ? markedPlayer.id : null, item);
-      refreshBisCompletion(firstName, nameRealm);
-    })
-    // See submitSelfReceivedRequest's matching .catch -- a rejected/thrown
-    // promise here otherwise leaves the form frozen with no feedback at all.
-    .catch(function (err) {
-      if (!formEl) return;
-      console.warn('direct_mark_received failed.', err);
-      formEl.innerHTML = '<p style="font-size:1.07rem;color:var(--melee);padding:0.5rem 0;">Failed. Try again.</p>';
-    });
+      })
+  );
 }
 
 // -- Player profile (shared between public and officer pages) --------------
