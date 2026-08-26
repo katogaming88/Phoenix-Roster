@@ -11,8 +11,8 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=3.62.1">
-  <link rel="stylesheet" href="css/officer.css?v=3.62.1">
+  <link rel="stylesheet" href="css/styles.css?v=3.63.0">
+  <link rel="stylesheet" href="css/officer.css?v=3.63.0">
   <!-- Hover tooltips for Buff Coverage's spell links (#491) and item links
        (Priority tab/BiS grid, itemNameBlockHtml(), #567). Auto-attaches to
        any <a class="wowhead">. whTooltips must be set before power.js loads
@@ -105,6 +105,7 @@
               class="nav-notif nav-notif-abs" id="mplusNavBadge" style="display:none;"></span></button>
           <button class="nav-item" id="navTab-requests" onclick="switchTab('requests')">Received Item Requests<span
               class="nav-notif nav-notif-abs" id="requestsNavBadge" style="display:none;"></span></button>
+          <button class="nav-item" id="navTab-boe" onclick="switchTab('boe')">BoE Sales</button>
           <div class="nav-admin-divider"></div>
           <button class="nav-item" id="navTab-season" onclick="switchTab('season')">Season Settings</button>
           <button class="nav-item" onclick="switchTab('bios')">Officer Bios</button>
@@ -502,6 +503,29 @@
             </div>
             <div id="requestsContainer"></div>
             <div id="requestsDecisions"></div>
+          </div>
+
+          <!-- BoE Sales tab -->
+          <div id="tab-boe" class="tab-panel">
+            <div class="signup-officer-panel" style="margin-bottom:1rem;">
+              <div class="signup-status-row">
+                <span class="signup-status-label">BoE Sales<button class="help-btn"
+                    onclick="toggleHelp('help-boe')" title="Show help">?</button></span>
+              </div>
+              <div id="help-boe" class="help-tip">
+                Raiders report found BoEs through the public BoE form; each report lands here as an open item.<br>
+                <strong>Record Listing</strong> logs an auction-house listing (relists keep their history).
+                <strong>Record Sale</strong> stores the sale price and computes the finder's payout from the
+                guild-wide split policy. <strong>Mark Paid</strong> closes the loop once the finder has their gold.
+                <strong>Retire</strong> is for items that never sell or were reported in error.<br>
+                Recording sales and payouts needs the BoE manager grant, assigned by a site admin; other officers
+                see this tab read-only.
+              </div>
+            </div>
+            <div id="boeSummary"></div>
+            <div id="boeOpen"></div>
+            <div id="boeAwaiting"></div>
+            <div id="boeHistory"></div>
           </div>
 
           <!-- Audit Log tab -->
@@ -960,6 +984,18 @@
                 </ol>
               </div>
 
+              <div class="help-ref-card">
+                <h4 class="help-ref-title">Track a found BoE through sale and payout</h4>
+                <ol class="help-ref-steps">
+                  <li>A raider reports the drop through the public BoE form; it appears under <strong>BoE Sales &gt; Open</strong>.</li>
+                  <li>When it goes to the auction house, click <strong>Record Listing</strong> and enter the listing price. Relists just get another Record Listing -- the history stays on the item.</li>
+                  <li>When it sells, click <strong>Record Sale</strong> and enter the sale price. The finder's payout and the guild cut are computed from the guild-wide split policy and shown under <strong>Awaiting Payout</strong>.</li>
+                  <li>After mailing the finder their gold, click <strong>Mark Paid</strong>. The item moves to History.</li>
+                  <li><strong>Retire</strong> closes out an item that never sold or was reported by mistake.</li>
+                  <li>These actions need the BoE manager grant (assigned by a site admin); without it the tab is read-only.</li>
+                </ol>
+              </div>
+
             </div>
           </div>
 
@@ -1183,27 +1219,28 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/common.js?v=3.62.1"></script>
-  <script src="js/discord.js?v=3.62.1"></script>
-  <script src="js/officer.js?v=3.62.1"></script>
-  <script src="js/tabs/tab-roster.js?v=3.62.1"></script>
-  <script src="js/tabs/tab-conflicts.js?v=3.62.1"></script>
-  <script src="js/tabs/tab-fairness.js?v=3.62.1"></script>
-  <script src="js/tabs/tab-attendance.js?v=3.62.1"></script>
-  <script src="js/tabs/tab-bench-fairness.js?v=3.62.1"></script>
-  <script src="js/tabs/tab-signups.js?v=3.62.1"></script>
-  <script src="js/tabs/tab-requests.js?v=3.62.1"></script>
-  <script src="js/tabs/tab-bis.js?v=3.62.1"></script>
-  <script src="js/tabs/tab-pending-roster.js?v=3.62.1"></script>
-  <script src="js/tabs/tab-mplus.js?v=3.62.1"></script>
-  <script src="js/tabs/tab-priority.js?v=3.62.1"></script>
-  <script src="js/tabs/tab-audit.js?v=3.62.1"></script>
-  <script src="js/tabs/tab-reports.js?v=3.62.1"></script>
-  <script src="js/tabs/tab-season.js?v=3.62.1"></script>
-  <script src="js/tabs/tab-bios.js?v=3.62.1"></script>
-  <script src="js/tabs/tab-loot-import.js?v=3.62.1"></script>
-  <script src="js/tabs/tab-scoring.js?v=3.62.1"></script>
-  <script src="js/tabs/tab-admin.js?v=3.62.1"></script>
+  <script src="js/common.js?v=3.63.0"></script>
+  <script src="js/discord.js?v=3.63.0"></script>
+  <script src="js/officer.js?v=3.63.0"></script>
+  <script src="js/tabs/tab-roster.js?v=3.63.0"></script>
+  <script src="js/tabs/tab-conflicts.js?v=3.63.0"></script>
+  <script src="js/tabs/tab-fairness.js?v=3.63.0"></script>
+  <script src="js/tabs/tab-attendance.js?v=3.63.0"></script>
+  <script src="js/tabs/tab-bench-fairness.js?v=3.63.0"></script>
+  <script src="js/tabs/tab-signups.js?v=3.63.0"></script>
+  <script src="js/tabs/tab-requests.js?v=3.63.0"></script>
+  <script src="js/tabs/tab-bis.js?v=3.63.0"></script>
+  <script src="js/tabs/tab-pending-roster.js?v=3.63.0"></script>
+  <script src="js/tabs/tab-mplus.js?v=3.63.0"></script>
+  <script src="js/tabs/tab-priority.js?v=3.63.0"></script>
+  <script src="js/tabs/tab-audit.js?v=3.63.0"></script>
+  <script src="js/tabs/tab-reports.js?v=3.63.0"></script>
+  <script src="js/tabs/tab-season.js?v=3.63.0"></script>
+  <script src="js/tabs/tab-bios.js?v=3.63.0"></script>
+  <script src="js/tabs/tab-loot-import.js?v=3.63.0"></script>
+  <script src="js/tabs/tab-scoring.js?v=3.63.0"></script>
+  <script src="js/tabs/tab-admin.js?v=3.63.0"></script>
+  <script src="js/tabs/tab-boe.js?v=3.63.0"></script>
   <script>
 renderSiteNav('officer');
 document.getElementById('versionNum').textContent = VERSION;
@@ -1311,7 +1348,7 @@ function showAdminTab(access) {
 // normal nav. Loot Import and BiS approvals live inside otherwise-visible
 // tabs (Loot, BiS Manager) and are gated at the sub-surface level in their
 // own tab files instead of hidden here.
-var GUILD_ONLY_HIDDEN_NAV_IDS = ['navTab-mplus', 'navTab-signups', 'navTab-season'];
+var GUILD_ONLY_HIDDEN_NAV_IDS = ['navTab-mplus', 'navTab-signups', 'navTab-season', 'navTab-boe'];
 function applyGuildOfficerNavVisibility(level) {
   window._guildOfficerAccessLevel = level;
   var hide = level === 'guild';

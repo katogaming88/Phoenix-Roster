@@ -8,6 +8,14 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.63.0] - 2026-08-26
+
+### Frontend
+
+- New officer "BoE Sales" tab (#747): runs the BoE auction lifecycle end to end. Open items (from the raider BoE form) take Record Listing, Record Sale, and Retire; sold items show the stored payout split and take Mark Paid; paid and retired items land in History. A summary strip totals guild income to date and outstanding payouts. Action buttons appear only for BoE managers (site-admin-assigned grant) and site admins; other officers get the tab read-only. Every lifecycle action writes an audit log entry. The tab rides the existing per-team BoE feature flag, whose Admin-panel label is now "BoE Tracker" since it gates both the raider form and this tab.
+
+---
+
 ## [3.62.1] - 2026-08-26
 
 ### Frontend

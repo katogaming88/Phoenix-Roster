@@ -191,6 +191,22 @@ describe('renderDangerZone (#317)', () => {
   });
 });
 
+describe('BoE feature flag entry (#747)', () => {
+  // The boe flag shipped with #746 gating the raider form; since #747 it also
+  // hides the officer tab, so the label must say tracker, not found form, and
+  // the row must actually render in the flag grid.
+  it('renders the BoE Tracker flag row in the feature-flags grid', () => {
+    const { sandbox, els } = makeSandbox({ access: true });
+    sandbox.featureEnabled = () => true;
+    sandbox.escHtml = (s) => String(s);
+    sandbox.renderAdminFeatureFlags();
+    const entry = sandbox.ADMIN_FEATURE_FLAGS.find((f) => f.key === 'boe');
+    expect(entry).toBeTruthy();
+    expect(entry.label).toBe('BoE Tracker');
+    expect(els.adminFeatureFlagsContent.innerHTML).toContain("toggleAdminFeatureFlag('boe'");
+  });
+});
+
 describe('executeDangerOp guard (#317)', () => {
   it('refuses an op hidden from the current access level even with a valid confirm', () => {
     const els = { 'danger-confirm-clearLootData': makeEl() };
