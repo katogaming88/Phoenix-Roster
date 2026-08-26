@@ -160,7 +160,14 @@ function boeRow(over) {
 }
 
 const FOUND = () => boeRow({ id: 1 });
-const LISTED = () => boeRow({ id: 2, item_name: 'Sash of the Fallen Star', status: 'listed', track: null, found_at: '2026-08-19T01:00:00Z' });
+const LISTED = () =>
+  boeRow({
+    id: 2,
+    item_name: 'Sash of the Fallen Star',
+    status: 'listed',
+    track: null,
+    found_at: '2026-08-19T01:00:00Z'
+  });
 const SOLD = () =>
   boeRow({
     id: 3,
@@ -183,7 +190,8 @@ const PAID = () =>
     finder_payout: 20000,
     guild_cut: 80000
   });
-const RETIRED = () => boeRow({ id: 5, item_name: 'Drape of Embers', status: 'retired', retired_at: '2026-08-23T02:00:00Z' });
+const RETIRED = () =>
+  boeRow({ id: 5, item_name: 'Drape of Embers', status: 'retired', retired_at: '2026-08-23T02:00:00Z' });
 const ALL_ROWS = () => [FOUND(), LISTED(), SOLD(), PAID(), RETIRED()];
 const LISTING_ROW = () => ({ id: 11, boe_item_id: 2, listed_at: '2026-08-19T12:00:00Z', price: 300000, note: null });
 
@@ -204,6 +212,18 @@ describe('buildBoeTab sections', () => {
     const { client } = makeBoeClient({ items: [LISTED()], listings: [LISTING_ROW()], rpc: managerRpc() });
     const { els } = await build({ client });
     expect(els.boeOpen.innerHTML).toContain('300,000');
+  });
+
+  it('shows the raider-submitted note on the open item', async () => {
+    // The submit form's note reaches officers nowhere else; the Open row is
+    // its one surfacing point.
+    const { client } = makeBoeClient({
+      items: [boeRow({ id: 7, note: 'from trash before boss 2' })],
+      listings: [],
+      rpc: managerRpc()
+    });
+    const { els } = await build({ client });
+    expect(els.boeOpen.innerHTML).toContain('from trash before boss 2');
   });
 
   it('renders a per-section empty state when a section has no rows', async () => {
@@ -292,7 +312,10 @@ describe('price parsing and recording a sale', () => {
       items: [FOUND()],
       listings: [],
       rpc: managerRpc({
-        boe_record_sale: () => ({ data: [{ sale_price: 250000, finder_payout: 50000, guild_cut: 200000 }], error: null })
+        boe_record_sale: () => ({
+          data: [{ sale_price: 250000, finder_payout: 50000, guild_cut: 200000 }],
+          error: null
+        })
       })
     });
     const loaded = await build({ client, els });

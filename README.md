@@ -53,6 +53,7 @@ Discord-authenticated, session lasts 2 hours. A global season selector filters l
 | **Signups** | Signups / Pending Roster / History | Signups: open/close the public form; review/approve/deny submissions. Pending Roster: approved applicants awaiting a roster add, with Trial/Backup Tank/Backup Healer toggles at promotion time. History: past signup activity. |
 | **M+ Exclusions** | -- | Review/approve/reject raider-submitted M+ exclusion requests; toggle exclusion per player manually; open/close the request window. |
 | **Received Item Requests** | -- | Approve or reject raider self-mark requests; writes straight to loot history on approval. |
+| **BoE Sales** | -- | Found-BoE auction lifecycle: record listings and sales (payout split computed from the guild-wide policy), mark payouts paid, retire dead items; summary strip of guild income and outstanding payouts. Read-only without the site-admin-assigned BoE manager grant. |
 | **Season Settings** | Settings / Raid Progression / History | Settings: season name/start/end, season code prefix, target tank/heal roster counts, trial thresholds, WCL guild link. Raid Progression: boss kill dates shown publicly. History: past seasons, Archive Season (snapshots the roster and pushes to history), Unarchive. |
 | **Officer Bios** | -- | Team officer bio cards shown on the public About tab; also edits Guild Officer Bios (guild-wide, site-admin write access). |
 | **Audit Log** | -- | Searchable, append-only log of every officer/admin action -- actor, action, target, detail, timestamp. |

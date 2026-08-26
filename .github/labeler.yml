@@ -69,6 +69,13 @@ admin:
     - any-glob-to-any-file:
       - js/tabs/tab-admin.js
 
+boe:
+  - changed-files:
+    - any-glob-to-any-file:
+      - js/boe.js
+      - js/tabs/tab-boe.js
+      - supabase/functions/boe-webhook/**
+
 database:
   - changed-files:
     - any-glob-to-any-file:

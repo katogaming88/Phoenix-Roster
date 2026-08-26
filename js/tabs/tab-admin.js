@@ -561,7 +561,7 @@ var ADMIN_FEATURE_FLAGS = [
   { key: 'bench', label: 'Bench Management' },
   { key: 'attendance', label: 'Attendance' },
   { key: 'requests', label: 'Received Item Requests' },
-  { key: 'boe', label: 'BoE Found Form' }
+  { key: 'boe', label: 'BoE Tracker' }
 ];
 
 function renderAdminFeatureFlags() {

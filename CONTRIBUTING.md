@@ -78,7 +78,7 @@ or add the `chore` label.
 | `js/officer.js` | Officer boot, session expiry, tab dispatch |
 | `js/officer-quick-actions.js` | Officer quick-actions bar (priority export, attendance refresh, loot paste) shown on the public page |
 | `js/streamers.js` | Live Twitch streamer widget |
-| `js/tabs/tab-*.js` | One file per officer tab (17 files) |
+| `js/tabs/tab-*.js` | One file per officer tab (19 files) |
 | `js/admin.js` | Standalone boot/logic for `admin.html` -- not team-scoped, so it doesn't reuse common.js/discord.js |
 | `css/styles.css` | Shared styles across all pages |
 | `css/officer.css` | Officer-specific styles (partial split out of `styles.css`, still in progress) |

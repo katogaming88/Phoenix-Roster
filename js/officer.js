@@ -55,6 +55,7 @@ function switchTab(name) {
     buildSignupsTab();
   }
   if (name === 'requests') buildRequestsTab();
+  if (name === 'boe') buildBoeTab();
   if (name === 'bis') {
     resetBisSubTab();
     buildBisTab();
@@ -416,8 +417,10 @@ function applyFeatureFlagVisibility() {
   setVisible('navTab-requests', requestsOn);
   setVisible('navTab-loot', lootOn || fairnessOn);
   // The site nav's BoE link points back at index.html's submit card (#746);
-  // hide it alongside the card when the team's boe flag is off.
+  // hide it alongside the card when the team's boe flag is off. The officer
+  // BoE Sales tab (#747) rides the same flag.
   setVisible('navBoE', boeOn);
+  setVisible('navTab-boe', boeOn);
 
   setVisible('loot-subtab-btn-import', lootOn);
   setVisible('loot-subtab-btn-history', lootOn);
