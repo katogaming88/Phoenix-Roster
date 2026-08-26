@@ -8,6 +8,14 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.62.1] - 2026-08-26
+
+### Frontend
+
+- On a raider's BiS list, a received item's track badge now shows only the highest track on file (a Normal receive no longer keeps showing once a Heroic or Mythic copy of the same item comes in), and a Normal/Champion-track receive reads as a single `N` instead of the full word "Normal", matching the existing `H`/`M` convention.
+
+---
+
 ## [3.62.0] - 2026-08-26
 
 ### Frontend

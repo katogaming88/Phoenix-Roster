@@ -55,7 +55,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.62.0';
+var VERSION = '3.62.1';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -4151,6 +4151,11 @@ var RANK_PILL_DIFF_COLORS = {
   mythic: { c: 'var(--ranged)', bg: 'rgba(191,140,255,0.18)', bd: 'rgba(191,140,255,0.4)' }
 };
 
+// Ranks a received item's track so the BiS list only badges the best copy on
+// file -- an unrecognized/'Other' track (rv_diff falsy or something new)
+// ranks lowest rather than being dropped, since it still counts as a receive.
+var RECEIVED_DIFF_RANK = { Mythic: 3, Heroic: 2, Normal: 1 };
+
 // ranks: getRank()'s return, [{pos, diff}, ...] -- empty/null renders "-".
 // One pill per track (not one pill combining both, so heroic/mythic get
 // visually distinct colors instead of sharing a single box), labeled
@@ -5831,10 +5836,21 @@ function renderProfile(firstName, backTo, container) {
     // Mythic receive already on file retires the row for good.
     var showMarkBtn = !mythicAlreadyReceived && (isOfficer || featureEnabled('requests'));
     if (received) {
+      // Only show the highest track received -- once a Mythic/Heroic copy is
+      // on file, an earlier lower-track receive of the same item is no
+      // longer worth a badge of its own.
+      var receivedMaxRank = 0;
+      for (var rr = 0; rr < received.length; rr++) {
+        var rr_rank = RECEIVED_DIFF_RANK[received[rr].difficulty] || 0;
+        if (rr_rank > receivedMaxRank) receivedMaxRank = rr_rank;
+      }
+      var receivedForBadges = received.filter(function (r) {
+        return (RECEIVED_DIFF_RANK[r.difficulty] || 0) === receivedMaxRank;
+      });
       var badges = '';
-      for (var rv = 0; rv < received.length; rv++) {
-        var rv_diff = received[rv].difficulty || '';
-        var rv_date = received[rv].date || '';
+      for (var rv = 0; rv < receivedForBadges.length; rv++) {
+        var rv_diff = receivedForBadges[rv].difficulty || '';
+        var rv_date = receivedForBadges[rv].date || '';
         var rv_colors = RANK_PILL_DIFF_COLORS[rv_diff === 'Mythic' ? 'mythic' : 'heroic'];
         badges +=
           '<span style="display:inline-flex;align-items:center;gap:5px;">' +
@@ -5845,7 +5861,7 @@ function renderProfile(firstName, backTo, container) {
           ';border-color:' +
           rv_colors.bd +
           ';">' +
-          (rv_diff === 'Mythic' ? 'M' : rv_diff === 'Heroic' ? 'H' : rv_diff || '?') +
+          (rv_diff === 'Mythic' ? 'M' : rv_diff === 'Heroic' ? 'H' : rv_diff === 'Normal' ? 'N' : rv_diff || '?') +
           '</span>' +
           (rv_date ? '<span style="font-size:0.9em;color:var(--text-muted);">' + rv_date + '</span>' : '') +
           '</span>';
