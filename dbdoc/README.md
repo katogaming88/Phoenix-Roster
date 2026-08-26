@@ -46,7 +46,7 @@
 | [public.no_character_dismissals](public.no_character_dismissals.md) | 3 |  | BASE TABLE |
 | [public.boe_items](public.boe_items.md) | 21 |  | BASE TABLE |
 | [public.boe_listings](public.boe_listings.md) | 8 |  | BASE TABLE |
-| [public.boe_managers](public.boe_managers.md) | 3 |  | BASE TABLE |
+| [public.boe_managers](public.boe_managers.md) | 4 |  | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -105,7 +105,6 @@
 | public.wishlist_setup_status | record | p_team_id integer | FUNCTION |
 | public.check_team_id_matches_boe_item | trigger |  | FUNCTION |
 | public.check_boe_status_transition | trigger |  | FUNCTION |
-| public.is_boe_manager | bool | p_team_id integer | FUNCTION |
 | public.submit_boe_found | int4 | p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_note text DEFAULT NULL::text | FUNCTION |
 | public.boe_record_listing | void | p_id integer, p_price bigint, p_listed_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_note text DEFAULT NULL::text | FUNCTION |
 | public.boe_record_sale | record | p_id integer, p_sale_price bigint, p_sold_at timestamp with time zone DEFAULT NULL::timestamp with time zone | FUNCTION |
@@ -114,6 +113,11 @@
 | public.boe_revert | text | p_id integer | FUNCTION |
 | public.set_boe_payout_settings | void | p_floor bigint, p_pivot bigint | FUNCTION |
 | public.delete_self_received_request | void | p_id integer | FUNCTION |
+| public.is_boe_manager | bool |  | FUNCTION |
+| public.is_any_team_officer | bool |  | FUNCTION |
+| public.admin_list_boe_managers | record |  | FUNCTION |
+| public.admin_grant_boe_manager | int4 | p_discord_id text | FUNCTION |
+| public.admin_revoke_boe_manager | void | p_discord_id text | FUNCTION |
 
 ## Enums
 
@@ -188,7 +192,6 @@ erDiagram
 "public.boe_items" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.boe_listings" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.boe_listings" }o--|| "public.boe_items" : "FOREIGN KEY (boe_item_id) REFERENCES boe_items(id) ON DELETE CASCADE"
-"public.boe_managers" |o--|| "public.team_members" : "FOREIGN KEY (team_member_id) REFERENCES team_members(id) ON DELETE CASCADE"
 
 "public.attendance" {
   integer id
@@ -624,7 +627,8 @@ erDiagram
 }
 "public.boe_managers" {
   integer id
-  integer team_member_id FK
+  text discord_id
+  uuid auth_user_id FK
   timestamp_with_time_zone created_at
 }
 ```

@@ -4496,9 +4496,14 @@
           "default": "nextval('boe_managers_id_seq'::regclass)"
         },
         {
-          "name": "team_member_id",
-          "type": "integer",
+          "name": "discord_id",
+          "type": "text",
           "nullable": false
+        },
+        {
+          "name": "auth_user_id",
+          "type": "uuid",
+          "nullable": true
         },
         {
           "name": "created_at",
@@ -4517,23 +4522,23 @@
           ]
         },
         {
-          "name": "boe_managers_team_member_id_key",
-          "def": "CREATE UNIQUE INDEX boe_managers_team_member_id_key ON public.boe_managers USING btree (team_member_id)",
+          "name": "boe_managers_discord_id_key",
+          "def": "CREATE UNIQUE INDEX boe_managers_discord_id_key ON public.boe_managers USING btree (discord_id)",
           "table": "public.boe_managers",
           "columns": [
-            "team_member_id"
+            "discord_id"
           ]
         }
       ],
       "constraints": [
         {
-          "name": "boe_managers_team_member_id_fkey",
+          "name": "boe_managers_auth_user_id_fkey",
           "type": "FOREIGN KEY",
-          "def": "FOREIGN KEY (team_member_id) REFERENCES team_members(id) ON DELETE CASCADE",
+          "def": "FOREIGN KEY (auth_user_id) REFERENCES auth.users(id) ON DELETE SET NULL",
           "table": "public.boe_managers",
-          "referenced_table": "public.team_members",
+          "referenced_table": "auth.users",
           "columns": [
-            "team_member_id"
+            "auth_user_id"
           ],
           "referenced_columns": [
             "id"
@@ -4550,13 +4555,13 @@
           ]
         },
         {
-          "name": "boe_managers_team_member_id_key",
+          "name": "boe_managers_discord_id_key",
           "type": "UNIQUE",
-          "def": "UNIQUE (team_member_id)",
+          "def": "UNIQUE (discord_id)",
           "table": "public.boe_managers",
           "referenced_table": "",
           "columns": [
-            "team_member_id"
+            "discord_id"
           ]
         }
       ]
@@ -5212,19 +5217,6 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (boe_item_id) REFERENCES boe_items(id) ON DELETE CASCADE"
-    },
-    {
-      "table": "public.boe_managers",
-      "columns": [
-        "team_member_id"
-      ],
-      "cardinality": "zero_or_one",
-      "parent_table": "public.team_members",
-      "parent_columns": [
-        "id"
-      ],
-      "parent_cardinality": "exactly_one",
-      "def": "FOREIGN KEY (team_member_id) REFERENCES team_members(id) ON DELETE CASCADE"
     }
   ],
   "functions": [
@@ -5547,12 +5539,6 @@
       "type": "FUNCTION"
     },
     {
-      "name": "public.is_boe_manager",
-      "return_type": "bool",
-      "arguments": "p_team_id integer",
-      "type": "FUNCTION"
-    },
-    {
       "name": "public.submit_boe_found",
       "return_type": "int4",
       "arguments": "p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_note text DEFAULT NULL::text",
@@ -5598,6 +5584,36 @@
       "name": "public.delete_self_received_request",
       "return_type": "void",
       "arguments": "p_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.is_boe_manager",
+      "return_type": "bool",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.is_any_team_officer",
+      "return_type": "bool",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.admin_list_boe_managers",
+      "return_type": "record",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.admin_grant_boe_manager",
+      "return_type": "int4",
+      "arguments": "p_discord_id text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.admin_revoke_boe_manager",
+      "return_type": "void",
+      "arguments": "p_discord_id text",
       "type": "FUNCTION"
     }
   ],

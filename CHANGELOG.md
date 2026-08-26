@@ -8,6 +8,19 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.63.1] - 2026-08-26
+
+### Frontend
+
+- The officer BoE tab's manager check now asks whether you hold the grant at all, rather than whether you hold it on the team whose page you are on (#766). A BoE manager keeps the action buttons on every team's BoE tab instead of only their own.
+
+### Backend
+
+- The BoE manager grant is guild-wide (#766, reshaping the per-team version #745 shipped). BoEs are guild property, and whoever runs the guild bank runs it for the whole guild regardless of which team they raid on, so `boe_managers` moves to the same `discord_id` + `auth_user_id` shape `site_admins` and `guild_officers` already use, with an argument-less `is_boe_manager()`. Grants are made through a new `admin_grant_boe_manager` / `admin_list_boe_managers` / `admin_revoke_boe_manager` trio, site-admin only and audit-logged, and a grant issued before its holder's first sign-in now activates when they log in. One behavior change worth naming: the old grant self-revoked when someone lost their officer role, and the new one persists until a site admin revokes it. Both BoE tables were empty on production, so nothing was migrated.
+- BoE read policies now admit BoE managers, so a manager can see every row they may act on rather than only their own team's. `write_audit_log()` admits them too: without it a manager who holds no officer role anywhere would move money and log nothing, since the frontend only warns to the console when that call fails.
+
+---
+
 ## [3.63.0] - 2026-08-26
 
 ### Frontend

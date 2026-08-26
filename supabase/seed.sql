@@ -94,8 +94,9 @@ insert into public.self_received_requests (id, team_id, player_id, self_item_id,
 -- own-row read tests can link and see it; item 2 is sold with an unresolved
 -- finder and a split satisfying the policy formula (150000 -> 30000/120000
 -- at floor 20000 / pivot 100000); listing 1 hangs off the sold item. The
--- manager grant goes to the team-1 officer (member 1); the team-1 leader
--- (member 2) stays ungranted to prove grant-only writes.
+-- manager grant goes to the team-1 officer's Discord id; the team-1 leader
+-- stays ungranted to prove grant-only writes. The grant is guild-wide (#766),
+-- so it authorizes that person on every team, not just team 1.
 insert into public.boe_items (id, team_id, player_id, finder_name, item_id, item_name, track, season, status, found_at) values
   (1, 1, 1, 'Seedraider-Illidan', 1, 'Seed Test Staff', 'Hero', 'seed-season', 'found', '2026-01-02T00:00:00Z');
 
@@ -107,8 +108,8 @@ insert into public.boe_items (id, team_id, player_id, finder_name, item_id, item
 insert into public.boe_listings (id, team_id, boe_item_id, price, listed_at) values
   (1, 1, 2, 160000, '2026-01-02T12:00:00Z');
 
-insert into public.boe_managers (id, team_member_id) values
-  (1, 1);
+insert into public.boe_managers (id, discord_id, auth_user_id) values
+  (1, 'discord-officer-1', '00000000-0000-0000-0000-000000000001');
 
 -- Rows for public-read tables the matrix test asserts are visible.
 

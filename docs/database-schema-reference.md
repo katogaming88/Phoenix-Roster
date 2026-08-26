@@ -407,13 +407,16 @@ One row per AH listing event, so relists keep their history instead of collapsin
 
 ## `boe_managers`
 
-The standalone grant that scopes BoE money mutations, same shape as `guild_officers` ([#745](https://github.com/katogaming88/WGA-Raid-Hub/issues/745)). Team scope derives from the member row.
+The standalone grant that gates BoE money mutations, same shape as `guild_officers` and `site_admins` ([#745](https://github.com/katogaming88/WGA-Raid-Hub/issues/745), reshaped guild-wide in [#766](https://github.com/katogaming88/WGA-Raid-Hub/issues/766)). No team column on purpose: BoEs are guild property, so a grantee is authorized on every team's finds.
 
-| Column           | Type        | Purpose                                      |
-| ---------------- | ----------- | -------------------------------------------- |
-| `id`             | int4        | PK                                           |
-| `team_member_id` | int4        | FK -> `team_members.id`, unique              |
-| `created_at`     | timestamptz | Row creation                                 |
+| Column         | Type        | Purpose                                                    |
+| -------------- | ----------- | ---------------------------------------------------------- |
+| `id`           | int4        | PK                                                          |
+| `discord_id`   | text        | Discord snowflake, unique. Known at grant time              |
+| `auth_user_id` | uuid        | FK -> `auth.users.id`, nullable. What `is_boe_manager()` matches |
+| `created_at`   | timestamptz | Row creation                                                |
+
+Two identity columns for the same reason `site_admins` and `guild_officers` have them: a site admin can grant to someone who has not signed in yet. `auth_user_id` resolves at grant time when that Discord account already exists in `auth.users`, and `link_auth_user_to_member()` fills it on their first login otherwise. A null `auth_user_id` means the grant is not active yet, and `admin_list_boe_managers()` returns the column so the admin UI can say so.
 
 ---
 

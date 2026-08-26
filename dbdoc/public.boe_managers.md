@@ -5,44 +5,36 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | id | integer | nextval('boe_managers_id_seq'::regclass) | false |  |  |  |
-| team_member_id | integer |  | false |  | [public.team_members](public.team_members.md) |  |
+| discord_id | text |  | false |  |  |  |
+| auth_user_id | uuid |  | true |  |  |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| boe_managers_team_member_id_fkey | FOREIGN KEY | FOREIGN KEY (team_member_id) REFERENCES team_members(id) ON DELETE CASCADE |
+| boe_managers_auth_user_id_fkey | FOREIGN KEY | FOREIGN KEY (auth_user_id) REFERENCES auth.users(id) ON DELETE SET NULL |
 | boe_managers_pkey | PRIMARY KEY | PRIMARY KEY (id) |
-| boe_managers_team_member_id_key | UNIQUE | UNIQUE (team_member_id) |
+| boe_managers_discord_id_key | UNIQUE | UNIQUE (discord_id) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
 | boe_managers_pkey | CREATE UNIQUE INDEX boe_managers_pkey ON public.boe_managers USING btree (id) |
-| boe_managers_team_member_id_key | CREATE UNIQUE INDEX boe_managers_team_member_id_key ON public.boe_managers USING btree (team_member_id) |
+| boe_managers_discord_id_key | CREATE UNIQUE INDEX boe_managers_discord_id_key ON public.boe_managers USING btree (discord_id) |
 
 ## Relations
 
 ```mermaid
 erDiagram
 
-"public.boe_managers" |o--|| "public.team_members" : "FOREIGN KEY (team_member_id) REFERENCES team_members(id) ON DELETE CASCADE"
 
 "public.boe_managers" {
   integer id
-  integer team_member_id FK
-  timestamp_with_time_zone created_at
-}
-"public.team_members" {
-  integer id
-  integer team_id FK
   text discord_id
   uuid auth_user_id FK
-  text role
-  text name_realm
-  timestamp_with_time_zone updated_at
+  timestamp_with_time_zone created_at
 }
 ```
 
