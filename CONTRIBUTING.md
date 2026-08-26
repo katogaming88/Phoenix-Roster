@@ -148,6 +148,11 @@ step by step in [docs/supabase-local-dev-setup.md](docs/supabase-local-dev-setup
 
 PRs that change `supabase/migrations/` must also:
 
+- Name the migration file with the **real current local timestamp** (`YYYYMMDDHHMMSS`),
+  not UTC and not hand-picked. Supabase orders and applies migrations by this
+  prefix, so a wrong one can silently apply out of order relative to
+  concurrent work from other contributors. Check the actual system clock
+  rather than guessing or copying an adjacent file's timestamp.
 - Regenerate the schema docs: `supabase db reset`, then `npm run db:docs`, and
   commit the `dbdoc/` changes (CI fails stale docs)
 - Update [docs/RLS.md](docs/RLS.md) if the migration adds, alters, or drops an

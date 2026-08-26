@@ -53,6 +53,37 @@ async function seedPriority(q) {
   );
 }
 
+// Same reasoning as withItemsAndBisSeeded above: item_preferences' RLS
+// policy only lets a player manage their own rows, not an officer seeding
+// rows for other players' wishlists, so this seeds both priority_order and
+// item_preferences on the unrestricted pool connection before withRole()
+// drops to `authenticated` for the actual export call.
+async function withPriorityAndWishlistSeeded(role, uid, wishlistRows, fn) {
+  const client = await pool.connect();
+  try {
+    await client.query('begin');
+    await client.query(
+      `insert into public.priority_order (team_id, season, item_id, track, rank, player_id) values
+         (1, 'export-test', 2, 'Hero', 1, 2),
+         (1, 'export-test', 2, 'Hero', 2, 1),
+         (1, 'export-test', 2, 'Myth', 1, 1)`
+    );
+    if (wishlistRows) {
+      await client.query(
+        `insert into public.item_preferences (team_id, player_id, item_id, status, season) values ${wishlistRows}`
+      );
+    }
+    if (uid) {
+      await client.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: uid, role })]);
+    }
+    await client.query(`set local role ${role}`);
+    return await fn((text, params) => client.query(text, params));
+  } finally {
+    await client.query('rollback');
+    client.release();
+  }
+}
+
 describe('build_rclc_export excludes already-awarded recipients (#480)', () => {
   it('a Mythic recipient drops from both the Hero and Myth ranked lists for that item', async () => {
     await withRole('authenticated', OFFICER_T1, async (q) => {
@@ -124,12 +155,91 @@ describe('build_rclc_export', () => {
       const res = await q('select public.build_rclc_export(1, $1) as payload', ['export-test']);
       const priority = res.rows[0].payload.priority;
 
-      // item 2 is Seed Test Robe, wow_item_id 100002 per seed.sql.
+      // item 2 is Seed Test Robe, wow_item_id 100002 per seed.sql. No
+      // item_preferences rows seeded here, so both status maps come back
+      // empty rather than absent (#wishlist status export).
       expect(priority['100002']).toEqual({
         H: ['Seedplayertwo-Illidan', 'Seedraider-Illidan'],
-        M: ['Seedraider-Illidan']
+        H_status: {},
+        M: ['Seedraider-Illidan'],
+        M_status: {}
       });
     });
+  });
+
+  it("attaches each ranked player's wishlist status (bis/good/ok) for that item, keyed by name", async () => {
+    await withPriorityAndWishlistSeeded(
+      'authenticated',
+      OFFICER_T1,
+      `(1, 1, 2, 'bis', 'export-test'), (1, 2, 2, 'good', 'export-test')`,
+      async (q) => {
+        const res = await q('select public.build_rclc_export(1, $1) as payload', ['export-test']);
+        const priority = res.rows[0].payload.priority['100002'];
+
+        expect(priority.H_status).toEqual({ 'Seedraider-Illidan': 'bis', 'Seedplayertwo-Illidan': 'good' });
+        expect(priority.M_status).toEqual({ 'Seedraider-Illidan': 'bis' });
+      }
+    );
+  });
+
+  it('leaves a ranked player out of the status map when they have no matching wishlist row', async () => {
+    // Only player 1 has a wishlist entry for item 2 -- player 2 is ranked
+    // (via priority_order) but has no item_preferences row at all here,
+    // simulating a fallback-ranked player (e.g. tier-token matching) with
+    // no backing wishlist tier to report.
+    await withPriorityAndWishlistSeeded('authenticated', OFFICER_T1, `(1, 1, 2, 'ok', 'export-test')`, async (q) => {
+      const res = await q('select public.build_rclc_export(1, $1) as payload', ['export-test']);
+      const priority = res.rows[0].payload.priority['100002'];
+
+      expect(priority.H_status).toEqual({ 'Seedraider-Illidan': 'ok' });
+      expect(Object.keys(priority.H_status)).not.toContain('Seedplayertwo-Illidan');
+    });
+  });
+
+  it('ignores catalyst/pass rows -- only bis/good/ok are wishlist status', async () => {
+    await withPriorityAndWishlistSeeded(
+      'authenticated',
+      OFFICER_T1,
+      `(1, 1, 2, 'pass', 'export-test'), (1, 2, 2, 'catalyst', 'export-test')`,
+      async (q) => {
+        const res = await q('select public.build_rclc_export(1, $1) as payload', ['export-test']);
+        const priority = res.rows[0].payload.priority['100002'];
+
+        expect(priority.H_status).toEqual({});
+      }
+    );
+  });
+
+  it("attaches the site's default wishlist tier labels when the team has no overrides", async () => {
+    await withRole('authenticated', OFFICER_T1, async (q) => {
+      const res = await q('select public.build_rclc_export(1, $1) as payload', ['export-test']);
+      expect(res.rows[0].payload.statusLabels).toEqual({ bis: 'BiS', good: '2nd Choice', ok: 'Sidegrade' });
+    });
+  });
+
+  it("merges a team's configured wishlist tier label overrides over the defaults", async () => {
+    const client = await pool.connect();
+    try {
+      await client.query('begin');
+      await client.query(
+        `update public.team_settings set config = config || '{"wishlistStatusLabels":{"good":"2nd Choice","ok":"Sidegrade Pick"}}'::jsonb where team_id = 1`
+      );
+      await client.query("select set_config('request.jwt.claims', $1, true)", [
+        JSON.stringify({ sub: OFFICER_T1, role: 'authenticated' })
+      ]);
+      await client.query('set local role authenticated');
+      const res = await client.query('select public.build_rclc_export(1, $1) as payload', ['export-test']);
+      // 'bis' was never overridden -- falls back to the site default,
+      // merged alongside the two explicit overrides.
+      expect(res.rows[0].payload.statusLabels).toEqual({
+        bis: 'BiS',
+        good: '2nd Choice',
+        ok: 'Sidegrade Pick'
+      });
+    } finally {
+      await client.query('rollback');
+      client.release();
+    }
   });
 
   it('scopes priority to the given season, not other seasons for the same team', async () => {
