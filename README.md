@@ -66,6 +66,8 @@ Discord-authenticated, session lasts 2 hours. A global season selector filters l
 A separate, site-wide (not per-team) page gated to `site_admins`:
 - **Teams** -- create/archive teams
 - **Site Admins** -- grant/revoke site-admin access by Discord ID
+- **Guild Officers** -- grant/revoke guild-wide officer access by Discord ID (view + player/attendance/bio edits on every team, without site-admin write access)
+- **BoE** -- grant/revoke the BoE manager role by Discord ID (guild-wide; it gates every BoE money mutation), plus the guild-wide payout floor and pivot
 - **Feature Flags** -- the same per-team flags as officer.html's Admin tab, in one cross-team table
 - **Audit Log** -- cross-team, searchable
 - **Maintenance Mode** -- site-wide banner + data-load gate

@@ -53,6 +53,7 @@
         <button class="nav-item active" onclick="switchTab('teams')">Teams</button>
         <button class="nav-item" onclick="switchTab('siteadmins')">Site Admins</button>
         <button class="nav-item" onclick="switchTab('guildofficers')">Guild Officers</button>
+        <button class="nav-item" onclick="switchTab('boe')">BoE</button>
         <button class="nav-item" onclick="switchTab('flags')">Feature Flags</button>
         <button class="nav-item" onclick="switchTab('audit')">Audit Log</button>
         <button class="nav-item" onclick="switchTab('maintenance')">Maintenance</button>
@@ -112,6 +113,52 @@
             </thead>
             <tbody id="adminGuildOfficerRows"></tbody>
           </table>
+        </div>
+
+        <div id="tab-boe" class="tab-panel">
+          <h3 class="admin-section-title">BoE Managers</h3>
+          <p class="admin-hint">Whoever runs the guild bank (#748). The grant is what allows recording a listing, a
+            sale, a payout or a retirement -- plain officers see the BoE tab read-only without it. It is guild-wide,
+            so a manager handles finds from every team regardless of which one they raid on, and it stays until it is
+            revoked here. Grant by Discord user ID -- enable Developer Mode in Discord (User Settings &rarr;
+            Advanced), then right-click the account and choose "Copy User ID".</p>
+          <div class="admin-grant-row">
+            <input type="text" id="grantBoeManagerDiscordId" placeholder="Discord user ID">
+            <button class="btn btn-gold" onclick="submitGrantBoeManager()">Grant</button>
+          </div>
+          <p id="grantBoeManagerError" style="display:none;font-size:0.88rem;color:var(--melee);"></p>
+          <table class="roster-table admin-team-table">
+            <thead>
+              <tr>
+                <th>Discord Account</th>
+                <th>Discord ID</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="adminBoeManagerRows"></tbody>
+          </table>
+
+          <h3 class="admin-section-title">Payout Settings</h3>
+          <p class="admin-hint">Guild-wide, not per-team: the guild runs one payout policy across every team. Each
+            sale records the values in force at the time, so changing these does not rewrite what past finders were
+            paid.</p>
+          <div class="admin-payout-row">
+            <div class="admin-payout-field">
+              <label class="admin-field-label" for="boePayoutFloor">Payout floor (gold)</label>
+              <input type="text" id="boePayoutFloor" class="admin-input" oninput="renderBoePayoutSummary()">
+            </div>
+            <div class="admin-payout-field">
+              <label class="admin-field-label" for="boePayoutPivot">Payout pivot (gold)</label>
+              <input type="text" id="boePayoutPivot" class="admin-input" oninput="renderBoePayoutSummary()">
+            </div>
+          </div>
+          <p id="boePayoutSummary" class="admin-payout-summary"></p>
+          <div class="admin-maintenance-actions">
+            <button class="btn btn-gold" onclick="submitBoePayoutSettings()">Save Payout Settings</button>
+            <span id="boePayoutStatus" class="admin-hint" style="margin:0;align-self:center;"></span>
+          </div>
+          <p id="boePayoutError" style="display:none;font-size:0.88rem;color:var(--melee);"></p>
         </div>
 
         <div id="tab-flags" class="tab-panel">

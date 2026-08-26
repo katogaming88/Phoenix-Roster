@@ -32,3 +32,18 @@
 .admin-maintenance-status.admin-status-off { color:#8fd98f; }
 #maintenanceMessage { width:100%; max-width:480px; box-sizing:border-box; background:var(--bg-elevated); border:1px solid var(--border-mid); color:var(--text); border-radius:3px; padding:0.5rem 0.65rem; font-family:'Rajdhani',sans-serif; font-size:1rem; margin-bottom:1rem; }
 .admin-maintenance-actions { display:flex; gap:0.5rem; }
+
+/* BoE tab (#748) -- the only admin panel carrying two sections, so it is the
+   only one needing a heading between them. */
+.admin-section-title { font-family:'Cinzel',serif; font-size:1.1rem; letter-spacing:0.06em; color:var(--gold); margin:0 0 0.75rem; }
+.admin-section-title + .admin-hint { margin-bottom:1rem; }
+.admin-team-table + .admin-section-title { margin-top:2.5rem; }
+
+/* Same tokens as .admin-grant-row's input, as a class rather than a fourth
+   id-scoped rule. */
+.admin-input { background:var(--bg-elevated); border:1px solid var(--border-mid); color:var(--text); border-radius:3px; padding:0.5rem 0.65rem; font-family:'Rajdhani',sans-serif; font-size:1rem; }
+.admin-payout-row { display:flex; gap:1.5rem; flex-wrap:wrap; margin-bottom:0.75rem; }
+.admin-payout-field { display:flex; flex-direction:column; gap:0.4rem; }
+.admin-payout-field .admin-field-label { margin-bottom:0; }
+.admin-payout-field .admin-input { width:180px; }
+.admin-payout-summary { font-size:1.02rem; color:var(--text); margin:0 0 1rem; min-height:1.4em; }

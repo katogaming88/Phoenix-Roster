@@ -8,6 +8,15 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.65.0] - 2026-08-26
+
+### Frontend
+
+- Added a BoE tab to the site admin dashboard (#748). The BoE manager role has been assignable only by hand-editing the database since #745, which meant nobody held it and every BoE action fell back to site admins. Grant and revoke it by Discord user ID here, the same way Site Admins and Guild Officers already work. The list marks a grant as not activated when that Discord account has never signed in, since the grant does nothing until it does, and there was no way to tell that apart from a working one.
+- The same tab carries the guild-wide BoE payout settings, the floor and the pivot, which had no edit surface at all before. Under the two inputs a line reads the policy back in words as you change them, so the pivot's meaning is visible before saving rather than after the next sale: with the shipped values it reads "Finder gets 20% on sales above 100,000g, or a flat 20,000g below that, never more than the sale itself."
+
+---
+
 ## [3.64.0] - 2026-08-26
 
 ### Frontend
