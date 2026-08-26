@@ -8,6 +8,14 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.62.0] - 2026-08-26
+
+### Frontend
+
+- Added a "Recent decisions" section to the officer Requests tab (#756): approved and rejected self-received requests, previously invisible the moment they were decided, now list below the pending queue with two per-row actions. "Revert to pending" sends a decision back to the queue (and notifies the raider); "Delete" removes the row entirely via the new `delete_self_received_request()` RPC, the cleanup path for duplicate submissions. Neither action unticks a BiS Manager "obtained" box the approval may have set -- approved rows whose BiS entry is obtained carry a hint pointing there instead. Approve/reject audit entries now record which item was decided (they previously logged no detail), and the tab's help text no longer claims approval touches loot history or fairness scores.
+
+---
+
 ## [3.61.1] - 2026-08-26
 
 ### Frontend
