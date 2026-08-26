@@ -308,7 +308,7 @@ Lookup table of every valid WoW class/spec combination.
 
 ## `self_received_requests`
 
-Player-submitted claims that they received a drop (self-reported loot tracking, pending officer approval).
+Player-submitted claims that they received a drop (self-reported loot tracking, pending officer approval). Inserts arrive only through `submit_self_received()`/`direct_mark_received()`, and single-row deletes only through `delete_self_received_request()` (#756) -- the table has no INSERT or DELETE policy for any role.
 
 | Column         | Type        | Purpose                                              |
 | -------------- | ----------- | ---------------------------------------------------- |
@@ -317,10 +317,11 @@ Player-submitted claims that they received a drop (self-reported loot tracking, 
 | `player_id`    | int4        | FK -> `players.id`                                   |
 | `self_item_id` | int4        | FK -> `items.id` -- item they claim to have received |
 | `submitted_at` | timestamptz | When they submitted the claim                        |
-| `status`       | text        | Pending/approved/denied by an officer                |
+| `status`       | text        | CHECK values pending/approved/rejected               |
 | `track`        | text        | Item track, CHECK values Champion/Hero/Myth -- split from the sheet's Source cell prefix (#322, renamed per #343) |
 | `source`       | text        | Where the item came from (Bonus Roll, Great Vault, Crafted, ...) -- the other half of the Source split |
 | `note`         | text        | Player note from the request form                    |
+| `slot`         | text        | Raw `bis_items.slot` the approval sync targets (#386); null on rows predating it |
 
 ---
 

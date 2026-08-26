@@ -113,6 +113,7 @@
 | public.boe_retire | void | p_id integer, p_note text DEFAULT NULL::text | FUNCTION |
 | public.boe_revert | text | p_id integer | FUNCTION |
 | public.set_boe_payout_settings | void | p_floor bigint, p_pivot bigint | FUNCTION |
+| public.delete_self_received_request | void | p_id integer | FUNCTION |
 
 ## Enums
 
