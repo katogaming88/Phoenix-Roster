@@ -135,9 +135,7 @@ describe('delete_self_received_request', () => {
     await withTxn(async ({ q, asUser }) => {
       await q('update public.self_received_requests set player_id = null where id = 2');
       await asUser(OFFICER_T1, del(2));
-      const audit = await q(
-        "select target_id, detail from public.audit_log where action = 'Self-Received Deleted'"
-      );
+      const audit = await q("select target_id, detail from public.audit_log where action = 'Self-Received Deleted'");
       expect(audit.rows.length).toBe(1);
       expect(audit.rows[0].target_id).toBeNull();
       expect(audit.rows[0].detail).toContain('player no longer on roster');
@@ -197,8 +195,7 @@ describe('revert to pending rides the existing officer UPDATE policy', () => {
     await withTxn(async ({ q, asUser }) => {
       await asUser(OFFICER_T1, revert);
       expect((await q('select obtained from public.bis_items where id = 1')).rows[0].obtained).toBe(false);
-      const approve =
-        "update public.self_received_requests set status = 'approved' where id = 2 and team_id = 1";
+      const approve = "update public.self_received_requests set status = 'approved' where id = 2 and team_id = 1";
       await asUser(OFFICER_T1, approve);
       expect((await q('select obtained from public.bis_items where id = 1')).rows[0].obtained).toBe(true);
     });
