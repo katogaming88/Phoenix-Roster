@@ -16,8 +16,7 @@ import { fileURLToPath } from 'node:url';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const TAB_REQUESTS_JS = readFileSync(path.join(HERE, '../../js/tabs/tab-requests.js'), 'utf8');
 
-const flush = () =>
-  new Promise((resolve) => setTimeout(resolve, 0)).then(() => new Promise((r) => setTimeout(r, 0)));
+const flush = () => new Promise((resolve) => setTimeout(resolve, 0)).then(() => new Promise((r) => setTimeout(r, 0)));
 
 // Routes .from(table) chains (select/eq/in/order/update) to per-test
 // resolvers and captures .rpc(name, args) calls, keyed by function name.
