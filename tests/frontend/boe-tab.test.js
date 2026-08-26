@@ -287,6 +287,16 @@ describe('manager gating', () => {
     expect(captured.rpcCalls.filter((c) => c.name === 'is_boe_manager')).toEqual([]);
   });
 
+  // The grant went guild-wide in #766, so the gate takes no team argument.
+  // Passing one would raise "function does not exist" against the new schema.
+  it('the manager check passes no team argument', async () => {
+    const { client, captured } = makeBoeClient({ items: ALL_ROWS(), listings: [], rpc: managerRpc() });
+    await build({ client });
+    const calls = captured.rpcCalls.filter((c) => c.name === 'is_boe_manager');
+    expect(calls.length).toBe(1);
+    expect(calls[0].args).toBeUndefined();
+  });
+
   it('a server denial surfaces as an error and writes no audit entry', async () => {
     const els = { 'boe-status-3': makeEl() };
     const { client } = makeBoeClient({

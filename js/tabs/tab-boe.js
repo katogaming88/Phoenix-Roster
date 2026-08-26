@@ -5,7 +5,10 @@
 //
 // Action buttons render only for BoE managers (the is_boe_manager RPC, the
 // same function the RLS policies evaluate) and site admins; other officers
-// get the tab read-only. The server enforces the gate regardless. The
+// get the tab read-only. The grant is guild-wide as of #766, so that RPC
+// takes no team argument and a manager is authorized on every team's finds.
+// The tab's own read is still team-scoped, which #765 covers. The server
+// enforces the gate regardless. The
 // lifecycle RPCs write no audit entries themselves, so every successful
 // mutation writes one from here.
 //
@@ -58,7 +61,7 @@ function buildBoeTab() {
   var isAdmin = !!(session && session.isAdmin);
   var managerPromise = isAdmin
     ? Promise.resolve(true)
-    : supabaseClient.rpc('is_boe_manager', { p_team_id: _teamCfg.supabaseTeamId }).then(function (result) {
+    : supabaseClient.rpc('is_boe_manager').then(function (result) {
         return !result.error && result.data === true;
       });
 

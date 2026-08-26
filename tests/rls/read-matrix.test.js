@@ -46,9 +46,12 @@ const GATED = [
   'team_members'
 ];
 
-// Gated tables an officer can read for their own team (site_admins and
-// guild_officers are the exception: site admins only, [#607](https://github.com/katogaming88/WGA-Raid-Hub/issues/607)).
-const OFFICER_READABLE = GATED.filter((t) => t !== 'site_admins' && t !== 'guild_officers');
+// Gated tables an officer can read for their own team. Three exceptions, each
+// with its own block below: site_admins and guild_officers are site-admin only
+// ([#607](https://github.com/katogaming88/WGA-Raid-Hub/issues/607)), and
+// boe_managers is readable by any officer on any team since the grant went
+// guild-wide ([#766](https://github.com/katogaming88/WGA-Raid-Hub/issues/766)).
+const OFFICER_READABLE = GATED.filter((t) => t !== 'site_admins' && t !== 'guild_officers' && t !== 'boe_managers');
 
 describe('public-read tables are visible to everyone', () => {
   for (const table of PUBLIC_READ) {
@@ -81,10 +84,7 @@ describe('gated tables hide their rows from anon and raiders', () => {
 });
 
 describe('officers read their own team, not other teams', () => {
-  // boe_managers has no team_id column; its officer read is scoped through
-  // the granted member's team, and the only seeded grant is on team 1, so
-  // an unfiltered count carries the same team-1-vs-team-2 assertion (#745).
-  const where = { team_members: 'team_id = 1', boe_managers: 'true' };
+  const where = { team_members: 'team_id = 1' };
   for (const table of OFFICER_READABLE) {
     it(`team 1 officer sees team 1 rows in ${table}`, async () => {
       expect(await countAs('authenticated', OFFICER_T1, table, where[table] ?? 'team_id = 1')).toBeGreaterThan(0);
@@ -93,6 +93,30 @@ describe('officers read their own team, not other teams', () => {
       expect(await countAs('authenticated', OFFICER_T2, table, where[table] ?? 'team_id = 1')).toBe(0);
     });
   }
+});
+
+describe('boe_managers visibility (#766)', () => {
+  // The grant is guild-wide and has no team_id to scope by, so the read is
+  // "any officer anywhere", not "an officer on the granted member's team".
+  // Deliberately wider than guild_officers: an ungranted officer looking at a
+  // find they cannot act on needs a way to see who can.
+  it('an officer on either team sees the grants', async () => {
+    expect(await countAs('authenticated', OFFICER_T1, 'boe_managers')).toBeGreaterThan(0);
+    expect(await countAs('authenticated', OFFICER_T2, 'boe_managers')).toBeGreaterThan(0);
+  });
+  it('a team leader sees the grants', async () => {
+    expect(await countAs('authenticated', TEAM_LEADER_T1, 'boe_managers')).toBeGreaterThan(0);
+  });
+  it('a site admin sees the grants', async () => {
+    expect(await countAs('authenticated', SITE_ADMIN, 'boe_managers')).toBeGreaterThan(0);
+  });
+  it('a raider and a guild officer do not', async () => {
+    expect(await countAs('authenticated', RAIDER_T1, 'boe_managers')).toBe(0);
+    expect(await countAs('authenticated', GUILD_OFFICER, 'boe_managers')).toBe(0);
+  });
+  it('anon does not', async () => {
+    expect(await countAs('anon', null, 'boe_managers')).toBe(0);
+  });
 });
 
 describe('pending_roster view inherits season_signups visibility', () => {
