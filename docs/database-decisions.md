@@ -8,6 +8,19 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-08-26 -- rclc export: attach wishlist status to the ranked priority list, additive only
+
+Tracking issue: [katogaming88/WGA-Raid-Hub#760](https://github.com/katogaming88/WGA-Raid-Hub/issues/760). The RCLootCouncil_PriorityLoot addon's voting-frame panel only ever showed a bare rank ("3rd") with no sense of whether that's a raider's real BiS pick, a lower-tier Good/OK pick, or not backed by a wishlist entry at all.
+
+- **New `<track>_status` sibling keys in `build_rclc_export()`'s priority payload** (e.g. `H_status: {"Name-Realm": "bis"}`), sourced from `item_preferences.status` joined against `priority_order` by player+item. Sibling keys rather than restructuring the existing `H`/`M` name arrays -- an addon client that hasn't picked up the new field simply ignores the extra key, so this doesn't force a synchronized addon release.
+- **Sparse by design**, not a placeholder value for every rank. A ranked player with no matching `item_preferences` row (fallback ranking signals like tier-token matching can place someone with no wishlist entry backing it) is simply absent from the status map, so the addon can render "nothing extra" rather than a misleading tag.
+- **Only bis/good/ok are attached** -- `catalyst` and `pass` are `item_preferences.status` values too, but neither is a "wants this" wishlist tier in the sense this feature is surfacing.
+- **Loot-council-only surface, by product decision (Kat) not a technical constraint**: the addon only shows this in the officer voting frame's "Full Priority Order" panel, never the raider-facing loot roll frame -- the export itself doesn't distinguish who's allowed to see it (the whole payload is already officer/team_leader-gated at the RPC level).
+
+[Full discussion -> #760](https://github.com/katogaming88/WGA-Raid-Hub/issues/760)
+
+---
+
 ## 2026-08-25 -- Self-received corrections: delete is an RPC, revert is the existing UPDATE policy
 
 Tracking issue: [katogaming88/WGA-Raid-Hub#756](https://github.com/katogaming88/WGA-Raid-Hub/issues/756). Approve/reject on the Requests tab were one-way doors: approved rows vanished from every UI surface, and 8 exact duplicate approved rows (raiders resubmitting when feedback failed, the v3.61.1 bug) had no cleanup path short of the site-admin whole-team wipe.
