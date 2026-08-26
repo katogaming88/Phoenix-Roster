@@ -560,7 +560,8 @@ var ADMIN_FEATURE_FLAGS = [
   { key: 'fairness', label: 'Fairness Charts' },
   { key: 'bench', label: 'Bench Management' },
   { key: 'attendance', label: 'Attendance' },
-  { key: 'requests', label: 'Received Item Requests' }
+  { key: 'requests', label: 'Received Item Requests' },
+  { key: 'boe', label: 'BoE Found Form' }
 ];
 
 function renderAdminFeatureFlags() {

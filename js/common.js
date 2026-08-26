@@ -84,6 +84,14 @@ var SITE_NAV_ITEMS = [
     onclick: 'showSignupView()'
   },
   {
+    id: 'navBoE',
+    label: 'BoE',
+    tooltip: 'Report a BoE drop you found while raiding',
+    view: 'boe',
+    hash: 'boe',
+    onclick: 'showBoeView()'
+  },
+  {
     id: 'navHistory',
     label: 'History',
     tooltip: 'Past seasons -- progression and dates',
