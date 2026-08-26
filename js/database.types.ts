@@ -239,6 +239,188 @@ export type Database = {
           }
         ];
       };
+      boe_items: {
+        Row: {
+          created_at: string;
+          finder_name: string | null;
+          finder_payout: number | null;
+          found_at: string;
+          guild_cut: number | null;
+          id: number;
+          item_id: number | null;
+          item_name: string;
+          note: string | null;
+          payout_floor: number | null;
+          payout_paid_at: string | null;
+          payout_pivot: number | null;
+          player_id: number | null;
+          retired_at: string | null;
+          sale_price: number | null;
+          season: string | null;
+          sold_at: string | null;
+          status: string;
+          team_id: number;
+          track: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          created_at?: string;
+          finder_name?: string | null;
+          finder_payout?: number | null;
+          found_at?: string;
+          guild_cut?: number | null;
+          id?: number;
+          item_id?: number | null;
+          item_name: string;
+          note?: string | null;
+          payout_floor?: number | null;
+          payout_paid_at?: string | null;
+          payout_pivot?: number | null;
+          player_id?: number | null;
+          retired_at?: string | null;
+          sale_price?: number | null;
+          season?: string | null;
+          sold_at?: string | null;
+          status?: string;
+          team_id: number;
+          track?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          finder_name?: string | null;
+          finder_payout?: number | null;
+          found_at?: string;
+          guild_cut?: number | null;
+          id?: number;
+          item_id?: number | null;
+          item_name?: string;
+          note?: string | null;
+          payout_floor?: number | null;
+          payout_paid_at?: string | null;
+          payout_pivot?: number | null;
+          player_id?: number | null;
+          retired_at?: string | null;
+          sale_price?: number | null;
+          season?: string | null;
+          sold_at?: string | null;
+          status?: string;
+          team_id?: number;
+          track?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'boe_items_item_id_fkey';
+            columns: ['item_id'];
+            isOneToOne: false;
+            referencedRelation: 'items';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'boe_items_player_id_fkey';
+            columns: ['player_id'];
+            isOneToOne: false;
+            referencedRelation: 'players';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'boe_items_player_id_fkey';
+            columns: ['player_id'];
+            isOneToOne: false;
+            referencedRelation: 'priority_order_gaps';
+            referencedColumns: ['player_id'];
+          },
+          {
+            foreignKeyName: 'boe_items_player_id_fkey';
+            columns: ['player_id'];
+            isOneToOne: false;
+            referencedRelation: 'rnlsi';
+            referencedColumns: ['player_id'];
+          },
+          {
+            foreignKeyName: 'boe_items_team_id_fkey';
+            columns: ['team_id'];
+            isOneToOne: false;
+            referencedRelation: 'teams';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
+      boe_listings: {
+        Row: {
+          boe_item_id: number;
+          created_at: string;
+          id: number;
+          listed_at: string;
+          note: string | null;
+          price: number;
+          team_id: number;
+          updated_at: string | null;
+        };
+        Insert: {
+          boe_item_id: number;
+          created_at?: string;
+          id?: number;
+          listed_at?: string;
+          note?: string | null;
+          price: number;
+          team_id: number;
+          updated_at?: string | null;
+        };
+        Update: {
+          boe_item_id?: number;
+          created_at?: string;
+          id?: number;
+          listed_at?: string;
+          note?: string | null;
+          price?: number;
+          team_id?: number;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'boe_listings_boe_item_id_fkey';
+            columns: ['boe_item_id'];
+            isOneToOne: false;
+            referencedRelation: 'boe_items';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'boe_listings_team_id_fkey';
+            columns: ['team_id'];
+            isOneToOne: false;
+            referencedRelation: 'teams';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
+      boe_managers: {
+        Row: {
+          created_at: string;
+          id: number;
+          team_member_id: number;
+        };
+        Insert: {
+          created_at?: string;
+          id?: number;
+          team_member_id: number;
+        };
+        Update: {
+          created_at?: string;
+          id?: number;
+          team_member_id?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'boe_managers_team_member_id_fkey';
+            columns: ['team_member_id'];
+            isOneToOne: true;
+            referencedRelation: 'team_members';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
       classes_specs: {
         Row: {
           class: string;

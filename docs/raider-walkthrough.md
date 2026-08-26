@@ -96,6 +96,13 @@ Reference notes for walking a raider through the site -- not published to raider
 - They'll show up on the **Streams** tab automatically whenever they go live
 - **Opt out of showing on other teams' pages** keeps their stream off other teams' sites while still showing it here
 
+### Report a found BoE
+- The **BoE** tab is the replacement for the old BoE Google Form: character Name-Realm, item name, track, optional note, Submit
+- No login needed -- pinned per-team Discord links (`index.html?team=<slug>#boe`) land straight on the card with the team preselected, and the card says which team it will report for
+- Logged in, the character field prefills from their claimed character (still editable)
+- Submitting records the find for the officers and posts the familiar bot-style message to the BoE Discord channel; officers handle listing, sale, and payout from there
+- Hidden per team via the `boe` feature flag (Admin tab / site admin dashboard)
+
 ---
 
 ## The landing page

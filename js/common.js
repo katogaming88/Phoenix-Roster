@@ -55,7 +55,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.60.37';
+var VERSION = '3.61.1';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -82,6 +82,14 @@ var SITE_NAV_ITEMS = [
     view: 'signup',
     hash: 'signup',
     onclick: 'showSignupView()'
+  },
+  {
+    id: 'navBoE',
+    label: 'BoE',
+    tooltip: 'Report a BoE drop you found while raiding',
+    view: 'boe',
+    hash: 'boe',
+    onclick: 'showBoeView()'
   },
   {
     id: 'navHistory',

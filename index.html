@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=3.60.37">
+<link rel="stylesheet" href="css/styles.css?v=3.61.1">
 <script>var whTooltips = {colorLinks: true, iconizeLinks: true, iconSize: 'small'};</script>
 <script src="https://wow.zamimg.com/widgets/power.js"></script>
 </head>
@@ -222,6 +222,39 @@
   <div class="footer">We Go Again &middot; <span class="team-name">Phoenix</span> &middot; v<span id="versionNumSignup"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a> &middot; <a class="footer-link footer-icon-link" href="https://patreon.com/Katorri" target="_blank" rel="noopener" aria-label="Support on Patreon" title="Support on Patreon"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M0 .48v23.04h4.22V.48zm15.385 0c-4.764 0-8.641 3.88-8.641 8.65 0 4.755 3.877 8.623 8.641 8.623 4.75 0 8.615-3.868 8.615-8.623C24 4.36 20.136.48 15.385.48z"/></svg></a></div>
 </div>
 
+<!-- BoE Found (#746) -- replaces the BoE Google Form. Works with zero login
+     (submit_boe_found is anon-callable); Immolation raiders land here through a
+     pinned per-team Discord link (index.html?team=<slug>#boe). -->
+<div id="boeViewWrap" class="view">
+  <div class="landing-body">
+    <section class="landing-card" aria-labelledby="boeHeading">
+      <h2 id="boeHeading">Report a BoE Drop</h2>
+      <p style="color:var(--text);">Found a BoE while raiding with the guild? Report it here and the officers handle the listing. If it sells, you get a cut of the sale.</p>
+      <p style="color:var(--text);">Reporting for Team <strong><span id="boeTeamName"></span></strong></p>
+      <div style="display:flex;flex-direction:column;gap:0.35rem;max-width:420px;margin:0 auto;text-align:left;">
+        <label for="boeCharName">Character (Name-Realm)</label>
+        <input type="text" id="boeCharName" class="add-player-input" autocomplete="off">
+        <label for="boeItemName" style="margin-top:0.5rem;">Item name</label>
+        <input type="text" id="boeItemName" class="add-player-input" autocomplete="off">
+        <label for="boeTrack" style="margin-top:0.5rem;">Track</label>
+        <select id="boeTrack" class="add-player-input">
+          <option value="">Select track</option>
+          <option value="Champion">Champion</option>
+          <option value="Hero">Hero</option>
+          <option value="Myth">Myth</option>
+        </select>
+        <label for="boeNote" style="margin-top:0.5rem;">Note (optional)</label>
+        <textarea id="boeNote" class="add-player-input" rows="3"></textarea>
+        <div style="display:flex;align-items:center;gap:0.75rem;margin-top:0.75rem;">
+          <button type="button" class="btn btn-gold" id="boeSubmitBtn" onclick="submitBoeFound()">Submit</button>
+          <span id="boeStatus" role="status" style="font-size:0.92rem;color:var(--heal);"></span>
+        </div>
+      </div>
+    </section>
+  </div>
+  <div class="footer">We Go Again &middot; <span class="team-name">Phoenix</span> &middot; v<span id="versionNumBoe"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a> &middot; <a class="footer-link footer-icon-link" href="https://patreon.com/Katorri" target="_blank" rel="noopener" aria-label="Support on Patreon" title="Support on Patreon"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M0 .48v23.04h4.22V.48zm15.385 0c-4.764 0-8.641 3.88-8.641 8.65 0 4.755 3.877 8.623 8.641 8.623 4.75 0 8.615-3.868 8.615-8.623C24 4.36 20.136.48 15.385.48z"/></svg></a></div>
+</div>
+
 <!-- Help -->
 <div id="helpViewWrap" class="view">
   <div class="landing-body">
@@ -331,19 +364,20 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/common.js?v=3.60.37"></script>
-<script src="js/discord.js?v=3.60.37"></script>
-<script src="js/officer-quick-actions.js?v=3.60.37"></script>
-<script src="js/streamers.js?v=3.60.37"></script>
-<script src="js/news.js?v=3.60.37"></script>
-<script src="js/roster.js?v=3.60.37"></script>
-<script src="js/contact.js?v=3.60.37"></script>
-<script src="js/signup.js?v=3.60.37"></script>
-<script src="js/wishlist.js?v=3.60.37"></script>
-<script src="js/bonusRoll.js?v=3.60.37"></script>
+<script src="js/common.js?v=3.61.1"></script>
+<script src="js/discord.js?v=3.61.1"></script>
+<script src="js/officer-quick-actions.js?v=3.61.1"></script>
+<script src="js/streamers.js?v=3.61.1"></script>
+<script src="js/news.js?v=3.61.1"></script>
+<script src="js/roster.js?v=3.61.1"></script>
+<script src="js/contact.js?v=3.61.1"></script>
+<script src="js/signup.js?v=3.61.1"></script>
+<script src="js/wishlist.js?v=3.61.1"></script>
+<script src="js/bonusRoll.js?v=3.61.1"></script>
+<script src="js/boe.js?v=3.61.1"></script>
 <script>
 renderSiteNav('public');
-['versionNum','versionNumProfile','versionNumSignup','versionNumRoster','versionNumStreamers','versionNumHistory','versionNumAbout','versionNumNews','versionNumHelp'].forEach(function(id){document.getElementById(id).textContent=VERSION;});
+['versionNum','versionNumProfile','versionNumSignup','versionNumRoster','versionNumStreamers','versionNumHistory','versionNumAbout','versionNumNews','versionNumHelp','versionNumBoe'].forEach(function(id){document.getElementById(id).textContent=VERSION;});
 document.getElementById('headerTeamName').textContent = TEAM_NAME;
 document.querySelectorAll('.team-name').forEach(function(el){el.textContent=TEAM_NAME;});
 if (TEAM_SLUG !== 'phoenix') {

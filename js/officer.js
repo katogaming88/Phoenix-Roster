@@ -403,6 +403,7 @@ function applyFeatureFlagVisibility() {
   var fairnessOn = featureEnabled('fairness');
   var attendanceOn = featureEnabled('attendance');
   var requestsOn = featureEnabled('requests');
+  var boeOn = featureEnabled('boe');
 
   setVisible('navTab-priority', priorityOn);
   setVisible('navTab-bis', bisOn);
@@ -414,6 +415,9 @@ function applyFeatureFlagVisibility() {
   // items.
   setVisible('navTab-requests', requestsOn);
   setVisible('navTab-loot', lootOn || fairnessOn);
+  // The site nav's BoE link points back at index.html's submit card (#746);
+  // hide it alongside the card when the team's boe flag is off.
+  setVisible('navBoE', boeOn);
 
   setVisible('loot-subtab-btn-import', lootOn);
   setVisible('loot-subtab-btn-history', lootOn);

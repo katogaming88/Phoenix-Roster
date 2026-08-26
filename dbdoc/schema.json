@@ -3673,6 +3673,18 @@
           "type": "jsonb",
           "nullable": false,
           "default": "'[]'::jsonb"
+        },
+        {
+          "name": "boe_payout_floor",
+          "type": "bigint",
+          "nullable": false,
+          "default": "20000"
+        },
+        {
+          "name": "boe_payout_pivot",
+          "type": "bigint",
+          "nullable": false,
+          "default": "100000"
         }
       ],
       "indexes": [
@@ -3686,6 +3698,26 @@
         }
       ],
       "constraints": [
+        {
+          "name": "site_settings_boe_payout_floor_nonneg",
+          "type": "CHECK",
+          "def": "CHECK ((boe_payout_floor \u003e= 0))",
+          "table": "public.site_settings",
+          "referenced_table": "",
+          "columns": [
+            "boe_payout_floor"
+          ]
+        },
+        {
+          "name": "site_settings_boe_payout_pivot_positive",
+          "type": "CHECK",
+          "def": "CHECK ((boe_payout_pivot \u003e 0))",
+          "table": "public.site_settings",
+          "referenced_table": "",
+          "columns": [
+            "boe_payout_pivot"
+          ]
+        },
         {
           "name": "site_settings_pkey",
           "type": "PRIMARY KEY",
@@ -3990,6 +4022,541 @@
           "referenced_table": "",
           "columns": [
             "auth_user_id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.boe_items",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('boe_items_id_seq'::regclass)"
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "player_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "finder_name",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "item_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "item_name",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "track",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "season",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "note",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "nullable": false,
+          "default": "'found'::text"
+        },
+        {
+          "name": "found_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "sold_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "payout_paid_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "retired_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "sale_price",
+          "type": "bigint",
+          "nullable": true
+        },
+        {
+          "name": "finder_payout",
+          "type": "bigint",
+          "nullable": true
+        },
+        {
+          "name": "guild_cut",
+          "type": "bigint",
+          "nullable": true
+        },
+        {
+          "name": "payout_floor",
+          "type": "bigint",
+          "nullable": true
+        },
+        {
+          "name": "payout_pivot",
+          "type": "bigint",
+          "nullable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "boe_items_pkey",
+          "def": "CREATE UNIQUE INDEX boe_items_pkey ON public.boe_items USING btree (id)",
+          "table": "public.boe_items",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "boe_items_finder_payout_nonneg",
+          "type": "CHECK",
+          "def": "CHECK ((finder_payout \u003e= 0))",
+          "table": "public.boe_items",
+          "referenced_table": "",
+          "columns": [
+            "finder_payout"
+          ]
+        },
+        {
+          "name": "boe_items_floor_nonneg",
+          "type": "CHECK",
+          "def": "CHECK ((payout_floor \u003e= 0))",
+          "table": "public.boe_items",
+          "referenced_table": "",
+          "columns": [
+            "payout_floor"
+          ]
+        },
+        {
+          "name": "boe_items_guild_cut_nonneg",
+          "type": "CHECK",
+          "def": "CHECK ((guild_cut \u003e= 0))",
+          "table": "public.boe_items",
+          "referenced_table": "",
+          "columns": [
+            "guild_cut"
+          ]
+        },
+        {
+          "name": "boe_items_money_complete_when_sold",
+          "type": "CHECK",
+          "def": "CHECK (((status \u003c\u003e ALL (ARRAY['sold'::text, 'paid'::text])) OR ((sale_price IS NOT NULL) AND (finder_payout IS NOT NULL) AND (guild_cut IS NOT NULL) AND (payout_floor IS NOT NULL) AND (payout_pivot IS NOT NULL))))",
+          "table": "public.boe_items",
+          "referenced_table": "",
+          "columns": [
+            "status",
+            "sale_price",
+            "finder_payout",
+            "guild_cut",
+            "payout_floor",
+            "payout_pivot"
+          ]
+        },
+        {
+          "name": "boe_items_money_only_when_sold",
+          "type": "CHECK",
+          "def": "CHECK (((status = ANY (ARRAY['sold'::text, 'paid'::text])) OR ((sale_price IS NULL) AND (finder_payout IS NULL) AND (guild_cut IS NULL) AND (payout_floor IS NULL) AND (payout_pivot IS NULL))))",
+          "table": "public.boe_items",
+          "referenced_table": "",
+          "columns": [
+            "status",
+            "sale_price",
+            "finder_payout",
+            "guild_cut",
+            "payout_floor",
+            "payout_pivot"
+          ]
+        },
+        {
+          "name": "boe_items_paid_at_iff_paid",
+          "type": "CHECK",
+          "def": "CHECK (((status = 'paid'::text) = (payout_paid_at IS NOT NULL)))",
+          "table": "public.boe_items",
+          "referenced_table": "",
+          "columns": [
+            "status",
+            "payout_paid_at"
+          ]
+        },
+        {
+          "name": "boe_items_payout_lte_sale",
+          "type": "CHECK",
+          "def": "CHECK ((finder_payout \u003c= sale_price))",
+          "table": "public.boe_items",
+          "referenced_table": "",
+          "columns": [
+            "finder_payout",
+            "sale_price"
+          ]
+        },
+        {
+          "name": "boe_items_pivot_positive",
+          "type": "CHECK",
+          "def": "CHECK ((payout_pivot \u003e 0))",
+          "table": "public.boe_items",
+          "referenced_table": "",
+          "columns": [
+            "payout_pivot"
+          ]
+        },
+        {
+          "name": "boe_items_retired_at_iff_retired",
+          "type": "CHECK",
+          "def": "CHECK (((status = 'retired'::text) = (retired_at IS NOT NULL)))",
+          "table": "public.boe_items",
+          "referenced_table": "",
+          "columns": [
+            "status",
+            "retired_at"
+          ]
+        },
+        {
+          "name": "boe_items_sale_price_nonneg",
+          "type": "CHECK",
+          "def": "CHECK ((sale_price \u003e= 0))",
+          "table": "public.boe_items",
+          "referenced_table": "",
+          "columns": [
+            "sale_price"
+          ]
+        },
+        {
+          "name": "boe_items_sold_at_iff_sold",
+          "type": "CHECK",
+          "def": "CHECK (((status = ANY (ARRAY['sold'::text, 'paid'::text])) = (sold_at IS NOT NULL)))",
+          "table": "public.boe_items",
+          "referenced_table": "",
+          "columns": [
+            "status",
+            "sold_at"
+          ]
+        },
+        {
+          "name": "boe_items_status_check",
+          "type": "CHECK",
+          "def": "CHECK ((status = ANY (ARRAY['found'::text, 'listed'::text, 'sold'::text, 'paid'::text, 'retired'::text])))",
+          "table": "public.boe_items",
+          "referenced_table": "",
+          "columns": [
+            "status"
+          ]
+        },
+        {
+          "name": "boe_items_track_check",
+          "type": "CHECK",
+          "def": "CHECK ((track = ANY (ARRAY['Champion'::text, 'Hero'::text, 'Myth'::text])))",
+          "table": "public.boe_items",
+          "referenced_table": "",
+          "columns": [
+            "track"
+          ]
+        },
+        {
+          "name": "boe_items_item_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL",
+          "table": "public.boe_items",
+          "referenced_table": "public.items",
+          "columns": [
+            "item_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "boe_items_player_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL",
+          "table": "public.boe_items",
+          "referenced_table": "public.players",
+          "columns": [
+            "player_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "boe_items_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.boe_items",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "boe_items_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.boe_items",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_boe_items_status_transition",
+          "def": "CREATE TRIGGER trg_boe_items_status_transition BEFORE UPDATE ON public.boe_items FOR EACH ROW EXECUTE FUNCTION check_boe_status_transition()"
+        },
+        {
+          "name": "trg_boe_items_team_id_check",
+          "def": "CREATE TRIGGER trg_boe_items_team_id_check BEFORE INSERT OR UPDATE ON public.boe_items FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
+        },
+        {
+          "name": "trg_boe_items_updated_at",
+          "def": "CREATE TRIGGER trg_boe_items_updated_at BEFORE UPDATE ON public.boe_items FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
+    },
+    {
+      "name": "public.boe_listings",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('boe_listings_id_seq'::regclass)"
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "boe_item_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "listed_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "price",
+          "type": "bigint",
+          "nullable": false
+        },
+        {
+          "name": "note",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "boe_listings_pkey",
+          "def": "CREATE UNIQUE INDEX boe_listings_pkey ON public.boe_listings USING btree (id)",
+          "table": "public.boe_listings",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "boe_listings_boe_item_id_idx",
+          "def": "CREATE INDEX boe_listings_boe_item_id_idx ON public.boe_listings USING btree (boe_item_id)",
+          "table": "public.boe_listings",
+          "columns": [
+            "boe_item_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "boe_listings_price_check",
+          "type": "CHECK",
+          "def": "CHECK ((price \u003e= 0))",
+          "table": "public.boe_listings",
+          "referenced_table": "",
+          "columns": [
+            "price"
+          ]
+        },
+        {
+          "name": "boe_listings_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.boe_listings",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "boe_listings_boe_item_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (boe_item_id) REFERENCES boe_items(id) ON DELETE CASCADE",
+          "table": "public.boe_listings",
+          "referenced_table": "public.boe_items",
+          "columns": [
+            "boe_item_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "boe_listings_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.boe_listings",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_boe_listings_team_id_check",
+          "def": "CREATE TRIGGER trg_boe_listings_team_id_check BEFORE INSERT OR UPDATE ON public.boe_listings FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_boe_item()"
+        },
+        {
+          "name": "trg_boe_listings_updated_at",
+          "def": "CREATE TRIGGER trg_boe_listings_updated_at BEFORE UPDATE ON public.boe_listings FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
+    },
+    {
+      "name": "public.boe_managers",
+      "type": "BASE TABLE",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('boe_managers_id_seq'::regclass)"
+        },
+        {
+          "name": "team_member_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "boe_managers_pkey",
+          "def": "CREATE UNIQUE INDEX boe_managers_pkey ON public.boe_managers USING btree (id)",
+          "table": "public.boe_managers",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "boe_managers_team_member_id_key",
+          "def": "CREATE UNIQUE INDEX boe_managers_team_member_id_key ON public.boe_managers USING btree (team_member_id)",
+          "table": "public.boe_managers",
+          "columns": [
+            "team_member_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "boe_managers_team_member_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_member_id) REFERENCES team_members(id) ON DELETE CASCADE",
+          "table": "public.boe_managers",
+          "referenced_table": "public.team_members",
+          "columns": [
+            "team_member_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "boe_managers_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.boe_managers",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "boe_managers_team_member_id_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (team_member_id)",
+          "table": "public.boe_managers",
+          "referenced_table": "",
+          "columns": [
+            "team_member_id"
           ]
         }
       ]
@@ -4580,6 +5147,84 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (token_item_id) REFERENCES items(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.boe_items",
+      "columns": [
+        "item_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.items",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.boe_items",
+      "columns": [
+        "player_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.players",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.boe_items",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.boe_listings",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.boe_listings",
+      "columns": [
+        "boe_item_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.boe_items",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (boe_item_id) REFERENCES boe_items(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.boe_managers",
+      "columns": [
+        "team_member_id"
+      ],
+      "cardinality": "zero_or_one",
+      "parent_table": "public.team_members",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_member_id) REFERENCES team_members(id) ON DELETE CASCADE"
     }
   ],
   "functions": [
@@ -4887,6 +5532,66 @@
       "name": "public.wishlist_setup_status",
       "return_type": "record",
       "arguments": "p_team_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.check_team_id_matches_boe_item",
+      "return_type": "trigger",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.check_boe_status_transition",
+      "return_type": "trigger",
+      "arguments": "",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.is_boe_manager",
+      "return_type": "bool",
+      "arguments": "p_team_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.submit_boe_found",
+      "return_type": "int4",
+      "arguments": "p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_note text DEFAULT NULL::text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.boe_record_listing",
+      "return_type": "void",
+      "arguments": "p_id integer, p_price bigint, p_listed_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_note text DEFAULT NULL::text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.boe_record_sale",
+      "return_type": "record",
+      "arguments": "p_id integer, p_sale_price bigint, p_sold_at timestamp with time zone DEFAULT NULL::timestamp with time zone",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.boe_mark_paid",
+      "return_type": "void",
+      "arguments": "p_id integer, p_paid_at timestamp with time zone DEFAULT NULL::timestamp with time zone",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.boe_retire",
+      "return_type": "void",
+      "arguments": "p_id integer, p_note text DEFAULT NULL::text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.boe_revert",
+      "return_type": "text",
+      "arguments": "p_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_boe_payout_settings",
+      "return_type": "void",
+      "arguments": "p_floor bigint, p_pivot bigint",
       "type": "FUNCTION"
     }
   ],

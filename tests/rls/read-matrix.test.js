@@ -35,6 +35,9 @@ const PUBLIC_READ = [
 const GATED = [
   'audit_log',
   'bis_requests',
+  'boe_items',
+  'boe_listings',
+  'boe_managers',
   'guild_officers',
   'mplus_exclusion_requests',
   'season_signups',
@@ -78,7 +81,10 @@ describe('gated tables hide their rows from anon and raiders', () => {
 });
 
 describe('officers read their own team, not other teams', () => {
-  const where = { team_members: 'team_id = 1' };
+  // boe_managers has no team_id column; its officer read is scoped through
+  // the granted member's team, and the only seeded grant is on team 1, so
+  // an unfiltered count carries the same team-1-vs-team-2 assertion (#745).
+  const where = { team_members: 'team_id = 1', boe_managers: 'true' };
   for (const table of OFFICER_READABLE) {
     it(`team 1 officer sees team 1 rows in ${table}`, async () => {
       expect(await countAs('authenticated', OFFICER_T1, table, where[table] ?? 'team_id = 1')).toBeGreaterThan(0);

@@ -39,11 +39,14 @@
 | [public.priority_order_same_boss_conflicts](public.priority_order_same_boss_conflicts.md) | 10 |  | VIEW |
 | [public.priority_order_stale_after_heroic](public.priority_order_stale_after_heroic.md) | 7 |  | VIEW |
 | [public.item_preferences](public.item_preferences.md) | 11 |  | BASE TABLE |
-| [public.site_settings](public.site_settings.md) | 5 |  | BASE TABLE |
+| [public.site_settings](public.site_settings.md) | 7 |  | BASE TABLE |
 | [public.incoming_roster](public.incoming_roster.md) | 7 |  | VIEW |
 | [public.guild_officers](public.guild_officers.md) | 3 |  | BASE TABLE |
 | [public.tier_token_map](public.tier_token_map.md) | 5 |  | BASE TABLE |
 | [public.no_character_dismissals](public.no_character_dismissals.md) | 3 |  | BASE TABLE |
+| [public.boe_items](public.boe_items.md) | 21 |  | BASE TABLE |
+| [public.boe_listings](public.boe_listings.md) | 8 |  | BASE TABLE |
+| [public.boe_managers](public.boe_managers.md) | 3 |  | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -100,6 +103,16 @@
 | public.restrict_item_preferences_officer_update_to_note_clear | trigger |  | FUNCTION |
 | public.generate_priority_order | record | p_team_id integer, p_season text, p_item_id integer, p_track text | FUNCTION |
 | public.wishlist_setup_status | record | p_team_id integer | FUNCTION |
+| public.check_team_id_matches_boe_item | trigger |  | FUNCTION |
+| public.check_boe_status_transition | trigger |  | FUNCTION |
+| public.is_boe_manager | bool | p_team_id integer | FUNCTION |
+| public.submit_boe_found | int4 | p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_note text DEFAULT NULL::text | FUNCTION |
+| public.boe_record_listing | void | p_id integer, p_price bigint, p_listed_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_note text DEFAULT NULL::text | FUNCTION |
+| public.boe_record_sale | record | p_id integer, p_sale_price bigint, p_sold_at timestamp with time zone DEFAULT NULL::timestamp with time zone | FUNCTION |
+| public.boe_mark_paid | void | p_id integer, p_paid_at timestamp with time zone DEFAULT NULL::timestamp with time zone | FUNCTION |
+| public.boe_retire | void | p_id integer, p_note text DEFAULT NULL::text | FUNCTION |
+| public.boe_revert | text | p_id integer | FUNCTION |
+| public.set_boe_payout_settings | void | p_floor bigint, p_pivot bigint | FUNCTION |
 
 ## Enums
 
@@ -169,6 +182,12 @@ erDiagram
 "public.item_preferences" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.tier_token_map" }o--|| "public.items" : "FOREIGN KEY (resolved_item_id) REFERENCES items(id) ON DELETE CASCADE"
 "public.tier_token_map" }o--|| "public.items" : "FOREIGN KEY (token_item_id) REFERENCES items(id) ON DELETE CASCADE"
+"public.boe_items" }o--o| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL"
+"public.boe_items" }o--o| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL"
+"public.boe_items" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.boe_listings" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.boe_listings" }o--|| "public.boe_items" : "FOREIGN KEY (boe_item_id) REFERENCES boe_items(id) ON DELETE CASCADE"
+"public.boe_managers" |o--|| "public.team_members" : "FOREIGN KEY (team_member_id) REFERENCES team_members(id) ON DELETE CASCADE"
 
 "public.attendance" {
   integer id
@@ -540,6 +559,8 @@ erDiagram
   text maintenance_message
   timestamp_with_time_zone updated_at
   jsonb guild_officer_bios
+  bigint boe_payout_floor
+  bigint boe_payout_pivot
 }
 "public.incoming_roster" {
   integer signup_id
@@ -566,6 +587,44 @@ erDiagram
   integer id
   uuid auth_user_id FK
   timestamp_with_time_zone dismissed_at
+}
+"public.boe_items" {
+  integer id
+  integer team_id FK
+  integer player_id FK
+  text finder_name
+  integer item_id FK
+  text item_name
+  text track
+  text season
+  text note
+  text status
+  timestamp_with_time_zone found_at
+  timestamp_with_time_zone sold_at
+  timestamp_with_time_zone payout_paid_at
+  timestamp_with_time_zone retired_at
+  bigint sale_price
+  bigint finder_payout
+  bigint guild_cut
+  bigint payout_floor
+  bigint payout_pivot
+  timestamp_with_time_zone updated_at
+  timestamp_with_time_zone created_at
+}
+"public.boe_listings" {
+  integer id
+  integer team_id FK
+  integer boe_item_id FK
+  timestamp_with_time_zone listed_at
+  bigint price
+  text note
+  timestamp_with_time_zone updated_at
+  timestamp_with_time_zone created_at
+}
+"public.boe_managers" {
+  integer id
+  integer team_member_id FK
+  timestamp_with_time_zone created_at
 }
 ```
 

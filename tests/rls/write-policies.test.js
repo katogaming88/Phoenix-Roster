@@ -125,6 +125,12 @@ describe('request tables have no INSERT path (service role only)', () => {
   const REQUEST_INSERTS = {
     bis_requests:
       "insert into public.bis_requests (team_id, player_id, bis_link) values (1, 1, 'https://example.com/test')",
+    // #745: a found BoE arrives only through submit_boe_found(), and listing
+    // rows only through boe_record_listing(). Payloads satisfy the CHECKs and
+    // the check_team_id_matches_boe_item trigger (boe_items 1 is team 1).
+    boe_items:
+      "insert into public.boe_items (team_id, item_name, finder_name) values (1, 'Test BoE Bracers', 'Testfinder-Illidan')",
+    boe_listings: 'insert into public.boe_listings (team_id, boe_item_id, price) values (1, 1, 100000)',
     mplus_exclusion_requests:
       "insert into public.mplus_exclusion_requests (team_id, player_id, reason) values (1, 2, 'test')",
     season_signups:

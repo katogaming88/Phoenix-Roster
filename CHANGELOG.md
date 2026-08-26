@@ -8,7 +8,7 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
-## [3.60.37] - 2026-08-26
+## [3.61.1] - 2026-08-26
 
 ### Frontend
 
@@ -17,11 +17,27 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.61.0] - 2026-08-25
+
+### Frontend
+
+- Added the BoE tab (#746): a submit card that replaces the BoE Google Form. Character Name-Realm (prefilled from the claimed character when logged in, editable), item name, track, and an optional note, submitted through the anon-callable `submit_boe_found` RPC, so no login is needed. A per-team deep link (`index.html?team=<slug>#boe`) lands straight on the card with the team preselected, for pinned messages in the team Discord channels, and the card shows which team it will report for. A new `boe` feature flag in both admin panels hides the tab per team (unset reads as enabled). The card ships accessible: labeled native controls, a `role="status"` live region for submit feedback, text-based validation messages.
+
+### Backend
+
+- Added the `boe-webhook` Edge Function (#746): posts each submitted find to the BoE Discord channel as an embed preserving the retired relay bot's message line, reading the channel webhook from the `BOE_WEBHOOK_URL` secret and silently no-opping while the secret is unset. Fired fire-and-forget by the card after the RPC insert succeeds.
+
+---
+
 ## [3.60.36] - 2026-08-25
 
 ### Frontend
 
 - Removed the 10-player cap on the Priority Edit modal's ranked list. It was a leftover client-side limit with no matching database constraint, and it silently blocked officers from adding an 11th eligible player to an item's priority order (with a "Maximum 10 players per item." message) once bench depth or wishlist interest ran past 10.
+
+### Backend
+
+- Added the BoE tracker backend (`20260825225243_boe_tracker.sql`, #745): three tables (`boe_items`, `boe_listings`, `boe_managers`), the `is_boe_manager()` grant predicate, and the found/listed/sold/paid/retired lifecycle RPCs with grant-only writes and a per-row snapshot of the guild split (a 20% or 20,000g floor payout on the gross sale, computed from guild-wide `site_settings` constants). Officers without a manager grant are read-only, and the BoE tables carry no public read. Bumped the CI Supabase CLI pin to 2.115.0 to match the regenerated schema docs.
 
 ---
 
