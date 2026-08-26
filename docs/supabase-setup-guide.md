@@ -912,6 +912,10 @@ In Supabase: **Project Settings** -> **Edge Functions** -> **Secrets**. Add each
 | `SERVICE_ROLE_KEY`             | Supabase -> Project Settings -> API -> service_role      |
 | `BOE_WEBHOOK_URL`              | Discord channel settings -> Integrations -> Webhooks (#746) |
 
+Note: the BoE webhook secret exists on prod under the name `BOE-Found-Webhook`
+(created that way in the dashboard, 2026-08-26). The boe-webhook function reads
+`BOE_WEBHOOK_URL` first and falls back to that name, so either works.
+
 Note: Supabase does not allow secrets prefixed with `SUPABASE_`, so the service role
 key is stored as `SERVICE_ROLE_KEY`.
 

@@ -40,7 +40,12 @@ Deno.serve(async (req) => {
       return jsonResponse({ success: false, error: 'Missing item' });
     }
 
-    const webhookUrl = Deno.env.get('BOE_WEBHOOK_URL');
+    // BOE_WEBHOOK_URL is the documented name (setup guide, .env.example) and
+    // the one local `functions serve` can load from a dotenv file. The prod
+    // secret was created in the dashboard as BOE-Found-Webhook (2026-08-26)
+    // and the runtime delivers hyphenated names fine, so read it as the
+    // fallback rather than asking for a re-paste. Either name works.
+    const webhookUrl = Deno.env.get('BOE_WEBHOOK_URL') || Deno.env.get('BOE-Found-Webhook');
     if (!webhookUrl) {
       return jsonResponse({ success: true, skipped: true });
     }
