@@ -910,6 +910,7 @@ In Supabase: **Project Settings** -> **Edge Functions** -> **Secrets**. Add each
 | `BOT_WEBHOOK_URL_PHOENIX`      | `https://wga-phoenix.duckdns.org` (already live)         |
 | `BOT_WEBHOOK_URL_HELLFIRE`     | `https://wga-hellfire.duckdns.org` (already live)        |
 | `SERVICE_ROLE_KEY`             | Supabase -> Project Settings -> API -> service_role      |
+| `BOE_WEBHOOK_URL`              | Discord channel settings -> Integrations -> Webhooks (#746) |
 
 Note: Supabase does not allow secrets prefixed with `SUPABASE_`, so the service role
 key is stored as `SERVICE_ROLE_KEY`.

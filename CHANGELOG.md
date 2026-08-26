@@ -8,6 +8,18 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.61.0] - 2026-08-25
+
+### Frontend
+
+- Added the BoE tab (#746): a submit card that replaces the BoE Google Form. Character Name-Realm (prefilled from the claimed character when logged in, editable), item name, track, and an optional note, submitted through the anon-callable `submit_boe_found` RPC, so no login is needed. A per-team deep link (`index.html?team=<slug>#boe`) lands straight on the card with the team preselected, for pinned messages in the team Discord channels, and the card shows which team it will report for. A new `boe` feature flag in both admin panels hides the tab per team (unset reads as enabled). The card ships accessible: labeled native controls, a `role="status"` live region for submit feedback, text-based validation messages.
+
+### Backend
+
+- Added the `boe-webhook` Edge Function (#746): posts each submitted find to the BoE Discord channel as an embed preserving the retired relay bot's message line, reading the channel webhook from the `BOE_WEBHOOK_URL` secret and silently no-opping while the secret is unset. Fired fire-and-forget by the card after the RPC insert succeeds.
+
+---
+
 ## [3.60.36] - 2026-08-25
 
 ### Frontend

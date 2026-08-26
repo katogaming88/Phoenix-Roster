@@ -369,7 +369,8 @@ var FEATURE_FLAGS = [
   { key: 'fairness', label: 'Fairness' },
   { key: 'bench', label: 'Bench' },
   { key: 'attendance', label: 'Attendance' },
-  { key: 'requests', label: 'Requests' }
+  { key: 'requests', label: 'Requests' },
+  { key: 'boe', label: 'BoE' }
 ];
 
 var _adminTeamSettings = {}; // team_id -> config

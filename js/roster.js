@@ -10,7 +10,8 @@ function showView(name) {
     'historyViewWrap',
     'aboutViewWrap',
     'newsViewWrap',
-    'helpViewWrap'
+    'helpViewWrap',
+    'boeViewWrap'
   ].forEach(function (id) {
     document.getElementById(id).classList.remove('active');
   });
@@ -48,12 +49,21 @@ function showView(name) {
     markNewsSeen();
   }
   if (name === 'help') document.getElementById('helpViewWrap').classList.add('active');
-  ['navHome', 'navSignup', 'navRoster', 'navStreamers', 'navHistory', 'navAbout', 'navNews', 'navHelp'].forEach(
-    function (id) {
-      var el = document.getElementById(id);
-      if (el) el.classList.remove('active');
-    }
-  );
+  if (name === 'boe') document.getElementById('boeViewWrap').classList.add('active');
+  [
+    'navHome',
+    'navSignup',
+    'navRoster',
+    'navStreamers',
+    'navHistory',
+    'navAbout',
+    'navNews',
+    'navHelp',
+    'navBoE'
+  ].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.classList.remove('active');
+  });
   var activeNav = {
     landing: 'navHome',
     profile: 'navHome',
@@ -63,7 +73,8 @@ function showView(name) {
     history: 'navHistory',
     about: 'navAbout',
     news: 'navNews',
-    help: 'navHelp'
+    help: 'navHelp',
+    boe: 'navBoE'
   }[name];
   if (activeNav) {
     var el = document.getElementById(activeNav);
@@ -972,6 +983,9 @@ function bootRosterApp() {
         buildProgression();
         buildStreamWidget();
         renderExternalWclLink();
+        // Before the hash routing below, so a #boe deep link on a team with
+        // the flag off finds the card (and its nav button) already hidden.
+        initBoeCard();
         // Deep-link support for officer.html's nav (#354) -- its Roster/Streams/Sign
         // Up/Help links point back at index.html since those views only exist here.
         // '#profile/<name>' (#517) is handled separately below since it can't be
@@ -991,9 +1005,11 @@ function bootRosterApp() {
             history: 'history',
             about: 'about',
             news: 'news',
-            help: 'help'
+            help: 'help',
+            boe: 'boe'
           }[hashKey];
           if (hashView === 'signup') showSignupView();
+          else if (hashView === 'boe') showBoeView();
           else if (hashView) showView(hashView);
           else showView('landing');
         }
