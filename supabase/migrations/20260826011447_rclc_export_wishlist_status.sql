@@ -9,6 +9,14 @@
 -- entry simply has no status to show -- additive only (new "<track>_status"
 -- sibling keys alongside the existing H/M name arrays), so an addon client
 -- that hasn't picked up the new field yet keeps working unchanged.
+--
+-- Also attaches a top-level "statusLabels" object so the addon shows each
+-- team's actual configured wishlist tier names (Wishlist Tier Labels,
+-- team_settings.config->'wishlistStatusLabels', officer-editable, #515
+-- Phase 2) instead of hardcoding the site's own bis/good/ok defaults --
+-- confirmed live that at least one team has overridden both (good ->
+-- "2nd Choice", ok -> "Sidegrade"), so a hardcoded label would already be
+-- wrong for that team on day one.
 create or replace function public.build_rclc_export(
   p_team_id integer,
   p_season text
@@ -22,6 +30,7 @@ as $$
 declare
   v_players jsonb;
   v_priority jsonb;
+  v_status_labels jsonb;
 begin
   if not (coalesce(public.my_team_role(p_team_id) = any (array['officer', 'team_leader']), false) or public.is_site_admin()) then
     raise exception 'Not authorized';
@@ -152,7 +161,19 @@ begin
     coalesce((select jsonb_object_agg(wow_item_id::text, tracks) from prio_agg), '{}'::jsonb)
   into v_players, v_priority;
 
-  return jsonb_build_object('players', v_players, 'priority', v_priority);
+  -- WISHLIST_LABEL_DEFAULTS (js/tabs/tab-admin.js) is the site's own
+  -- default for each tier -- mirrored here (bis/good/ok only, the only
+  -- tiers this export attaches statuses for) so the export always hands
+  -- the addon a complete label set, whether or not the team has overridden
+  -- any of them.
+  select jsonb_build_object('bis', 'BiS', 'good', '2nd Choice', 'ok', 'Sidegrade')
+      || coalesce(
+           (select ts.config -> 'wishlistStatusLabels' from public.team_settings ts where ts.team_id = p_team_id),
+           '{}'::jsonb
+         )
+  into v_status_labels;
+
+  return jsonb_build_object('players', v_players, 'priority', v_priority, 'statusLabels', v_status_labels);
 end;
 $$;
 

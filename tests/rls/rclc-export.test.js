@@ -210,6 +210,38 @@ describe('build_rclc_export', () => {
     );
   });
 
+  it("attaches the site's default wishlist tier labels when the team has no overrides", async () => {
+    await withRole('authenticated', OFFICER_T1, async (q) => {
+      const res = await q('select public.build_rclc_export(1, $1) as payload', ['export-test']);
+      expect(res.rows[0].payload.statusLabels).toEqual({ bis: 'BiS', good: '2nd Choice', ok: 'Sidegrade' });
+    });
+  });
+
+  it("merges a team's configured wishlist tier label overrides over the defaults", async () => {
+    const client = await pool.connect();
+    try {
+      await client.query('begin');
+      await client.query(
+        `update public.team_settings set config = config || '{"wishlistStatusLabels":{"good":"2nd Choice","ok":"Sidegrade Pick"}}'::jsonb where team_id = 1`
+      );
+      await client.query("select set_config('request.jwt.claims', $1, true)", [
+        JSON.stringify({ sub: OFFICER_T1, role: 'authenticated' })
+      ]);
+      await client.query('set local role authenticated');
+      const res = await client.query('select public.build_rclc_export(1, $1) as payload', ['export-test']);
+      // 'bis' was never overridden -- falls back to the site default,
+      // merged alongside the two explicit overrides.
+      expect(res.rows[0].payload.statusLabels).toEqual({
+        bis: 'BiS',
+        good: '2nd Choice',
+        ok: 'Sidegrade Pick'
+      });
+    } finally {
+      await client.query('rollback');
+      client.release();
+    }
+  });
+
   it('scopes priority to the given season, not other seasons for the same team', async () => {
     await withRole('authenticated', OFFICER_T1, async (q) => {
       await seedPriority(q);
