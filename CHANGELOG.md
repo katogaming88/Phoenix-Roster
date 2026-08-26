@@ -42,6 +42,7 @@ with each release split into `### Frontend` (drives the version number) and
 ### Backend
 
 - Added the `boe-webhook` Edge Function (#746): posts each submitted find to the BoE Discord channel as an embed preserving the retired relay bot's message line, reading the channel webhook from the `BOE_WEBHOOK_URL` secret and silently no-opping while the secret is unset. Fired fire-and-forget by the card after the RPC insert succeeds.
+- The function also accepts the secret under `BOE-Found-Webhook`, the name it was actually created with on prod, as a fallback to the documented `BOE_WEBHOOK_URL`. Verified live: the channel received the smoke-test embed.
 
 ---
 
