@@ -8,7 +8,7 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
-## [Unreleased]
+## [3.63.1] - 2026-08-26
 
 ### Frontend
 
