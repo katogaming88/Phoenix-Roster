@@ -8,6 +8,19 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.64.0] - 2026-08-26
+
+### Frontend
+
+- The BoE report card now asks which team the find belongs to (#767). "Reporting for Team X" was a label showing whichever team's page you happened to be on, and submitting from the wrong one filed the BoE against that team with no error and no way for the finder to see their own row again. It is now a dropdown that starts on the right team by itself (an explicit `?team=` link wins, then your claimed character's team, then the page you are on) and stays editable, because raiders sub across teams. Teams that have switched their own BoE flag off are left out, so finds cannot pile up somewhere nobody is watching. Anything you have already typed or picked survives a late login rather than being overwritten.
+- Added Wrathless as a hidden team. It raids with the guild but does not otherwise use the site, so it appears in the BoE reporting dropdown and nowhere else: not the team switcher, not the first-visit team picker. `index.html?team=wrathless` still works as an unlisted link.
+
+### Backend
+
+- Added the `teams` and `team_settings` rows for Wrathless (#767), so its BoE finds can be recorded at all. Its BoE feature starts enabled, like any team that has never touched the flag.
+
+---
+
 ## [3.63.1] - 2026-08-26
 
 ### Frontend

@@ -97,9 +97,10 @@ Reference notes for walking a raider through the site -- not published to raider
 - **Opt out of showing on other teams' pages** keeps their stream off other teams' sites while still showing it here
 
 ### Report a found BoE
-- The **BoE** tab is the replacement for the old BoE Google Form: character Name-Realm, item name, track, optional note, Submit
-- No login needed -- pinned per-team Discord links (`index.html?team=<slug>#boe`) land straight on the card with the team preselected, and the card says which team it will report for
-- Logged in, the character field prefills from their claimed character (still editable)
+- The **BoE** tab is the replacement for the old BoE Google Form: reporting team, character Name-Realm, item name, track, optional note, Submit
+- No login needed -- pinned per-team Discord links (`index.html?team=<slug>#boe`) land straight on the card with that team already chosen
+- **Reporting for team** is a dropdown, not a label ([#767](https://github.com/katogaming88/WGA-Raid-Hub/issues/767)). It starts on the right team by itself (an explicit `?team=` link wins, otherwise their claimed character's team, otherwise the page they are on) but they can always change it, because raiders sub across teams. It lists Wrathless too, which raids with the guild but has no page of its own, and it hides any team that has switched its own `boe` flag off
+- Logged in, the character field prefills from their claimed character (still editable). Anything they have already typed or picked survives, so a late login never overwrites their work
 - Submitting records the find for the officers and posts the familiar bot-style message to the BoE Discord channel; officers handle listing, sale, and payout from there
 - Hidden per team via the `boe` feature flag (Admin tab / site admin dashboard)
 

@@ -879,6 +879,10 @@ function _esc(str) {
 // silently never react to a restored session.
 function onDiscordSessionRestored(session) {
   if (typeof _qaRefresh === 'function') _qaRefresh();
+  // The BoE card is built before initDiscordLogin() runs, so it only ever saw
+  // the localStorage cache; re-resolve now that the session is real (#767).
+  // Called from here, not js/boe.js, for the same shadowing reason as above.
+  if (typeof refreshBoeIdentity === 'function') refreshBoeIdentity();
   if (session && session.nameRealm && sessionStorage.getItem('wga_open_profile')) {
     sessionStorage.removeItem('wga_open_profile');
     autoOpenClaimedProfile(session.nameRealm);
@@ -1058,7 +1062,7 @@ function showTeamPickerButtons() {
   if (status) status.style.display = 'none';
   if (!list) return;
   list.innerHTML = '';
-  Object.keys(TEAMS).forEach(function (slug) {
+  visibleTeamSlugs().forEach(function (slug) {
     var btn = document.createElement('button');
     btn.className = 'btn btn-gold team-picker-btn';
     btn.textContent = TEAMS[slug].name;

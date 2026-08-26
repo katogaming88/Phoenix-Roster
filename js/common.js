@@ -29,8 +29,30 @@ var TEAMS = {
     name: 'Immolation',
     supabaseTeamId: 3,
     emoji: '🔥'
+  },
+  // Wrathless raids with the guild but does not use the site: no roster, no
+  // members, nobody there opening a team page (#767). It exists here only so
+  // its BoE finds can be recorded against the right team, which is why it is
+  // hidden from the switcher and the cold-landing picker while `?team=wrathless`
+  // still resolves as an unlisted URL. Anything that maps an id back to a slug
+  // must keep seeing it; only the two pickers filter on `hidden`.
+  wrathless: {
+    gasUrl: '',
+    name: 'Wrathless',
+    supabaseTeamId: 4,
+    emoji: '🔥',
+    hidden: true
   }
 };
+
+// The pickers' team list. Everything else (id-to-slug lookups, ?team=
+// resolution, the BoE reporting dropdown) reads TEAMS directly, because a
+// hidden team is unlisted rather than nonexistent.
+function visibleTeamSlugs() {
+  return Object.keys(TEAMS).filter(function (slug) {
+    return !TEAMS[slug].hidden;
+  });
+}
 
 // Guild-wide external links (#288) -- Raider.IO and Armory only ever track the
 // whole guild roster (no per-team split like WarcraftLogs below), and never
@@ -55,7 +77,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.63.1';
+var VERSION = '3.64.0';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -453,7 +475,7 @@ function initTeamUI() {
     var sel = document.getElementById(id);
     if (!sel) return;
     sel.innerHTML = '';
-    Object.keys(TEAMS).forEach(function (slug) {
+    visibleTeamSlugs().forEach(function (slug) {
       var opt = document.createElement('option');
       opt.value = slug;
       opt.textContent = TEAMS[slug].name;
@@ -2456,7 +2478,18 @@ function applyTeamSettingsToData(data, config) {
 // ships, since no team has ever had occasion to set these before now. Same
 // fallback js/admin.js's site-admin panel already uses.
 function featureEnabled(key) {
-  var features = DATA && DATA.features;
+  return featureEnabledIn(DATA && DATA.features, key);
+}
+
+/**
+ * The flag rule itself, against any team's `config.features` rather than the
+ * current team's. Split out for the BoE reporting dropdown (#767), which has
+ * to judge every team's flag from one team_settings read, and kept as the
+ * single definition so the two cannot drift. A missing key reads as enabled.
+ * @param {any} features
+ * @param {string} key
+ */
+function featureEnabledIn(features, key) {
   if (!features || !(key in features)) return true;
   return !!features[key];
 }

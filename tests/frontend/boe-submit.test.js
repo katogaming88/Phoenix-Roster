@@ -24,13 +24,14 @@ const CARD_ELS = [
   'boeNote',
   'boeSubmitBtn',
   'boeStatus',
-  'boeTeamName',
+  'boeTeamSelect',
   'boeViewWrap',
   'navBoE'
 ];
 
 function makeSandbox({ search = '' } = {}) {
   const els = {};
+  const stored = [];
   function el(id) {
     if (!els[id]) els[id] = { value: '', innerHTML: '', textContent: '', style: {}, disabled: false };
     return els[id];
@@ -38,7 +39,11 @@ function makeSandbox({ search = '' } = {}) {
   const sandbox = {
     window: {},
     location: { search, pathname: '/' },
-    sessionStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
+    sessionStorage: {
+      getItem: () => null,
+      setItem: (k, v) => stored.push([k, v]),
+      removeItem: () => {}
+    },
     localStorage: { getItem: () => null, setItem: () => {} },
     document: {
       getElementById: (id) => els[id] || null,
@@ -60,12 +65,32 @@ function makeSandbox({ search = '' } = {}) {
   vm.runInContext(COMMON_JS, sandbox, { filename: 'common.js' });
   vm.runInContext(BOE_JS, sandbox, { filename: 'boe.js' });
   CARD_ELS.forEach(el);
-  return { sandbox, els, el };
+  return { sandbox, els, el, stored };
 }
+
+// PostgREST builders are thenable and chain .eq(), so the mock has to be both.
+function builder(rows) {
+  const settled = Promise.resolve({ data: rows, error: null });
+  const chain = {
+    eq: () => chain,
+    then: (onOk, onErr) => settled.then(onOk, onErr),
+    catch: (onErr) => settled.catch(onErr)
+  };
+  return chain;
+}
+
+// Every team enabled, which is what prod looks like today: no team has ever
+// set the boe key, and a missing key reads as enabled.
+const ALL_ENABLED = [
+  { team_id: 1, config: {} },
+  { team_id: 2, config: {} },
+  { team_id: 3, config: {} },
+  { team_id: 4, config: {} }
+];
 
 // Records rpc and invoke calls in arrival order so tests can assert both the
 // payloads and that the webhook only ever fires after the RPC settled green.
-function recorderClient({ rpcResult = { data: 1, error: null } } = {}) {
+function recorderClient({ rpcResult = { data: 1, error: null }, teamSettings = ALL_ENABLED, memberRows = [] } = {}) {
   const calls = [];
   return {
     calls,
@@ -73,6 +98,15 @@ function recorderClient({ rpcResult = { data: 1, error: null } } = {}) {
       rpc(name, params) {
         calls.push({ kind: 'rpc', name, params });
         return Promise.resolve(rpcResult);
+      },
+      from(table) {
+        calls.push({ kind: 'from', table });
+        return {
+          select: () => builder(table === 'team_settings' ? teamSettings : memberRows)
+        };
+      },
+      auth: {
+        getSession: () => Promise.resolve({ data: { session: { user: { id: 'uid-1' } } } })
       },
       functions: {
         invoke(name, opts) {
@@ -114,10 +148,32 @@ describe('submitBoeFound RPC payload', () => {
     const { calls, client } = recorderClient();
     sandbox.supabaseClient = client;
     sandbox.initBoeCard();
-    expect(el('boeTeamName').textContent).toBe('Hellfire Rollers');
+    expect(el('boeTeamSelect').value).toBe('hellfire');
     fillCard(el);
     await sandbox.submitBoeFound();
     expect(calls.find((c) => c.kind === 'rpc').params.p_team_id).toBe(2);
+  });
+
+  it('submits the team picked in the dropdown, not the page team (#767)', async () => {
+    const { sandbox, el } = makeSandbox();
+    const { calls, client } = recorderClient();
+    sandbox.supabaseClient = client;
+    sandbox.initBoeCard();
+    el('boeTeamSelect').value = 'wrathless';
+    fillCard(el);
+    await sandbox.submitBoeFound();
+    expect(calls.find((c) => c.kind === 'rpc').params.p_team_id).toBe(4);
+  });
+
+  it('the webhook body names the picked team, not the page team (#767)', async () => {
+    const { sandbox, el } = makeSandbox();
+    const { calls, client } = recorderClient();
+    sandbox.supabaseClient = client;
+    sandbox.initBoeCard();
+    el('boeTeamSelect').value = 'wrathless';
+    fillCard(el);
+    await sandbox.submitBoeFound();
+    expect(calls.find((c) => c.kind === 'invoke').body.team).toBe('Wrathless');
   });
 
   it('sends null for an unselected track and an empty note', async () => {
@@ -245,6 +301,176 @@ describe('prefill and success reset', () => {
     expect(el('boeNote').value).toBe('');
     expect(el('boeCharName').value).toBe('  Kae-Tichondrius  ');
     expect(el('boeStatus').textContent).toBe('Submitted! Officers will take it from here.');
+  });
+});
+
+describe('visibleTeamSlugs (#767)', () => {
+  // The two pickers (initTeamUI's selects, showTeamPickerButtons) call this;
+  // neither has a test of its own, because both build options with
+  // createElement/appendChild and the vm sandbox stubs createElement without
+  // appendChild. This covers the decision they delegate.
+  it('lists every team except the hidden ones, in config order', () => {
+    const { sandbox } = makeSandbox();
+    expect(sandbox.visibleTeamSlugs()).toEqual(['phoenix', 'hellfire', 'immolation']);
+  });
+
+  it('is a strict subset of TEAMS, so nothing is lost for id-to-slug lookups', () => {
+    const { sandbox } = makeSandbox();
+    const all = Object.keys(sandbox.TEAMS);
+    expect(all).toContain('wrathless');
+    expect(sandbox.visibleTeamSlugs().every((s) => all.includes(s))).toBe(true);
+  });
+});
+
+describe('team dropdown (#767)', () => {
+  it('offers every team including hidden Wrathless, which no other picker lists', () => {
+    const { sandbox, el } = makeSandbox();
+    sandbox.initBoeCard();
+    const html = el('boeTeamSelect').innerHTML;
+    ['phoenix', 'hellfire', 'immolation', 'wrathless'].forEach((slug) => {
+      expect(html).toContain('value="' + slug + '"');
+    });
+    expect(html).toContain('Wrathless');
+    // The whole reason Wrathless exists as a row: it submits finds but is
+    // absent from the switcher and the cold-landing picker.
+    expect(sandbox.visibleTeamSlugs()).toEqual(['phoenix', 'hellfire', 'immolation']);
+  });
+
+  it('drops a team that turned its own boe flag off', async () => {
+    const { sandbox, el } = makeSandbox();
+    const { client } = recorderClient({
+      teamSettings: [
+        { team_id: 1, config: {} },
+        { team_id: 2, config: { features: { boe: false } } },
+        { team_id: 3, config: {} },
+        { team_id: 4, config: {} }
+      ]
+    });
+    sandbox.supabaseClient = client;
+    sandbox.initBoeCard();
+    await sandbox.refreshBoeTeamOptions();
+    const html = el('boeTeamSelect').innerHTML;
+    expect(html).not.toContain('value="hellfire"');
+    expect(html).toContain('value="phoenix"');
+    expect(html).toContain('value="wrathless"');
+  });
+
+  it('keeps every option when the settings read fails, so a find can still be reported', async () => {
+    const { sandbox, el } = makeSandbox();
+    sandbox.supabaseClient = {
+      from: () => ({ select: () => Promise.resolve({ data: null, error: { message: 'boom' } }) })
+    };
+    sandbox.initBoeCard();
+    await sandbox.refreshBoeTeamOptions();
+    expect(el('boeTeamSelect').innerHTML).toContain('value="hellfire"');
+  });
+
+  it('changing the dropdown does not navigate or rewrite the stored team', () => {
+    const { sandbox, el, stored } = makeSandbox();
+    sandbox.initBoeCard();
+    const sel = el('boeTeamSelect');
+    sel.value = 'wrathless';
+    if (typeof sel.onchange === 'function') sel.onchange();
+    expect(sandbox.location.pathname).toBe('/');
+    expect(sandbox.location.href).toBeUndefined();
+    expect(stored.filter(([k]) => k === 'wga_team')).toEqual([]);
+  });
+});
+
+describe('identity resolution (#767)', () => {
+  const claim = (teamId, name, archived = null) => ({
+    team_id: teamId,
+    players: [{ name_realm: name, archived_at: archived }]
+  });
+
+  it('logged out leaves the page team selected and the character empty', async () => {
+    const { sandbox, el } = makeSandbox();
+    sandbox.supabaseClient = {
+      auth: { getSession: () => Promise.resolve({ data: { session: null } }) },
+      from: () => ({ select: () => builder([]) })
+    };
+    sandbox.initBoeCard();
+    await sandbox.refreshBoeIdentity();
+    expect(el('boeTeamSelect').value).toBe('phoenix');
+    expect(el('boeCharName').value).toBe('');
+  });
+
+  it('a single claim selects that team and prefills the character', async () => {
+    const { sandbox, el } = makeSandbox();
+    const { client } = recorderClient({ memberRows: [claim(3, 'Kae-Tichondrius')] });
+    sandbox.supabaseClient = client;
+    sandbox.initBoeCard();
+    await sandbox.refreshBoeIdentity();
+    expect(el('boeTeamSelect').value).toBe('immolation');
+    expect(el('boeCharName').value).toBe('Kae-Tichondrius');
+  });
+
+  it('multiple claims including the page team stay on the page team', async () => {
+    const { sandbox, el } = makeSandbox();
+    const { client } = recorderClient({
+      memberRows: [claim(3, 'Alt-Tichondrius'), claim(1, 'Main-Tichondrius')]
+    });
+    sandbox.supabaseClient = client;
+    sandbox.initBoeCard();
+    await sandbox.refreshBoeIdentity();
+    expect(el('boeTeamSelect').value).toBe('phoenix');
+  });
+
+  // The case that separates "one claim is a useful hint" from "any claim
+  // wins": alts on two other teams say nothing about which one they are
+  // raiding with tonight, so guessing one would be worse than leaving them
+  // where they landed.
+  it('multiple claims elsewhere still leave the page team selected', async () => {
+    const { sandbox, el } = makeSandbox();
+    const { client } = recorderClient({
+      memberRows: [claim(2, 'Alt-Tichondrius'), claim(3, 'Other-Tichondrius')]
+    });
+    sandbox.supabaseClient = client;
+    sandbox.initBoeCard();
+    await sandbox.refreshBoeIdentity();
+    expect(el('boeTeamSelect').value).toBe('phoenix');
+  });
+
+  it('an explicit ?team= beats a claim elsewhere, so pinned links keep working', async () => {
+    const { sandbox, el } = makeSandbox({ search: '?team=hellfire' });
+    const { client } = recorderClient({ memberRows: [claim(3, 'Kae-Tichondrius')] });
+    sandbox.supabaseClient = client;
+    sandbox.initBoeCard();
+    await sandbox.refreshBoeIdentity();
+    expect(el('boeTeamSelect').value).toBe('hellfire');
+  });
+
+  it('ignores an archived alt, which the cold-landing query does not filter', async () => {
+    const { sandbox, el } = makeSandbox();
+    const { client } = recorderClient({
+      memberRows: [claim(3, 'Retired-Tichondrius', '2026-01-01T00:00:00Z')]
+    });
+    sandbox.supabaseClient = client;
+    sandbox.initBoeCard();
+    await sandbox.refreshBoeIdentity();
+    expect(el('boeTeamSelect').value).toBe('phoenix');
+    expect(el('boeCharName').value).toBe('');
+  });
+
+  it('skips a claim on a team the client config does not know', async () => {
+    const { sandbox, el } = makeSandbox();
+    const { client } = recorderClient({ memberRows: [claim(99, 'Ghost-Tichondrius')] });
+    sandbox.supabaseClient = client;
+    sandbox.initBoeCard();
+    await sandbox.refreshBoeIdentity();
+    expect(el('boeTeamSelect').value).toBe('phoenix');
+  });
+
+  it('does not clobber a team or character the visitor already touched', async () => {
+    const { sandbox, el } = makeSandbox();
+    const { client } = recorderClient({ memberRows: [claim(3, 'Kae-Tichondrius')] });
+    sandbox.supabaseClient = client;
+    sandbox.initBoeCard();
+    el('boeTeamSelect').value = 'wrathless';
+    el('boeCharName').value = 'Someone-Else';
+    await sandbox.refreshBoeIdentity();
+    expect(el('boeTeamSelect').value).toBe('wrathless');
+    expect(el('boeCharName').value).toBe('Someone-Else');
   });
 });
 
