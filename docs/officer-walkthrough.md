@@ -337,6 +337,45 @@ Three sub-tabs: **Signups**, **Pending Roster**, **History**.
 
 ---
 
+## BoE Sales tab
+
+Runs the auction lifecycle for BoEs the guild sells -- **found -> listed -> sold -> paid**, plus
+**retire** for anything that never moves. Raiders report a find from the public **BoE** tab
+(#746); everything after the report happens here.
+
+- **The tab is guild-wide, not per-team** (#765). It shows every find you're allowed to see
+  rather than only the team whose page you're on, because BoEs are guild property. A BoE manager
+  or site admin sees all four teams, Wrathless included; a plain officer sees the teams they
+  staff. Every row names the finding team, History included -- that's credit, not a
+  disambiguator.
+- **Actions need the BoE manager grant** (#766), assigned by a site admin on the site admin
+  dashboard. Without it the tab is read-only: totals and rows, no buttons. The grant is
+  guild-wide, so a manager is authorized on every team's finds rather than one team's.
+
+A summary strip and three sections:
+
+- **Summary** -- **Guild income to date** (the guild's cut across sold and paid rows) and
+  **Outstanding payouts** (what's still owed on sold-but-unpaid rows). Per-team find counts and
+  gold raised sit underneath, shown only once more than one team has found something.
+- **Open** -- found and listed items, oldest first. **Record Listing** logs a price and an
+  optional note; an item can be listed more than once, so relists accumulate rather than replace
+  each other. **Record Sale** takes the sale price and computes the split. **Retire** closes out
+  anything that isn't going to sell.
+- **Awaiting Payout** -- sold items, oldest first, with the split already computed.
+  **Mark Paid** once the finder has their gold; the row moves to History.
+- **History** -- paid and retired items, newest first.
+
+**The split** is guild policy and guild-wide rather than per-team, set on the site admin
+dashboard: the finder gets a percentage of the gross sale, or a flat floor below a pivot sale
+price, whichever is larger, and never more than the sale itself. The guild keeps the rest and
+absorbs the AH cut. Both constants are snapshotted onto each sold row, so editing the policy
+later never rewrites what an earlier sale paid out.
+
+Price fields take the formats people actually paste -- `250,000`, `250000g`, `1 000 000`.
+Anything else is refused with a message on the row rather than read as zero.
+
+---
+
 ## Season Settings tab
 
 Three sub-tabs: **Settings**, **Raid Progression**, **History**.
