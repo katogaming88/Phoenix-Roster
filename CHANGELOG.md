@@ -8,6 +8,15 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.66.0] - 2026-08-26
+
+### Frontend
+
+- The officer BoE tab now shows every team's finds in one list (#765). BoEs are guild property, and the manager grant went guild-wide in #766, so showing one team at a time meant a manager had to switch teams in the nav to find work they were already authorized for. It mattered most for Wrathless, which raids with the guild but has no page of its own: its finds landed in a tab reachable only by hand-typing a URL, so they could sit unseen. What each person sees is unchanged in permission terms, since the database was already returning exactly the teams they may read.
+- Every find now names the team that found it, in Open, Awaiting Payout and History alike, so the credit outlives the payout. The summary adds a per-team line with finds and gold raised, which is the number worth sharing back with the teams. It stays hidden while only one team has finds, since it would only restate the totals above it.
+
+---
+
 ## [3.65.0] - 2026-08-26
 
 ### Frontend

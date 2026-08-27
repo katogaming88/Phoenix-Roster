@@ -54,6 +54,23 @@ function visibleTeamSlugs() {
   });
 }
 
+// Reverse of TEAMS[slug].supabaseTeamId, for the places that hold a team id
+// from a row rather than a slug from the URL (the officer BoE tab's cross-team
+// view, #765). Hidden teams resolve like any other: Wrathless is absent from
+// the pickers but its finds still need naming.
+//
+// The fallback matters more than it looks. A team created on prod before this
+// hardcoded mirror catches up would otherwise put the literal string
+// "undefined" in a table cell, which reads as a bug in the row rather than as
+// a stale client.
+function teamNameForId(id) {
+  var slugs = Object.keys(TEAMS);
+  for (var i = 0; i < slugs.length; i++) {
+    if (TEAMS[slugs[i]].supabaseTeamId === id) return TEAMS[slugs[i]].name;
+  }
+  return 'Team ' + id;
+}
+
 // Guild-wide external links (#288) -- Raider.IO and Armory only ever track the
 // whole guild roster (no per-team split like WarcraftLogs below), and never
 // change, so these are static constants rather than officer-editable config.
@@ -77,7 +94,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.65.0';
+var VERSION = '3.66.0';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a

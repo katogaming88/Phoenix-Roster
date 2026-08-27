@@ -1,16 +1,19 @@
 // Officer BoE tab (#747): runs the auction lifecycle the #745 backend
 // defines (found -> listed -> sold -> paid, plus retire). Three sections
-// over one paged read of the team's boe_items -- Open (found/listed),
-// Awaiting Payout (sold), History (paid/retired) -- plus a summary strip.
+// over one paged read of boe_items -- Open (found/listed), Awaiting Payout
+// (sold), History (paid/retired) -- plus a summary strip.
+//
+// The read is guild-wide since #765, not scoped to the page's team: BoEs are
+// guild property, and the read policies already return exactly the teams the
+// caller may see. Every row names the team that found it, in all three
+// sections, because that is credit rather than a disambiguator.
 //
 // Action buttons render only for BoE managers (the is_boe_manager RPC, the
 // same function the RLS policies evaluate) and site admins; other officers
 // get the tab read-only. The grant is guild-wide as of #766, so that RPC
 // takes no team argument and a manager is authorized on every team's finds.
-// The tab's own read is still team-scoped, which #765 covers. The server
-// enforces the gate regardless. The
-// lifecycle RPCs write no audit entries themselves, so every successful
-// mutation writes one from here.
+// The server enforces the gate regardless. The lifecycle RPCs write no audit
+// entries themselves, so every successful mutation writes one from here.
 //
 // Mutations update the in-memory model and re-render instead of refetching:
 // boe_record_sale returns the computed split, so the row it moves to
@@ -65,15 +68,23 @@ function buildBoeTab() {
         return !result.error && result.data === true;
       });
 
+  // Neither read filters on team since #765. BoEs are guild property and the
+  // manager grant went guild-wide in #766, so the tab shows every find the
+  // caller may see rather than one team at a time. The scoping is the read
+  // policies' job: my_team_role(team_id) in (officer, team_leader) or
+  // is_boe_manager() or is_site_admin(), which gives a manager or site admin
+  // every team and a plain officer exactly the teams they staff. A client-side
+  // .eq('team_id', ...) on top would re-implement that, worse, and would keep
+  // Wrathless finds invisible -- it has no members and is hidden from the
+  // switcher, so its BoE tab is one nobody opens.
   var itemsPromise = fetchAllPaged(
     function (afterId, limit) {
       var q = supabaseClient
         .from('boe_items')
         .select(
-          'id, player_id, finder_name, item_name, track, note, status, found_at, sold_at, payout_paid_at, retired_at, sale_price, finder_payout, guild_cut',
+          'id, team_id, player_id, finder_name, item_name, track, note, status, found_at, sold_at, payout_paid_at, retired_at, sale_price, finder_payout, guild_cut',
           afterId === null ? { count: 'exact' } : undefined
         )
-        .eq('team_id', _teamCfg.supabaseTeamId)
         .order('id', { ascending: true })
         .limit(limit);
       return afterId === null ? q : q.gt('id', afterId);
@@ -86,7 +97,6 @@ function buildBoeTab() {
       var q = supabaseClient
         .from('boe_listings')
         .select('id, boe_item_id, listed_at, price, note', afterId === null ? { count: 'exact' } : undefined)
-        .eq('team_id', _teamCfg.supabaseTeamId)
         .order('id', { ascending: true })
         .limit(limit);
       return afterId === null ? q : q.gt('id', afterId);
@@ -149,6 +159,56 @@ function _boeBadge(status) {
 
 function _boeMoney(n) {
   return n == null ? '' : formatGold(n) + 'g';
+}
+
+// Which team found it (#765). Rendered in every section, History included:
+// the team is credit rather than a disambiguator, so it should outlive the
+// payout, and for a Wrathless find it is the only attribution there is --
+// that team has no members, so player_id is always null and the finder is
+// free text forever.
+function _boeTeamCell(item) {
+  return '<td style="color:var(--text-muted);">' + escHtml(teamNameForId(item.team_id)) + '</td>';
+}
+
+// Per-team find counts and guild gold raised, under the two headline totals.
+// Gold is guild_cut over sold and paid, the same measure "Guild income to
+// date" uses, partitioned rather than redefined -- so these figures always
+// sum to that one.
+//
+// Hidden below two teams: with one it just restates the headline in more
+// words. Teams with no finds are left out entirely rather than listed at
+// zero, but a team that has found and not yet sold shows its count against
+// 0g, which is the Wrathless case on day one.
+function _boeTeamCreditLine() {
+  var byTeam = {};
+  _boeItems.forEach(function (item) {
+    var row = byTeam[item.team_id] || (byTeam[item.team_id] = { found: 0, gold: 0 });
+    row.found++;
+    if (item.status === 'sold' || item.status === 'paid') row.gold += item.guild_cut || 0;
+  });
+
+  var teams = Object.keys(byTeam).map(function (id) {
+    return { name: teamNameForId(parseInt(id, 10)), found: byTeam[id].found, gold: byTeam[id].gold };
+  });
+  if (teams.length < 2) return '';
+
+  // Most finds first, gold breaking a tie, then name so the order is stable
+  // rather than dependent on key iteration.
+  teams.sort(function (a, b) {
+    return b.found - a.found || b.gold - a.gold || a.name.localeCompare(b.name);
+  });
+
+  return (
+    '<div style="font-size:1.02rem;color:var(--text-muted);margin-bottom:0.75rem;">Found by team: ' +
+    teams
+      .map(function (t) {
+        return (
+          escHtml(t.name) + ' <strong style="color:var(--text);">' + t.found + '</strong> (' + formatGold(t.gold) + 'g)'
+        );
+      })
+      .join(' &middot; ') +
+    '</div>'
+  );
 }
 
 function _boeItemCell(item) {
@@ -239,13 +299,15 @@ function renderBoeTab() {
     formatGold(outstanding) +
     'g</strong></span>' +
     '</div>' +
+    _boeTeamCreditLine() +
     (_boeCanManage
       ? ''
-      : '<p class="signup-officer-note">Lifecycle actions are limited to BoE managers, assigned by a site admin.</p>');
+      : '<p class="signup-officer-note">Lifecycle actions are limited to BoE managers, assigned by a site admin. ' +
+        'The totals above cover your own teams; a BoE manager sees the whole guild.</p>');
 
   // Open: found and listed items. finder_name and found_at always render so
   // two identical items in flight stay tellable apart.
-  var openHeaders = ['Item', 'Finder', 'Found', 'Status', 'Listings'];
+  var openHeaders = ['Item', 'Team', 'Finder', 'Found', 'Status', 'Listings'];
   if (_boeCanManage) openHeaders.push('Actions');
   var openHtml = openRows
     .map(function (item) {
@@ -258,6 +320,7 @@ function renderBoeTab() {
         '<td>' +
         _boeItemCell(item) +
         '</td>' +
+        _boeTeamCell(item) +
         '<td>' +
         escHtml(item.finder_name || '') +
         '</td>' +
@@ -320,7 +383,7 @@ function renderBoeTab() {
       : _boeEmpty('No open BoEs. Found items land here from the raider form.'));
 
   // Awaiting Payout: sold items with the stored split.
-  var awaitingHeaders = ['Item', 'Finder', 'Sold', 'Sale', 'Finder payout', 'Guild cut', 'Status'];
+  var awaitingHeaders = ['Item', 'Team', 'Finder', 'Sold', 'Sale', 'Finder payout', 'Guild cut', 'Status'];
   if (_boeCanManage) awaitingHeaders.push('Actions');
   var awaitingHtml = awaitingRows
     .map(function (item) {
@@ -328,6 +391,7 @@ function renderBoeTab() {
         '<td>' +
         _boeItemCell(item) +
         '</td>' +
+        _boeTeamCell(item) +
         '<td>' +
         escHtml(item.finder_name || '') +
         '</td>' +
@@ -370,6 +434,7 @@ function renderBoeTab() {
         '<td>' +
         _boeItemCell(item) +
         '</td>' +
+        _boeTeamCell(item) +
         '<td>' +
         escHtml(item.finder_name || '') +
         '</td>' +
@@ -395,7 +460,7 @@ function renderBoeTab() {
   history.innerHTML =
     _boeSection('History') +
     (historyRows.length
-      ? _boeTable(['Item', 'Finder', 'Status', 'Date', 'Sale', 'Finder payout', 'Guild cut'], historyHtml)
+      ? _boeTable(['Item', 'Team', 'Finder', 'Status', 'Date', 'Sale', 'Finder payout', 'Guild cut'], historyHtml)
       : _boeEmpty('No paid or retired BoEs yet.'));
 }
 
