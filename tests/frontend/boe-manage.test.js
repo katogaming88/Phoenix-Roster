@@ -3,9 +3,14 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { realFetchAllPaged, loadCommonJs } from './helpers/common-sandbox.js';
+import { realFetchAllPaged, loadCommonJs, quietConsole } from './helpers/common-sandbox.js';
 
-// js/tabs/tab-boe.js is a plain browser script (no exports), so these tests
+// The real _esc from js/common.js, which guild.html loads. A stand-in here
+// could escape differently from the shipped one and the suite would not
+// notice, which is the same reason realFetchAllPaged() exists.
+const realEsc = loadCommonJs(quietConsole)._esc;
+
+// js/boe-manage.js is a plain browser script (no exports), so these tests
 // load it into a vm sandbox with the browser globals stubbed -- the
 // audit-log-tab.test.js harness shape, with the recorder spies from
 // self-received-corrections.test.js. The lifecycle RPCs themselves are
@@ -15,11 +20,11 @@ import { realFetchAllPaged, loadCommonJs } from './helpers/common-sandbox.js';
 // summary math.
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const TAB_BOE_JS = readFileSync(path.join(HERE, '../../js/tabs/tab-boe.js'), 'utf8');
+const BOE_MANAGE_JS = readFileSync(path.join(HERE, '../../js/boe-manage.js'), 'utf8');
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0)).then(() => new Promise((r) => setTimeout(r, 0)));
 
-const CONTAINERS = ['boeSummary', 'boeOpen', 'boeAwaiting', 'boeHistory'];
+const CONTAINERS = ['guildBoeSummary', 'guildBoeOpen', 'guildBoeAwaiting', 'guildBoeHistory'];
 
 function makeEl(extra) {
   return Object.assign({ value: '', style: {}, textContent: '', innerHTML: '', disabled: false }, extra);
@@ -90,7 +95,7 @@ function makeBoeClient({ items = [], listings = [], rpc = {} } = {}) {
 
 const managerRpc = (extra) => Object.assign({ is_boe_manager: () => ({ data: true, error: null }) }, extra);
 
-function loadSandbox({ client, els = {}, boeEnabled = true, session = null, guildLevel, confirmResult = true } = {}) {
+function loadSandbox({ client, els = {}, confirmResult = true } = {}) {
   const spies = { audit: [], confirms: [] };
   CONTAINERS.forEach((id) => {
     if (!els[id]) els[id] = makeEl();
@@ -100,27 +105,22 @@ function loadSandbox({ client, els = {}, boeEnabled = true, session = null, guil
     supabaseClient: client,
     console,
     document: { getElementById: (id) => els[id] || null },
-    window: guildLevel === undefined ? {} : { _guildOfficerAccessLevel: guildLevel },
-    escHtml: (s) =>
-      String(s || '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;'),
-    featureEnabled: (key) => (key === 'boe' ? boeEnabled : true),
-    // js/common.js owns this, same as fetchAllPaged below; officer.html loads
-    // that bundle, so the tab calling it is legitimate and only the harness
-    // needs the stand-in. Its real behaviour is pinned separately, further
-    // down, against the actual common.js.
+    window: {},
+    _esc: realEsc,
+    // js/common.js owns this, same as fetchAllPaged below; guild.html loads
+    // that bundle, so calling it is legitimate and only the harness needs the
+    // stand-in. Its real behaviour is pinned separately, further down, against
+    // the actual common.js.
     teamNameForId: (id) =>
       ({ 1: 'Phoenix Reborn', 2: 'Hellfire', 3: 'Immolation', 4: 'Wrathless' })[id] || 'Team ' + id,
-    getDiscordSession: () => session,
     confirm: (msg) => {
       spies.confirms.push(msg);
       return confirmResult;
     },
-    writeAuditLog: (action, targetType, targetId, detail) => {
-      spies.audit.push({ action, targetType, targetId, detail });
+    // The fifth argument is the point of #774: the entry names the BoE row's
+    // own team, not the page's. This page has no team.
+    writeAuditLog: (action, targetType, targetId, detail, teamId) => {
+      spies.audit.push({ action, targetType, targetId, detail, teamId });
     },
     setTimeout,
     clearTimeout,
@@ -129,15 +129,18 @@ function loadSandbox({ client, els = {}, boeEnabled = true, session = null, guil
     isNaN
   };
   vm.createContext(sandbox);
-  vm.runInContext(TAB_BOE_JS, sandbox, { filename: 'tab-boe.js' });
-  // js/common.js owns fetchAllPaged; tab-boe.js calls it as a global.
+  vm.runInContext(BOE_MANAGE_JS, sandbox, { filename: 'boe-manage.js' });
+  // js/common.js owns fetchAllPaged; boe-manage.js calls it as a global.
   sandbox.fetchAllPaged = realFetchAllPaged();
   return { sandbox, els, spies };
 }
 
+// canManage is what js/guild.js resolves and hands in (is_boe_manager() or
+// is_site_admin()). It arrives as a parameter rather than being worked out
+// here, so this module has no opinion on identity at all.
 async function build(opts) {
   const loaded = loadSandbox(opts);
-  loaded.sandbox.buildBoeTab();
+  loaded.sandbox.buildBoeManage(opts && 'canManage' in opts ? opts.canManage : true);
   for (let i = 0; i < 12; i++) await flush();
   return loaded;
 }
@@ -200,24 +203,25 @@ const RETIRED = () =>
   boeRow({ id: 5, item_name: 'Drape of Embers', status: 'retired', retired_at: '2026-08-23T02:00:00Z' });
 const ALL_ROWS = () => [FOUND(), LISTED(), SOLD(), PAID(), RETIRED()];
 const LISTING_ROW = () => ({ id: 11, boe_item_id: 2, listed_at: '2026-08-19T12:00:00Z', price: 300000, note: null });
+const LISTED_OTHER_TEAM = () => boeRow({ id: 2, team_id: 4, item_name: 'Wrathless Find', status: 'listed' });
 
 describe('buildBoeTab sections', () => {
   it('partitions rows into Open, Awaiting Payout, and History by status', async () => {
     const { client } = makeBoeClient({ items: ALL_ROWS(), listings: [LISTING_ROW()], rpc: managerRpc() });
     const { els } = await build({ client });
-    expect(els.boeOpen.innerHTML).toContain('Voidglass Cloak');
-    expect(els.boeOpen.innerHTML).toContain('Sash of the Fallen Star');
-    expect(els.boeOpen.innerHTML).not.toContain('Bindings of Depth');
-    expect(els.boeAwaiting.innerHTML).toContain('Bindings of Depth');
-    expect(els.boeAwaiting.innerHTML).not.toContain('Girdle of Night');
-    expect(els.boeHistory.innerHTML).toContain('Girdle of Night');
-    expect(els.boeHistory.innerHTML).toContain('Drape of Embers');
+    expect(els.guildBoeOpen.innerHTML).toContain('Voidglass Cloak');
+    expect(els.guildBoeOpen.innerHTML).toContain('Sash of the Fallen Star');
+    expect(els.guildBoeOpen.innerHTML).not.toContain('Bindings of Depth');
+    expect(els.guildBoeAwaiting.innerHTML).toContain('Bindings of Depth');
+    expect(els.guildBoeAwaiting.innerHTML).not.toContain('Girdle of Night');
+    expect(els.guildBoeHistory.innerHTML).toContain('Girdle of Night');
+    expect(els.guildBoeHistory.innerHTML).toContain('Drape of Embers');
   });
 
   it('shows the listing history inline on the open item', async () => {
     const { client } = makeBoeClient({ items: [LISTED()], listings: [LISTING_ROW()], rpc: managerRpc() });
     const { els } = await build({ client });
-    expect(els.boeOpen.innerHTML).toContain('300,000');
+    expect(els.guildBoeOpen.innerHTML).toContain('300,000');
   });
 
   it('shows the raider-submitted note on the open item', async () => {
@@ -229,15 +233,15 @@ describe('buildBoeTab sections', () => {
       rpc: managerRpc()
     });
     const { els } = await build({ client });
-    expect(els.boeOpen.innerHTML).toContain('from trash before boss 2');
+    expect(els.guildBoeOpen.innerHTML).toContain('from trash before boss 2');
   });
 
   it('renders a per-section empty state when a section has no rows', async () => {
     const { client } = makeBoeClient({ items: [], listings: [], rpc: managerRpc() });
     const { els } = await build({ client });
-    expect(els.boeOpen.innerHTML).toContain('No open BoEs');
-    expect(els.boeAwaiting.innerHTML).toContain('Nothing awaiting payout');
-    expect(els.boeHistory.innerHTML).toContain('No paid or retired BoEs yet');
+    expect(els.guildBoeOpen.innerHTML).toContain('No open BoEs');
+    expect(els.guildBoeAwaiting.innerHTML).toContain('Nothing awaiting payout');
+    expect(els.guildBoeHistory.innerHTML).toContain('No paid or retired BoEs yet');
   });
 
   it('reads both tables unfiltered by team, keyset-ordered by id', async () => {
@@ -264,48 +268,39 @@ describe('buildBoeTab sections', () => {
       rpc: managerRpc()
     });
     const { els } = await build({ client });
-    expect(els.boeSummary.innerHTML).toContain('Could not load');
-    expect(els.boeOpen.innerHTML).not.toContain('No open BoEs');
+    expect(els.guildBoeSummary.innerHTML).toContain('Could not load');
+    expect(els.guildBoeOpen.innerHTML).not.toContain('No open BoEs');
   });
 });
 
-describe('manager gating', () => {
+describe('manager gating (#774)', () => {
   it('a BoE manager sees the action buttons', async () => {
-    const { client } = makeBoeClient({ items: ALL_ROWS(), listings: [], rpc: managerRpc() });
-    const { els } = await build({ client });
-    expect(els.boeOpen.innerHTML).toContain('Record Listing');
-    expect(els.boeOpen.innerHTML).toContain('Record Sale');
-    expect(els.boeOpen.innerHTML).toContain('Retire');
-    expect(els.boeAwaiting.innerHTML).toContain('Mark Paid');
+    const { client } = makeBoeClient({ items: ALL_ROWS(), listings: [] });
+    const { els } = await build({ client, canManage: true });
+    expect(els.guildBoeOpen.innerHTML).toContain('Record Listing');
+    expect(els.guildBoeOpen.innerHTML).toContain('Record Sale');
+    expect(els.guildBoeOpen.innerHTML).toContain('Retire');
+    expect(els.guildBoeAwaiting.innerHTML).toContain('Mark Paid');
   });
 
   it('a read-only officer sees the grant note and no buttons', async () => {
-    const { client } = makeBoeClient({
-      items: ALL_ROWS(),
-      listings: [],
-      rpc: { is_boe_manager: () => ({ data: false, error: null }) }
-    });
-    const { els } = await build({ client });
-    expect(els.boeSummary.innerHTML).toContain('assigned by a site admin');
-    expect(els.boeOpen.innerHTML).not.toContain('<button');
-    expect(els.boeAwaiting.innerHTML).not.toContain('<button');
+    const { client } = makeBoeClient({ items: ALL_ROWS(), listings: [] });
+    const { els } = await build({ client, canManage: false });
+    expect(els.guildBoeSummary.innerHTML).toContain('assigned by a site admin');
+    expect(els.guildBoeOpen.innerHTML).not.toContain('<button');
+    expect(els.guildBoeAwaiting.innerHTML).not.toContain('<button');
   });
 
-  it('a site admin gets the buttons without an is_boe_manager round trip', async () => {
-    const { client, captured } = makeBoeClient({ items: ALL_ROWS(), listings: [], rpc: {} });
-    const { els } = await build({ client, session: { isAdmin: true } });
-    expect(els.boeOpen.innerHTML).toContain('Record Sale');
-    expect(captured.rpcCalls.filter((c) => c.name === 'is_boe_manager')).toEqual([]);
-  });
-
-  // The grant went guild-wide in #766, so the gate takes no team argument.
-  // Passing one would raise "function does not exist" against the new schema.
-  it('the manager check passes no team argument', async () => {
-    const { client, captured } = makeBoeClient({ items: ALL_ROWS(), listings: [], rpc: managerRpc() });
-    await build({ client });
-    const calls = captured.rpcCalls.filter((c) => c.name === 'is_boe_manager');
-    expect(calls.length).toBe(1);
-    expect(calls[0].args).toBeUndefined();
+  // Who the caller is belongs to js/guild.js now. This module asks nothing
+  // about identity, which is what lets it render on a page that does not
+  // load js/discord.js and has no getDiscordSession() to call.
+  it('resolves no identity of its own, on either read', async () => {
+    const { client, captured } = makeBoeClient({ items: ALL_ROWS(), listings: [] });
+    await build({ client, canManage: true });
+    const identityCalls = captured.rpcCalls.filter((c) =>
+      ['is_boe_manager', 'is_site_admin', 'is_any_team_officer'].includes(c.name)
+    );
+    expect(identityCalls).toEqual([]);
   });
 
   it('a server denial surfaces as an error and writes no audit entry', async () => {
@@ -313,7 +308,7 @@ describe('manager gating', () => {
     const { client } = makeBoeClient({
       items: [SOLD()],
       listings: [],
-      rpc: managerRpc({ boe_mark_paid: () => ({ data: null, error: { message: 'Not authorized' } }) })
+      rpc: { boe_mark_paid: () => ({ data: null, error: { message: 'Not authorized' } }) }
     });
     const loaded = await build({ client, els });
     const btn = makeEl({ textContent: 'Mark Paid' });
@@ -323,6 +318,42 @@ describe('manager gating', () => {
     expect(btn.disabled).toBe(false);
     expect(btn.textContent).toBe('Mark Paid');
     expect(loaded.spies.audit).toEqual([]);
+  });
+});
+
+// The page has no team, so writeAuditLog() cannot take one from _teamCfg
+// (js/guild.js nulls it). It takes the BoE row's own team instead, which is
+// also the right attribution for a read that spans every team since #765.
+describe('audit entries name the BoE team, not the page (#774)', () => {
+  it('logs a sale against the team that found it, not the viewer', async () => {
+    const els = { 'boe-sale-price-2': makeEl({ value: '250,000' }) };
+    const { client } = makeBoeClient({
+      items: [LISTED_OTHER_TEAM()],
+      listings: [],
+      rpc: {
+        boe_record_sale: () => ({
+          data: [{ sale_price: 250000, finder_payout: 50000, guild_cut: 200000 }],
+          error: null
+        })
+      }
+    });
+    const loaded = await build({ client, els });
+    loaded.sandbox.confirmBoeSale(2, makeEl());
+    await flush();
+    await flush();
+    expect(loaded.spies.audit).toHaveLength(1);
+    expect(loaded.spies.audit[0].teamId).toBe(4);
+  });
+
+  it('names the row team on a listing, a payout and a retirement too', async () => {
+    const { client } = makeBoeClient({ items: [LISTED_OTHER_TEAM()], listings: [] });
+    const els = { 'boe-listing-price-2': makeEl({ value: '90000' }) };
+    const loaded = await build({ client, els });
+    loaded.sandbox.confirmBoeListing(2, makeEl());
+    await flush();
+    loaded.sandbox.retireBoe(2, makeEl());
+    await flush();
+    expect(loaded.spies.audit.map((a) => a.teamId)).toEqual([4, 4]);
   });
 });
 
@@ -345,9 +376,9 @@ describe('price parsing and recording a sale', () => {
     await flush();
     const sale = captured.rpcCalls.find((c) => c.name === 'boe_record_sale');
     expect(sale.args).toEqual({ p_id: 1, p_sale_price: 250000 });
-    expect(els.boeAwaiting.innerHTML).toContain('Voidglass Cloak');
-    expect(els.boeAwaiting.innerHTML).toContain('50,000');
-    expect(els.boeAwaiting.innerHTML).toContain('200,000');
+    expect(els.guildBoeAwaiting.innerHTML).toContain('Voidglass Cloak');
+    expect(els.guildBoeAwaiting.innerHTML).toContain('50,000');
+    expect(els.guildBoeAwaiting.innerHTML).toContain('200,000');
     // The split came from the RPC's return row: still exactly one boe_items read.
     expect(captured.byTable.boe_items).toHaveLength(1);
   });
@@ -395,8 +426,8 @@ describe('lifecycle actions', () => {
     expect(loaded.spies.audit[0].targetId).toBe(1);
     expect(loaded.spies.audit[0].detail).toContain('Voidglass Cloak');
     expect(loaded.spies.audit[0].detail).toContain('150,000');
-    expect(els.boeOpen.innerHTML).toMatch(/>Listed<\/span>/);
-    expect(els.boeOpen.innerHTML).toContain('150,000');
+    expect(els.guildBoeOpen.innerHTML).toMatch(/>Listed<\/span>/);
+    expect(els.guildBoeOpen.innerHTML).toContain('150,000');
   });
 
   it('marks a payout paid, audits it, and moves the row to History', async () => {
@@ -409,8 +440,8 @@ describe('lifecycle actions', () => {
     expect(loaded.spies.audit[0].action).toBe('BoE Payout Paid');
     expect(loaded.spies.audit[0].detail).toContain('50,000');
     expect(loaded.spies.audit[0].detail).toContain('Ashveil-Tichondrius');
-    expect(els.boeHistory.innerHTML).toContain('Bindings of Depth');
-    expect(els.boeAwaiting.innerHTML).toContain('Nothing awaiting payout');
+    expect(els.guildBoeHistory.innerHTML).toContain('Bindings of Depth');
+    expect(els.guildBoeAwaiting.innerHTML).toContain('Nothing awaiting payout');
   });
 
   it('retires an item behind a confirm, audits it, and declines cleanly', async () => {
@@ -432,7 +463,7 @@ describe('lifecycle actions', () => {
     expect(captured.rpcCalls.find((c) => c.name === 'boe_retire').args).toEqual({ p_id: 1 });
     expect(accepted.spies.audit[0].action).toBe('BoE Retired');
     expect(accepted.spies.audit[0].detail).toContain('Voidglass Cloak');
-    expect(accepted.els.boeHistory.innerHTML).toContain('Voidglass Cloak');
+    expect(accepted.els.guildBoeHistory.innerHTML).toContain('Voidglass Cloak');
   });
 });
 
@@ -456,7 +487,7 @@ describe('history paging', () => {
     const { client, captured } = makeBoeClient({ items, listings: [], rpc: managerRpc() });
     const { els } = await build({ client });
     expect(captured.gts).toContainEqual(['boe_items', 'id', 1000]);
-    expect(els.boeHistory.innerHTML).toContain('Item 1150');
+    expect(els.guildBoeHistory.innerHTML).toContain('Item 1150');
   });
 });
 
@@ -465,8 +496,8 @@ describe('summary strip', () => {
     const { client } = makeBoeClient({ items: ALL_ROWS(), listings: [], rpc: managerRpc() });
     const { els } = await build({ client });
     // guild_cut: 200,000 (sold) + 80,000 (paid); finder_payout outstanding: 50,000 (sold only)
-    expect(els.boeSummary.innerHTML).toContain('280,000');
-    expect(els.boeSummary.innerHTML).toContain('50,000');
+    expect(els.guildBoeSummary.innerHTML).toContain('280,000');
+    expect(els.guildBoeSummary.innerHTML).toContain('50,000');
   });
 });
 
@@ -504,17 +535,17 @@ describe('cross-team view (#765)', () => {
   it('renders rows from several teams, each naming its own team', async () => {
     const { client } = makeBoeClient({ items: CROSS_ROWS(), listings: [], rpc: managerRpc() });
     const { els } = await build({ client });
-    expect(els.boeOpen.innerHTML).toContain('Phoenix Reborn');
-    expect(els.boeOpen.innerHTML).toContain('Wrathless');
-    expect(els.boeAwaiting.innerHTML).toContain('Hellfire');
+    expect(els.guildBoeOpen.innerHTML).toContain('Phoenix Reborn');
+    expect(els.guildBoeOpen.innerHTML).toContain('Wrathless');
+    expect(els.guildBoeAwaiting.innerHTML).toContain('Hellfire');
     // History carries the team too: the credit outlives the payout.
-    expect(els.boeHistory.innerHTML).toContain('Phoenix Reborn');
+    expect(els.guildBoeHistory.innerHTML).toContain('Phoenix Reborn');
   });
 
   it('pairs each row with its own team rather than just naming every team somewhere', async () => {
     const { client } = makeBoeClient({ items: CROSS_ROWS(), listings: [], rpc: managerRpc() });
     const { els } = await build({ client });
-    const rows = els.boeOpen.innerHTML.split('<tr>').filter(Boolean);
+    const rows = els.guildBoeOpen.innerHTML.split('<tr>').filter(Boolean);
     const phoenix = rows.find((r) => r.includes('Phoenix Find'));
     const wrathless = rows.find((r) => r.includes('Wrathless Find'));
     expect(phoenix).toContain('Phoenix Reborn');
@@ -533,17 +564,17 @@ describe('cross-team view (#765)', () => {
       rpc: managerRpc()
     });
     const { els } = await build({ client });
-    expect(els.boeOpen.innerHTML).toContain('Unseen Cloak');
-    expect(els.boeOpen.innerHTML).toContain('Wrathless');
+    expect(els.guildBoeOpen.innerHTML).toContain('Unseen Cloak');
+    expect(els.guildBoeOpen.innerHTML).toContain('Wrathless');
   });
 
   it('totals the headline figures over every team the viewer can see', async () => {
     const { client } = makeBoeClient({ items: CROSS_ROWS(), listings: [], rpc: managerRpc() });
     const { els } = await build({ client });
     // guild_cut 240,000 (Hellfire, sold) + 80,000 (Phoenix, paid)
-    expect(els.boeSummary.innerHTML).toContain('320,000');
+    expect(els.guildBoeSummary.innerHTML).toContain('320,000');
     // finder_payout outstanding: the sold row only
-    expect(els.boeSummary.innerHTML).toContain('60,000');
+    expect(els.guildBoeSummary.innerHTML).toContain('60,000');
   });
 });
 
@@ -572,7 +603,7 @@ describe('per-team credit line (#765)', () => {
   it('counts finds per team and sums guild_cut over sold and paid', async () => {
     const { client } = makeBoeClient({ items: TWO_TEAMS(), listings: [], rpc: managerRpc() });
     const { els } = await build({ client });
-    const html = text(els.boeSummary.innerHTML);
+    const html = text(els.guildBoeSummary.innerHTML);
     expect(html).toContain('Found by team');
     expect(html).toMatch(/Phoenix Reborn 3 \(80,000g\)/);
   });
@@ -580,20 +611,20 @@ describe('per-team credit line (#765)', () => {
   it('shows a team that has found but not sold with zero gold', async () => {
     const { client } = makeBoeClient({ items: TWO_TEAMS(), listings: [], rpc: managerRpc() });
     const { els } = await build({ client });
-    expect(text(els.boeSummary.innerHTML)).toMatch(/Wrathless 1 \(0g\)/);
+    expect(text(els.guildBoeSummary.innerHTML)).toMatch(/Wrathless 1 \(0g\)/);
   });
 
   it('omits a team with no finds', async () => {
     const { client } = makeBoeClient({ items: TWO_TEAMS(), listings: [], rpc: managerRpc() });
     const { els } = await build({ client });
-    expect(els.boeSummary.innerHTML).not.toContain('Hellfire');
-    expect(els.boeSummary.innerHTML).not.toContain('Immolation');
+    expect(els.guildBoeSummary.innerHTML).not.toContain('Hellfire');
+    expect(els.guildBoeSummary.innerHTML).not.toContain('Immolation');
   });
 
   it('orders teams by find count, most finds first', async () => {
     const { client } = makeBoeClient({ items: TWO_TEAMS(), listings: [], rpc: managerRpc() });
     const { els } = await build({ client });
-    const html = els.boeSummary.innerHTML;
+    const html = els.guildBoeSummary.innerHTML;
     expect(html.indexOf('Phoenix Reborn')).toBeLessThan(html.indexOf('Wrathless'));
   });
 
@@ -613,7 +644,7 @@ describe('per-team credit line (#765)', () => {
     ]);
     const { client } = makeBoeClient({ items, listings: [], rpc: managerRpc() });
     const { els } = await build({ client });
-    const html = text(els.boeSummary.innerHTML);
+    const html = text(els.guildBoeSummary.innerHTML);
     expect(html).toContain('280,000'); // headline: 80,000 + 200,000
     expect(html).toMatch(/Phoenix Reborn 3 \(80,000g\)/);
     expect(html).toMatch(/Wrathless 2 \(200,000g\)/);
@@ -624,25 +655,21 @@ describe('per-team credit line (#765)', () => {
     // headline in more words.
     const { client } = makeBoeClient({ items: ALL_ROWS(), listings: [], rpc: managerRpc() });
     const { els } = await build({ client });
-    expect(els.boeSummary.innerHTML).not.toContain('Found by team');
+    expect(els.guildBoeSummary.innerHTML).not.toContain('Found by team');
   });
 });
 
 describe('summary scope note (#765)', () => {
   it('tells a read-only officer the totals cover their own teams', async () => {
-    const { client } = makeBoeClient({
-      items: ALL_ROWS(),
-      listings: [],
-      rpc: { is_boe_manager: () => ({ data: false, error: null }) }
-    });
-    const { els } = await build({ client });
-    expect(els.boeSummary.innerHTML).toContain('your own teams');
+    const { client } = makeBoeClient({ items: ALL_ROWS(), listings: [] });
+    const { els } = await build({ client, canManage: false });
+    expect(els.guildBoeSummary.innerHTML).toContain('your own teams');
   });
 
   it('says nothing about scope to a manager, whose totals really are guild-wide', async () => {
     const { client } = makeBoeClient({ items: ALL_ROWS(), listings: [], rpc: managerRpc() });
     const { els } = await build({ client });
-    expect(els.boeSummary.innerHTML).not.toContain('your own teams');
+    expect(els.guildBoeSummary.innerHTML).not.toContain('your own teams');
   });
 });
 
@@ -665,32 +692,15 @@ describe('teamNameForId (js/common.js, #765)', () => {
   });
 });
 
-describe('access bails', () => {
-  it('renders the turned-off note and fetches nothing when the boe flag is off', async () => {
-    const { client, captured } = makeBoeClient({ items: ALL_ROWS(), listings: [], rpc: managerRpc() });
-    const { els } = await build({ client, boeEnabled: false });
-    expect(els.boeSummary.innerHTML).toContain('turned off');
-    expect(captured.byTable).toEqual({});
-    expect(captured.rpcCalls).toEqual([]);
-  });
-
-  it('bails with a note for guild officer access and fetches nothing', async () => {
-    const { client, captured } = makeBoeClient({ items: ALL_ROWS(), listings: [], rpc: managerRpc() });
-    const { els } = await build({ client, guildLevel: 'guild' });
-    expect(els.boeSummary.innerHTML).toContain('guild officer access');
-    expect(captured.byTable).toEqual({});
-  });
-});
-
 describe('accessible markup', () => {
   it('uses real table headers, status text badges, and a per-row status region', async () => {
     const { client } = makeBoeClient({ items: ALL_ROWS(), listings: [], rpc: managerRpc() });
     const { els } = await build({ client });
-    expect(els.boeOpen.innerHTML).toContain('<th scope="col">');
-    expect(els.boeOpen.innerHTML).toContain('role="status"');
-    expect(els.boeOpen.innerHTML).toMatch(/>Found<\/span>/);
-    expect(els.boeOpen.innerHTML).toMatch(/>Listed<\/span>/);
-    expect(els.boeHistory.innerHTML).toMatch(/>Paid<\/span>/);
-    expect(els.boeHistory.innerHTML).toMatch(/>Retired<\/span>/);
+    expect(els.guildBoeOpen.innerHTML).toContain('<th scope="col">');
+    expect(els.guildBoeOpen.innerHTML).toContain('role="status"');
+    expect(els.guildBoeOpen.innerHTML).toMatch(/>Found<\/span>/);
+    expect(els.guildBoeOpen.innerHTML).toMatch(/>Listed<\/span>/);
+    expect(els.guildBoeHistory.innerHTML).toMatch(/>Paid<\/span>/);
+    expect(els.guildBoeHistory.innerHTML).toMatch(/>Retired<\/span>/);
   });
 });

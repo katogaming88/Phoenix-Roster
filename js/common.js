@@ -94,7 +94,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.75.0';
+var VERSION = '3.76.0';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -248,11 +248,19 @@ var supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL
 // insert/update against a table RLS already permits, then calls this to log
 // it, since audit_log has no direct client write path (write_audit_log(),
 // #214). Failing to log doesn't undo the write; surfaced via console.warn.
-function writeAuditLog(action, targetType, targetId, detail) {
+//
+// teamId is optional and names the team the entry is *about*, which is not
+// always the page's team (#774). Two callers need that: anything on a
+// team-free page, where _teamCfg is deliberately null (js/guild.js:26-28) and
+// reading through it throws, and any guild-wide surface, where the row's own
+// team is the correct attribution -- the BoE read went guild-wide in #765, so
+// until this existed a manager acting on another team's find logged it under
+// whichever dashboard they were looking at. Omitted, it behaves as before.
+function writeAuditLog(action, targetType, targetId, detail, teamId) {
   if (!supabaseClient) return Promise.resolve();
   return supabaseClient
     .rpc('write_audit_log', {
-      p_team_id: _teamCfg.supabaseTeamId,
+      p_team_id: teamId == null ? (_teamCfg ? _teamCfg.supabaseTeamId : null) : teamId,
       p_action: action,
       p_target_type: targetType || null,
       p_target_id: targetId == null ? null : targetId,

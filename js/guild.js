@@ -38,6 +38,11 @@ DATA = { streamers: [], roster: [] };
 // link to a bare index.html: a cold landing there redirects back here (#779),
 // so a link with no ?team= is an infinite bounce rather than a cosmetic slip.
 var _guildTeamSlug = null;
+
+// The signed-in Supabase session, captured once by bootGuildPage() so the BoE
+// access check (#774) does not have to ask auth for it a third time.
+var _guildSession = null;
+var _guildBoeAccess = { visible: false, canManage: false };
 var _guildTeamSource = 'default';
 
 // js/discord.js owns the shared withTimeout() but is deliberately not loaded
@@ -485,6 +490,68 @@ function goToBoeForm() {
 }
 
 /**
+ * Who may see the BoE lifecycle section (#774), and who may act in it.
+ *
+ * The three RPCs are the same functions boe_items' own read policy evaluates
+ * (my_team_role in officer/team_leader, or is_boe_manager(), or
+ * is_site_admin()), asked here only to decide whether to render at all. The
+ * server decides what the read returns and what every mutation is allowed to
+ * do, so getting this wrong shows an empty section, never data.
+ *
+ * is_boe_manager() is grant-only and does not fold in site admins, matching
+ * the RLS gate, which is why admin is asked separately rather than assumed.
+ *
+ * Signed out short-circuits: all three resolve false for anon, so asking is
+ * three round-trips to learn nothing on the page's most common visit.
+ */
+function fetchGuildBoeAccess() {
+  _guildBoeAccess = { visible: false, canManage: false };
+  if (!supabaseClient || !_guildSession) return Promise.resolve(_guildBoeAccess);
+
+  function ask(fn) {
+    return Promise.resolve(supabaseClient.rpc(fn)).then(
+      function (result) {
+        return !!(result && !result.error && result.data === true);
+      },
+      function () {
+        return false;
+      }
+    );
+  }
+
+  return _guildWithTimeout(
+    Promise.all([ask('is_boe_manager'), ask('is_site_admin'), ask('is_any_team_officer')]),
+    10000
+  )
+    .then(function (r) {
+      var canManage = r[0] || r[1];
+      _guildBoeAccess = { visible: canManage || r[2], canManage: canManage };
+      return _guildBoeAccess;
+    })
+    .catch(function () {
+      return _guildBoeAccess;
+    });
+}
+
+/**
+ * Renders the lifecycle section, or leaves it hidden. Hidden covers three
+ * different people and says nothing to any of them: a signed-out visitor, a
+ * raider, and an officer on a guild that has BoE turned off everywhere.
+ *
+ * The feature check is guild-wide rather than per-team, unlike the officer tab
+ * this replaced. There is no "this team" here, and a manager's read spans every
+ * team, so the question is whether any team runs BoE at all -- the same
+ * question the finder card above already asks.
+ */
+function renderGuildBoeManage() {
+  var section = document.getElementById('boe-manage');
+  var show = _guildBoeAccess.visible && boeEnabledTeamSlugs().length > 0;
+  if (section) section.style.display = show ? '' : 'none';
+  if (!show) return;
+  buildBoeManage(_guildBoeAccess.canManage);
+}
+
+/**
  * About the Guild (#782). Guild officer bios live on site_settings' singleton
  * row, guild-wide since #586 moved them off team_settings.config, and have
  * only ever been reachable through the About tab of a team page.
@@ -605,6 +672,7 @@ function renderGuildSections() {
   renderGuildStreams();
   renderGuildNews();
   renderGuildBoe();
+  renderGuildBoeManage();
   renderGuildBios();
   applyGuildHash();
 }
@@ -646,11 +714,18 @@ function bootGuildPage() {
           }
         )
         .then(function (session) {
+          _guildSession = session;
           renderGuildAuth(session);
           return resolveGuildTeam();
         })
         .then(function () {
-          return Promise.all([fetchGuildTeamSettings(), fetchGuildStreamers(), fetchGuildNews(), fetchGuildBios()]);
+          return Promise.all([
+            fetchGuildTeamSettings(),
+            fetchGuildStreamers(),
+            fetchGuildNews(),
+            fetchGuildBios(),
+            fetchGuildBoeAccess()
+          ]);
         })
         .then(function () {
           renderGuildSections();
