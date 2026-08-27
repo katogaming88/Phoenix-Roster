@@ -242,7 +242,7 @@ function buildLootHistoryTab() {
 // exact same created_at (see the block comment above), so that pair
 // reliably reconstructs "one paste" with no new column needed. Sorted
 // newest-first for display; rows arrive id-ascending from the paged fetch,
-// so each group's own playerCounts stay in original insertion order too.
+// so each group's own playerItems stay in original insertion order too.
 function groupLootImportEvents(rows) {
   var order = [];
   var byKey = {};
@@ -258,14 +258,15 @@ function groupLootImportEvents(rows) {
         created_at: row.created_at,
         season: season,
         itemCount: 0,
-        playerCounts: {}
+        playerItems: {}
       };
       order.push(key);
     }
     var group = byKey[key];
     group.itemCount++;
     if (row.target_type === 'players' && row.target_id != null) {
-      group.playerCounts[row.target_id] = (group.playerCounts[row.target_id] || 0) + 1;
+      if (!group.playerItems[row.target_id]) group.playerItems[row.target_id] = [];
+      group.playerItems[row.target_id].push(lootImportItemSummary(row.detail));
     }
   });
   return order
@@ -275,6 +276,16 @@ function groupLootImportEvents(rows) {
     .sort(function (a, b) {
       return a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0;
     });
+}
+
+// audit_log.detail for a 'Loot Imported (RCLC)' row is either a plain string
+// (rows written before 20260822163718_import_rclc_loot_audit_season.sql) or
+// {summary, season} (that migration on). Either way, `summary` is already
+// "<Track> - <item name>", exactly what belongs in a per-player item list.
+function lootImportItemSummary(detail) {
+  if (typeof detail === 'string') return detail;
+  if (detail && typeof detail === 'object' && detail.summary) return detail.summary;
+  return 'Unknown item';
 }
 
 function lootHistorySeasonLabel(season) {
@@ -322,7 +333,7 @@ function renderLootHistoryPanel(actorNames) {
     '<div class="signup-status-row"><span class="signup-status-label">Recent RCLC Imports<button class="help-btn" onclick="toggleHelp(\'help-loot-history\')" title="Show help">?</button></span></div>';
   html += '<div id="help-loot-history" class="help-tip" style="margin-bottom:0.5rem;">';
   html +=
-    'Every paste imported via the Import tab, grouped into one row per import so an officer can confirm a paste went through and see who ran it. Click a row to see who received loot from that import (name and item count only). Sourced from the audit log.';
+    'Every paste imported via the Import tab, grouped into one row per import so an officer can confirm a paste went through and see who ran it. Click a row to see who received what from that import. Sourced from the audit log.';
   html += '</div>';
 
   if (seasons.length) {
@@ -394,41 +405,80 @@ function renderLootHistoryPanel(actorNames) {
   el.innerHTML = html;
 }
 
-// Name + item count per player for one import, sourced entirely from data
+// Turns one audit detail summary ("<Track> - <Item Name>", or a bare item
+// name/"Unknown item" for rows with no resolvable track) into a Wowhead
+// hover-tooltip link, same icon+link pattern as officerWishlistRowHTML()
+// in js/common.js -- looked up by name against DATA.itemWowIds/itemIcons
+// (populated once at load, shared across every tab) since audit_log only
+// ever stored the item's name, not its id. Falls back to plain escaped text
+// when the name doesn't resolve (an off-list item, or "Unknown item").
+function lootImportItemLinkHtml(summary) {
+  var track = '';
+  var name = summary;
+  var m = /^(Champion|Hero|Myth) - (.+)$/.exec(summary);
+  if (m) {
+    track = m[1];
+    name = m[2];
+  }
+  var trackPrefix = track ? escHtml(track) + ' - ' : '';
+  var wowId = ((DATA && DATA.itemWowIds) || {})[name];
+  var icon = ((DATA && DATA.itemIcons) || {})[name];
+  var isPtr = ((DATA && DATA.itemIsPtr) || {})[name];
+  var iconImg = icon
+    ? '<img src="https://wow.zamimg.com/images/wow/icons/large/' +
+      icon +
+      '.jpg" alt="" class="item-icon-sm" style="vertical-align:middle;margin-right:0.3rem;">'
+    : '';
+  if (wowId == null) {
+    return trackPrefix + escHtml(name);
+  }
+  return (
+    trackPrefix +
+    '<a href="https://www.wowhead.com/' +
+    (isPtr ? 'ptr/' : '') +
+    'item=' +
+    wowId +
+    '" class="wowhead" target="_blank" rel="noopener" style="text-decoration:none;">' +
+    iconImg +
+    escHtml(name) +
+    '</a>'
+  );
+}
+
+// Name + item list per player for one import, sourced entirely from data
 // already fetched by buildLootHistoryTab -- expanding a row is a pure
 // re-render, no additional round trip.
 function lootHistoryDetailHtml(imp) {
-  var playerIds = Object.keys(imp.playerCounts);
+  var playerIds = Object.keys(imp.playerItems);
   if (!playerIds.length) {
     return '<p class="signup-officer-note" style="margin:0.35rem 0;">No player breakdown available for this import.</p>';
   }
   var rows = playerIds
     .map(function (id) {
-      return { name: _lootHistoryPlayerNames[id] || 'Unknown', count: imp.playerCounts[id] };
+      return { name: _lootHistoryPlayerNames[id] || 'Unknown', items: imp.playerItems[id] };
     })
     .sort(function (a, b) {
-      return b.count - a.count || a.name.localeCompare(b.name);
+      return b.items.length - a.items.length || a.name.localeCompare(b.name);
     });
-  // Fixed 10 rows, flowing into as many columns as needed -- a flex-wrap
-  // list here used to wrap ragged (2 names on one line, 1 on the next)
-  // since each name's width differs; a column-flowing grid keeps every row
-  // the same height regardless of name length. grid-auto-columns:max-content
-  // stops columns from being squeezed/truncated once there are enough of
-  // them to overflow the panel -- the outer overflow-x:auto scrolls instead.
-  // .roster-table td:not(:first-child) centers text by default, which this
-  // cell (2nd td, colspan 3) would otherwise inherit -- text-align:left
-  // overrides that back to a normal left-aligned list.
-  var html =
-    '<div style="overflow-x:auto;text-align:left;"><div style="display:inline-grid;grid-auto-flow:column;grid-auto-columns:max-content;grid-template-rows:repeat(10,auto);column-gap:1.5rem;row-gap:0.4rem;margin:0.35rem 0;">';
+  // One block per player, each listing their items -- not a flowing grid
+  // like the old count-only view, since item lists vary too much in length
+  // to line up in columns. text-align:left overrides the .roster-table
+  // td:not(:first-child) center-alignment this cell (2nd td, colspan 3)
+  // would otherwise inherit.
+  var html = '<div style="text-align:left;margin:0.35rem 0;display:flex;flex-direction:column;gap:0.5rem;">';
   rows.forEach(function (r) {
     html +=
-      '<span style="font-size:0.98rem;white-space:nowrap;">' +
+      '<div style="font-size:0.98rem;"><strong>' +
       escHtml(r.name) +
-      ' <span style="color:var(--text-muted);">(' +
-      r.count +
-      ')</span></span>';
+      '</strong> <span style="color:var(--text-muted);">(' +
+      r.items.length +
+      ')</span><ul style="margin:0.15rem 0 0 1.25rem;padding:0;color:var(--text-muted);">';
+    r.items.forEach(function (item) {
+      html += '<li>' + lootImportItemLinkHtml(item) + '</li>';
+    });
+    html += '</ul></div>';
   });
-  html += '</div></div>';
+  html += '</div>';
   return html;
 }
 
