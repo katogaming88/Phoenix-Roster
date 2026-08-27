@@ -14,6 +14,7 @@ with each release split into `### Frontend` (drives the version number) and
 
 - The guild page's nav gained a **BoE Sales** item, so officers and BoE managers have a way to reach that section other than scrolling past the report card or knowing the `#boe-manage` anchor. It moved there in 3.76.0 with nothing pointing at it. The item shows only for someone who can open the section, so a signed-out visitor or a raider never sees it.
 - The guild page's **BoE** nav item now disappears along with the "Found a BoE?" card when no team is running BoE. It used to stay behind and scroll nowhere.
+- The guild page's nav wraps onto a second line on a narrow phone instead of pushing the page sideways. The five public items filled a 480px screen exactly, so the sixth one would have made the whole page scroll horizontally for officers and BoE managers.
 
 ---
 
