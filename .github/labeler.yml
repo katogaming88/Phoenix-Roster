@@ -80,6 +80,15 @@ boe:
       - js/tabs/tab-boe.js
       - supabase/functions/boe-webhook/**
 
+# The guild-wide landing page. guild.html is deliberately absent for the same
+# reason admin.html is above: every version stamp retags all four HTML files,
+# so listing it here would label every release PR.
+guild-page:
+  - changed-files:
+    - any-glob-to-any-file:
+      - js/guild.js
+      - css/guild.css
+
 database:
   - changed-files:
     - any-glob-to-any-file:

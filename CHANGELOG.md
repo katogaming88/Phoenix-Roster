@@ -8,6 +8,17 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.67.0] - 2026-08-27
+
+### Frontend
+
+- Added `guild.html`, a guild-wide page that is not scoped to a raid team (#777). Every page here belongs to one team, so a visitor arriving without a team in the URL got a modal with three buttons before they could see anything, and there was nowhere that represented the guild rather than a team. This is the shell: the team list, sign-in, and the accessibility groundwork the rest builds on. Live streams, news, the BoE entry point and About the Guild follow in their own changes, and nothing links to this page yet.
+- The new page is built to WCAG 2.1 AA from the start rather than retrofitted: a skip link, a real `<main>` and `<footer>`, one heading per section with the section named after it, a visible keyboard focus ring, and a reduced-motion setting that is honoured. A structural check now runs in CI over its markup, which is the first test in this project that reads HTML at all.
+- Maintenance mode now hides page content on any page with a `<main>`, not just ones built out of the older view wrappers. On the new page the banner would otherwise have appeared over a fully visible site.
+- Added `npm run stamp`, which rewrites the version and all 43 cache-busting asset tags across the four pages in one pass (#776). No user-visible change, listed here because the previous release's tags were maintained by hand.
+
+---
+
 ## [3.66.0] - 2026-08-26
 
 ### Frontend

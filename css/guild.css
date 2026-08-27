@@ -1,0 +1,113 @@
+/* Guild landing page (guild.html) -- #777.
+   Layers on css/styles.css, which supplies the tokens, .header, .site-nav,
+   .state-msg, .spinner and .footer this page reuses.
+
+   The keyboard and motion baselines at the bottom are deliberately scoped to
+   .guild-page rather than written bare. Generalising them to index.html,
+   officer.html and admin.html is #435, and doing it here would restyle three
+   pages this PR does not test. */
+
+/* ── Layout ─────────────────────────────────────────────────────────── */
+
+.guild-body {
+  flex: 1;
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2.5rem 2rem 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+}
+
+.guild-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.guild-section > h2 {
+  font-family: 'Cinzel', serif;
+  font-size: 1.5rem;
+  letter-spacing: 0.08em;
+  color: var(--gold-light);
+}
+
+.guild-section-intro {
+  color: var(--text-muted);
+  max-width: 60ch;
+}
+
+/* Anchors sit under a sticky-ish nav on small screens; give them room so a
+   jump does not land the heading under it. */
+.guild-section[id] {
+  scroll-margin-top: 1.5rem;
+}
+
+/* ── Team cards ─────────────────────────────────────────────────────── */
+
+.guild-team-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.guild-team-card {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 1.25rem 1.4rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  text-decoration: none;
+  color: var(--text);
+  transition: border-color 0.15s, background 0.15s, transform 0.15s;
+}
+
+.guild-team-card:hover {
+  border-color: var(--gold-dim);
+  background: var(--bg-elevated);
+  transform: translateY(-2px);
+}
+
+.guild-team-emblem {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.guild-team-name {
+  font-family: 'Cinzel', serif;
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+}
+
+/* ── Keyboard and motion baselines (scoped, see header) ─────────────── */
+
+.guild-page :focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Elsewhere in this codebase focus is signalled by a 1px border-colour change
+   paired with outline:none, which is close to invisible. Nothing on this page
+   does that, so the ring above is the only focus style it needs. */
+
+@media (prefers-reduced-motion: reduce) {
+  .guild-page *,
+  .guild-page *::before,
+  .guild-page *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .guild-body {
+    padding: 2rem 1.1rem 2.5rem;
+    gap: 2.25rem;
+  }
+}

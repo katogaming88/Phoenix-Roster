@@ -20,6 +20,16 @@
 }
 body { background:var(--bg); color:var(--text); font-family:'Rajdhani',sans-serif; font-size:18px; min-height:100vh; display:flex; flex-direction:column; }
 
+/* Accessibility utilities (#777). Used by guild.html today and unreferenced by
+   the other three pages, so adding them here changes nothing on those. #435
+   wants exactly these two to build a skip link with, which is why they live in
+   the shared sheet; the focus-visible and reduced-motion baselines that issue
+   also covers are scoped to .guild-page in css/guild.css instead, so this PR
+   does not quietly restyle pages it did not test. */
+.sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+.skip-link { position:absolute; left:0.5rem; top:-4rem; z-index:100; padding:0.6rem 1rem; background:var(--bg-elevated); color:var(--gold-light); border:1px solid var(--gold-dim); border-radius:4px; text-decoration:none; letter-spacing:0.08em; transition:top 0.15s; }
+.skip-link:focus { top:0.5rem; }
+
 /* Header */
 .header { position:relative; padding:2.5rem 2rem 2rem; text-align:center; border-bottom:1px solid var(--border); overflow:hidden; }
 .header::before { content:''; position:absolute; inset:0; background:radial-gradient(ellipse 60% 140% at 50% 0%, rgba(214,163,68,0.07) 0%, transparent 70%); pointer-events:none; }

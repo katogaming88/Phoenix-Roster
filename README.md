@@ -8,6 +8,12 @@ Supports multiple teams (Phoenix, Hellfire Rollers, Immolation) from a single co
 
 ## What it does
 
+### Guild page (public, `guild.html`)
+
+The one page that is not scoped to a raid team: the guild above the three teams, rather than any one of them. It is where a visitor who does not know which team they want starts.
+
+In progress and not linked from anywhere yet. It currently carries the team list; live streams, a news teaser, a BoE entry point, About the Guild and the external links follow, tracked in [milestone #27](https://github.com/katogaming88/WGA-Raid-Hub/milestone/27). Once it is worth landing on, the cold-landing team-picker modal on `index.html` is retired in favour of it.
+
 ### Landing page (public, `index.html`)
 
 - Character selector dropdown -- choose your character to open your profile (officers get the full roster; a claimed-but-unclaimed-dropdown raider gets a one-click "View My Profile" instead)
@@ -87,9 +93,9 @@ A separate, site-wide (not per-team) page gated to `site_admins`:
 ## Architecture
 
 1. **Supabase Postgres** is the single source of truth -- schema and RLS policies live in `supabase/migrations/`, applied in order.
-2. `index.html`, `officer.html`, and `admin.html` are plain static pages (no build step, no bundler) that call Supabase directly from the browser via `supabase-js`, using a public anon key restricted by RLS.
+2. `index.html`, `officer.html`, `admin.html`, and `guild.html` are plain static pages (no build step, no bundler) that call Supabase directly from the browser via `supabase-js`, using a public anon key restricted by RLS.
 3. **Feature flags** (`team_settings.config.features`) let a team hide tabs/sub-tabs it doesn't use, editable per-team from the Admin tab or site-wide from `admin.html`.
-4. Both pages are hosted on **GitHub Pages** at the repo root; the `TEAMS` object in `js/common.js` maps each team slug to its Supabase team ID, switched via `?team=`.
+4. Every page is hosted on **GitHub Pages** at the repo root; the `TEAMS` object in `js/common.js` maps each team slug to its Supabase team ID, switched via `?team=`. `guild.html` is the exception: it is guild-wide, carries no team, and links down into the team pages.
 5. Google Sheets/Apps Script was the original backend but has been **fully retired** (the migration's last phase closed 2026-07-21) -- the `gs/*.gs` files remain in the repo only as historical record; nothing reads or writes through them anymore.
 
 For the full file-by-file breakdown, local dev setup (Docker + Supabase CLI), migration workflow, and PR requirements, see [`CONTRIBUTING.md`](CONTRIBUTING.md) -- that's the maintained source of truth for project structure so it doesn't drift out of sync with this file the way it previously did.
