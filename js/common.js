@@ -94,7 +94,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.68.0';
+var VERSION = '3.69.0';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -105,6 +105,16 @@ var VERSION = '3.68.0';
 // `hash` is null for Home (plain index.html, no fragment); every other
 // item's hash matches js/roster.js's showView()'s deep-link map (#354).
 var SITE_NAV_ITEMS = [
+  // The one cross-page item: an `href` instead of a `view`, rendered as a plain
+  // link in both modes (#779). First because it is the level above everything
+  // else in the list, which is also why the active-default in renderSiteNav()
+  // skips it -- guild.html is never the current view of the page rendering this.
+  {
+    id: 'navGuild',
+    label: 'Guild',
+    tooltip: 'The guild above the teams: streams, news, and how to join',
+    href: 'guild.html'
+  },
   { id: 'navHome', label: 'Home', tooltip: 'Back to the roster overview', view: 'landing', hash: null },
   { id: 'navRoster', label: 'Roster', tooltip: "See who's currently on the roster", view: 'roster', hash: 'roster' },
   {
@@ -165,8 +175,29 @@ function renderSiteNav(mode) {
   var mount = document.getElementById('siteNavItems');
   if (!mount) return;
   var html = '';
-  SITE_NAV_ITEMS.forEach(function (item, i) {
-    if (mode === 'officer') {
+  // The first item that is a view of THIS page, which is what "active" means.
+  // Reading index 0 instead would mark the cross-page Guild link as the
+  // current view on index.html.
+  var firstViewId = (
+    SITE_NAV_ITEMS.filter(function (item) {
+      return !item.href;
+    })[0] || {}
+  ).id;
+  SITE_NAV_ITEMS.forEach(function (item) {
+    if (item.href) {
+      // Same markup in both modes: a link to another page needs no team param
+      // (guild.html has no team) and no showView() (that view is not here).
+      html +=
+        '<a href="' +
+        item.href +
+        '" class="site-nav-item" id="' +
+        item.id +
+        '" data-tooltip="' +
+        item.tooltip +
+        '">' +
+        item.label +
+        '</a>';
+    } else if (mode === 'officer') {
       var href = 'index.html';
       if (TEAM_SLUG !== 'phoenix') href += '?team=' + TEAM_SLUG;
       if (item.hash) href += '#' + item.hash;
@@ -184,7 +215,7 @@ function renderSiteNav(mode) {
       var onclick = item.onclick || "showView('" + item.view + "')";
       html +=
         '<button class="site-nav-item' +
-        (i === 0 ? ' active' : '') +
+        (item.id === firstViewId ? ' active' : '') +
         '" id="' +
         item.id +
         '" onclick="' +

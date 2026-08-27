@@ -1,5 +1,12 @@
 [
   {
+    "date": "2026-08-27",
+    "category": "Feature",
+    "version": "3.69.0",
+    "title": "A guild page above the three teams",
+    "body": "There's now a page for the guild rather than any one team, at guild.html, reachable from the Guild link in the nav. It lists the teams, says which are taking signups, and links straight to each one's roster or signup form. More is coming to it: live streams across all teams, news, and reporting a BoE you found without having to pick a team page first. If you arrive at the site without a team in the link, you land here instead of the old three-button popup. Nothing changes if you're signed in and claimed on one team: you still go straight to your own roster."
+  },
+  {
     "date": "2026-08-18",
     "category": "Fix",
     "version": "3.60.17",

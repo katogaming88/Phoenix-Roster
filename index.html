@@ -7,24 +7,11 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=3.68.0">
+<link rel="stylesheet" href="css/styles.css?v=3.69.0">
 <script>var whTooltips = {colorLinks: true, iconizeLinks: true, iconSize: 'small'};</script>
 <script src="https://wow.zamimg.com/widgets/power.js"></script>
 </head>
 <body>
-
-<!-- Cold-landing team picker: shown only when a visitor arrives with no ?team=
-     and no team chosen yet this session (js/roster.js's boot gate). Covers the
-     page while we try a claim-based auto-redirect, then reveals buttons if that
-     doesn't resolve to a single team. -->
-<div id="teamPickerScreen" class="modal-overlay" style="display:none">
-  <div class="modal-box team-picker-box">
-    <h2 class="modal-title">Choose your team</h2>
-    <p class="modal-body" id="teamPickerStatus">Checking your account...</p>
-    <div class="spinner" id="teamPickerSpinner"></div>
-    <div id="teamPickerList" class="team-picker-list" style="display:none"></div>
-  </div>
-</div>
 
 <header class="header">
   <a href="index.html" class="header-link">
@@ -365,17 +352,17 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/common.js?v=3.68.0"></script>
-<script src="js/discord.js?v=3.68.0"></script>
-<script src="js/officer-quick-actions.js?v=3.68.0"></script>
-<script src="js/streamers.js?v=3.68.0"></script>
-<script src="js/news.js?v=3.68.0"></script>
-<script src="js/roster.js?v=3.68.0"></script>
-<script src="js/contact.js?v=3.68.0"></script>
-<script src="js/signup.js?v=3.68.0"></script>
-<script src="js/wishlist.js?v=3.68.0"></script>
-<script src="js/bonusRoll.js?v=3.68.0"></script>
-<script src="js/boe.js?v=3.68.0"></script>
+<script src="js/common.js?v=3.69.0"></script>
+<script src="js/discord.js?v=3.69.0"></script>
+<script src="js/officer-quick-actions.js?v=3.69.0"></script>
+<script src="js/streamers.js?v=3.69.0"></script>
+<script src="js/news.js?v=3.69.0"></script>
+<script src="js/roster.js?v=3.69.0"></script>
+<script src="js/contact.js?v=3.69.0"></script>
+<script src="js/signup.js?v=3.69.0"></script>
+<script src="js/wishlist.js?v=3.69.0"></script>
+<script src="js/bonusRoll.js?v=3.69.0"></script>
+<script src="js/boe.js?v=3.69.0"></script>
 <script>
 renderSiteNav('public');
 ['versionNum','versionNumProfile','versionNumSignup','versionNumRoster','versionNumStreamers','versionNumHistory','versionNumAbout','versionNumNews','versionNumHelp','versionNumBoe'].forEach(function(id){document.getElementById(id).textContent=VERSION;});

@@ -1050,36 +1050,26 @@ function bootRosterApp() {
   });
 }
 
-// Cold-landing team picker (see IS_COLD_LANDING, js/common.js). Shown instead of
-// booting the app for whichever team happens to be the fallback default -- tries
-// a claim-based auto-redirect first, falling back to manual team buttons so a
-// raider on another team never silently lands on Phoenix's roster.
-function showTeamPickerButtons() {
-  var spinner = document.getElementById('teamPickerSpinner');
-  var status = document.getElementById('teamPickerStatus');
-  var list = document.getElementById('teamPickerList');
-  if (spinner) spinner.style.display = 'none';
-  if (status) status.style.display = 'none';
-  if (!list) return;
-  list.innerHTML = '';
-  visibleTeamSlugs().forEach(function (slug) {
-    var btn = document.createElement('button');
-    btn.className = 'btn btn-gold team-picker-btn';
-    btn.textContent = TEAMS[slug].name;
-    btn.onclick = function () {
-      sessionStorage.setItem('wga_team', slug);
-      location.href = location.pathname + '?team=' + slug;
-    };
-    list.appendChild(btn);
-  });
-  list.style.display = 'flex';
+// Cold-landing handling (see IS_COLD_LANDING, js/common.js). This page is one
+// team's page, and a visitor who has not said which team they want has not
+// asked for it, so booting it for whichever team happens to be the fallback
+// default is wrong. Try a claim-based auto-redirect first; anyone that does not
+// resolve goes to the guild page.
+//
+// Until #779 the fallback was a modal with one button per team. guild.html
+// answers the same question and a good deal more, so the modal is gone rather
+// than duplicated. Note the auto-redirect above it is unchanged: a raider with
+// a single claimed team still lands on their own roster, and only visitors who
+// used to get the bare button list end up on the guild page.
+function sendToGuildPage() {
+  // replace(), not href: leaving index.html in history means Back from the
+  // guild page lands here and redirects forward again.
+  location.replace('guild.html');
 }
 
 function resolveColdLanding() {
-  var screen = document.getElementById('teamPickerScreen');
-  if (screen) screen.style.display = 'flex';
   if (!supabaseClient) {
-    showTeamPickerButtons();
+    sendToGuildPage();
     return;
   }
   supabaseClient.auth
@@ -1087,7 +1077,7 @@ function resolveColdLanding() {
     .then(function (result) {
       var session = result && result.data && result.data.session;
       if (!session) {
-        showTeamPickerButtons();
+        sendToGuildPage();
         return;
       }
       // Same "auth_user_id only, no team_id filter" query as findClaimElsewhere
@@ -1111,12 +1101,12 @@ function resolveColdLanding() {
             sessionStorage.setItem('wga_team', claimedSlug);
             location.href = location.pathname + '?team=' + claimedSlug;
           } else {
-            showTeamPickerButtons();
+            sendToGuildPage();
           }
         });
     })
     .catch(function () {
-      showTeamPickerButtons();
+      sendToGuildPage();
     });
 }
 

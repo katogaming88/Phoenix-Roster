@@ -8,6 +8,15 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.69.0] - 2026-08-27
+
+### Frontend
+
+- The guild page is now reachable (#779). A **Guild** link sits first in the nav on both the public page and the officer dashboard, and arriving at the site without a team in the link lands you there instead of on the old three-button popup.
+- That popup is gone. It asked which team you wanted and did nothing else; the guild page answers the same question and a good deal more. What has not changed is the step before it: sign in and be claimed on exactly one team, and you still go straight to your own roster without seeing the guild page at all.
+
+---
+
 ## [3.68.0] - 2026-08-27
 
 ### Frontend
