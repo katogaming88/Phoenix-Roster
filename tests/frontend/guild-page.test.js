@@ -19,6 +19,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const COMMON_JS = readFileSync(path.join(HERE, '../../js/common.js'), 'utf8');
 const GUILD_JS = readFileSync(path.join(HERE, '../../js/guild.js'), 'utf8');
 const STREAMERS_JS = readFileSync(path.join(HERE, '../../js/streamers.js'), 'utf8');
+const NEWS_JS = readFileSync(path.join(HERE, '../../js/news.js'), 'utf8');
 
 const PAGE_ELS = [
   'main-content',
@@ -27,6 +28,10 @@ const PAGE_ELS = [
   'maintenanceBannerMessage',
   'guildTeams',
   'streamersView',
+  'guildNews',
+  'guildBoeTeam',
+  'guildBoeGo',
+  'boe',
   'guildWhoAmI',
   'guildAuthBtn',
   'guildVersion'
@@ -63,7 +68,9 @@ function makeSandbox({
   storedTeam = null,
   teamSettings = ALL_OPEN,
   teamSettingsError = null,
-  streamers = null
+  streamers = null,
+  news = [],
+  newsFails = false
 } = {}) {
   const els = {};
   const calls = [];
@@ -147,13 +154,18 @@ function makeSandbox({
       return t;
     },
     clearTimeout,
-    Promise
+    Promise,
+    fetch: () =>
+      newsFails
+        ? Promise.reject(new Error('offline'))
+        : Promise.resolve({ ok: true, json: () => Promise.resolve(news) })
   };
   sandbox.window = sandbox;
   vm.createContext(sandbox);
   vm.runInContext(COMMON_JS, sandbox, { filename: 'common.js' });
   // Same order guild.html loads them in.
   vm.runInContext(STREAMERS_JS, sandbox, { filename: 'streamers.js' });
+  vm.runInContext(NEWS_JS, sandbox, { filename: 'news.js' });
   vm.runInContext(GUILD_JS, sandbox, { filename: 'guild.js' });
   sandbox.supabaseClient = client;
   return { sandbox, els, calls, el };
@@ -611,6 +623,148 @@ describe('streams (#780)', () => {
     const { sandbox } = makeSandbox({ streamers: rows() });
     await sandbox.bootGuildPage();
     expect(sandbox.DATA.roster).toEqual([]);
+  });
+});
+
+describe('news teaser (#781)', () => {
+  // The full News view stays on index.html. This is headlines plus a link, so
+  // it reuses loadNews() and sortNewsNewestFirst() rather than lifting
+  // renderNewsList(): the teaser's order has to be the News view's order, and
+  // duplicating the pinned-first rule is how the two drift apart.
+  const ENTRIES = [
+    { date: '2026-08-01', category: 'Fix', version: '3.1.0', title: 'Older fix', body: 'Body one' },
+    { date: '2026-08-20', category: 'Feature', version: '3.5.0', title: 'Newest feature', body: 'Body two' },
+    { date: '2026-08-10', category: 'Change', version: '3.3.0', title: 'Middle change', body: 'Body three' },
+    {
+      date: '2026-07-01',
+      category: 'Feature',
+      version: '3.0.0',
+      title: 'Pinned welcome',
+      body: 'Body four',
+      pinned: true
+    },
+    { date: '2026-08-05', category: 'Fix', version: '3.2.0', title: 'Fourth newest', body: 'Body five' }
+  ];
+
+  it('shows three entries, pinned first then newest, matching the News view order', async () => {
+    const { sandbox, els } = makeSandbox({ news: ENTRIES });
+    await sandbox.bootGuildPage();
+    const html = els.guildNews.innerHTML;
+    expect(html).toContain('Pinned welcome');
+    expect(html).toContain('Newest feature');
+    expect(html).toContain('Middle change');
+    expect(html).not.toContain('Fourth newest');
+    expect(html).not.toContain('Older fix');
+    expect(html.indexOf('Pinned welcome')).toBeLessThan(html.indexOf('Newest feature'));
+  });
+
+  it('shows the date and category but not the body', async () => {
+    const { sandbox, els } = makeSandbox({ news: ENTRIES });
+    await sandbox.bootGuildPage();
+    const html = els.guildNews.innerHTML;
+    expect(html).toContain('2026-08-20');
+    expect(html).toContain('Feature');
+    expect(html).not.toContain('Body two');
+  });
+
+  it('links to the full view on the resolved team', async () => {
+    const { sandbox, els } = makeSandbox({ news: ENTRIES, storedTeam: 'immolation' });
+    await sandbox.bootGuildPage();
+    expect(els.guildNews.innerHTML).toContain('index.html?team=immolation#news');
+  });
+
+  it('shows an empty state rather than a bare heading when there is no news', async () => {
+    const { sandbox, els } = makeSandbox({ news: [] });
+    await sandbox.bootGuildPage();
+    expect(els.guildNews.innerHTML).toContain('No news');
+  });
+
+  it('shows the empty state rather than throwing when news.json cannot be fetched', async () => {
+    const { sandbox, els } = makeSandbox({ newsFails: true });
+    await expect(sandbox.bootGuildPage()).resolves.not.toThrow();
+    expect(els.guildNews.innerHTML).toContain('No news');
+  });
+
+  it('escapes what it interpolates', async () => {
+    const { sandbox, els } = makeSandbox({
+      news: [
+        { date: '2026-08-20', category: 'Fix', version: '3.5.0', title: '<img src=x onerror=alert(1)>', body: 'b' }
+      ]
+    });
+    await sandbox.bootGuildPage();
+    expect(els.guildNews.innerHTML).not.toContain('<img');
+  });
+});
+
+describe('BoE entry point (#781)', () => {
+  // The form itself stays on index.html; this is the single guild-level link
+  // #750 wants in place of the per-team pinned links, now that the form
+  // resolves its own team (#767).
+  const options = (el) => (el.innerHTML.match(/value="([^"]+)"/g) || []).map((m) => m.slice(7, -1));
+
+  it('lists every team with the BoE flag on', async () => {
+    const { sandbox, els } = makeSandbox();
+    await sandbox.bootGuildPage();
+    expect(options(els.guildBoeTeam)).toEqual(['phoenix', 'hellfire', 'immolation', 'wrathless']);
+  });
+
+  it('includes hidden teams, unlike the team cards', async () => {
+    // js/boe.js:58-59 does the same: a Wrathless raider still has to be able
+    // to report a find even though the team is not in any picker.
+    const { sandbox, els } = makeSandbox();
+    await sandbox.bootGuildPage();
+    expect(options(els.guildBoeTeam)).toContain('wrathless');
+  });
+
+  it('drops a team that turned the feature off', async () => {
+    const { sandbox, els } = makeSandbox({
+      teamSettings: [
+        { team_id: 1, config: { features: { boe: false } } },
+        { team_id: 2, config: {} },
+        { team_id: 3, config: {} },
+        { team_id: 4, config: {} }
+      ]
+    });
+    await sandbox.bootGuildPage();
+    const opts = options(els.guildBoeTeam);
+    expect(opts).not.toContain('phoenix');
+    expect(opts).toContain('hellfire');
+  });
+
+  it('defaults to the resolved team', async () => {
+    const { sandbox, els } = makeSandbox({ session: SESSION, memberRows: [claim(3, 'Charlie-Tichondrius')] });
+    await sandbox.bootGuildPage();
+    expect(els.guildBoeTeam.value).toBe('immolation');
+  });
+
+  it('falls back to the first enabled team when the resolved one has BoE off', async () => {
+    const { sandbox, els } = makeSandbox({
+      storedTeam: 'phoenix',
+      teamSettings: [
+        { team_id: 1, config: { features: { boe: false } } },
+        { team_id: 2, config: {} },
+        { team_id: 3, config: {} },
+        { team_id: 4, config: {} }
+      ]
+    });
+    await sandbox.bootGuildPage();
+    expect(els.guildBoeTeam.value).toBe('hellfire');
+  });
+
+  it('sends the visitor to the form on the selected team', async () => {
+    const { sandbox, els } = makeSandbox();
+    await sandbox.bootGuildPage();
+    els.guildBoeTeam.value = 'hellfire';
+    sandbox.goToBoeForm();
+    expect(sandbox.location.href).toBe('index.html?team=hellfire#boe');
+  });
+
+  it('hides the whole card when no team has BoE enabled', async () => {
+    const { sandbox, els } = makeSandbox({
+      teamSettings: [1, 2, 3, 4].map((id) => ({ team_id: id, config: { features: { boe: false } } }))
+    });
+    await sandbox.bootGuildPage();
+    expect(els.boe.style.display).toBe('none');
   });
 });
 

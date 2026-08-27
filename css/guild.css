@@ -126,6 +126,73 @@
   color: var(--gold);
 }
 
+/* ── News teaser ────────────────────────────────────────────────────── */
+
+.guild-empty {
+  color: var(--text-muted);
+  font-size: 1rem;
+}
+
+.guild-news-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.guild-news-item {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.guild-news-date {
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.guild-news-title {
+  color: var(--text);
+}
+
+.guild-news-more {
+  align-self: flex-start;
+  color: var(--text-muted);
+  text-decoration: none;
+  letter-spacing: 0.05em;
+  transition: color 0.15s;
+}
+
+.guild-news-more:hover {
+  color: var(--gold);
+}
+
+/* ── BoE entry point ────────────────────────────────────────────────── */
+
+.guild-boe-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.guild-boe-row label {
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+
+/* .add-player-input is width:100% for the officer forms it was written for,
+   which stretches this select across the whole section. */
+.guild-boe-row select {
+  width: auto;
+  min-width: 12rem;
+  max-width: 18rem;
+}
+
 /* ── Keyboard and motion baselines (scoped, see header) ─────────────── */
 
 .guild-page :focus-visible {
