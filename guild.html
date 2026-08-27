@@ -8,8 +8,8 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=3.71.0">
-<link rel="stylesheet" href="css/guild.css?v=3.71.0">
+<link rel="stylesheet" href="css/styles.css?v=3.72.0">
+<link rel="stylesheet" href="css/guild.css?v=3.72.0">
 </head>
 <body class="guild-page">
 <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -37,6 +37,7 @@
   <a class="site-nav-item" href="#streams">Streams</a>
   <a class="site-nav-item" href="#news">News</a>
   <a class="site-nav-item" href="#boe">BoE</a>
+  <a class="site-nav-item" href="#about">About</a>
   <div class="site-nav-right">
     <span class="site-nav-item" id="guildWhoAmI"></span>
     <button type="button" class="site-nav-item site-nav-discord" id="guildAuthBtn">Sign in with Discord</button>
@@ -86,6 +87,12 @@
     </div>
   </section>
 
+  <section class="guild-section" id="about" aria-labelledby="aboutHeading">
+    <h2 id="aboutHeading">About the Guild</h2>
+    <p class="guild-section-intro">We Go Again is a Tichondrius guild raiding across three teams, from AOTC-paced groups to Mythic progression. The officers below run the guild as a whole; each team has its own officers on its About tab.</p>
+    <div id="guildBios"></div>
+  </section>
+
 </main>
 
 <footer class="footer">
@@ -95,10 +102,10 @@
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/common.js?v=3.71.0"></script>
-<script src="js/news.js?v=3.71.0"></script>
-<script src="js/streamers.js?v=3.71.0"></script>
-<script src="js/guild.js?v=3.71.0"></script>
+<script src="js/common.js?v=3.72.0"></script>
+<script src="js/news.js?v=3.72.0"></script>
+<script src="js/streamers.js?v=3.72.0"></script>
+<script src="js/guild.js?v=3.72.0"></script>
 <script>
 document.getElementById('guildVersion').textContent = VERSION;
 </script>

@@ -385,11 +385,94 @@ function goToBoeForm() {
   window.location.href = guildTeamHref(slug, 'boe');
 }
 
+/**
+ * About the Guild (#782). Guild officer bios live on site_settings' singleton
+ * row, guild-wide since #586 moved them off team_settings.config, and have
+ * only ever been reachable through the About tab of a team page.
+ *
+ * js/roster.js's buildGuildBios() renders the same shape but cannot be called
+ * here: it depends on _escAttr(), which is declared in js/roster.js and
+ * js/tabs/tab-season.js and in neither case ships in this page's bundle. This
+ * is the js/boe.js escHtml trap, so the card markup is rebuilt rather than
+ * borrowed. It needs no copy of that helper either: common.js's _esc() escapes
+ * quotes as well as angle brackets and its own comment says it is meant for
+ * attribute values, so it covers the photo path too.
+ */
+function renderGuildBios() {
+  var section = document.getElementById('about');
+  var mount = document.getElementById('guildBios');
+  var bios = (DATA && DATA.guildOfficerBios) || [];
+  // Nothing to say is better than an empty heading. Also covers the read
+  // having failed, which resolves null rather than [].
+  if (section) section.style.display = bios.length ? '' : 'none';
+  if (!mount || !bios.length) return;
+
+  mount.innerHTML =
+    '<div class="bio-wrap">' +
+    bios
+      .map(function (entry) {
+        var displayName = entry.name || 'Unnamed';
+        var html = '<div class="bio-card">';
+        html += entry.imagePath
+          ? '<img class="bio-photo" src="' + _esc(entry.imagePath) + '" alt="">'
+          : '<div class="bio-photo bio-photo-fallback">' + _esc(displayName.slice(0, 2).toUpperCase()) + '</div>';
+        html +=
+          '<div class="bio-name">' +
+          _esc(displayName) +
+          (entry.pronouns ? ' <span class="bio-pronouns">(' + _esc(entry.pronouns) + ')</span>' : '') +
+          '</div>';
+        if (entry.characterName) html += '<div class="bio-charname">' + _esc(entry.characterName) + '</div>';
+        if (entry.title) html += '<div class="bio-title">' + _esc(entry.title) + '</div>';
+        if (entry.classKey) {
+          html +=
+            '<span class="badge badge-class" style="' +
+            classBadgeStyle(entry.classKey) +
+            '">' +
+            _esc(entry.spec || entry.classKey) +
+            '</span>';
+        }
+        if (entry.bio) html += '<div class="bio-text">' + _esc(entry.bio) + '</div>';
+        return html + '</div>';
+      })
+      .join('') +
+    '</div>';
+}
+
+function fetchGuildBios() {
+  return Promise.resolve(fetchSupabaseGuildOfficerBios())
+    .then(function (bios) {
+      DATA.guildOfficerBios = bios || [];
+    })
+    .catch(function () {
+      DATA.guildOfficerBios = [];
+    });
+}
+
+/**
+ * Re-applies a #section deep link after the sections have content.
+ *
+ * Every section here renders from an async read, so the browser resolves the
+ * hash while they are all still empty and lands at the top of the page. That
+ * breaks the one link this arc exists to hand out (guild.html#boe, #750).
+ *
+ * Skips a section that hid itself: About with no bios is a zero-height
+ * element, and scrolling to it is worse than not moving at all.
+ */
+function applyGuildHash() {
+  var id = (window.location.hash || '').replace('#', '');
+  if (!id) return;
+  var el = document.getElementById(id);
+  if (!el || el.style.display === 'none' || !el.scrollIntoView) return;
+  el.scrollIntoView();
+}
+
 function renderGuildSections() {
   renderGuildTeams();
   buildStreamersTab();
   renderGuildNews();
   renderGuildBoe();
+  renderGuildBios();
+  applyGuildHash();
 }
 
 function bootGuildPage() {
@@ -427,7 +510,7 @@ function bootGuildPage() {
           return resolveGuildTeam();
         })
         .then(function () {
-          return Promise.all([fetchGuildTeamSettings(), fetchGuildStreamers(), fetchGuildNews()]);
+          return Promise.all([fetchGuildTeamSettings(), fetchGuildStreamers(), fetchGuildNews(), fetchGuildBios()]);
         })
         .then(function () {
           renderGuildSections();

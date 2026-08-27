@@ -8,6 +8,14 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.72.0] - 2026-08-27
+
+### Frontend
+
+- The guild page now has an About the Guild section with the guild officer bios (#782). Those bios have been guild-wide since #586, but the only place to read them was the About tab of a team page, which is the wrong home for the one bio list that is not per team. The team officer bios stay where they are, on each team's own About tab.
+
+---
+
 ## [3.71.0] - 2026-08-27
 
 ### Frontend
