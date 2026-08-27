@@ -118,6 +118,7 @@
 | public.admin_list_boe_managers | record |  | FUNCTION |
 | public.admin_grant_boe_manager | int4 | p_discord_id text | FUNCTION |
 | public.admin_revoke_boe_manager | void | p_discord_id text | FUNCTION |
+| public.is_team_leader_anywhere | bool |  | FUNCTION |
 
 ## Enums
 
