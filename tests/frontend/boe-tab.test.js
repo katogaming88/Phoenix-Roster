@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { realFetchAllPaged } from './helpers/common-sandbox.js';
+import { realFetchAllPaged, loadCommonJs } from './helpers/common-sandbox.js';
 
 // js/tabs/tab-boe.js is a plain browser script (no exports), so these tests
 // load it into a vm sandbox with the browser globals stubbed -- the
@@ -108,6 +108,12 @@ function loadSandbox({ client, els = {}, boeEnabled = true, session = null, guil
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;'),
     featureEnabled: (key) => (key === 'boe' ? boeEnabled : true),
+    // js/common.js owns this, same as fetchAllPaged below; officer.html loads
+    // that bundle, so the tab calling it is legitimate and only the harness
+    // needs the stand-in. Its real behaviour is pinned separately, further
+    // down, against the actual common.js.
+    teamNameForId: (id) =>
+      ({ 1: 'Phoenix Reborn', 2: 'Hellfire', 3: 'Immolation', 4: 'Wrathless' })[id] || 'Team ' + id,
     getDiscordSession: () => session,
     confirm: (msg) => {
       spies.confirms.push(msg);
@@ -234,16 +240,21 @@ describe('buildBoeTab sections', () => {
     expect(els.boeHistory.innerHTML).toContain('No paid or retired BoEs yet');
   });
 
-  it('reads both tables team-scoped, keyset-ordered by id', async () => {
+  it('reads both tables unfiltered by team, keyset-ordered by id', async () => {
+    // No client-side team filter since #765: the read policies are
+    // my_team_role(team_id) in (officer, team_leader) or is_boe_manager() or
+    // is_site_admin(), so the database already returns exactly the teams the
+    // caller may see. Filtering here too would re-implement that, worse.
     const { client, captured } = makeBoeClient({ items: [], listings: [], rpc: managerRpc() });
     await build({ client });
     ['boe_items', 'boe_listings'].forEach((table) => {
       const q = captured.byTable[table][0];
       expect(q.select).toContain('id');
-      expect(q.eq).toEqual([['team_id', 1]]);
+      expect(q.eq).toEqual([]);
       expect(q.order).toEqual([['id', { ascending: true }]]);
       expect(q.limit).toBe(1000);
     });
+    expect(captured.byTable.boe_items[0].select).toContain('team_id');
   });
 
   it('renders an error paragraph, not an empty state, when a paged read fails', async () => {
@@ -456,6 +467,201 @@ describe('summary strip', () => {
     // guild_cut: 200,000 (sold) + 80,000 (paid); finder_payout outstanding: 50,000 (sold only)
     expect(els.boeSummary.innerHTML).toContain('280,000');
     expect(els.boeSummary.innerHTML).toContain('50,000');
+  });
+});
+
+// #765: BoEs are guild property, so a manager sees every team's finds in one
+// list and each find names the team that found it. The team is credit, not a
+// disambiguator, which is why it renders in History too rather than only where
+// two teams' rows could be confused.
+describe('cross-team view (#765)', () => {
+  const CROSS_ROWS = () => [
+    boeRow({ id: 1, team_id: 1, item_name: 'Phoenix Find', status: 'found' }),
+    boeRow({ id: 2, team_id: 4, item_name: 'Wrathless Find', status: 'found' }),
+    boeRow({
+      id: 3,
+      team_id: 2,
+      item_name: 'Hellfire Sold',
+      status: 'sold',
+      sold_at: '2026-08-20T00:00:00Z',
+      sale_price: 300000,
+      finder_payout: 60000,
+      guild_cut: 240000
+    }),
+    boeRow({
+      id: 4,
+      team_id: 1,
+      item_name: 'Phoenix Paid',
+      status: 'paid',
+      sold_at: '2026-08-18T00:00:00Z',
+      payout_paid_at: '2026-08-19T00:00:00Z',
+      sale_price: 100000,
+      finder_payout: 20000,
+      guild_cut: 80000
+    })
+  ];
+
+  it('renders rows from several teams, each naming its own team', async () => {
+    const { client } = makeBoeClient({ items: CROSS_ROWS(), listings: [], rpc: managerRpc() });
+    const { els } = await build({ client });
+    expect(els.boeOpen.innerHTML).toContain('Phoenix Reborn');
+    expect(els.boeOpen.innerHTML).toContain('Wrathless');
+    expect(els.boeAwaiting.innerHTML).toContain('Hellfire');
+    // History carries the team too: the credit outlives the payout.
+    expect(els.boeHistory.innerHTML).toContain('Phoenix Reborn');
+  });
+
+  it('pairs each row with its own team rather than just naming every team somewhere', async () => {
+    const { client } = makeBoeClient({ items: CROSS_ROWS(), listings: [], rpc: managerRpc() });
+    const { els } = await build({ client });
+    const rows = els.boeOpen.innerHTML.split('<tr>').filter(Boolean);
+    const phoenix = rows.find((r) => r.includes('Phoenix Find'));
+    const wrathless = rows.find((r) => r.includes('Wrathless Find'));
+    expect(phoenix).toContain('Phoenix Reborn');
+    expect(phoenix).not.toContain('Wrathless');
+    expect(wrathless).toContain('Wrathless');
+    expect(wrathless).not.toContain('Phoenix Reborn');
+  });
+
+  it('surfaces a find on a team with no members and no roster', async () => {
+    // The Wrathless case, and the reason this issue exists: hidden from the
+    // switcher, so before this its finds were reachable only by hand-typing
+    // ?team=wrathless into the officer dashboard.
+    const { client } = makeBoeClient({
+      items: [boeRow({ id: 9, team_id: 4, item_name: 'Unseen Cloak', player_id: null })],
+      listings: [],
+      rpc: managerRpc()
+    });
+    const { els } = await build({ client });
+    expect(els.boeOpen.innerHTML).toContain('Unseen Cloak');
+    expect(els.boeOpen.innerHTML).toContain('Wrathless');
+  });
+
+  it('totals the headline figures over every team the viewer can see', async () => {
+    const { client } = makeBoeClient({ items: CROSS_ROWS(), listings: [], rpc: managerRpc() });
+    const { els } = await build({ client });
+    // guild_cut 240,000 (Hellfire, sold) + 80,000 (Phoenix, paid)
+    expect(els.boeSummary.innerHTML).toContain('320,000');
+    // finder_payout outstanding: the sold row only
+    expect(els.boeSummary.innerHTML).toContain('60,000');
+  });
+});
+
+describe('per-team credit line (#765)', () => {
+  // Assert on the text a reader sees, not the markup carrying it: the count
+  // sits in its own <strong>, so a tag-blind regex over innerHTML would pin
+  // the styling rather than the pairing it is supposed to check.
+  const text = (html) => html.replace(/<[^>]*>/g, '').replace(/&middot;/g, '.');
+
+  const TWO_TEAMS = () => [
+    boeRow({ id: 1, team_id: 1, status: 'found' }),
+    boeRow({ id: 2, team_id: 1, status: 'found' }),
+    boeRow({
+      id: 3,
+      team_id: 1,
+      status: 'paid',
+      sold_at: '2026-08-18T00:00:00Z',
+      payout_paid_at: '2026-08-19T00:00:00Z',
+      sale_price: 100000,
+      finder_payout: 20000,
+      guild_cut: 80000
+    }),
+    boeRow({ id: 4, team_id: 4, status: 'found' })
+  ];
+
+  it('counts finds per team and sums guild_cut over sold and paid', async () => {
+    const { client } = makeBoeClient({ items: TWO_TEAMS(), listings: [], rpc: managerRpc() });
+    const { els } = await build({ client });
+    const html = text(els.boeSummary.innerHTML);
+    expect(html).toContain('Found by team');
+    expect(html).toMatch(/Phoenix Reborn 3 \(80,000g\)/);
+  });
+
+  it('shows a team that has found but not sold with zero gold', async () => {
+    const { client } = makeBoeClient({ items: TWO_TEAMS(), listings: [], rpc: managerRpc() });
+    const { els } = await build({ client });
+    expect(text(els.boeSummary.innerHTML)).toMatch(/Wrathless 1 \(0g\)/);
+  });
+
+  it('omits a team with no finds', async () => {
+    const { client } = makeBoeClient({ items: TWO_TEAMS(), listings: [], rpc: managerRpc() });
+    const { els } = await build({ client });
+    expect(els.boeSummary.innerHTML).not.toContain('Hellfire');
+    expect(els.boeSummary.innerHTML).not.toContain('Immolation');
+  });
+
+  it('orders teams by find count, most finds first', async () => {
+    const { client } = makeBoeClient({ items: TWO_TEAMS(), listings: [], rpc: managerRpc() });
+    const { els } = await build({ client });
+    const html = els.boeSummary.innerHTML;
+    expect(html.indexOf('Phoenix Reborn')).toBeLessThan(html.indexOf('Wrathless'));
+  });
+
+  it('the per-team gold sums to the headline guild income', async () => {
+    // Both read guild_cut over sold and paid. Nothing else would notice the
+    // two displays drifting apart, so this is the guard.
+    const items = TWO_TEAMS().concat([
+      boeRow({
+        id: 5,
+        team_id: 4,
+        status: 'sold',
+        sold_at: '2026-08-20T00:00:00Z',
+        sale_price: 250000,
+        finder_payout: 50000,
+        guild_cut: 200000
+      })
+    ]);
+    const { client } = makeBoeClient({ items, listings: [], rpc: managerRpc() });
+    const { els } = await build({ client });
+    const html = text(els.boeSummary.innerHTML);
+    expect(html).toContain('280,000'); // headline: 80,000 + 200,000
+    expect(html).toMatch(/Phoenix Reborn 3 \(80,000g\)/);
+    expect(html).toMatch(/Wrathless 2 \(200,000g\)/);
+  });
+
+  it('does not render the line at all when only one team has finds', async () => {
+    // Today's reality on production. With one team it just restates the
+    // headline in more words.
+    const { client } = makeBoeClient({ items: ALL_ROWS(), listings: [], rpc: managerRpc() });
+    const { els } = await build({ client });
+    expect(els.boeSummary.innerHTML).not.toContain('Found by team');
+  });
+});
+
+describe('summary scope note (#765)', () => {
+  it('tells a read-only officer the totals cover their own teams', async () => {
+    const { client } = makeBoeClient({
+      items: ALL_ROWS(),
+      listings: [],
+      rpc: { is_boe_manager: () => ({ data: false, error: null }) }
+    });
+    const { els } = await build({ client });
+    expect(els.boeSummary.innerHTML).toContain('your own teams');
+  });
+
+  it('says nothing about scope to a manager, whose totals really are guild-wide', async () => {
+    const { client } = makeBoeClient({ items: ALL_ROWS(), listings: [], rpc: managerRpc() });
+    const { els } = await build({ client });
+    expect(els.boeSummary.innerHTML).not.toContain('your own teams');
+  });
+});
+
+describe('teamNameForId (js/common.js, #765)', () => {
+  it('resolves every configured team, hidden ones included', () => {
+    const sandbox = loadCommonJs();
+    Object.keys(sandbox.TEAMS).forEach((slug) => {
+      const cfg = sandbox.TEAMS[slug];
+      expect(sandbox.teamNameForId(cfg.supabaseTeamId)).toBe(cfg.name);
+    });
+    expect(sandbox.teamNameForId(4)).toBe('Wrathless');
+  });
+
+  it('falls back rather than rendering undefined for an id TEAMS does not carry', () => {
+    // Cannot happen today, but a team created on prod before js/common.js
+    // catches up would otherwise put the string "undefined" in a table cell.
+    const sandbox = loadCommonJs();
+    expect(sandbox.teamNameForId(99)).toBe('Team 99');
+    expect(sandbox.teamNameForId(null)).not.toContain('undefined');
   });
 });
 
