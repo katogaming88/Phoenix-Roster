@@ -405,6 +405,46 @@ function renderLootHistoryPanel(actorNames) {
   el.innerHTML = html;
 }
 
+// Turns one audit detail summary ("<Track> - <Item Name>", or a bare item
+// name/"Unknown item" for rows with no resolvable track) into a Wowhead
+// hover-tooltip link, same icon+link pattern as officerWishlistRowHTML()
+// in js/common.js -- looked up by name against DATA.itemWowIds/itemIcons
+// (populated once at load, shared across every tab) since audit_log only
+// ever stored the item's name, not its id. Falls back to plain escaped text
+// when the name doesn't resolve (an off-list item, or "Unknown item").
+function lootImportItemLinkHtml(summary) {
+  var track = '';
+  var name = summary;
+  var m = /^(Champion|Hero|Myth) - (.+)$/.exec(summary);
+  if (m) {
+    track = m[1];
+    name = m[2];
+  }
+  var trackPrefix = track ? escHtml(track) + ' - ' : '';
+  var wowId = ((DATA && DATA.itemWowIds) || {})[name];
+  var icon = ((DATA && DATA.itemIcons) || {})[name];
+  var isPtr = ((DATA && DATA.itemIsPtr) || {})[name];
+  var iconImg = icon
+    ? '<img src="https://wow.zamimg.com/images/wow/icons/large/' +
+      icon +
+      '.jpg" alt="" class="item-icon-sm" style="vertical-align:middle;margin-right:0.3rem;">'
+    : '';
+  if (wowId == null) {
+    return trackPrefix + escHtml(name);
+  }
+  return (
+    trackPrefix +
+    '<a href="https://www.wowhead.com/' +
+    (isPtr ? 'ptr/' : '') +
+    'item=' +
+    wowId +
+    '" class="wowhead" target="_blank" rel="noopener" style="text-decoration:none;">' +
+    iconImg +
+    escHtml(name) +
+    '</a>'
+  );
+}
+
 // Name + item list per player for one import, sourced entirely from data
 // already fetched by buildLootHistoryTab -- expanding a row is a pure
 // re-render, no additional round trip.
@@ -434,7 +474,7 @@ function lootHistoryDetailHtml(imp) {
       r.items.length +
       ')</span><ul style="margin:0.15rem 0 0 1.25rem;padding:0;color:var(--text-muted);">';
     r.items.forEach(function (item) {
-      html += '<li>' + escHtml(item) + '</li>';
+      html += '<li>' + lootImportItemLinkHtml(item) + '</li>';
     });
     html += '</ul></div>';
   });
