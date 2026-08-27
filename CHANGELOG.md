@@ -8,6 +8,15 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.74.1] - 2026-08-27
+
+### Frontend
+
+- The guild page's Streams section now embeds only the raiders who are actually live and lists everyone else as a name, channel link and schedule note (#790). It used to spend a Twitch player on every streamer, and an offline player is a black rectangle, so with nobody live the section was taller than the three team cards above it. The list is there whether or not anyone is streaming, so you can always see who streams and when, instead of only finding out during raid hours.
+- The guild page no longer fails silently: an error while drawing any one section used to take every section below it down with no trace of why.
+
+---
+
 ## [3.74.0] - 2026-08-27
 
 ### Frontend
