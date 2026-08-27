@@ -299,9 +299,97 @@ function fetchGuildStreamers() {
     });
 }
 
+/**
+ * News teaser (#781). Headlines only: the full view, with bodies and the
+ * expand/collapse, stays on index.html and this links to it.
+ *
+ * loadNews() and NEWS_DATA come from js/news.js rather than a local fetch, so
+ * the teaser's order IS the News view's order. Duplicating the pinned-first
+ * rule here is exactly how the two would drift. renderNewsList() is
+ * deliberately not reused: it renders bodies and owns the toggle state.
+ */
+var GUILD_NEWS_COUNT = 3;
+
+function renderGuildNews() {
+  var mount = document.getElementById('guildNews');
+  if (!mount) return;
+  var entries = (typeof NEWS_DATA !== 'undefined' ? NEWS_DATA : []).slice(0, GUILD_NEWS_COUNT);
+  if (!entries.length) {
+    mount.innerHTML = '<p class="guild-empty">No news yet.</p>';
+    return;
+  }
+  mount.innerHTML =
+    '<ul class="guild-news-list">' +
+    entries
+      .map(function (entry) {
+        return (
+          '<li class="guild-news-item">' +
+          '<span class="guild-news-date">' +
+          _esc(entry.date) +
+          '</span>' +
+          newsCategoryBadge(entry.category) +
+          '<span class="guild-news-title">' +
+          _esc(entry.title) +
+          '</span>' +
+          '</li>'
+        );
+      })
+      .join('') +
+    '</ul>' +
+    '<a class="guild-news-more" href="' +
+    _esc(guildTeamHref(null, 'news')) +
+    '">All news</a>';
+}
+
+function fetchGuildNews() {
+  return Promise.resolve(loadNews()).catch(function () {});
+}
+
+/**
+ * BoE entry point (#781). The form stays on index.html; this is the single
+ * guild-level link #750 wants in place of the per-team pinned links, now that
+ * the form resolves its own team (#767).
+ *
+ * The team list comes from the same team_settings read the cards use. Hidden
+ * teams are included, unlike the cards: js/boe.js:58-59 does the same, because
+ * a Wrathless raider still has to be able to report a find even though the
+ * team appears in no picker.
+ */
+function boeEnabledTeamSlugs() {
+  var settings = guildTeamSettings();
+  return Object.keys(TEAMS).filter(function (slug) {
+    return settings[slug] && settings[slug].boeEnabled;
+  });
+}
+
+function renderGuildBoe() {
+  var section = document.getElementById('boe');
+  var sel = document.getElementById('guildBoeTeam');
+  var slugs = boeEnabledTeamSlugs();
+  if (section) section.style.display = slugs.length ? '' : 'none';
+  if (!sel || !slugs.length) return;
+
+  sel.innerHTML = slugs
+    .map(function (slug) {
+      return '<option value="' + _esc(slug) + '">' + _esc(TEAMS[slug].name) + '</option>';
+    })
+    .join('');
+  // The resolved team when it can take a find, else the first that can.
+  var resolved = guildTeamSlug();
+  sel.value = slugs.indexOf(resolved) !== -1 ? resolved : slugs[0];
+}
+
+function goToBoeForm() {
+  var sel = document.getElementById('guildBoeTeam');
+  var slug = (sel && sel.value) || guildTeamSlug();
+  window.location.href = guildTeamHref(slug, 'boe');
+}
+
 function renderGuildSections() {
   renderGuildTeams();
   buildStreamersTab();
+  renderGuildNews();
+  renderGuildBoe();
 }
 
 function bootGuildPage() {
@@ -339,7 +427,7 @@ function bootGuildPage() {
           return resolveGuildTeam();
         })
         .then(function () {
-          return Promise.all([fetchGuildTeamSettings(), fetchGuildStreamers()]);
+          return Promise.all([fetchGuildTeamSettings(), fetchGuildStreamers(), fetchGuildNews()]);
         })
         .then(function () {
           renderGuildSections();

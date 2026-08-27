@@ -8,6 +8,15 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.71.0] - 2026-08-27
+
+### Frontend
+
+- The guild page now shows the three most recent News headlines, with a link through to the full history on your team's News tab (#781).
+- It also carries a **Found a BoE?** card: pick the team you were raiding with and it takes you to that team's report form. BoEs are guild property, so the entry point belongs above any one team rather than being a separate pinned link per team. Teams that have turned the BoE feature off are not offered, and the card hides entirely if no team has it on.
+
+---
+
 ## [3.70.0] - 2026-08-27
 
 ### Frontend
