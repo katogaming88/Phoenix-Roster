@@ -98,6 +98,7 @@ or add the `chore` label.
 | `css/guild.css` | Guild-page-specific styles, plus the keyboard/motion baselines scoped to that page until #435 generalises them |
 | `gs/*.gs` | Retired Google Apps Script source, kept only as historical record -- no code reads `gasUrl` or writes through GAS anymore; everything is Supabase-only |
 | `supabase/` | Supabase CLI project: local dev stack config and schema migrations |
+| `supabase/functions/` | Edge Functions (Deno). Webhook relays (`boe-webhook`, `discord-bot-webhook`, `contact-webhook`), scheduled sync jobs (`wcl-sync`, `wcl-progression-sync`, `twitch-live-check`), and `upload-bio-photo`, which authenticates the caller and is the only writer to Storage -- see "Storage" below |
 | `scripts/import/` | One-off/recurring data import tooling (loot, attendance, etc.) |
 | `scripts/ci/` | CI checks that need more than a workflow step (changelog classification, the team-wide read guard), plus the version stamper (`npm run stamp`), which owns the page registry the asset-version check reads |
 | `dbdoc/` | Generated schema docs (tbls). Never edit by hand; regenerate with `npm run db:docs` |
@@ -151,6 +152,31 @@ Write the actual bound, not "this is fine". The annotation is also the escape
 hatch for a `makeQuery` callback declared as a named function somewhere else,
 which the check cannot follow. Run it locally with
 `node scripts/ci/team-wide-read-check.js`.
+
+## Storage
+
+`bio-photos` (added for #625) is the first Supabase Storage bucket in this
+project, and the convention it set is meant to hold for the next one too:
+
+- **No client ever writes to a bucket directly.** An Edge Function does the
+  auth check and the write, using the service-role key. Storage RLS on
+  `storage.objects` is left with no per-client rule at all -- the default
+  deny already blocks a direct client write, so there is nothing to grant.
+  A bucket created `public = true` still serves reads through its public URL
+  without needing a read rule.
+- **Path convention**: `{auth_user_id}/{filename}`, so a bucket that scopes
+  content per-uploader gets that enforced for free -- an Edge Function using
+  the caller's own `auth.uid()` to build the path can never be asked to
+  write under someone else's.
+- File-size/mime-type limits set on the bucket row itself
+  (`file_size_limit`, `allowed_mime_types`) are defense-in-depth only; the
+  real enforcement (resize, compression, a hard cap on the stored size)
+  belongs in the Edge Function, not the client.
+- See `supabase/functions/upload-bio-photo/index.ts` for the reference
+  shape: authenticate by forwarding the caller's JWT to a second client and
+  calling `auth.getUser()`, authorize with the same RPCs an equivalent save
+  path already uses, then do the actual bucket read/write with a
+  service-role client kept separate from the caller-scoped one.
 
 ## Local development database (Supabase)
 

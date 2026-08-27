@@ -5615,6 +5615,12 @@
       "return_type": "void",
       "arguments": "p_discord_id text",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.is_team_leader_anywhere",
+      "return_type": "bool",
+      "arguments": "",
+      "type": "FUNCTION"
     }
   ],
   "enums": [

@@ -18,6 +18,52 @@
 
 var TEAM_OFFICER_BIOS = [];
 
+// Self-serve bio photo upload (#625) -- shared by both the team and guild
+// editors below. All the actual work (auth, resize, compression, the
+// Storage write) happens server-side in the upload-bio-photo Edge Function;
+// this is just client-side pre-checks (cheap rejection before a network
+// round trip) and the request/response plumbing.
+var BIO_PHOTO_MAX_BYTES = 5 * 1024 * 1024;
+var BIO_PHOTO_ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+var BIO_PHOTO_STORAGE_PREFIX = SUPABASE_URL + '/storage/v1/object/public/bio-photos/';
+
+function _bioValidatePhotoFile(file) {
+  if (!file) return 'No file selected.';
+  if (BIO_PHOTO_ALLOWED_TYPES.indexOf(file.type) === -1) return 'Photos must be PNG, JPEG, or WebP.';
+  if (file.size > BIO_PHOTO_MAX_BYTES) return 'Photo must be under 5MB.';
+  return null;
+}
+
+function _bioUploadPhotoFile(file) {
+  return supabaseClient.functions
+    .invoke('upload-bio-photo', { method: 'POST', body: file, headers: { 'Content-Type': file.type } })
+    .then(function (res) {
+      if (res.error) throw new Error(res.error.message || 'Upload failed.');
+      if (!res.data || !res.data.success) throw new Error((res.data && res.data.error) || 'Upload failed.');
+      return res.data.url;
+    });
+}
+
+// A bio's imagePath is a bare URL/path string with no owner metadata of its
+// own -- ownership for the delete call is recovered by checking whether it
+// falls under the bucket's public URL prefix at all. A legacy hand-typed
+// assets/officers/*.jpg path simply doesn't match, and is skipped rather
+// than sent to the Edge Function.
+function _bioStoragePathFromImagePath(imagePath) {
+  if (!imagePath || imagePath.indexOf(BIO_PHOTO_STORAGE_PREFIX) !== 0) return null;
+  return imagePath.slice(BIO_PHOTO_STORAGE_PREFIX.length);
+}
+
+function _bioRemovePhotoFile(imagePath) {
+  var targetPath = _bioStoragePathFromImagePath(imagePath);
+  if (!targetPath) return Promise.resolve();
+  return supabaseClient.functions
+    .invoke('upload-bio-photo', { method: 'DELETE', body: { targetPath: targetPath } })
+    .then(function (res) {
+      if (res.error) throw new Error(res.error.message || 'Remove failed.');
+    });
+}
+
 function buildBioCards() {
   TEAM_OFFICER_BIOS = JSON.parse(JSON.stringify((DATA && DATA.teamOfficerBios) || []));
   populateBioRosterPicker();
@@ -195,12 +241,31 @@ function renderBioCards() {
       '" style="min-width:140px;font-size:1rem;padding:0.3rem 0.55rem;">';
     html += '</div>';
     html += '<div style="margin-bottom:0.5rem;">';
+    html += '<div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;margin-bottom:0.4rem;">';
+    if (entry.imagePath) {
+      html +=
+        '<img src="' +
+        _escAttr(entry.imagePath) +
+        '" alt="" style="width:44px;height:44px;border-radius:50%;object-fit:cover;">';
+    }
+    html +=
+      '<input type="file" accept="image/png,image/jpeg,image/webp" class="bio-photo-file-input" onchange="bioUploadPhoto(' +
+      i +
+      ', this)">';
+    if (entry.imagePath) {
+      html +=
+        '<button class="btn btn-muted" style="padding:2px 10px;font-size:0.93rem;" onclick="bioRemovePhoto(' +
+        i +
+        ')">Remove Photo</button>';
+    }
+    html += '<span class="bio-photo-status" style="font-size:0.85rem;color:var(--text-muted);"></span>';
+    html += '</div>';
     html +=
       '<input class="bio-image-input add-player-input" placeholder="assets/officers/kato.jpg" value="' +
       _escAttr(entry.imagePath || '') +
       '" style="width:100%;font-size:1rem;padding:0.3rem 0.55rem;">';
     html +=
-      '<p style="font-size:0.91rem;color:var(--text-muted);margin:0.3rem 0 0;">To add a photo, send Kat the image you want to use and she\'ll add it and give you the path to paste here. Leave blank to show initials instead.</p>';
+      '<p style="font-size:0.91rem;color:var(--text-muted);margin:0.3rem 0 0;">Upload a photo above (max 5MB), or paste a path/URL directly. Leave blank to show initials instead.</p>';
     html += '</div>';
     html +=
       '<textarea class="bio-text-input add-player-notes" placeholder="Short bio..." rows="3" style="width:100%;font-size:1rem;padding:0.3rem 0.55rem;">' +
@@ -209,6 +274,45 @@ function renderBioCards() {
     html += '</div>';
   }
   wrap.innerHTML = html;
+}
+
+function bioUploadPhoto(idx, inputEl) {
+  var file = inputEl.files && inputEl.files[0];
+  var block = inputEl.closest('.bio-editor-block');
+  var status = block ? block.querySelector('.bio-photo-status') : null;
+  var err = _bioValidatePhotoFile(file);
+  if (err) {
+    if (status) status.textContent = err;
+    inputEl.value = '';
+    return;
+  }
+  bioCollectFromDOM();
+  inputEl.disabled = true;
+  if (status) status.textContent = 'Uploading...';
+  _bioUploadPhotoFile(file)
+    .then(function (url) {
+      TEAM_OFFICER_BIOS[idx].imagePath = url;
+      renderBioCards();
+    })
+    .catch(function (e) {
+      inputEl.disabled = false;
+      inputEl.value = '';
+      if (status) status.textContent = e.message || 'Upload failed.';
+    });
+}
+
+// Best-effort remote cleanup, then clear the reference locally regardless
+// (matches how the manual path field has always worked -- clearing it is
+// unrestricted client-side, the real gate is the save RPC).
+function bioRemovePhoto(idx) {
+  bioCollectFromDOM();
+  var imagePath = TEAM_OFFICER_BIOS[idx].imagePath;
+  _bioRemovePhotoFile(imagePath)
+    .catch(function () {})
+    .then(function () {
+      TEAM_OFFICER_BIOS[idx].imagePath = '';
+      renderBioCards();
+    });
 }
 
 function saveBios() {
@@ -449,6 +553,27 @@ function renderGuildBioCards() {
       ' style="min-width:140px;font-size:1rem;padding:0.3rem 0.55rem;">';
     html += '</div>';
     html += '<div style="margin-bottom:0.5rem;">';
+    if (!ro) {
+      html += '<div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;margin-bottom:0.4rem;">';
+      if (entry.imagePath) {
+        html +=
+          '<img src="' +
+          _escAttr(entry.imagePath) +
+          '" alt="" style="width:44px;height:44px;border-radius:50%;object-fit:cover;">';
+      }
+      html +=
+        '<input type="file" accept="image/png,image/jpeg,image/webp" class="guild-bio-photo-file-input" onchange="guildBioUploadPhoto(' +
+        i +
+        ', this)">';
+      if (entry.imagePath) {
+        html +=
+          '<button class="btn btn-muted" style="padding:2px 10px;font-size:0.93rem;" onclick="guildBioRemovePhoto(' +
+          i +
+          ')">Remove Photo</button>';
+      }
+      html += '<span class="guild-bio-photo-status" style="font-size:0.85rem;color:var(--text-muted);"></span>';
+      html += '</div>';
+    }
     html +=
       '<input class="guild-bio-image-input add-player-input" placeholder="assets/officers/kato.jpg" value="' +
       _escAttr(entry.imagePath || '') +
@@ -457,7 +582,7 @@ function renderGuildBioCards() {
       ' style="width:100%;font-size:1rem;padding:0.3rem 0.55rem;">';
     if (!ro) {
       html +=
-        '<p style="font-size:0.91rem;color:var(--text-muted);margin:0.3rem 0 0;">To add a photo, send Kat the image you want to use and she\'ll add it and give you the path to paste here. Leave blank to show initials instead.</p>';
+        '<p style="font-size:0.91rem;color:var(--text-muted);margin:0.3rem 0 0;">Upload a photo above (max 5MB), or paste a path/URL directly. Leave blank to show initials instead.</p>';
     }
     html += '</div>';
     html +=
@@ -469,6 +594,42 @@ function renderGuildBioCards() {
     html += '</div>';
   }
   wrap.innerHTML = html;
+}
+
+function guildBioUploadPhoto(idx, inputEl) {
+  var file = inputEl.files && inputEl.files[0];
+  var block = inputEl.closest('.guild-bio-editor-block');
+  var status = block ? block.querySelector('.guild-bio-photo-status') : null;
+  var err = _bioValidatePhotoFile(file);
+  if (err) {
+    if (status) status.textContent = err;
+    inputEl.value = '';
+    return;
+  }
+  guildBioCollectFromDOM();
+  inputEl.disabled = true;
+  if (status) status.textContent = 'Uploading...';
+  _bioUploadPhotoFile(file)
+    .then(function (url) {
+      GUILD_OFFICER_BIOS[idx].imagePath = url;
+      renderGuildBioCards();
+    })
+    .catch(function (e) {
+      inputEl.disabled = false;
+      inputEl.value = '';
+      if (status) status.textContent = e.message || 'Upload failed.';
+    });
+}
+
+function guildBioRemovePhoto(idx) {
+  guildBioCollectFromDOM();
+  var imagePath = GUILD_OFFICER_BIOS[idx].imagePath;
+  _bioRemovePhotoFile(imagePath)
+    .catch(function () {})
+    .then(function () {
+      GUILD_OFFICER_BIOS[idx].imagePath = '';
+      renderGuildBioCards();
+    });
 }
 
 function saveGuildBios() {
