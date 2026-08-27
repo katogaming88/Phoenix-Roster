@@ -8,6 +8,18 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.75.1] - 2026-08-27
+
+### Frontend
+
+- Loot Import now sends RCLootCouncil's response label (Need/Greed/custom labels like "Top Pick") through to the database on every future import instead of silently dropping it.
+
+### Backend
+
+- `rclc_loot` gains a `response` column, populated by `import_rclc_loot()` going forward. Existing rows stay unset -- not recoverable without each import's original RCLC export.
+
+---
+
 ## [3.75.0] - 2026-08-27
 
 ### Frontend
