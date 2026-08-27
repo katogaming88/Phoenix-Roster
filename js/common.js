@@ -94,7 +94,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.66.0';
+var VERSION = '3.67.0';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -834,8 +834,12 @@ function checkMaintenanceMode() {
 // at all (js/admin.js is deliberately standalone, see its own header
 // comment), so the dashboard that turns maintenance mode back off is never
 // itself blocked by it.
+// #main-content is guild.html's single <main> (#777). That page has no .view
+// wrappers at all, so without it here the banner rendered over a fully visible
+// page. index.html and officer.html have no such id yet, making it inert on
+// them until #437 gives them a main landmark, and correct on all of them after.
 function showMaintenanceBanner(message) {
-  document.querySelectorAll('.view, #loadingMsg, #officerPrompt, .site-nav').forEach(function (el) {
+  document.querySelectorAll('.view, #loadingMsg, #officerPrompt, .site-nav, #main-content').forEach(function (el) {
     /** @type {HTMLElement} */ (el).style.display = 'none';
   });
   var banner = document.getElementById('maintenanceBanner');

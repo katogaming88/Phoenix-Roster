@@ -79,6 +79,7 @@ or add the `chore` label.
 | `index.html` | Public page -- landing, raider profiles, season signup |
 | `officer.html` | Officer dashboard -- all management tabs |
 | `admin.html` | Site admin dashboard -- team management, site admin grant/revoke, feature flags, cross-team audit log, maintenance mode |
+| `guild.html` | Guild-wide page -- team selection, streams, news, BoE entry point, About the Guild. The only page not scoped to a team |
 | `js/common.js` | Shared globals, `TEAMS`, `TEAM_SLUG`/`IS_COLD_LANDING` resolution, `VERSION`, data helpers, `renderProfile` |
 | `js/discord.js` | Discord OAuth login/session mapping, character claim flow |
 | `js/roster.js` | Public page boot, cold-landing team picker/auto-redirect, dropdown, stats row, recent loot |
@@ -88,9 +89,11 @@ or add the `chore` label.
 | `js/streamers.js` | Live Twitch streamer widget |
 | `js/tabs/tab-*.js` | One file per officer tab (19 files) |
 | `js/admin.js` | Standalone boot/logic for `admin.html` -- not team-scoped, so it doesn't reuse common.js/discord.js |
+| `js/guild.js` | Boot/logic for `guild.html`. Also not team-scoped, but it does load common.js for `TEAMS` and the guild-wide helpers, then nulls the team globals so a team-dependent call throws rather than rendering Phoenix's data. Skips discord.js, whose session read is hard-scoped to one team |
 | `css/styles.css` | Shared styles across all pages |
 | `css/officer.css` | Officer-specific styles (partial split out of `styles.css`, still in progress) |
 | `css/admin.css` | Admin-page-specific styles |
+| `css/guild.css` | Guild-page-specific styles, plus the keyboard/motion baselines scoped to that page until #435 generalises them |
 | `gs/*.gs` | Retired Google Apps Script source, kept only as historical record -- no code reads `gasUrl` or writes through GAS anymore; everything is Supabase-only |
 | `supabase/` | Supabase CLI project: local dev stack config and schema migrations |
 | `scripts/import/` | One-off/recurring data import tooling (loot, attendance, etc.) |
