@@ -8,8 +8,8 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=3.69.0">
-<link rel="stylesheet" href="css/guild.css?v=3.69.0">
+<link rel="stylesheet" href="css/styles.css?v=3.70.0">
+<link rel="stylesheet" href="css/guild.css?v=3.70.0">
 </head>
 <body class="guild-page">
 <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -34,6 +34,7 @@
 
 <nav class="site-nav" aria-label="Guild sections">
   <a class="site-nav-item" href="#teams">Teams</a>
+  <a class="site-nav-item" href="#streams">Streams</a>
   <div class="site-nav-right">
     <span class="site-nav-item" id="guildWhoAmI"></span>
     <button type="button" class="site-nav-item site-nav-discord" id="guildAuthBtn">Sign in with Discord</button>
@@ -58,6 +59,15 @@
     <div id="guildTeams" class="guild-team-grid"></div>
   </section>
 
+  <section class="guild-section" id="streams" aria-labelledby="streamsHeading">
+    <h2 id="streamsHeading">Streams</h2>
+    <p class="guild-section-intro">Raiders from across the guild who stream on Twitch. Anyone who has opted out of appearing outside their own team's page is not listed here.</p>
+    <!-- Same container id js/streamers.js's buildStreamersTab() writes to on
+         index.html, so this page gets the shipped grid, the lazy-iframe
+         observer and the empty-state copy rather than a second copy of them. -->
+    <div id="streamersView"></div>
+  </section>
+
 </main>
 
 <footer class="footer">
@@ -67,8 +77,9 @@
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/common.js?v=3.69.0"></script>
-<script src="js/guild.js?v=3.69.0"></script>
+<script src="js/common.js?v=3.70.0"></script>
+<script src="js/streamers.js?v=3.70.0"></script>
+<script src="js/guild.js?v=3.70.0"></script>
 <script>
 document.getElementById('guildVersion').textContent = VERSION;
 </script>

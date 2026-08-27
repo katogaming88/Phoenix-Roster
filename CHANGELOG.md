@@ -8,6 +8,14 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.70.0] - 2026-08-27
+
+### Frontend
+
+- The guild page now carries a Streams section listing raiders from every team who stream on Twitch (#780). The same list already existed per team, but only under a team's URL, which was backwards for a feature whose whole point was seeing across teams. Anyone who has opted out of appearing outside their own team's page stays out of it.
+
+---
+
 ## [3.69.0] - 2026-08-27
 
 ### Frontend
