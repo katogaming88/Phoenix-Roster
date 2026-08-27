@@ -8,7 +8,7 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
-## [3.76.1] - 2026-08-27
+## [3.77.1] - 2026-08-27
 
 ### Frontend
 
@@ -17,6 +17,14 @@ with each release split into `### Frontend` (drives the version number) and
 ### Backend
 
 - `rclc_loot` gains a `response` column, populated by `import_rclc_loot()` going forward. Existing rows stay unset -- not recoverable without each import's original RCLC export.
+
+---
+
+## [3.77.0] - 2026-08-27
+
+### Frontend
+
+- BoE lifecycle steps can be undone. A sale recorded at the wrong price, a payout marked before the finder had their gold, or an item retired by mistake all have an undo now: Undo Sale on Awaiting Payout, and Undo Payout or Un-retire in History. Undoing a sale clears the sale price and the split; undoing money asks first. The backend for this shipped with the tracker and had never been wired to a button, so until now the only direction was forwards.
 
 ---
 
