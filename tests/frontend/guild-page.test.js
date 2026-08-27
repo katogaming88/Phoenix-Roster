@@ -29,6 +29,8 @@ const PAGE_ELS = [
   'guildTeams',
   'streamersView',
   'guildNews',
+  'guildBios',
+  'about',
   'guildBoeTeam',
   'guildBoeGo',
   'boe',
@@ -70,7 +72,9 @@ function makeSandbox({
   teamSettingsError = null,
   streamers = null,
   news = [],
-  newsFails = false
+  newsFails = false,
+  bios = null,
+  hash = ''
 } = {}) {
   const els = {};
   const calls = [];
@@ -85,7 +89,11 @@ function makeSandbox({
         disabled: false,
         className: '',
         setAttribute() {},
-        focus() {}
+        focus() {},
+        scrolledIntoView: false,
+        scrollIntoView() {
+          this.scrolledIntoView = true;
+        }
       };
     }
     return els[id];
@@ -108,7 +116,11 @@ function makeSandbox({
     from: (table) => {
       calls.push({ kind: 'from', table });
       if (table === 'site_settings') {
-        return builder({ data: maintenance, error: null });
+        // maintenance_mode and guild_officer_bios are columns on the same
+        // singleton row, and the builder ignores .select(), so one object
+        // stands in for both reads.
+        const row = maintenance === null && bios === null ? null : { ...(maintenance || {}), guild_officer_bios: bios };
+        return builder({ data: row, error: null });
       }
       if (table === 'streamers') {
         return builder({ data: streamers, error: null });
@@ -124,7 +136,7 @@ function makeSandbox({
 
   const sandbox = {
     window: {},
-    location: { search: '', pathname: '/guild.html', origin: 'https://example.test', href: '' },
+    location: { search: '', pathname: '/guild.html', origin: 'https://example.test', href: '', hash },
     sessionStorage: {
       getItem: (k) => (k === 'wga_team' ? storedTeam : null),
       setItem: () => {},
@@ -765,6 +777,136 @@ describe('BoE entry point (#781)', () => {
     });
     await sandbox.bootGuildPage();
     expect(els.boe.style.display).toBe('none');
+  });
+});
+
+describe('About the Guild (#782)', () => {
+  // Guild officer bios were moved onto site_settings after #586 shipped them
+  // into team_settings.config, which is per team. They have only ever been
+  // reachable through the About tab of a team page, which is the wrong home
+  // for the one bio list that is genuinely guild-wide.
+  const BIOS = [
+    {
+      name: 'Kat',
+      pronouns: 'she/her',
+      characterName: 'Katorri',
+      title: 'Guild Master',
+      classKey: 'Priest',
+      spec: 'Discipline',
+      bio: 'Runs the place.',
+      imagePath: 'assets/officers/kat.jpg'
+    },
+    { name: 'Rex', title: 'Officer' }
+  ];
+
+  it('renders a card per bio', async () => {
+    const { sandbox, els } = makeSandbox({ bios: BIOS });
+    await sandbox.bootGuildPage();
+    const html = els.guildBios.innerHTML;
+    expect(html).toContain('Kat');
+    expect(html).toContain('she/her');
+    expect(html).toContain('Katorri');
+    expect(html).toContain('Guild Master');
+    expect(html).toContain('Runs the place.');
+  });
+
+  it('uses the photo when there is one', async () => {
+    const { sandbox, els } = makeSandbox({ bios: BIOS });
+    await sandbox.bootGuildPage();
+    expect(els.guildBios.innerHTML).toContain('assets/officers/kat.jpg');
+  });
+
+  it('falls back to initials rather than a broken image', async () => {
+    const { sandbox, els } = makeSandbox({ bios: BIOS });
+    await sandbox.bootGuildPage();
+    const cards = els.guildBios.innerHTML.split('<div class="bio-card">');
+    const rex = cards.find((c) => c.includes('Rex'));
+    expect(rex).toContain('RE');
+    expect(rex).not.toContain('<img');
+  });
+
+  it('renders no empty rows for the fields a bio omits', async () => {
+    const { sandbox, els } = makeSandbox({ bios: [{ name: 'Rex', title: 'Officer' }] });
+    await sandbox.bootGuildPage();
+    const html = els.guildBios.innerHTML;
+    expect(html).toContain('Rex');
+    expect(html).not.toContain('bio-pronouns');
+    expect(html).not.toContain('bio-charname');
+    expect(html).not.toContain('bio-text');
+    expect(html).not.toContain('badge-class');
+  });
+
+  it('hides the section when there are no bios', async () => {
+    const { sandbox, els } = makeSandbox({ bios: [] });
+    await sandbox.bootGuildPage();
+    expect(els.about.style.display).toBe('none');
+  });
+
+  it('hides the section when the read fails', async () => {
+    const { sandbox, els } = makeSandbox({ bios: null });
+    await sandbox.bootGuildPage();
+    expect(els.about.style.display).toBe('none');
+  });
+
+  it('shows the section when there are bios', async () => {
+    // The hide assertions above would both pass on a section that never
+    // showed, so pin the positive too.
+    const { sandbox, els } = makeSandbox({ bios: BIOS });
+    await sandbox.bootGuildPage();
+    expect(els.about.style.display).not.toBe('none');
+  });
+
+  it('escapes what it interpolates, including the photo path', async () => {
+    const { sandbox, els } = makeSandbox({
+      bios: [{ name: '<img src=x onerror=alert(1)>', imagePath: 'a.jpg" onerror="alert(1)' }]
+    });
+    await sandbox.bootGuildPage();
+    const html = els.guildBios.innerHTML;
+    // "onerror=alert" survives as inert text once the angle brackets are
+    // escaped, so its presence proves nothing either way. What must not
+    // survive is a second <img element, or a quote closing the src attribute.
+    expect((html.match(/<img/g) || []).length).toBe(1);
+    expect(html).toContain('&lt;img');
+    expect(html).not.toContain('" onerror="');
+  });
+});
+
+describe('deep links to a section (#782)', () => {
+  // Every section renders from an async read, so the browser resolves the hash
+  // against a page whose sections are still empty and lands at the top. That
+  // breaks exactly the link #750 wants to hand out (guild.html#boe), and it is
+  // invisible in a test that only checks the markup.
+  it('scrolls to the named section once its content exists', async () => {
+    const { sandbox, els } = makeSandbox({ hash: '#boe' });
+    await sandbox.bootGuildPage();
+    expect(els.boe.scrolledIntoView).toBe(true);
+  });
+
+  it('scrolls to About too', async () => {
+    const { sandbox, els } = makeSandbox({ hash: '#about', bios: [{ name: 'Kat' }] });
+    await sandbox.bootGuildPage();
+    expect(els.about.scrolledIntoView).toBe(true);
+  });
+
+  it('does nothing without a hash', async () => {
+    const { sandbox, els } = makeSandbox();
+    await sandbox.bootGuildPage();
+    expect(els.boe.scrolledIntoView).toBe(false);
+    expect(els.about.scrolledIntoView).toBe(false);
+  });
+
+  it('ignores a hash naming nothing on the page', async () => {
+    const { sandbox } = makeSandbox({ hash: '#nonsense' });
+    await expect(sandbox.bootGuildPage()).resolves.not.toThrow();
+  });
+
+  it('does not scroll to a section it just hid', async () => {
+    // About hides itself when there are no bios, so scrolling to it would
+    // land on a zero-height element.
+    const { sandbox, els } = makeSandbox({ hash: '#about', bios: [] });
+    await sandbox.bootGuildPage();
+    expect(els.about.style.display).toBe('none');
+    expect(els.about.scrolledIntoView).toBe(false);
   });
 });
 
