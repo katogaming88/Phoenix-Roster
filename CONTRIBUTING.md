@@ -26,9 +26,11 @@ This project follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PA
 
 | Bump | When to use | Examples |
 |------|-------------|---------|
-| **MAJOR** | Architectural overhaul, breaking change to URLs or database schema | Page split, new auth system |
-| **MINOR** | New officer capability, new tab, new raider-facing workflow | New dashboard tab, new approval queue |
+| **MAJOR** | A previously-valid URL now 404s, points at different data, or requires re-authenticating; a schema change that isn't additive (a column/table/RPC removed or repurposed, not just added) | Retiring a page entirely, splitting one page into several, replacing the auth/session model |
+| **MINOR** | New capability, tab, or workflow reachable from existing URLs; a page's *default* content or landing target changes but old links and bookmarks still resolve to a working page | New dashboard tab, new approval queue, changing what a bare root URL shows, adding a new page nothing depended on yet |
 | **PATCH** | Bug fixes, visual polish, copy changes, layout tweaks, performance improvements | Layout fix, subtitle change, footer tweak |
+
+The MAJOR bar is about **breaking an existing contract**, not about how much surface area changed. A large, multi-PR feature (a new page, a new admin tab, a new tracker) is still MINOR as long as everything that worked before the change still works the same way after it. Ask "does an old bookmark, saved link, or existing session still do what it used to?" -- if yes, it's MINOR regardless of how big the diff is.
 
 When merging a PR:
 - Frontend changes (under `js/` or the root HTML pages): bump the
