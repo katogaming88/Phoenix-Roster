@@ -12,6 +12,9 @@ on:
       - 'admin.html'
       - 'js/common.js'
       - 'tests/ci/asset-version-check.test.js'
+      # The check reads its page registry and asset pattern from the stamper
+      # (#776), so a change there can invalidate every page without touching one.
+      - 'scripts/ci/stamp-version.js'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/asset-version-check.yml'

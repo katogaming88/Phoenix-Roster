@@ -6,6 +6,7 @@
     "lint": "eslint js/ scripts/ tests/",
     "lint:fix": "eslint --fix js/ scripts/ tests/",
     "typecheck": "tsc --noEmit",
+    "stamp": "node scripts/ci/stamp-version.js",
     "format": "prettier --write \"js/**/*.js\" \"scripts/**/*.js\" \"tests/**/*.js\"",
     "format:check": "prettier --check \"js/**/*.js\" \"scripts/**/*.js\" \"tests/**/*.js\"",
     "test:ci": "vitest run tests/ci",

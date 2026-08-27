@@ -40,6 +40,14 @@ When merging a PR:
 - A PR touching both sides updates both sections; a PR touching neither
   needs neither
 
+Bumping the version means more than one file: every local `css/`/`js/`
+tag on every page carries a `?v=<VERSION>` cache-bust query string
+(#431), around 40 of them. `npm run stamp -- 3.67.0` rewrites the
+`VERSION` constant and every one of those tags in a single pass, and
+prints a per-page count so a page that matched nothing is visible rather
+than reported as a silent success. It refuses a version that is not
+`x.y.z`, and it writes nothing at all if any page would fail.
+
 CI enforces this in both directions (#353): frontend paths require a
 Frontend entry and a bump, backend paths require a Backend entry, and a
 bump without a frontend change fails. The `js/common.js` VERSION line
@@ -86,7 +94,7 @@ or add the `chore` label.
 | `gs/*.gs` | Retired Google Apps Script source, kept only as historical record -- no code reads `gasUrl` or writes through GAS anymore; everything is Supabase-only |
 | `supabase/` | Supabase CLI project: local dev stack config and schema migrations |
 | `scripts/import/` | One-off/recurring data import tooling (loot, attendance, etc.) |
-| `scripts/ci/` | CI checks that need more than a workflow step (changelog classification, the team-wide read guard) |
+| `scripts/ci/` | CI checks that need more than a workflow step (changelog classification, the team-wide read guard), plus the version stamper (`npm run stamp`), which owns the page registry the asset-version check reads |
 | `dbdoc/` | Generated schema docs (tbls). Never edit by hand; regenerate with `npm run db:docs` |
 | `docs/RLS.md` | Hand-maintained RLS policy reference (tbls cannot generate this) |
 
