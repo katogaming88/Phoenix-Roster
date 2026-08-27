@@ -52,23 +52,34 @@
   gap: 1rem;
 }
 
+/* The card is a container rather than one big link: it holds two destinations
+   (roster, signup), and nesting anchors is invalid markup. Each link is its own
+   target, which is also what lets a keyboard reach the signup link directly. */
 .guild-team-card {
   display: flex;
-  align-items: center;
-  gap: 0.9rem;
+  flex-direction: column;
+  gap: 0.75rem;
   padding: 1.25rem 1.4rem;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 6px;
-  text-decoration: none;
   color: var(--text);
-  transition: border-color 0.15s, background 0.15s, transform 0.15s;
+  transition: border-color 0.15s, background 0.15s;
 }
 
 .guild-team-card:hover {
   border-color: var(--gold-dim);
   background: var(--bg-elevated);
-  transform: translateY(-2px);
+}
+
+.guild-team-card:focus-within {
+  border-color: var(--gold-dim);
+}
+
+.guild-team-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .guild-team-emblem {
@@ -80,6 +91,39 @@
   font-family: 'Cinzel', serif;
   font-size: 1.1rem;
   letter-spacing: 0.05em;
+}
+
+.guild-team-badge {
+  align-self: flex-start;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+  background: rgba(214, 163, 68, 0.12);
+  border: 1px solid var(--gold-dim);
+  border-radius: 999px;
+}
+
+.guild-team-links {
+  display: flex;
+  gap: 1.1rem;
+  margin-top: auto;
+  padding-top: 0.25rem;
+  border-top: 1px solid var(--border);
+}
+
+.guild-team-links a {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.95rem;
+  letter-spacing: 0.05em;
+  padding: 0.35rem 0;
+  transition: color 0.15s;
+}
+
+.guild-team-links a:hover {
+  color: var(--gold);
 }
 
 /* ── Keyboard and motion baselines (scoped, see header) ─────────────── */
