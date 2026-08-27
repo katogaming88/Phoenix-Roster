@@ -8,6 +8,18 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.74.0] - 2026-08-27
+
+### Frontend
+
+- Officers can now upload their own Officer Bios photo instead of sending it to Kat to commit into `assets/officers/` by hand (#625). A file picker next to the existing image field on both the team and guild bio editors uploads directly; the manual path/URL field still works unchanged for existing hardcoded photos. A "Remove Photo" control lets the uploader, or anyone who could already save that bio list, take an inappropriate photo back down.
+
+### Backend
+
+- Added the `bio-photos` Storage bucket and the `upload-bio-photo` Edge Function (#625), the first Storage usage in this project. No client writes to the bucket directly -- the function authenticates the caller, resizes to a max 800px edge, and compresses down to a 300KB cap (rejecting a 5MB+ raw upload or an image that can't compress under that cap) before writing under the uploader's own `auth.uid()` folder, keeping "self-only" enforced at the write layer rather than in the bios data itself (bio entries have never tracked an owner). A team leader, site admin, or guild officer can remove any photo through the same function's delete path.
+
+---
+
 ## [3.73.0] - 2026-08-27
 
 ### Frontend
