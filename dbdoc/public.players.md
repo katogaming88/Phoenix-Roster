@@ -142,6 +142,7 @@ erDiagram
   text rclc_id
   text dedupe_key
   text boss
+  text response
 }
 "public.mplus_exclusion_requests" {
   integer id

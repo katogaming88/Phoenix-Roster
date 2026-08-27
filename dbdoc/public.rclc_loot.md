@@ -14,6 +14,7 @@
 | rclc_id | text |  | true |  |  |  |
 | dedupe_key | text |  | true |  |  |  |
 | boss | text |  | true |  |  |  |
+| response | text |  | true |  |  |  |
 
 ## Constraints
 
@@ -59,6 +60,7 @@ erDiagram
   text rclc_id
   text dedupe_key
   text boss
+  text response
 }
 "public.teams" {
   integer id

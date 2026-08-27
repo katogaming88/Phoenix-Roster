@@ -100,7 +100,8 @@ function submitLootImport() {
       itemID: e.itemID != null ? e.itemID : null,
       itemName: String(e.itemName || '').trim(),
       instance: instance,
-      boss: String(e.boss || '').trim()
+      boss: String(e.boss || '').trim(),
+      response: String(e.response || '').trim()
     });
   }
 

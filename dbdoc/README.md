@@ -11,7 +11,7 @@
 | [public.classes_specs](public.classes_specs.md) | 4 |  | BASE TABLE |
 | [public.item_bosses](public.item_bosses.md) | 2 |  | BASE TABLE |
 | [public.items](public.items.md) | 13 |  | BASE TABLE |
-| [public.rclc_loot](public.rclc_loot.md) | 10 |  | BASE TABLE |
+| [public.rclc_loot](public.rclc_loot.md) | 11 |  | BASE TABLE |
 | [public.mplus_exclusion_requests](public.mplus_exclusion_requests.md) | 9 |  | BASE TABLE |
 | [public.player_wcl_season_perf](public.player_wcl_season_perf.md) | 7 |  | BASE TABLE |
 | [public.players](public.players.md) | 22 |  | BASE TABLE |
@@ -270,6 +270,7 @@ erDiagram
   text rclc_id
   text dedupe_key
   text boss
+  text response
 }
 "public.mplus_exclusion_requests" {
   integer id

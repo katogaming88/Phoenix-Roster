@@ -801,6 +801,11 @@
           "name": "boss",
           "type": "text",
           "nullable": true
+        },
+        {
+          "name": "response",
+          "type": "text",
+          "nullable": true
         }
       ],
       "indexes": [
