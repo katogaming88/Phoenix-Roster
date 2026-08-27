@@ -9,6 +9,21 @@
 
 /* ── Layout ─────────────────────────────────────────────────────────── */
 
+/* .site-nav in css/styles.css is a nowrap flex row, which fits this page's
+   five public items on a phone with nothing to spare: at a 480px viewport they
+   measure 461px against 461px of nav. The sixth item, BoE Sales, is 23px more
+   than that, so for an officer or BoE manager on a narrow phone the row used to
+   push the body into a horizontal scroll (WCAG 2.1 AA 1.4.10). Wrapping costs
+   nothing at any width where the row already fits, and .site-nav-right keeps
+   its margin-left:auto, so the sign-in control right-aligns on the second row.
+
+   Scoped to .guild-page rather than written bare, like the baselines at the
+   bottom of this file: index.html renders ten nav items through the same class
+   and restyling three untested pages is #435. */
+.guild-page .site-nav {
+  flex-wrap: wrap;
+}
+
 .guild-body {
   flex: 1;
   width: 100%;

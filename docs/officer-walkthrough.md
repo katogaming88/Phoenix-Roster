@@ -488,7 +488,9 @@ the tab at all. In practice this is usually one or two people per team. Five sub
 
 ## BoE Sales (on the guild page, not this dashboard)
 
-Reached from the **Guild** link in the top nav, at the bottom of the guild page. It lived
+Reached from the **Guild** link in the top nav, then **BoE Sales** in the guild page's own
+nav. That item appears only for someone who can open the section, so if it isn't there, the
+access rules below are the reason. It lived
 on this dashboard as a tab until #774 moved it: BoEs are guild property and the read spans
 every team, so a per-team page was the wrong home, and a BoE manager who runs the guild
 bank without staffing a raid team could not open this dashboard at all. An old
