@@ -399,7 +399,10 @@ function renderBoeManage() {
         cells +=
           '<td><button class="btn" onclick="markBoePaid(' +
           item.id +
-          ', this)">Mark Paid</button>' +
+          ', this)">Mark Paid</button> ' +
+          '<button class="btn" onclick="revertBoe(' +
+          item.id +
+          ', this)">Undo Sale</button>' +
           '<span id="boe-status-' +
           item.id +
           '" role="status" style="display:block;color:var(--melee);font-size:0.95rem;"></span></td>';
@@ -411,11 +414,13 @@ function renderBoeManage() {
     _boeSection('Awaiting Payout') +
     (awaitingRows.length ? _boeTable(awaitingHeaders, awaitingHtml) : _boeEmpty('Nothing awaiting payout.'));
 
-  // History: paid and retired, newest first.
+  // History: paid and retired, newest first. Both are undoable since #802,
+  // so this section grew an Actions column it never had.
+  var historyHeaders = ['Item', 'Team', 'Finder', 'Status', 'Date', 'Sale', 'Finder payout', 'Guild cut'];
+  if (_boeCanManage) historyHeaders.push('Actions');
   var historyHtml = historyRows
     .map(function (item) {
-      return (
-        '<tr>' +
+      var cells =
         '<td>' +
         _boeItemCell(item) +
         '</td>' +
@@ -437,16 +442,24 @@ function renderBoeManage() {
         '</td>' +
         '<td>' +
         _boeMoney(item.guild_cut) +
-        '</td>' +
-        '</tr>'
-      );
+        '</td>';
+      if (_boeCanManage) {
+        cells +=
+          '<td><button class="btn" onclick="revertBoe(' +
+          item.id +
+          ', this)">' +
+          (item.status === 'paid' ? 'Undo Payout' : 'Un-retire') +
+          '</button>' +
+          '<span id="boe-status-' +
+          item.id +
+          '" role="status" style="display:block;color:var(--melee);font-size:0.95rem;"></span></td>';
+      }
+      return '<tr>' + cells + '</tr>';
     })
     .join('');
   history.innerHTML =
     _boeSection('History') +
-    (historyRows.length
-      ? _boeTable(['Item', 'Team', 'Finder', 'Status', 'Date', 'Sale', 'Finder payout', 'Guild cut'], historyHtml)
-      : _boeEmpty('No paid or retired BoEs yet.'));
+    (historyRows.length ? _boeTable(historyHeaders, historyHtml) : _boeEmpty('No paid or retired BoEs yet.'));
 }
 
 function toggleBoeForm(id, mode) {
@@ -574,5 +587,55 @@ function retireBoe(id, btnEl) {
     item.status = 'retired';
     item.retired_at = new Date().toISOString();
     writeAuditLog('BoE Retired', 'boe_items', id, item.item_name, item.team_id);
+  });
+}
+
+// The correction path (#802). boe_revert() walks the lifecycle backwards:
+// paid -> sold, sold -> listed or found, retired -> found. It has existed
+// since the #745 backend and had no caller, so a mistyped sale price or a
+// premature Mark Paid could not be undone from the interface at all.
+
+// Two things the other handlers do not have to deal with:
+//
+//   1. The landing status is the server's to decide. A sold row goes back to
+//      listed while listing rows survive and to found otherwise, so the RPC
+//      returns the new status as text and this takes that answer rather than
+//      working it out from a local copy of _boeListings that may be stale.
+//   2. The receipt has to be cleared locally as well. The server nulls the
+//      money columns on the way out of sold; leaving them in the in-memory row
+//      would render a sale price against an item that is no longer sold.
+//
+// The listed -> found edge is unreachable from here: boe_record_listing()
+// inserts a boe_listings row and sets the status in the same call, so a listed
+// BoE always has at least one listing and the RPC always raises "Delete the
+// listing rows first". Nothing in the app deletes a listing. That edge waits on
+// listing deletion; the message surfaces verbatim if anyone reaches it.
+function revertBoe(id, btnEl) {
+  var item = findBoeItem(id);
+  if (!item) return;
+  var from = item.status;
+  // Undoing a payout or a sale rewrites money. Un-retiring only puts a row
+  // back on the open list, so it does not earn the same interruption.
+  if (from === 'paid' || from === 'sold') {
+    var what =
+      from === 'paid'
+        ? 'Undo the payout on ' + item.item_name + '? It goes back to Awaiting Payout.'
+        : 'Undo the sale of ' + item.item_name + '? The sale price and the split are cleared.';
+    if (!confirm(what)) return;
+  }
+  return _boeAction(id, btnEl, 'boe_revert', { p_id: id }, function (result) {
+    var to = result && result.data;
+    item.status = to;
+    if (from === 'paid') {
+      item.payout_paid_at = null;
+    } else if (from === 'sold') {
+      item.sold_at = null;
+      item.sale_price = null;
+      item.finder_payout = null;
+      item.guild_cut = null;
+    } else if (from === 'retired') {
+      item.retired_at = null;
+    }
+    writeAuditLog('BoE Reverted', 'boe_items', id, item.item_name + ': ' + from + ' back to ' + to, item.team_id);
   });
 }

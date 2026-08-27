@@ -205,7 +205,7 @@ const ALL_ROWS = () => [FOUND(), LISTED(), SOLD(), PAID(), RETIRED()];
 const LISTING_ROW = () => ({ id: 11, boe_item_id: 2, listed_at: '2026-08-19T12:00:00Z', price: 300000, note: null });
 const LISTED_OTHER_TEAM = () => boeRow({ id: 2, team_id: 4, item_name: 'Wrathless Find', status: 'listed' });
 
-describe('buildBoeTab sections', () => {
+describe('buildBoeManage sections', () => {
   it('partitions rows into Open, Awaiting Payout, and History by status', async () => {
     const { client } = makeBoeClient({ items: ALL_ROWS(), listings: [LISTING_ROW()], rpc: managerRpc() });
     const { els } = await build({ client });
@@ -702,5 +702,147 @@ describe('accessible markup', () => {
     expect(els.guildBoeOpen.innerHTML).toMatch(/>Listed<\/span>/);
     expect(els.guildBoeHistory.innerHTML).toMatch(/>Paid<\/span>/);
     expect(els.guildBoeHistory.innerHTML).toMatch(/>Retired<\/span>/);
+  });
+});
+
+// boe_revert() shipped with the #745 backend, RLS-tested and documented, and
+// never had a caller: the surface ran one way only, so a mistyped sale price
+// or a premature Mark Paid could not be undone from the interface (#802).
+//
+// The RPC returns the new status as text, because the sold edge is
+// listed-or-found depending on whether listing rows survive. The client takes
+// that answer rather than recomputing it.
+describe('undoing a lifecycle step (#802)', () => {
+  const revertRpc = (status) => ({ boe_revert: () => ({ data: status, error: null }) });
+
+  it('offers an undo on sold, paid and retired rows for a manager', async () => {
+    const { client } = makeBoeClient({ items: [SOLD(), PAID(), RETIRED()], listings: [] });
+    const { els } = await build({ client, canManage: true });
+    expect(els.guildBoeAwaiting.innerHTML).toContain('Undo Sale');
+    expect(els.guildBoeHistory.innerHTML).toContain('Undo Payout');
+    expect(els.guildBoeHistory.innerHTML).toContain('Un-retire');
+  });
+
+  it('offers none of them to a read-only officer', async () => {
+    const { client } = makeBoeClient({ items: [SOLD(), PAID(), RETIRED()], listings: [] });
+    const { els } = await build({ client, canManage: false });
+    expect(els.guildBoeAwaiting.innerHTML).not.toContain('Undo');
+    expect(els.guildBoeHistory.innerHTML).not.toContain('Undo');
+    expect(els.guildBoeHistory.innerHTML).not.toContain('Un-retire');
+  });
+
+  it('moves a paid row back to Awaiting Payout and clears the paid date', async () => {
+    const { client } = makeBoeClient({ items: [PAID()], listings: [], rpc: revertRpc('sold') });
+    const loaded = await build({ client });
+    loaded.sandbox.revertBoe(4, makeEl());
+    await flush();
+    expect(loaded.els.guildBoeAwaiting.innerHTML).toContain('Girdle of Night');
+    expect(loaded.els.guildBoeHistory.innerHTML).not.toContain('Girdle of Night');
+    expect(loaded.sandbox.findBoeItem(4).payout_paid_at).toBeNull();
+  });
+
+  // The receipt is nulled server-side, so leaving it in the local row would
+  // render a sale price against an item that is no longer sold.
+  it('nulls the money columns on a sold row, not just the status', async () => {
+    const { client } = makeBoeClient({ items: [SOLD()], listings: [], rpc: revertRpc('found') });
+    const loaded = await build({ client });
+    loaded.sandbox.revertBoe(3, makeEl());
+    await flush();
+    const item = loaded.sandbox.findBoeItem(3);
+    expect(item.status).toBe('found');
+    expect(item.sale_price).toBeNull();
+    expect(item.finder_payout).toBeNull();
+    expect(item.guild_cut).toBeNull();
+    expect(item.sold_at).toBeNull();
+    expect(loaded.els.guildBoeOpen.innerHTML).toContain('Bindings of Depth');
+    expect(loaded.els.guildBoeAwaiting.innerHTML).not.toContain('Bindings of Depth');
+  });
+
+  it('takes the landing status from the RPC rather than recomputing it', async () => {
+    // Same call, same local state, different server answer: the row lands
+    // wherever the server says, because only it knows if listings survived.
+    const a = makeBoeClient({ items: [SOLD()], listings: [], rpc: revertRpc('listed') });
+    const one = await build({ client: a.client });
+    one.sandbox.revertBoe(3, makeEl());
+    await flush();
+    expect(one.sandbox.findBoeItem(3).status).toBe('listed');
+
+    const c = makeBoeClient({ items: [SOLD()], listings: [], rpc: revertRpc('found') });
+    const two = await build({ client: c.client });
+    two.sandbox.revertBoe(3, makeEl());
+    await flush();
+    expect(two.sandbox.findBoeItem(3).status).toBe('found');
+  });
+
+  it('returns a retired row to Open', async () => {
+    const { client } = makeBoeClient({ items: [RETIRED()], listings: [], rpc: revertRpc('found') });
+    const loaded = await build({ client });
+    loaded.sandbox.revertBoe(5, makeEl());
+    await flush();
+    expect(loaded.els.guildBoeOpen.innerHTML).toContain('Drape of Embers');
+    expect(loaded.els.guildBoeHistory.innerHTML).not.toContain('Drape of Embers');
+    expect(loaded.sandbox.findBoeItem(5).retired_at).toBeNull();
+  });
+
+  // The RPC raises purpose-written messages, including the one about deleting
+  // listing rows first. They go on the row verbatim.
+  it('surfaces the server message on the row and writes no audit entry', async () => {
+    const els = { 'boe-status-3': makeEl() };
+    const { client } = makeBoeClient({
+      items: [SOLD()],
+      listings: [],
+      rpc: { boe_revert: () => ({ data: null, error: { message: 'Not authorized' } }) }
+    });
+    const loaded = await build({ client, els });
+    const btn = makeEl({ textContent: 'Undo Sale' });
+    loaded.sandbox.revertBoe(3, btn);
+    await flush();
+    expect(els['boe-status-3'].textContent).toBe('Not authorized');
+    expect(btn.disabled).toBe(false);
+    expect(loaded.spies.audit).toEqual([]);
+  });
+
+  it('confirms before undoing money, and does nothing when declined', async () => {
+    const { client, captured } = makeBoeClient({ items: [PAID()], listings: [], rpc: revertRpc('sold') });
+    const loaded = await build({ client, confirmResult: false });
+    loaded.sandbox.revertBoe(4, makeEl());
+    await flush();
+    expect(loaded.spies.confirms).toHaveLength(1);
+    expect(captured.rpcCalls.filter((c) => c.name === 'boe_revert')).toEqual([]);
+    expect(loaded.sandbox.findBoeItem(4).status).toBe('paid');
+  });
+
+  // Un-retiring restores a row to the open list and touches no money, so it
+  // does not earn the same interruption a payout reversal does.
+  it('does not confirm before un-retiring', async () => {
+    const { client } = makeBoeClient({ items: [RETIRED()], listings: [], rpc: revertRpc('found') });
+    const loaded = await build({ client });
+    loaded.sandbox.revertBoe(5, makeEl());
+    await flush();
+    expect(loaded.spies.confirms).toEqual([]);
+    expect(loaded.sandbox.findBoeItem(5).status).toBe('found');
+  });
+
+  it('audits the undo against the team that found it', async () => {
+    const { client } = makeBoeClient({
+      items: [
+        boeRow({
+          id: 9,
+          team_id: 4,
+          item_name: 'Wrathless Find',
+          status: 'retired',
+          retired_at: '2026-08-23T02:00:00Z'
+        })
+      ],
+      listings: [],
+      rpc: revertRpc('found')
+    });
+    const loaded = await build({ client });
+    loaded.sandbox.revertBoe(9, makeEl());
+    await flush();
+    expect(loaded.spies.audit).toHaveLength(1);
+    expect(loaded.spies.audit[0].teamId).toBe(4);
+    expect(loaded.spies.audit[0].action).toBe('BoE Reverted');
+    expect(loaded.spies.audit[0].detail).toContain('found');
   });
 });
