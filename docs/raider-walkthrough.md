@@ -98,7 +98,7 @@ Reference notes for walking a raider through the site -- not published to raider
 
 ### Report a found BoE
 - The **BoE** tab is the replacement for the old BoE Google Form: reporting team, character Name-Realm, item name, track, optional note, Submit
-- No login needed -- pinned per-team Discord links (`index.html?team=<slug>#boe`) land straight on the card with that team already chosen
+- No login needed. The guild-level way in is the **Found a BoE?** card on the guild page ([#781](https://github.com/katogaming88/WGA-Raid-Hub/issues/781)): pick the team you raided with, and it hands off to that team's form with that team already chosen. It carries no team in the link, so one pinned link serves every team including Wrathless, and it hides itself entirely if no team has BoE turned on. Direct per-team links (`index.html?team=<slug>#boe`) still land on the card the same way
 - **Reporting for team** is a dropdown, not a label ([#767](https://github.com/katogaming88/WGA-Raid-Hub/issues/767)). It starts on the right team by itself (an explicit `?team=` link wins, otherwise their claimed character's team, otherwise the page they are on) but they can always change it, because raiders sub across teams. It lists Wrathless too, which raids with the guild but has no page of its own, and it hides any team that has switched its own `boe` flag off
 - Logged in, the character field prefills from their claimed character (still editable). Anything they have already typed or picked survives, so a late login never overwrites their work
 - Submitting records the find for the officers and posts the familiar bot-style message to the BoE Discord channel; officers handle listing, sale, and payout from there
