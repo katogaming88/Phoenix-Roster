@@ -8,6 +8,30 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-08-27 -- Database default timezone set to America/New_York
+
+Tracking issue: [katogaming88/WGA-Raid-Hub#803](https://github.com/katogaming88/WGA-Raid-Hub/issues/803). Every `timestamptz` column was already stored correctly -- Postgres always stores `timestamptz` as UTC internally, and `import_rclc_loot()`'s `at time zone 'America/New_York'` conversion correctly interpreted RCLC's raid-local wall-clock time before storing it. But the database's session-level `timezone` setting was still Postgres/Supabase's default of `UTC`, so any raw read that doesn't explicitly convert -- Supabase Studio's table grid, an ad-hoc query -- displayed every timestamptz in UTC (e.g. `rclc_loot.awarded_at` showing 1-4am for raid times that were really 9-11pm Eastern).
+
+- **Ran `alter database postgres set timezone to 'America/New_York';` via the Supabase SQL Editor.** Display-only, not a data change -- `timestamptz` values stay stored as UTC internally, this only changes what offset a session sees when reading one back as text, for any session that doesn't set its own `timezone` explicitly.
+- **Database-wide, not scoped to `rclc_loot`.** Every `timestamptz` column across the schema now displays in Eastern by default in Studio/raw queries, not just `awarded_at`.
+- **Doesn't touch app correctness.** The app's own JS formatting (`mapSupabaseLoot()`'s explicit `timeZone: 'America/New_York'`, etc.) already converted to Eastern regardless of the source string's offset -- an absolute instant parses identically in JS no matter which offset Postgres renders it with.
+
+[Full discussion -> #803](https://github.com/katogaming88/WGA-Raid-Hub/issues/803)
+
+---
+
+## 2026-08-27 -- rclc_loot: capture RCLC's response label going forward
+
+Tracking issue: [katogaming88/WGA-Raid-Hub#801](https://github.com/katogaming88/WGA-Raid-Hub/issues/801). `rclc_loot` never stored RCLC's own response label per award (Need/Greed/Off-spec, or a guild's custom labels like "Top Pick"/"Side Piece") -- `submitLootImport()` only ever picked `id/player/date/time/itemID/itemName/instance/boss` off each RCLC export entry, silently dropping `response` on the way in. Surfaced when Hellfire wanted a one-time cleanup of already-imported rows by response type, which turned out to be impossible without the original export.
+
+- **New `rclc_loot.response text`, nullable, no CHECK constraint.** RCLC lets each guild configure its own response labels, so unlike `track` (a real fixed Champion/Hero/Myth set) there's no fixed vocabulary to validate against.
+- **`import_rclc_loot()` now extracts and stores it** (trimmed, null if blank) alongside the existing columns.
+- **Existing rows stay `null`, unrecoverable from the DB alone** -- same gap already accepted for pre-season-tracking `audit_log` detail rows. A one-time cleanup for already-imported rows needs the original RCLC export cross-referenced by `rclc_id`, tracked separately once that's in hand.
+
+[Full discussion -> #801](https://github.com/katogaming88/WGA-Raid-Hub/issues/801)
+
+---
+
 ## 2026-08-26 -- rclc export: attach wishlist status to the ranked priority list, additive only
 
 Tracking issue: [katogaming88/WGA-Raid-Hub#760](https://github.com/katogaming88/WGA-Raid-Hub/issues/760). The RCLootCouncil_PriorityLoot addon's voting-frame panel only ever showed a bare rank ("3rd") with no sense of whether that's a raider's real BiS pick, a lower-tier Good/OK pick, or not backed by a wishlist entry at all.
