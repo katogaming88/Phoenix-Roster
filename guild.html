@@ -57,10 +57,13 @@
   <section class="guild-section" id="streams" aria-labelledby="streamsHeading">
     <h2 id="streamsHeading">Streams</h2>
     <p class="guild-section-intro">Raiders from across the guild who stream on Twitch. Anyone who has opted out of appearing outside their own team's page is not listed here.</p>
-    <!-- Same container id js/streamers.js's buildStreamersTab() writes to on
-         index.html, so this page gets the shipped grid, the lazy-iframe
-         observer and the empty-state copy rather than a second copy of them. -->
-    <div id="streamersView"></div>
+    <!-- renderGuildStreams() in js/guild.js writes here (#790). It composes the
+         layout out of js/streamers.js's globals rather than calling
+         buildStreamersTab(), which spends an embed on offline streamers too;
+         see the comment on that function. The id deliberately does not match
+         index.html's #streamersView, so a stray buildStreamersTab() call on
+         this page no-ops instead of overwriting the section. -->
+    <div id="guildStreams" class="guild-streams"></div>
   </section>
 
   <section class="guild-section" id="news" aria-labelledby="newsHeading">

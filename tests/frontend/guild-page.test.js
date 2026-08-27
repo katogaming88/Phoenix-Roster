@@ -28,7 +28,7 @@ const PAGE_ELS = [
   'maintenanceBannerMessage',
   'guildTeams',
   'guildHeaderLinks',
-  'streamersView',
+  'guildStreams',
   'guildNews',
   'guildBios',
   'about',
@@ -91,6 +91,12 @@ function makeSandbox({
         className: '',
         setAttribute() {},
         focus() {},
+        // observeStreamEmbeds() calls this on whatever container it is handed
+        // (js/streamers.js). Without it the streams render throws a TypeError
+        // that bootGuildPage()'s catch swallows, silently skipping every
+        // section after streams. tests/frontend/streamers-supabase.test.js
+        // stubs it for the same reason.
+        querySelectorAll: () => [],
         scrolledIntoView: false,
         scrollIntoView() {
           this.scrolledIntoView = true;
@@ -533,109 +539,232 @@ describe('team cards (#778)', () => {
   });
 });
 
-describe('streams (#780)', () => {
-  // The point of this block is that js/streamers.js needs no changes at all.
-  // Its "my team first, then everyone else" split is written against
-  // s.team_slug === TEAM_SLUG, and js/guild.js nulls TEAM_SLUG, so the first
-  // group empties and the second becomes every team. If any of these start
-  // failing, the fix belongs in js/guild.js rather than in a file index.html
-  // also loads.
-  const rows = (over) => [
-    {
-      id: 1,
-      team_id: 1,
-      player_id: 10,
-      twitch_channel: 'alpha',
-      schedule_note: null,
-      guild_wide_opt_out: false,
-      is_live: true,
-      players: { name_realm: 'Alpha-Tichondrius', nickname: 'Al' }
-    },
-    {
-      id: 2,
-      team_id: 2,
-      player_id: 11,
-      twitch_channel: 'bravo',
-      schedule_note: 'Tue nights',
-      guild_wide_opt_out: false,
-      is_live: false,
-      players: { name_realm: 'Bravo-Tichondrius', nickname: null }
-    },
-    {
-      id: 3,
-      team_id: 3,
-      player_id: 12,
-      twitch_channel: 'charlie',
-      schedule_note: null,
-      guild_wide_opt_out: true,
-      is_live: true,
-      players: { name_realm: 'Charlie-Tichondrius', nickname: null }
-    },
-    ...(over || [])
-  ];
+describe('streams (#790)', () => {
+  // #780 reused buildStreamersTab() verbatim, which spends a 16:9 Twitch embed
+  // on every streamer whether or not they are broadcasting. An offline embed is
+  // a black player, and on this page the section is always in view rather than
+  // behind a nav click, so with nobody live it was five black rectangles taller
+  // than the team cards above them.
+  //
+  // So live streams are promoted to embeds and everyone else is a compact row.
+  // The list is always present: who streams, on what channel, on what schedule
+  // is then readable as text at any hour instead of only while someone happens
+  // to be broadcasting, and an offline streamer never costs an embed.
+  //
+  // #780's real property survives -- js/streamers.js is still not edited. This
+  // page composes its own layout out of that file's globals, so the live half
+  // is the shipped card rather than a second copy of it.
+  const rows = (live) => {
+    const isLive = (c) => (live || []).indexOf(c) !== -1;
+    return [
+      {
+        id: 1,
+        team_id: 1,
+        player_id: 10,
+        twitch_channel: 'alpha',
+        schedule_note: null,
+        guild_wide_opt_out: false,
+        is_live: isLive('alpha'),
+        players: { name_realm: 'Alpha-Tichondrius', nickname: 'Al' }
+      },
+      {
+        id: 2,
+        team_id: 2,
+        player_id: 11,
+        twitch_channel: 'bravo',
+        schedule_note: 'Tue nights',
+        guild_wide_opt_out: false,
+        is_live: isLive('bravo'),
+        players: { name_realm: 'Bravo-Tichondrius', nickname: null }
+      },
+      {
+        id: 3,
+        team_id: 3,
+        player_id: 12,
+        twitch_channel: 'charlie',
+        schedule_note: null,
+        guild_wide_opt_out: true,
+        is_live: isLive('charlie'),
+        players: { name_realm: 'Charlie-Tichondrius', nickname: null }
+      },
+      // Inserted last, sorts first. Nothing else here would tell an alphabetical
+      // list apart from the order PostgREST happened to return.
+      {
+        id: 4,
+        team_id: 1,
+        player_id: 13,
+        twitch_channel: 'delta',
+        schedule_note: null,
+        guild_wide_opt_out: false,
+        is_live: isLive('delta'),
+        players: { name_realm: 'Delta-Tichondrius', nickname: 'Aardvark' }
+      }
+    ];
+  };
 
-  it('shows streamers from every team, not just one', async () => {
+  const embeds = (html) => (html.match(/<iframe/g) || []).length;
+  const listRows = (html) => (html.match(/class="guild-streamer-item"/g) || []).length;
+  // The embed card carries a twitch.tv link of its own, so "is this streamer in
+  // the list" has to be asked of the list rather than of the whole section.
+  const listHtml = (html) => html.split('<ul class="guild-streamer-list">')[1] || '';
+
+  it('spends no embed on anyone when nobody is live', async () => {
     const { sandbox, els } = makeSandbox({ streamers: rows() });
     await sandbox.bootGuildPage();
-    const html = els.streamersView.innerHTML;
-    expect(html).toContain('twitch.tv/alpha');
-    expect(html).toContain('twitch.tv/bravo');
-  });
-
-  it('honours guild_wide_opt_out', async () => {
-    // The column means "hide me from other teams' pages". Every viewer of the
-    // guild page is on some other team from the streamer's point of view, so
-    // honouring it is the reading that treats the flag as consent rather than
-    // as a per-page display rule. This falls out of the existing code with no
-    // edit, which is also the argument for leaving it that way.
-    const { sandbox, els } = makeSandbox({ streamers: rows() });
-    await sandbox.bootGuildPage();
-    const html = els.streamersView.innerHTML;
+    const html = els.guildStreams.innerHTML;
     // Anchored on a positive: an absence assertion over an empty container
     // passes for the wrong reason, and would keep passing if the section
     // stopped rendering entirely.
+    expect(listRows(html)).toBe(3);
+    expect(embeds(html)).toBe(0);
+  });
+
+  it('says nobody is live rather than leaving it to be inferred', async () => {
+    const { sandbox, els } = makeSandbox({ streamers: rows() });
+    await sandbox.bootGuildPage();
+    expect(els.guildStreams.innerHTML).toContain('No one is live right now');
+  });
+
+  it('still lists everyone who streams when nobody is live', async () => {
+    const { sandbox, els } = makeSandbox({ streamers: rows() });
+    await sandbox.bootGuildPage();
+    const html = els.guildStreams.innerHTML;
     expect(html).toContain('twitch.tv/alpha');
-    expect(html).not.toContain('twitch.tv/charlie');
+    expect(html).toContain('twitch.tv/bravo');
+    expect(html).toContain('twitch.tv/delta');
+  });
+
+  it('embeds the live streamer and nobody else', async () => {
+    const { sandbox, els } = makeSandbox({ streamers: rows(['alpha']) });
+    await sandbox.bootGuildPage();
+    const html = els.guildStreams.innerHTML;
+    expect(embeds(html)).toBe(1);
+    expect(html).toContain('channel=alpha');
+  });
+
+  it('does not repeat a live streamer in the list below', async () => {
+    const { sandbox, els } = makeSandbox({ streamers: rows(['alpha']) });
+    await sandbox.bootGuildPage();
+    const html = els.guildStreams.innerHTML;
+    expect(listRows(html)).toBe(2);
+    expect(listHtml(html)).toContain('twitch.tv/bravo');
+    expect(listHtml(html)).not.toContain('twitch.tv/alpha');
+  });
+
+  it('labels the two groups so the split is readable, not just visual', async () => {
+    const { sandbox, els } = makeSandbox({ streamers: rows(['alpha']) });
+    await sandbox.bootGuildPage();
+    const html = els.guildStreams.innerHTML;
+    expect(html).toContain('Live now');
+    expect(html).toContain('Everyone who streams');
+    expect(html.indexOf('Live now')).toBeLessThan(html.indexOf('Everyone who streams'));
+  });
+
+  it('drops both headings when nobody is live, since the section h2 is label enough', async () => {
+    const { sandbox, els } = makeSandbox({ streamers: rows() });
+    await sandbox.bootGuildPage();
+    const html = els.guildStreams.innerHTML;
+    expect(listRows(html)).toBe(3);
+    expect(html).not.toContain('<h3');
+  });
+
+  it('leaves no bare list heading when everyone is live', async () => {
+    const { sandbox, els } = makeSandbox({ streamers: rows(['alpha', 'bravo', 'delta']) });
+    await sandbox.bootGuildPage();
+    const html = els.guildStreams.innerHTML;
+    expect(embeds(html)).toBe(3);
+    expect(html).not.toContain('Everyone who streams');
+  });
+
+  it('honours guild_wide_opt_out in both halves', async () => {
+    // The column means "hide me from other teams' pages". Every viewer of the
+    // guild page is on some other team from the streamer's point of view, so
+    // honouring it is the reading that treats the flag as consent rather than
+    // as a per-page display rule.
+    const { sandbox, els } = makeSandbox({ streamers: rows(['charlie']) });
+    await sandbox.bootGuildPage();
+    const html = els.guildStreams.innerHTML;
+    expect(html).toContain('twitch.tv/alpha');
+    expect(html).not.toContain('charlie');
+    expect(embeds(html)).toBe(0);
   });
 
   it('emits no View profile link', async () => {
     // That link needs DATA.roster, which is single-team and empty here.
-    const { sandbox, els } = makeSandbox({ streamers: rows() });
+    const { sandbox, els } = makeSandbox({ streamers: rows(['alpha']) });
     await sandbox.bootGuildPage();
-    const html = els.streamersView.innerHTML;
-    expect(html).toContain('twitch.tv/alpha');
+    const html = els.guildStreams.innerHTML;
+    expect(embeds(html)).toBe(1);
     expect(html).not.toContain('View profile');
     expect(html).not.toContain('renderProfile');
   });
 
-  it('keeps the live dot and the schedule note', async () => {
+  it('renders a schedule note, and no empty element for a streamer without one', async () => {
     const { sandbox, els } = makeSandbox({ streamers: rows() });
     await sandbox.bootGuildPage();
-    const cards = els.streamersView.innerHTML.split('<div class="stream-card');
-    const alpha = cards.find((c) => c.includes('twitch.tv/alpha'));
-    const bravo = cards.find((c) => c.includes('twitch.tv/bravo'));
-    expect(alpha).toContain('stream-live-dot');
-    expect(bravo).not.toContain('stream-live-dot');
-    expect(bravo).toContain('Tue nights');
+    const html = els.guildStreams.innerHTML;
+    expect(html).toContain('Tue nights');
+    // Only bravo has a note, so exactly one row carries the element.
+    expect((html.match(/class="guild-streamer-note"/g) || []).length).toBe(1);
+  });
+
+  it('escapes raider-controlled fields in the compact row', async () => {
+    const hostile = rows();
+    hostile[0].players.nickname = '"><img src=x onerror=alert(1)>';
+    hostile[1].schedule_note = '</li><script>alert(2)</script>';
+    const { sandbox, els } = makeSandbox({ streamers: hostile });
+    await sandbox.bootGuildPage();
+    const html = els.guildStreams.innerHTML;
+    expect(listRows(html)).toBe(3);
+    expect(html).not.toContain('<img');
+    expect(html).not.toContain('<script>');
+    expect(html).toContain('&lt;img src=x onerror=alert(1)&gt;');
+    expect(html).toContain('&lt;script&gt;alert(2)&lt;/script&gt;');
+  });
+
+  it('sorts the list by display name, not by whatever order the read returned', async () => {
+    const { sandbox, els } = makeSandbox({ streamers: rows() });
+    await sandbox.bootGuildPage();
+    const html = els.guildStreams.innerHTML;
+    // Aardvark is delta, inserted last. Al is alpha, inserted first.
+    expect(html.indexOf('Aardvark')).toBeLessThan(html.indexOf('>Al<'));
+    expect(html.indexOf('>Al<')).toBeLessThan(html.indexOf('Bravo'));
   });
 
   it('shows an empty state rather than a bare heading when nobody has linked Twitch', async () => {
     // fetchSupabaseStreamers() resolves null, not [], for an empty table.
     const { sandbox, els } = makeSandbox({ streamers: null });
     await sandbox.bootGuildPage();
-    expect(els.streamersView.innerHTML).toContain('No streamers');
+    expect(els.guildStreams.innerHTML).toContain('No streamers');
   });
 
   it('shows the empty state rather than throwing when the read fails', async () => {
     const { sandbox, els } = makeSandbox({ streamers: undefined });
     await expect(sandbox.bootGuildPage()).resolves.not.toThrow();
-    expect(els.streamersView.innerHTML).toContain('No streamers');
+    expect(els.guildStreams.innerHTML).toContain('No streamers');
   });
 
   it('leaves DATA.roster empty, so nothing infers a team from it', async () => {
     const { sandbox } = makeSandbox({ streamers: rows() });
     await sandbox.bootGuildPage();
     expect(sandbox.DATA.roster).toEqual([]);
+  });
+
+  it('does not abort the sections rendered after it', async () => {
+    // renderGuildSections() runs the sections in order and bootGuildPage()
+    // catches everything, so a throw anywhere in the streams render silently
+    // takes news, BoE, bios and applyGuildHash() down with it and leaves every
+    // streams assertion above still passing, because innerHTML is assigned
+    // before the throw. Every other block in this file happens to use the
+    // default `streamers: null`, which returns early, so nothing else here can
+    // notice. Render both and assert the later one landed.
+    const { sandbox, els } = makeSandbox({
+      streamers: rows(['alpha']),
+      news: [{ date: '2026-08-20', category: 'Feature', version: '3.5.0', title: 'Newest feature', body: 'x' }]
+    });
+    await sandbox.bootGuildPage();
+    expect(els.guildStreams.innerHTML).toContain('channel=alpha');
+    expect(els.guildNews.innerHTML).toContain('Newest feature');
   });
 });
 

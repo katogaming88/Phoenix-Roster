@@ -12,7 +12,9 @@ Supports multiple teams (Phoenix, Hellfire Rollers, Immolation) from a single co
 
 The one page that is not scoped to a raid team: the guild above the three teams, rather than any one of them. It is where a visitor who does not know which team they want starts.
 
-In progress and not linked from anywhere yet. It currently carries the team list; live streams, a news teaser, a BoE entry point, About the Guild and the external links follow, tracked in [milestone #27](https://github.com/katogaming88/WGA-Raid-Hub/milestone/27). Once it is worth landing on, the cold-landing team-picker modal on `index.html` is retired in favour of it.
+Carries the team cards (badged with your own team, plus a signup link for any team whose signups are open), guild-wide Twitch streams (whoever is live gets an embed, everyone else a compact row), a three-headline news teaser, a BoE entry point, About the Guild, and the guild's external links. Built across [milestone #27](https://github.com/katogaming88/WGA-Raid-Hub/milestone/27).
+
+It replaced the cold-landing team-picker modal on `index.html`, so a visitor with no `?team=` in the URL now lands here instead of on a three-button prompt. A signed-in raider with exactly one claimed team still goes straight to that team's roster, so nobody's daily path got longer. `index.html` keeps its URL and stays the team page; whether the guild page should become the site's front door is tracked in [#794](https://github.com/katogaming88/WGA-Raid-Hub/issues/794).
 
 ### Landing page (public, `index.html`)
 
