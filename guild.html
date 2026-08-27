@@ -28,7 +28,13 @@
   <a class="site-nav-item" href="#teams">Teams</a>
   <a class="site-nav-item" href="#streams">Streams</a>
   <a class="site-nav-item" href="#news">News</a>
-  <a class="site-nav-item" href="#boe">BoE</a>
+  <a class="site-nav-item" id="guildNavBoe" href="#boe">BoE</a>
+  <!-- Defaults hidden so there is no flash of an officer-only item while the
+       three access RPCs resolve, the same reason index.html's #navOfficer does
+       (js/officer-quick-actions.js). It is also the only thing hiding this on
+       the CDN-failure path, where bootGuildPage() returns before the sections
+       render at all. js/guild.js reveals it with the section it points at. -->
+  <a class="site-nav-item" id="guildNavBoeManage" href="#boe-manage" style="display:none;">BoE Sales</a>
   <a class="site-nav-item" href="#about">About</a>
   <div class="site-nav-right">
     <span class="site-nav-item" id="guildWhoAmI"></span>

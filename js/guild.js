@@ -468,9 +468,14 @@ function boeEnabledTeamSlugs() {
 
 function renderGuildBoe() {
   var section = document.getElementById('boe');
+  var navItem = document.getElementById('guildNavBoe');
   var sel = document.getElementById('guildBoeTeam');
   var slugs = boeEnabledTeamSlugs();
+  // One boolean drives both, so the nav cannot end up pointing at a section
+  // that is not there. applyGuildHash() already refuses to scroll to a hidden
+  // section, which left the nav item as the one way to land on nothing.
   if (section) section.style.display = slugs.length ? '' : 'none';
+  if (navItem) navItem.style.display = slugs.length ? '' : 'none';
   if (!sel || !slugs.length) return;
 
   sel.innerHTML = slugs
@@ -542,11 +547,20 @@ function fetchGuildBoeAccess() {
  * this replaced. There is no "this team" here, and a manager's read spans every
  * team, so the question is whether any team runs BoE at all -- the same
  * question the finder card above already asks.
+ *
+ * The nav item is driven by this same boolean rather than deciding for itself,
+ * so the two cannot disagree. That matters more here than for the finder card:
+ * this page is public, so an item naming a surface the visitor cannot open
+ * would advertise it to exactly the people the section hides itself from. It
+ * is also the only route to the section, which sits below the finder card with
+ * nothing else pointing at it.
  */
 function renderGuildBoeManage() {
   var section = document.getElementById('boe-manage');
+  var navItem = document.getElementById('guildNavBoeManage');
   var show = _guildBoeAccess.visible && boeEnabledTeamSlugs().length > 0;
   if (section) section.style.display = show ? '' : 'none';
+  if (navItem) navItem.style.display = show ? '' : 'none';
   if (!show) return;
   buildBoeManage(_guildBoeAccess.canManage);
 }

@@ -37,6 +37,11 @@ const PAGE_ELS = [
   'guildBoeGo',
   'boe',
   'boe-manage',
+  // The two nav items that hide with their sections. getElementById returns
+  // null for anything absent here, and both call sites guard, so leaving them
+  // out would make every assertion below throw rather than fail.
+  'guildNavBoe',
+  'guildNavBoeManage',
   'guildBoeSummary',
   'guildBoeOpen',
   'guildBoeAwaiting',
@@ -932,6 +937,25 @@ describe('BoE entry point (#781)', () => {
     await sandbox.bootGuildPage();
     expect(els.boe.style.display).toBe('none');
   });
+
+  // A nav item pointing at a hidden section scrolls nowhere, and the hidden
+  // section is a zero-height target applyGuildHash() already refuses. The item
+  // reads the same boolean the card does so the two cannot drift apart.
+  it('hides the nav item along with the card', async () => {
+    const { sandbox, els } = makeSandbox({
+      teamSettings: [1, 2, 3, 4].map((id) => ({ team_id: id, config: { features: { boe: false } } }))
+    });
+    await sandbox.bootGuildPage();
+    expect(els.guildNavBoe.style.display).toBe('none');
+    expect(els.guildNavBoe.style.display).toBe(els.boe.style.display);
+  });
+
+  it('keeps the nav item while any team runs BoE', async () => {
+    const { sandbox, els } = makeSandbox();
+    await sandbox.bootGuildPage();
+    expect(els.guildNavBoe.style.display).toBe('');
+    expect(els.guildNavBoe.style.display).toBe(els.boe.style.display);
+  });
 });
 
 describe('About the Guild (#782)', () => {
@@ -1149,7 +1173,14 @@ describe('boot with no supabase client', () => {
 // takes canManage as a parameter and asks nothing about identity, so this is
 // the only place the three grants are resolved.
 describe('BoE lifecycle access (#774)', () => {
-  const shown = (els) => els['boe-manage'].style.display !== 'none';
+  // Reads the nav item as well as the section, and asserts they agree, so
+  // every case below covers both. A test that read only the section would
+  // pass while the nav advertised a surface the visitor cannot open, which is
+  // a disclosure on a public page rather than a cosmetic slip.
+  const shown = (els) => {
+    expect(els.guildNavBoeManage.style.display).toBe(els['boe-manage'].style.display);
+    return els['boe-manage'].style.display !== 'none';
+  };
 
   it('is hidden for a signed-out visitor, and asks nothing about them', async () => {
     const { sandbox, els, calls } = makeSandbox();
@@ -1211,6 +1242,19 @@ describe('BoE lifecycle access (#774)', () => {
     });
     await sandbox.bootGuildPage();
     expect(shown(els)).toBe(false);
+  });
+
+  // Named on its own rather than only through shown(), because the nav item is
+  // the whole route to this section: it has no other entry point in the nav.
+  it('puts a BoE Sales item in the nav for someone who may open it', async () => {
+    const { sandbox, els } = makeSandbox({
+      session: SESSION,
+      boeRpc: { is_boe_manager: true }
+    });
+    await sandbox.bootGuildPage();
+    // The revealed value, not just "not none": the stubs start with no display
+    // at all, so a not.toBe('none') here would pass without the code existing.
+    expect(els.guildNavBoeManage.style.display).toBe('');
   });
 
   // The whole point of moving off officer.html. Every section after BoE has

@@ -73,6 +73,18 @@ describe('guild.html structure (#777)', () => {
     expect(firstTag).toMatch(/^<a[^>]*class="skip-link"[^>]*href="#main-content"/);
   });
 
+  // js/guild.js reveals this item only for someone who may open the section it
+  // points at, but the markup default is what covers the gap before the three
+  // RPCs resolve -- and it is the only thing covering the CDN-failure path,
+  // where bootGuildPage() returns before either render function runs. The
+  // vm-sandbox suite cannot see this: its elements are stubbed as `style: {}`,
+  // so they start with no display at all whatever the page says.
+  it('ships the officer-gated nav item hidden', () => {
+    const item = html.match(/<a[^>]*\sid="guildNavBoeManage"[^>]*>/);
+    expect(item).not.toBeNull();
+    expect(item[0]).toMatch(/style="display:\s*none;?"/);
+  });
+
   it('does not skip a heading level', () => {
     const levels = [...html.matchAll(/<h([1-6])[\s>]/g)].map((m) => Number(m[1]));
     expect(levels[0]).toBe(1);
