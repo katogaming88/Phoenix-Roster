@@ -273,8 +273,35 @@ function renderGuildTeams() {
     .join('');
 }
 
+/**
+ * Streams (#780). The read was already guild-wide by design (#286), and the
+ * render needs no change either: js/streamers.js splits on
+ * `s.team_slug === TEAM_SLUG`, which is null here, so its "my team" group
+ * empties and its "everyone else" group becomes every team. The profile link
+ * is gated on the same comparison and suppresses itself, which is what it
+ * should do given DATA.roster is single-team and empty on this page.
+ *
+ * The section reuses buildStreamersTab()'s own container id so the grid, the
+ * lazy-iframe observer and the empty-state copy are the shipped ones rather
+ * than a second implementation that can drift from them.
+ *
+ * guild_wide_opt_out means "hide me from other teams' pages". Every viewer
+ * here is on some other team from the streamer's point of view, so this
+ * honours it, treating the column as consent rather than a display rule.
+ */
+function fetchGuildStreamers() {
+  return Promise.resolve(fetchSupabaseStreamers())
+    .then(function (rows) {
+      DATA.streamers = mapSupabaseStreamers(rows || []);
+    })
+    .catch(function () {
+      DATA.streamers = [];
+    });
+}
+
 function renderGuildSections() {
   renderGuildTeams();
+  buildStreamersTab();
 }
 
 function bootGuildPage() {
@@ -312,7 +339,7 @@ function bootGuildPage() {
           return resolveGuildTeam();
         })
         .then(function () {
-          return fetchGuildTeamSettings();
+          return Promise.all([fetchGuildTeamSettings(), fetchGuildStreamers()]);
         })
         .then(function () {
           renderGuildSections();

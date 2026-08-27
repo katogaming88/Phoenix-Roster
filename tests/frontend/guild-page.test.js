@@ -18,6 +18,7 @@ import { fileURLToPath } from 'node:url';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const COMMON_JS = readFileSync(path.join(HERE, '../../js/common.js'), 'utf8');
 const GUILD_JS = readFileSync(path.join(HERE, '../../js/guild.js'), 'utf8');
+const STREAMERS_JS = readFileSync(path.join(HERE, '../../js/streamers.js'), 'utf8');
 
 const PAGE_ELS = [
   'main-content',
@@ -25,6 +26,7 @@ const PAGE_ELS = [
   'maintenanceBanner',
   'maintenanceBannerMessage',
   'guildTeams',
+  'streamersView',
   'guildWhoAmI',
   'guildAuthBtn',
   'guildVersion'
@@ -60,7 +62,8 @@ function makeSandbox({
   maintenance = null,
   storedTeam = null,
   teamSettings = ALL_OPEN,
-  teamSettingsError = null
+  teamSettingsError = null,
+  streamers = null
 } = {}) {
   const els = {};
   const calls = [];
@@ -99,6 +102,9 @@ function makeSandbox({
       calls.push({ kind: 'from', table });
       if (table === 'site_settings') {
         return builder({ data: maintenance, error: null });
+      }
+      if (table === 'streamers') {
+        return builder({ data: streamers, error: null });
       }
       if (table === 'team_settings') {
         if (teamSettingsError) return builder({ data: null, error: teamSettingsError });
@@ -146,6 +152,8 @@ function makeSandbox({
   sandbox.window = sandbox;
   vm.createContext(sandbox);
   vm.runInContext(COMMON_JS, sandbox, { filename: 'common.js' });
+  // Same order guild.html loads them in.
+  vm.runInContext(STREAMERS_JS, sandbox, { filename: 'streamers.js' });
   vm.runInContext(GUILD_JS, sandbox, { filename: 'guild.js' });
   sandbox.supabaseClient = client;
   return { sandbox, els, calls, el };
@@ -497,6 +505,112 @@ describe('team cards (#778)', () => {
     await sandbox.bootGuildPage();
     expect(els.guildTeams.innerHTML).toContain('index.html?team=phoenix');
     expect(els.guildTeams.innerHTML).not.toContain('#signup');
+  });
+});
+
+describe('streams (#780)', () => {
+  // The point of this block is that js/streamers.js needs no changes at all.
+  // Its "my team first, then everyone else" split is written against
+  // s.team_slug === TEAM_SLUG, and js/guild.js nulls TEAM_SLUG, so the first
+  // group empties and the second becomes every team. If any of these start
+  // failing, the fix belongs in js/guild.js rather than in a file index.html
+  // also loads.
+  const rows = (over) => [
+    {
+      id: 1,
+      team_id: 1,
+      player_id: 10,
+      twitch_channel: 'alpha',
+      schedule_note: null,
+      guild_wide_opt_out: false,
+      is_live: true,
+      players: { name_realm: 'Alpha-Tichondrius', nickname: 'Al' }
+    },
+    {
+      id: 2,
+      team_id: 2,
+      player_id: 11,
+      twitch_channel: 'bravo',
+      schedule_note: 'Tue nights',
+      guild_wide_opt_out: false,
+      is_live: false,
+      players: { name_realm: 'Bravo-Tichondrius', nickname: null }
+    },
+    {
+      id: 3,
+      team_id: 3,
+      player_id: 12,
+      twitch_channel: 'charlie',
+      schedule_note: null,
+      guild_wide_opt_out: true,
+      is_live: true,
+      players: { name_realm: 'Charlie-Tichondrius', nickname: null }
+    },
+    ...(over || [])
+  ];
+
+  it('shows streamers from every team, not just one', async () => {
+    const { sandbox, els } = makeSandbox({ streamers: rows() });
+    await sandbox.bootGuildPage();
+    const html = els.streamersView.innerHTML;
+    expect(html).toContain('twitch.tv/alpha');
+    expect(html).toContain('twitch.tv/bravo');
+  });
+
+  it('honours guild_wide_opt_out', async () => {
+    // The column means "hide me from other teams' pages". Every viewer of the
+    // guild page is on some other team from the streamer's point of view, so
+    // honouring it is the reading that treats the flag as consent rather than
+    // as a per-page display rule. This falls out of the existing code with no
+    // edit, which is also the argument for leaving it that way.
+    const { sandbox, els } = makeSandbox({ streamers: rows() });
+    await sandbox.bootGuildPage();
+    const html = els.streamersView.innerHTML;
+    // Anchored on a positive: an absence assertion over an empty container
+    // passes for the wrong reason, and would keep passing if the section
+    // stopped rendering entirely.
+    expect(html).toContain('twitch.tv/alpha');
+    expect(html).not.toContain('twitch.tv/charlie');
+  });
+
+  it('emits no View profile link', async () => {
+    // That link needs DATA.roster, which is single-team and empty here.
+    const { sandbox, els } = makeSandbox({ streamers: rows() });
+    await sandbox.bootGuildPage();
+    const html = els.streamersView.innerHTML;
+    expect(html).toContain('twitch.tv/alpha');
+    expect(html).not.toContain('View profile');
+    expect(html).not.toContain('renderProfile');
+  });
+
+  it('keeps the live dot and the schedule note', async () => {
+    const { sandbox, els } = makeSandbox({ streamers: rows() });
+    await sandbox.bootGuildPage();
+    const cards = els.streamersView.innerHTML.split('<div class="stream-card');
+    const alpha = cards.find((c) => c.includes('twitch.tv/alpha'));
+    const bravo = cards.find((c) => c.includes('twitch.tv/bravo'));
+    expect(alpha).toContain('stream-live-dot');
+    expect(bravo).not.toContain('stream-live-dot');
+    expect(bravo).toContain('Tue nights');
+  });
+
+  it('shows an empty state rather than a bare heading when nobody has linked Twitch', async () => {
+    // fetchSupabaseStreamers() resolves null, not [], for an empty table.
+    const { sandbox, els } = makeSandbox({ streamers: null });
+    await sandbox.bootGuildPage();
+    expect(els.streamersView.innerHTML).toContain('No streamers');
+  });
+
+  it('shows the empty state rather than throwing when the read fails', async () => {
+    const { sandbox, els } = makeSandbox({ streamers: undefined });
+    await expect(sandbox.bootGuildPage()).resolves.not.toThrow();
+    expect(els.streamersView.innerHTML).toContain('No streamers');
+  });
+
+  it('leaves DATA.roster empty, so nothing infers a team from it', async () => {
+    const { sandbox } = makeSandbox({ streamers: rows() });
+    await sandbox.bootGuildPage();
+    expect(sandbox.DATA.roster).toEqual([]);
   });
 });
 
