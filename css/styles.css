@@ -103,9 +103,6 @@ body { background:var(--bg); color:var(--text); font-family:'Rajdhani',sans-seri
 .form-error { font-size:1rem; color:var(--melee); margin:0; }
 .form-error-link { color:inherit; text-decoration:underline; }
 .claim-modal-team-switch { display:flex; align-items:center; gap:0.6rem; font-size:1rem; color:var(--text-muted); }
-.team-picker-box { align-items:center; text-align:center; }
-.team-picker-list { display:flex; flex-direction:column; gap:0.6rem; width:100%; }
-.team-picker-btn { width:100%; }
 .site-nav-item[data-tooltip] { position:relative; }
 .site-nav-item[data-tooltip]::after { content:attr(data-tooltip); position:absolute; top:calc(100% + 6px); left:50%; transform:translateX(-50%); background:var(--bg-elevated); border:1px solid var(--border-mid); color:var(--text-muted); font-size:1.07rem; font-weight:400; letter-spacing:0.04em; text-transform:none; white-space:nowrap; padding:0.3rem 0.6rem; border-radius:3px; pointer-events:none; opacity:0; transition:opacity 0s; z-index:200; }
 .site-nav-item[data-tooltip]:hover::after { opacity:1; }
