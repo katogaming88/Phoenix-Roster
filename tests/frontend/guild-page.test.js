@@ -44,12 +44,23 @@ function builder(result) {
   return b;
 }
 
+// Every team open for signups, matching prod's shape closely enough that a
+// test which cares about one flag does not have to restate the rest.
+const ALL_OPEN = [
+  { team_id: 1, config: { signupsOpen: true } },
+  { team_id: 2, config: { signupsOpen: true } },
+  { team_id: 3, config: { signupsOpen: true } },
+  { team_id: 4, config: {} }
+];
+
 function makeSandbox({
   session = null,
   memberRows = [],
   memberError = null,
   maintenance = null,
-  storedTeam = null
+  storedTeam = null,
+  teamSettings = ALL_OPEN,
+  teamSettingsError = null
 } = {}) {
   const els = {};
   const calls = [];
@@ -88,6 +99,10 @@ function makeSandbox({
       calls.push({ kind: 'from', table });
       if (table === 'site_settings') {
         return builder({ data: maintenance, error: null });
+      }
+      if (table === 'team_settings') {
+        if (teamSettingsError) return builder({ data: null, error: teamSettingsError });
+        return builder({ data: teamSettings, error: null });
       }
       if (memberError) return builder({ data: null, error: memberError });
       return builder({ data: memberRows, error: null });
@@ -358,6 +373,130 @@ describe('team list', () => {
     sandbox.TEAMS.phoenix.name = '<img src=x onerror=alert(1)>';
     await sandbox.bootGuildPage();
     expect(els.guildTeams.innerHTML).not.toContain('<img');
+  });
+});
+
+describe('team settings, read once and shared (#778)', () => {
+  it('reads team_settings exactly once per boot', async () => {
+    // #781's BoE team select needs the same rows. Two reads of the same four
+    // rows is the shape that drifts, so the read is shared.
+    const { sandbox, calls } = makeSandbox();
+    await sandbox.bootGuildPage();
+    expect(calls.filter((c) => c.table === 'team_settings').length).toBe(1);
+  });
+
+  it('does not filter on team_id, so the paging guard does not apply', async () => {
+    // Four rows, one per team. scripts/ci/team-wide-read-check.js only fires on
+    // a .eq('team_id', ...) read; this one deliberately has none.
+    const { sandbox } = makeSandbox();
+    await sandbox.bootGuildPage();
+    expect(Object.keys(sandbox.guildTeamSettings()).length).toBe(4);
+  });
+
+  it('reads signupsOpen per team', async () => {
+    const { sandbox } = makeSandbox({
+      teamSettings: [
+        { team_id: 1, config: { signupsOpen: true } },
+        { team_id: 2, config: { signupsOpen: false } },
+        { team_id: 3, config: {} }
+      ]
+    });
+    await sandbox.bootGuildPage();
+    const s = sandbox.guildTeamSettings();
+    expect(s.phoenix.signupsOpen).toBe(true);
+    expect(s.hellfire.signupsOpen).toBe(false);
+    // Unset means closed. Unlike a feature flag, where unset means enabled.
+    expect(s.immolation.signupsOpen).toBe(false);
+  });
+
+  it('reads the boe flag with the feature-flag rule, where unset means enabled', async () => {
+    const { sandbox } = makeSandbox({
+      teamSettings: [
+        { team_id: 1, config: { features: { boe: false } } },
+        { team_id: 4, config: {} }
+      ]
+    });
+    await sandbox.bootGuildPage();
+    const s = sandbox.guildTeamSettings();
+    expect(s.phoenix.boeEnabled).toBe(false);
+    // Wrathless carries config = '{}' on prod, so this is its real shape.
+    expect(s.wrathless.boeEnabled).toBe(true);
+  });
+
+  it('splits the two failure directions when the read errors', async () => {
+    // BoE fails open, matching js/boe.js: a raider who cannot report a find is
+    // the worse outcome. Signups fail closed: a Sign up link into a closed form
+    // is worse than no link, and the roster link still works either way.
+    const { sandbox } = makeSandbox({ teamSettingsError: { message: 'nope' } });
+    await sandbox.bootGuildPage();
+    const s = sandbox.guildTeamSettings();
+    expect(s.phoenix.signupsOpen).toBe(false);
+    expect(s.phoenix.boeEnabled).toBe(true);
+  });
+});
+
+describe('team cards (#778)', () => {
+  it('links every visible team to its roster', async () => {
+    const { sandbox, els } = makeSandbox();
+    await sandbox.bootGuildPage();
+    const html = els.guildTeams.innerHTML;
+    expect(html).toContain('index.html?team=phoenix"');
+    expect(html).toContain('index.html?team=hellfire"');
+    expect(html).toContain('index.html?team=immolation"');
+    expect(html).not.toContain('team=wrathless');
+  });
+
+  it('shows Sign up only for a team with signups open', async () => {
+    const { sandbox, els } = makeSandbox({
+      teamSettings: [
+        { team_id: 1, config: { signupsOpen: true } },
+        { team_id: 2, config: { signupsOpen: false } },
+        { team_id: 3, config: { signupsOpen: false } }
+      ]
+    });
+    await sandbox.bootGuildPage();
+    const html = els.guildTeams.innerHTML;
+    expect(html).toContain('index.html?team=phoenix#signup');
+    expect(html).not.toContain('index.html?team=hellfire#signup');
+    expect(html).not.toContain('index.html?team=immolation#signup');
+  });
+
+  it('badges the claimed team', async () => {
+    const { sandbox, els } = makeSandbox({ session: SESSION, memberRows: [claim(2, 'Bravo-Tichondrius')] });
+    await sandbox.bootGuildPage();
+    // Split per card, not per anchor: "the badge appears somewhere" and "the
+    // badge appears on the right card" are different claims, and only the
+    // second one is worth asserting.
+    const cards = els.guildTeams.innerHTML.split('<div class="guild-team-card">');
+    const hellfire = cards.find((c) => c.includes('team=hellfire'));
+    const phoenix = cards.find((c) => c.includes('team=phoenix'));
+    expect(hellfire).toContain('Your team');
+    expect(phoenix).not.toContain('Your team');
+    expect(cards.filter((c) => c.includes('Your team')).length).toBe(1);
+  });
+
+  it('badges nothing when the team came from sessionStorage', async () => {
+    // guildTeamSource() is 'session' here. The badge claims the visitor is on
+    // that team, which a remembered slug is not evidence of.
+    const { sandbox, els } = makeSandbox({ storedTeam: 'hellfire' });
+    await sandbox.bootGuildPage();
+    expect(els.guildTeams.innerHTML).not.toContain('Your team');
+  });
+
+  it('badges nothing when claimed on two teams', async () => {
+    const { sandbox, els } = makeSandbox({
+      session: SESSION,
+      memberRows: [claim(1, 'Alpha-Tichondrius'), claim(2, 'Bravo-Tichondrius')]
+    });
+    await sandbox.bootGuildPage();
+    expect(els.guildTeams.innerHTML).not.toContain('Your team');
+  });
+
+  it('still renders the cards when the settings read fails', async () => {
+    const { sandbox, els } = makeSandbox({ teamSettingsError: { message: 'nope' } });
+    await sandbox.bootGuildPage();
+    expect(els.guildTeams.innerHTML).toContain('index.html?team=phoenix');
+    expect(els.guildTeams.innerHTML).not.toContain('#signup');
   });
 });
 

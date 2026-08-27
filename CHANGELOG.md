@@ -8,6 +8,15 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.68.0] - 2026-08-27
+
+### Frontend
+
+- The guild page's team cards now say which teams are taking signups, and link straight to that team's signup form (#778). Recruitment had no entry point above the team level: finding out whether a team was recruiting meant opening its page and looking for the nav item, once per team.
+- A card is marked "Your team" when you are signed in and claimed on exactly one team. Claimed on two, or just remembered from a previous visit, does not earn the mark, since neither is evidence of which team you raid with.
+
+---
+
 ## [3.67.0] - 2026-08-27
 
 ### Frontend

@@ -181,22 +181,93 @@ function renderGuildAuth(session) {
   }
 }
 
-// The plain list. #778 enriches this with the signups-open and BoE flags from
-// one team_settings read, plus a "Your team" badge for a resolved claim.
+/**
+ * Every team's signups-open and BoE flags, keyed by slug (#778). One read of
+ * four rows, shared with the BoE entry point (#781) rather than read twice:
+ * two reads of the same rows is the shape that drifts.
+ *
+ * No `.eq('team_id', ...)`, so scripts/ci/team-wide-read-check.js does not
+ * apply and fetchAllPaged() is not required. It cannot page past 1000 either
+ * way, being one row per team.
+ */
+var _guildTeamSettings = null;
+
+function _guildDefaultSettings() {
+  var map = {};
+  Object.keys(TEAMS).forEach(function (slug) {
+    // The two failure directions differ on purpose. A missing BoE flag reads
+    // as enabled, the rule featureEnabledIn() applies everywhere and the same
+    // fail-open js/boe.js chose: a raider who cannot report a find is the
+    // worse outcome. Signups fail closed, because a Sign up link into a closed
+    // form is worse than no link, and the roster link works regardless.
+    map[slug] = { signupsOpen: false, boeEnabled: true };
+  });
+  return map;
+}
+
+function guildTeamSettings() {
+  return _guildTeamSettings || _guildDefaultSettings();
+}
+
+function fetchGuildTeamSettings() {
+  var map = _guildDefaultSettings();
+  if (!supabaseClient) {
+    _guildTeamSettings = map;
+    return Promise.resolve(map);
+  }
+  return Promise.resolve(supabaseClient.from('team_settings').select('team_id, config'))
+    .then(function (res) {
+      if (!res || res.error || !res.data) return map;
+      res.data.forEach(function (row) {
+        var slug = _guildSlugForTeamId(row.team_id);
+        if (!slug) return;
+        var config = row.config || {};
+        map[slug] = {
+          signupsOpen: !!config.signupsOpen,
+          boeEnabled: featureEnabledIn(config.features, 'boe')
+        };
+      });
+      return map;
+    })
+    .catch(function () {
+      return map;
+    })
+    .then(function (resolved) {
+      _guildTeamSettings = resolved;
+      return resolved;
+    });
+}
+
 function renderGuildTeams() {
   var mount = document.getElementById('guildTeams');
   if (!mount) return;
+  var settings = guildTeamSettings();
+  // Only a resolved claim earns the badge. A slug remembered from a previous
+  // visit, or the fallback, is not evidence the visitor raids on that team.
+  var mine = guildTeamSource() === 'claim' ? guildTeamSlug() : null;
+
   mount.innerHTML = visibleTeamSlugs()
     .map(function (slug) {
       var team = TEAMS[slug];
+      var open = settings[slug] && settings[slug].signupsOpen;
       return (
-        '<a class="guild-team-card" href="' +
-        _esc(guildTeamHref(slug)) +
-        '"><span class="guild-team-emblem" aria-hidden="true">' +
+        '<div class="guild-team-card">' +
+        '<span class="guild-team-head">' +
+        '<span class="guild-team-emblem" aria-hidden="true">' +
         _esc(team.emoji || '') +
-        '</span><span class="guild-team-name">' +
+        '</span>' +
+        '<span class="guild-team-name">' +
         _esc(team.name) +
-        '</span></a>'
+        '</span>' +
+        '</span>' +
+        (slug === mine ? '<span class="guild-team-badge">Your team</span>' : '') +
+        '<span class="guild-team-links">' +
+        '<a href="' +
+        _esc(guildTeamHref(slug)) +
+        '">View roster</a>' +
+        (open ? '<a href="' + _esc(guildTeamHref(slug, 'signup')) + '">Sign up</a>' : '') +
+        '</span>' +
+        '</div>'
       );
     })
     .join('');
@@ -239,6 +310,9 @@ function bootGuildPage() {
         .then(function (session) {
           renderGuildAuth(session);
           return resolveGuildTeam();
+        })
+        .then(function () {
+          return fetchGuildTeamSettings();
         })
         .then(function () {
           renderGuildSections();
