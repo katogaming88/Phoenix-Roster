@@ -200,7 +200,7 @@ function _guildDefaultSettings() {
     // fail-open js/boe.js chose: a raider who cannot report a find is the
     // worse outcome. Signups fail closed, because a Sign up link into a closed
     // form is worse than no link, and the roster link works regardless.
-    map[slug] = { signupsOpen: false, boeEnabled: true };
+    map[slug] = { signupsOpen: false, boeEnabled: true, warcraftLogsUrl: '' };
   });
   return map;
 }
@@ -224,7 +224,10 @@ function fetchGuildTeamSettings() {
         var config = row.config || {};
         map[slug] = {
           signupsOpen: !!config.signupsOpen,
-          boeEnabled: featureEnabledIn(config.features, 'boe')
+          boeEnabled: featureEnabledIn(config.features, 'boe'),
+          // Officer-edited per team (js/tabs/tab-season.js), and hidden rather
+          // than shown broken when unset, same as renderExternalWclLink().
+          warcraftLogsUrl: (config.externalLinks && config.externalLinks.warcraftLogsUrl) || ''
         };
       });
       return map;
@@ -250,6 +253,7 @@ function renderGuildTeams() {
     .map(function (slug) {
       var team = TEAMS[slug];
       var open = settings[slug] && settings[slug].signupsOpen;
+      var logs = settings[slug] && settings[slug].warcraftLogsUrl;
       return (
         '<div class="guild-team-card">' +
         '<span class="guild-team-head">' +
@@ -266,6 +270,10 @@ function renderGuildTeams() {
         _esc(guildTeamHref(slug)) +
         '">View roster</a>' +
         (open ? '<a href="' + _esc(guildTeamHref(slug, 'signup')) + '">Sign up</a>' : '') +
+        // WarcraftLogs is per team (#783), so it belongs on the card rather
+        // than in a guild-level links row that would have to name a team per
+        // link. Absent when that team has no URL set.
+        (logs ? '<a href="' + _esc(logs) + '" target="_blank" rel="noopener">Logs</a>' : '') +
         '</span>' +
         '</div>'
       );
@@ -466,6 +474,41 @@ function applyGuildHash() {
   el.scrollIntoView();
 }
 
+/**
+ * The two guild-wide external links (#783), rendered from GUILD_LINKS rather
+ * than written into the markup. They are constants in common.js exactly so
+ * there is one copy; guild.html shipped with a second one in #777, and a
+ * duplicate nothing reads is one nobody updates.
+ *
+ * No Discord invite: there is none in this repo, and Russell's call is not to
+ * add one.
+ */
+function renderGuildHeaderLinks() {
+  var mount = document.getElementById('guildHeaderLinks');
+  if (!mount) return;
+  var links = [
+    { url: GUILD_LINKS.raiderIoUrl, label: 'Raider.IO', domain: 'raider.io' },
+    { url: GUILD_LINKS.armoryUrl, label: 'Armory', domain: 'worldofwarcraft.com' }
+  ];
+  mount.innerHTML =
+    '<span class="header-links-label">Links</span>' +
+    links
+      .map(function (link) {
+        return (
+          '<a class="header-link-icon" href="' +
+          _esc(link.url) +
+          '" target="_blank" rel="noopener" title="' +
+          _esc(link.label) +
+          '" aria-label="' +
+          _esc(link.label) +
+          '"><img src="https://www.google.com/s2/favicons?sz=64&domain=' +
+          _esc(link.domain) +
+          '" alt="" width="30" height="30" loading="lazy"></a>'
+        );
+      })
+      .join('');
+}
+
 function renderGuildSections() {
   renderGuildTeams();
   buildStreamersTab();
@@ -480,6 +523,12 @@ function bootGuildPage() {
   function done() {
     if (loading) loading.style.display = 'none';
   }
+
+  // Constants, so they need no read and should not wait on one. Rendering them
+  // here rather than with the sections also covers the two paths that never
+  // reach renderGuildSections(): maintenance mode, which leaves the header
+  // visible, and a failed supabase CDN load.
+  renderGuildHeaderLinks();
 
   if (!supabaseClient) {
     // The CDN failed or is blocked. Everything on this page is a Supabase read

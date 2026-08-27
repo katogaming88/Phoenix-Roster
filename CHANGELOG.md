@@ -8,6 +8,15 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.73.0] - 2026-08-27
+
+### Frontend
+
+- Each team card on the guild page now carries a Logs link to that team's WarcraftLogs, where one is set (#783). WarcraftLogs is per team, so it sits with the team rather than in a guild-level row that would have to name a team beside every link.
+- The guild page's Raider.IO and Armory links now come from the same constants the team pages use, instead of a second copy written into that page's markup.
+
+---
+
 ## [3.72.0] - 2026-08-27
 
 ### Frontend
