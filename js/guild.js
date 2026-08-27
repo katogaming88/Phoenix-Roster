@@ -282,16 +282,14 @@ function renderGuildTeams() {
 }
 
 /**
- * Streams (#780). The read was already guild-wide by design (#286), and the
- * render needs no change either: js/streamers.js splits on
- * `s.team_slug === TEAM_SLUG`, which is null here, so its "my team" group
- * empties and its "everyone else" group becomes every team. The profile link
- * is gated on the same comparison and suppresses itself, which is what it
- * should do given DATA.roster is single-team and empty on this page.
+ * Streams (#780 for the read, #790 for the render).
  *
- * The section reuses buildStreamersTab()'s own container id so the grid, the
- * lazy-iframe observer and the empty-state copy are the shipped ones rather
- * than a second implementation that can drift from them.
+ * The read was already guild-wide by design (#286) and needs nothing here:
+ * js/streamers.js splits on `s.team_slug === TEAM_SLUG`, which is null on this
+ * page, so its "my team" group empties and its "everyone else" group becomes
+ * every team. The profile link is gated on the same comparison and suppresses
+ * itself, which is what it should do given DATA.roster is single-team and
+ * empty here.
  *
  * guild_wide_opt_out means "hide me from other teams' pages". Every viewer
  * here is on some other team from the streamer's point of view, so this
@@ -305,6 +303,99 @@ function fetchGuildStreamers() {
     .catch(function () {
       DATA.streamers = [];
     });
+}
+
+/**
+ * One offline streamer, as a row rather than a black Twitch player.
+ *
+ * display_name, twitch_channel and schedule_note are all raider-controlled via
+ * the self-service editor in js/streamers.js, so every one of them is escaped.
+ */
+function guildStreamerRowHTML(s) {
+  return (
+    '<li class="guild-streamer-item">' +
+    '<span class="guild-streamer-name">' +
+    _esc(s.display_name) +
+    '</span>' +
+    '<a class="guild-streamer-link" href="https://twitch.tv/' +
+    encodeURIComponent(s.twitch_channel) +
+    '" target="_blank" rel="noopener">twitch.tv/' +
+    _esc(s.twitch_channel) +
+    '</a>' +
+    (s.schedule_note ? '<span class="guild-streamer-note">' + _esc(s.schedule_note) + '</span>' : '') +
+    '</li>'
+  );
+}
+
+/**
+ * Streams render (#790). #780 called buildStreamersTab() straight, which spends
+ * a 16:9 embed on every streamer whether or not they are broadcasting. An
+ * offline embed is a black player, and unlike index.html's Streams tab this
+ * section is always in view rather than behind a nav click, so with nobody live
+ * it was five black rectangles taller than the team cards above them.
+ *
+ * So the live ones are promoted to embeds and everyone else is a compact row.
+ * The list is always present, which is the accessible half of this: who
+ * streams, on what channel, on what schedule stays readable as text at any
+ * hour, rather than only while someone happens to be broadcasting. It also
+ * means the page loads exactly as many third-party iframes as there are live
+ * streams, which is usually none.
+ *
+ * js/streamers.js is still not edited, keeping #780's property intact. Its
+ * streamerCardHTML() and observeStreamEmbeds() are globals (guild.html loads it
+ * before this file), so the live half is the shipped card rather than a second
+ * copy of it that can drift.
+ */
+function renderGuildStreams() {
+  var mount = document.getElementById('guildStreams');
+  if (!mount) return;
+  var visible = getVisibleStreamers();
+  if (!visible.length) {
+    mount.innerHTML = '<p class="guild-empty">No streamers linked yet.</p>';
+    return;
+  }
+
+  var live = visible.filter(function (s) {
+    return s.is_live;
+  });
+  var offline = visible.filter(function (s) {
+    return !s.is_live;
+  });
+  // Alphabetical rather than whatever order the read came back in, so the list
+  // reads the same way on every visit. getVisibleStreamers() returns a fresh
+  // array, so this sorts a copy and not DATA.streamers.
+  offline.sort(function (a, b) {
+    return String(a.display_name).localeCompare(String(b.display_name));
+  });
+
+  var html = live.length
+    ? '<h3 class="guild-streams-heading">Live now</h3>' +
+      '<div class="stream-grid stream-grid-big">' +
+      live
+        .map(function (s) {
+          return streamerCardHTML(s, { big: true });
+        })
+        .join('') +
+      '</div>'
+    : '<p class="guild-empty">No one is live right now.</p>';
+
+  if (offline.length) {
+    // The heading exists only to separate this group from the embeds above it.
+    // With nothing above it, the section's own <h2> is label enough and a
+    // second heading is noise.
+    html +=
+      (live.length ? '<h3 class="guild-streams-heading">Everyone who streams</h3>' : '') +
+      '<ul class="guild-streamer-list">' +
+      offline
+        .map(function (s) {
+          return guildStreamerRowHTML(s);
+        })
+        .join('') +
+      '</ul>';
+  }
+
+  mount.innerHTML = html;
+  observeStreamEmbeds(mount);
 }
 
 /**
@@ -511,7 +602,7 @@ function renderGuildHeaderLinks() {
 
 function renderGuildSections() {
   renderGuildTeams();
-  buildStreamersTab();
+  renderGuildStreams();
   renderGuildNews();
   renderGuildBoe();
   renderGuildBios();
@@ -566,7 +657,12 @@ function bootGuildPage() {
           done();
         });
     })
-    .catch(function () {
+    .catch(function (err) {
+      // renderGuildSections() runs the sections in order, so a throw in any one
+      // of them silently takes every section after it down too. Without this
+      // line that failure mode leaves a half-rendered page and an empty
+      // console, which is a bad thing to debug from a bug report.
+      console.error('guild page failed to render', err);
       done();
     });
 }

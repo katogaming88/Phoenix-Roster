@@ -8,8 +8,8 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=3.74.0">
-<link rel="stylesheet" href="css/guild.css?v=3.74.0">
+<link rel="stylesheet" href="css/styles.css?v=3.74.1">
+<link rel="stylesheet" href="css/guild.css?v=3.74.1">
 </head>
 <body class="guild-page">
 <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -57,10 +57,13 @@
   <section class="guild-section" id="streams" aria-labelledby="streamsHeading">
     <h2 id="streamsHeading">Streams</h2>
     <p class="guild-section-intro">Raiders from across the guild who stream on Twitch. Anyone who has opted out of appearing outside their own team's page is not listed here.</p>
-    <!-- Same container id js/streamers.js's buildStreamersTab() writes to on
-         index.html, so this page gets the shipped grid, the lazy-iframe
-         observer and the empty-state copy rather than a second copy of them. -->
-    <div id="streamersView"></div>
+    <!-- renderGuildStreams() in js/guild.js writes here (#790). It composes the
+         layout out of js/streamers.js's globals rather than calling
+         buildStreamersTab(), which spends an embed on offline streamers too;
+         see the comment on that function. The id deliberately does not match
+         index.html's #streamersView, so a stray buildStreamersTab() call on
+         this page no-ops instead of overwriting the section. -->
+    <div id="guildStreams" class="guild-streams"></div>
   </section>
 
   <section class="guild-section" id="news" aria-labelledby="newsHeading">
@@ -94,10 +97,10 @@
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/common.js?v=3.74.0"></script>
-<script src="js/news.js?v=3.74.0"></script>
-<script src="js/streamers.js?v=3.74.0"></script>
-<script src="js/guild.js?v=3.74.0"></script>
+<script src="js/common.js?v=3.74.1"></script>
+<script src="js/news.js?v=3.74.1"></script>
+<script src="js/streamers.js?v=3.74.1"></script>
+<script src="js/guild.js?v=3.74.1"></script>
 <script>
 document.getElementById('guildVersion').textContent = VERSION;
 </script>

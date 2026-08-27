@@ -44,6 +44,13 @@
   scroll-margin-top: 1.5rem;
 }
 
+/* Shared empty state: the streams and news sections both hide behind this
+   rather than rendering a heading with nothing under it. */
+.guild-empty {
+  color: var(--text-muted);
+  font-size: 1rem;
+}
+
 /* ── Team cards ─────────────────────────────────────────────────────── */
 
 .guild-team-grid {
@@ -126,12 +133,64 @@
   color: var(--gold);
 }
 
-/* ── News teaser ────────────────────────────────────────────────────── */
+/* ── Streams ────────────────────────────────────────────────────────── */
 
-.guild-empty {
-  color: var(--text-muted);
-  font-size: 1rem;
+/* Live streamers render through js/streamers.js's own card and grid. These are
+   the rows everyone else gets (#790), so an offline streamer costs a line of
+   text rather than a black Twitch player. */
+
+.guild-streams {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
+
+.guild-streams-heading {
+  font-family: 'Cinzel', serif;
+  font-size: 1.05rem;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.guild-streamer-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.guild-streamer-item {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.guild-streamer-name {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.guild-streamer-link {
+  color: var(--text-muted);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(214, 163, 68, 0.3);
+  transition: color 0.15s;
+}
+
+.guild-streamer-link:hover {
+  color: var(--gold);
+  border-color: var(--gold);
+}
+
+.guild-streamer-note {
+  color: var(--text-dim);
+  font-size: 0.95rem;
+}
+
+/* ── News teaser ────────────────────────────────────────────────────── */
 
 .guild-news-list {
   list-style: none;
