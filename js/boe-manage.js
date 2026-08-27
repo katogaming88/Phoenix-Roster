@@ -1,19 +1,27 @@
-// Officer BoE tab (#747): runs the auction lifecycle the #745 backend
-// defines (found -> listed -> sold -> paid, plus retire). Three sections
-// over one paged read of boe_items -- Open (found/listed), Awaiting Payout
-// (sold), History (paid/retired) -- plus a summary strip.
+// The BoE auction lifecycle surface (found -> listed -> sold -> paid, plus
+// retire), running the RPCs the #745 backend defines. Three sections over one
+// paged read of boe_items -- Open (found/listed), Awaiting Payout (sold),
+// History (paid/retired) -- plus a summary strip.
 //
-// The read is guild-wide since #765, not scoped to the page's team: BoEs are
-// guild property, and the read policies already return exactly the teams the
-// caller may see. Every row names the team that found it, in all three
-// sections, because that is credit rather than a disambiguator.
+// Lived on the officer dashboard as a per-team tab until #774 moved it here.
+// The move is what the data model already said: boe_items is guild property,
+// its read policy is guild-wide, the manager grant went guild-wide in #766,
+// and #765 had already made this read ignore whichever team's dashboard it was
+// rendered under. Hosting a guild-scoped surface inside a per-team page was
+// the vestigial part, and it locked out the one person the guild-wide grant
+// exists for: a BoE manager with no officer role could not open officer.html
+// at all, and a guild officer holding the grant was excluded by name.
 //
-// Action buttons render only for BoE managers (the is_boe_manager RPC, the
-// same function the RLS policies evaluate) and site admins; other officers
-// get the tab read-only. The grant is guild-wide as of #766, so that RPC
-// takes no team argument and a manager is authorized on every team's finds.
-// The server enforces the gate regardless. The lifecycle RPCs write no audit
-// entries themselves, so every successful mutation writes one from here.
+// js/guild.js owns who sees this and calls buildBoeManage() only for someone
+// who may read: any team officer, a BoE manager, or a site admin. It passes
+// canManage, which the action buttons render behind. The server enforces the
+// same gate regardless (is_boe_manager() or is_site_admin() inside every
+// lifecycle RPC), so this is disclosure, not security.
+//
+// The lifecycle RPCs write no audit entries themselves, so every successful
+// mutation writes one from here, naming the BoE's own team rather than the
+// page's (#774) -- this page has no team, and the row's team is the correct
+// attribution for a guild-wide surface either way.
 //
 // Mutations update the in-memory model and re-render instead of refetching:
 // boe_record_sale returns the computed split, so the row it moves to
@@ -23,12 +31,12 @@ var _boeItems = [];
 var _boeListings = [];
 var _boeCanManage = false;
 
-function buildBoeTab() {
-  var summary = document.getElementById('boeSummary');
-  var open = document.getElementById('boeOpen');
-  var awaiting = document.getElementById('boeAwaiting');
-  var history = document.getElementById('boeHistory');
-  if (!summary || !open || !awaiting || !history) return;
+function buildBoeManage(canManage) {
+  var summary = document.getElementById('guildBoeSummary');
+  var open = document.getElementById('guildBoeOpen');
+  var awaiting = document.getElementById('guildBoeAwaiting');
+  var history = document.getElementById('guildBoeHistory');
+  if (!summary || !open || !awaiting || !history) return Promise.resolve();
 
   function bail(html) {
     summary.innerHTML = html;
@@ -37,46 +45,23 @@ function buildBoeTab() {
     history.innerHTML = '';
   }
 
-  // Nav-hide alone does not protect the ?tab=boe deep link: openTab() clicks
-  // the button even when it is hidden, so the tab guards itself.
-  if (typeof featureEnabled === 'function' && !featureEnabled('boe')) {
-    bail(
-      '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">The BoE tracker is turned off for this team.</p>'
-    );
-    return;
-  }
-  // is_guild_officer() passes no BoE gate server-side and cannot read
-  // boe_items, so a fetch would only render an error.
-  if (window._guildOfficerAccessLevel === 'guild') {
-    bail(
-      '<p class="signup-officer-note">The BoE tracker is not available for guild officer access on a team you are not an officer of.</p>'
-    );
-    return;
-  }
   if (!supabaseClient) {
-    bail('<p style="color:var(--melee);font-size:1rem;">Database connection is not configured.</p>');
-    return;
+    bail('<p class="guild-empty">Database connection is not configured.</p>');
+    return Promise.resolve();
   }
 
-  bail('<p style="color:var(--text-muted);font-size:1rem;">Loading BoE data...</p>');
-
-  var session = typeof getDiscordSession === 'function' ? getDiscordSession() : null;
-  var isAdmin = !!(session && session.isAdmin);
-  var managerPromise = isAdmin
-    ? Promise.resolve(true)
-    : supabaseClient.rpc('is_boe_manager').then(function (result) {
-        return !result.error && result.data === true;
-      });
+  _boeCanManage = !!canManage;
+  bail('<p class="guild-empty">Loading BoE data...</p>');
 
   // Neither read filters on team since #765. BoEs are guild property and the
-  // manager grant went guild-wide in #766, so the tab shows every find the
-  // caller may see rather than one team at a time. The scoping is the read
-  // policies' job: my_team_role(team_id) in (officer, team_leader) or
-  // is_boe_manager() or is_site_admin(), which gives a manager or site admin
-  // every team and a plain officer exactly the teams they staff. A client-side
+  // manager grant went guild-wide in #766, so this shows every find the caller
+  // may see rather than one team at a time. The scoping is the read policies'
+  // job: my_team_role(team_id) in (officer, team_leader) or is_boe_manager()
+  // or is_site_admin(), which gives a manager or site admin every team and a
+  // plain officer exactly the teams they staff. A client-side
   // .eq('team_id', ...) on top would re-implement that, worse, and would keep
-  // Wrathless finds invisible -- it has no members and is hidden from the
-  // switcher, so its BoE tab is one nobody opens.
+  // Wrathless finds invisible -- it has no members, so nobody holds a team
+  // role on it and only the guild-wide grants reach its rows at all.
   var itemsPromise = fetchAllPaged(
     function (afterId, limit) {
       var q = supabaseClient
@@ -104,19 +89,18 @@ function buildBoeTab() {
     { label: 'boe listings' }
   );
 
-  Promise.all([itemsPromise, listingsPromise, managerPromise]).then(function (results) {
+  return Promise.all([itemsPromise, listingsPromise]).then(function (results) {
     var items = results[0];
     var listings = results[1];
     // fetchAllPaged returns null on error or timeout, never partial rows;
-    // an empty team is [] and must stay distinguishable.
+    // no BoEs at all is [] and must stay distinguishable.
     if (items === null || listings === null) {
-      bail('<p style="color:var(--melee);font-size:1rem;">Could not load BoE data. Try again in a minute.</p>');
+      bail('<p class="guild-empty">Could not load BoE data. Try again in a minute.</p>');
       return;
     }
     _boeItems = items;
     _boeListings = listings;
-    _boeCanManage = !!results[2];
-    renderBoeTab();
+    renderBoeManage();
   });
 }
 
@@ -166,8 +150,13 @@ function _boeMoney(n) {
 // payout, and for a Wrathless find it is the only attribution there is --
 // that team has no members, so player_id is always null and the finder is
 // free text forever.
+//
+// _esc() rather than escHtml(): that one is declared in js/tabs/tab-attendance.js
+// and ships only in officer.html's bundle, so calling it here would be a
+// ReferenceError. common.js's _esc() escapes quotes as well as angle brackets
+// and covers everything this needs.
 function _boeTeamCell(item) {
-  return '<td style="color:var(--text-muted);">' + escHtml(teamNameForId(item.team_id)) + '</td>';
+  return '<td style="color:var(--text-muted);">' + _esc(teamNameForId(item.team_id)) + '</td>';
 }
 
 // Per-team find counts and guild gold raised, under the two headline totals.
@@ -203,7 +192,7 @@ function _boeTeamCreditLine() {
     teams
       .map(function (t) {
         return (
-          escHtml(t.name) + ' <strong style="color:var(--text);">' + t.found + '</strong> (' + formatGold(t.gold) + 'g)'
+          _esc(t.name) + ' <strong style="color:var(--text);">' + t.found + '</strong> (' + formatGold(t.gold) + 'g)'
         );
       })
       .join(' &middot; ') +
@@ -212,13 +201,13 @@ function _boeTeamCreditLine() {
 }
 
 function _boeItemCell(item) {
-  var html = escHtml(item.item_name);
+  var html = _esc(item.item_name);
   if (item.track) {
-    html += ' <span class="badge" style="margin-left:0.35rem;">' + escHtml(item.track) + '</span>';
+    html += ' <span class="badge" style="margin-left:0.35rem;">' + _esc(item.track) + '</span>';
   }
   // The raider's submit-form note surfaces to officers only here.
   if (item.note) {
-    html += '<br><span style="color:var(--text-muted);font-size:0.95rem;">' + escHtml(item.note) + '</span>';
+    html += '<br><span style="color:var(--text-muted);font-size:0.95rem;">' + _esc(item.note) + '</span>';
   }
   return html;
 }
@@ -238,15 +227,11 @@ function _boeTable(headers, rowsHtml) {
 }
 
 function _boeEmpty(text) {
-  return '<p style="color:var(--text-muted);font-size:1rem;margin-top:1.5rem;">' + text + '</p>';
+  return '<p class="guild-empty">' + text + '</p>';
 }
 
 function _boeSection(title) {
-  return (
-    '<div style="font-size:1.02rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);font-weight:600;margin:1.5rem 0 0.75rem;">' +
-    title +
-    '</div>'
-  );
+  return '<h3 class="guild-boe-subheading">' + title + '</h3>';
 }
 
 function findBoeItem(id) {
@@ -256,11 +241,11 @@ function findBoeItem(id) {
   return null;
 }
 
-function renderBoeTab() {
-  var summary = document.getElementById('boeSummary');
-  var open = document.getElementById('boeOpen');
-  var awaiting = document.getElementById('boeAwaiting');
-  var history = document.getElementById('boeHistory');
+function renderBoeManage() {
+  var summary = document.getElementById('guildBoeSummary');
+  var open = document.getElementById('guildBoeOpen');
+  var awaiting = document.getElementById('guildBoeAwaiting');
+  var history = document.getElementById('guildBoeHistory');
   if (!summary || !open || !awaiting || !history) return;
 
   var openRows = [];
@@ -313,7 +298,7 @@ function renderBoeTab() {
     .map(function (item) {
       var listings = (listingsByItem[item.id] || [])
         .map(function (l) {
-          return escHtml(_boeDate(l.listed_at)) + ': ' + formatGold(l.price) + 'g';
+          return _esc(_boeDate(l.listed_at)) + ': ' + formatGold(l.price) + 'g';
         })
         .join('<br>');
       var cells =
@@ -322,10 +307,10 @@ function renderBoeTab() {
         '</td>' +
         _boeTeamCell(item) +
         '<td>' +
-        escHtml(item.finder_name || '') +
+        _esc(item.finder_name || '') +
         '</td>' +
         '<td>' +
-        escHtml(_boeDate(item.found_at)) +
+        _esc(_boeDate(item.found_at)) +
         '</td>' +
         '<td>' +
         _boeBadge(item.status) +
@@ -393,10 +378,10 @@ function renderBoeTab() {
         '</td>' +
         _boeTeamCell(item) +
         '<td>' +
-        escHtml(item.finder_name || '') +
+        _esc(item.finder_name || '') +
         '</td>' +
         '<td>' +
-        escHtml(_boeDate(item.sold_at)) +
+        _esc(_boeDate(item.sold_at)) +
         '</td>' +
         '<td>' +
         _boeMoney(item.sale_price) +
@@ -436,13 +421,13 @@ function renderBoeTab() {
         '</td>' +
         _boeTeamCell(item) +
         '<td>' +
-        escHtml(item.finder_name || '') +
+        _esc(item.finder_name || '') +
         '</td>' +
         '<td>' +
         _boeBadge(item.status) +
         '</td>' +
         '<td>' +
-        escHtml(_boeDate(item.payout_paid_at || item.retired_at)) +
+        _esc(_boeDate(item.payout_paid_at || item.retired_at)) +
         '</td>' +
         '<td>' +
         _boeMoney(item.sale_price) +
@@ -500,7 +485,7 @@ function _boeAction(id, btnEl, rpcName, params, onSuccess) {
         return;
       }
       onSuccess(result);
-      renderBoeTab();
+      renderBoeManage();
     })
     .catch(function (err) {
       restore();
@@ -520,7 +505,13 @@ function confirmBoeListing(id, btnEl) {
   }
   var note = noteEl ? String(noteEl.value).trim() : '';
   return _boeAction(id, btnEl, 'boe_record_listing', { p_id: id, p_price: price, p_note: note || null }, function () {
-    writeAuditLog('BoE Listed', 'boe_items', id, item.item_name + ' listed for ' + formatGold(price) + 'g');
+    writeAuditLog(
+      'BoE Listed',
+      'boe_items',
+      id,
+      item.item_name + ' listed for ' + formatGold(price) + 'g',
+      item.team_id
+    );
     item.status = 'listed';
     _boeListings.push({ boe_item_id: id, listed_at: new Date().toISOString(), price: price, note: note || null });
   });
@@ -553,7 +544,8 @@ function confirmBoeSale(id, btnEl) {
         formatGold(price) +
         'g; finder payout ' +
         formatGold(split.finder_payout || 0) +
-        'g'
+        'g',
+      item.team_id
     );
   });
 }
@@ -568,7 +560,8 @@ function markBoePaid(id, btnEl) {
       'BoE Payout Paid',
       'boe_items',
       id,
-      item.item_name + ': ' + formatGold(item.finder_payout || 0) + 'g to ' + (item.finder_name || 'unknown finder')
+      item.item_name + ': ' + formatGold(item.finder_payout || 0) + 'g to ' + (item.finder_name || 'unknown finder'),
+      item.team_id
     );
   });
 }
@@ -580,6 +573,6 @@ function retireBoe(id, btnEl) {
   return _boeAction(id, btnEl, 'boe_retire', { p_id: id }, function () {
     item.status = 'retired';
     item.retired_at = new Date().toISOString();
-    writeAuditLog('BoE Retired', 'boe_items', id, item.item_name);
+    writeAuditLog('BoE Retired', 'boe_items', id, item.item_name, item.team_id);
   });
 }
