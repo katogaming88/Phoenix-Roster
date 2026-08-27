@@ -8,6 +8,14 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.75.0] - 2026-08-27
+
+### Frontend
+
+- Loot tab's Import History now lists each player's actual items when you expand an import, instead of just a count. Officers can see what everyone received on a given raid night at a glance.
+
+---
+
 ## [3.74.1] - 2026-08-27
 
 ### Frontend
