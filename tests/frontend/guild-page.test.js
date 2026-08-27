@@ -27,6 +27,7 @@ const PAGE_ELS = [
   'maintenanceBanner',
   'maintenanceBannerMessage',
   'guildTeams',
+  'guildHeaderLinks',
   'streamersView',
   'guildNews',
   'guildBios',
@@ -868,6 +869,78 @@ describe('About the Guild (#782)', () => {
     expect((html.match(/<img/g) || []).length).toBe(1);
     expect(html).toContain('&lt;img');
     expect(html).not.toContain('" onerror="');
+  });
+});
+
+describe('external links (#783)', () => {
+  it('renders the guild links from GUILD_LINKS, not a second copy', async () => {
+    // #777 hardcoded these two URLs into guild.html's header markup. They are
+    // constants in common.js precisely so there is one copy, and a duplicate
+    // that nothing reads is one nobody updates.
+    const { sandbox, els } = makeSandbox();
+    await sandbox.bootGuildPage();
+    expect(els.guildHeaderLinks.innerHTML).toContain(sandbox.GUILD_LINKS.raiderIoUrl);
+    expect(els.guildHeaderLinks.innerHTML).toContain(sandbox.GUILD_LINKS.armoryUrl);
+  });
+
+  it('gives each guild link an accessible name', async () => {
+    const { sandbox, els } = makeSandbox();
+    await sandbox.bootGuildPage();
+    const html = els.guildHeaderLinks.innerHTML;
+    expect(html).toContain('aria-label="Raider.IO"');
+    expect(html).toContain('aria-label="Armory"');
+  });
+
+  it('puts a Logs link on a team that has a WarcraftLogs URL', async () => {
+    const { sandbox, els } = makeSandbox({
+      teamSettings: [
+        { team_id: 1, config: { externalLinks: { warcraftLogsUrl: 'https://warcraftlogs.com/guild/1' } } },
+        { team_id: 2, config: {} },
+        { team_id: 3, config: {} }
+      ]
+    });
+    await sandbox.bootGuildPage();
+    const cards = els.guildTeams.innerHTML.split('<div class="guild-team-card">');
+    const phoenix = cards.find((c) => c.includes('team=phoenix'));
+    const hellfire = cards.find((c) => c.includes('team=hellfire'));
+    expect(phoenix).toContain('https://warcraftlogs.com/guild/1');
+    expect(phoenix).toContain('Logs');
+    expect(hellfire).not.toContain('Logs');
+  });
+
+  it('omits Logs everywhere when no team has one set', async () => {
+    const { sandbox, els } = makeSandbox();
+    await sandbox.bootGuildPage();
+    expect(els.guildTeams.innerHTML).toContain('View roster');
+    expect(els.guildTeams.innerHTML).not.toContain('Logs');
+  });
+
+  it('escapes the WarcraftLogs URL', async () => {
+    const { sandbox, els } = makeSandbox({
+      teamSettings: [{ team_id: 1, config: { externalLinks: { warcraftLogsUrl: 'x" onclick="alert(1)' } } }]
+    });
+    await sandbox.bootGuildPage();
+    expect(els.guildTeams.innerHTML).not.toContain('" onclick="');
+  });
+
+  it('still renders the guild links when the team_settings read fails', async () => {
+    const { sandbox, els } = makeSandbox({ teamSettingsError: { message: 'nope' } });
+    await sandbox.bootGuildPage();
+    expect(els.guildHeaderLinks.innerHTML).toContain(sandbox.GUILD_LINKS.raiderIoUrl);
+    expect(els.guildTeams.innerHTML).not.toContain('Logs');
+  });
+
+  it('renders them during maintenance, which leaves the header visible', async () => {
+    const { sandbox, els } = makeSandbox({ maintenance: { maintenance_mode: true, maintenance_message: 'Back soon' } });
+    await sandbox.bootGuildPage();
+    expect(els.guildHeaderLinks.innerHTML).toContain(sandbox.GUILD_LINKS.armoryUrl);
+  });
+
+  it('renders them with no supabase client at all', async () => {
+    const { sandbox, els } = makeSandbox();
+    sandbox.supabaseClient = null;
+    await sandbox.bootGuildPage();
+    expect(els.guildHeaderLinks.innerHTML).toContain(sandbox.GUILD_LINKS.armoryUrl);
   });
 });
 
