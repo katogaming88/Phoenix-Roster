@@ -337,45 +337,6 @@ Three sub-tabs: **Signups**, **Pending Roster**, **History**.
 
 ---
 
-## BoE Sales tab
-
-Runs the auction lifecycle for BoEs the guild sells -- **found -> listed -> sold -> paid**, plus
-**retire** for anything that never moves. Raiders report a find from the public **BoE** tab
-(#746); everything after the report happens here.
-
-- **The tab is guild-wide, not per-team** (#765). It shows every find you're allowed to see
-  rather than only the team whose page you're on, because BoEs are guild property. A BoE manager
-  or site admin sees all four teams, Wrathless included; a plain officer sees the teams they
-  staff. Every row names the finding team, History included -- that's credit, not a
-  disambiguator.
-- **Actions need the BoE manager grant** (#766), assigned by a site admin on the site admin
-  dashboard. Without it the tab is read-only: totals and rows, no buttons. The grant is
-  guild-wide, so a manager is authorized on every team's finds rather than one team's.
-
-A summary strip and three sections:
-
-- **Summary** -- **Guild income to date** (the guild's cut across sold and paid rows) and
-  **Outstanding payouts** (what's still owed on sold-but-unpaid rows). Per-team find counts and
-  gold raised sit underneath, shown only once more than one team has found something.
-- **Open** -- found and listed items, oldest first. **Record Listing** logs a price and an
-  optional note; an item can be listed more than once, so relists accumulate rather than replace
-  each other. **Record Sale** takes the sale price and computes the split. **Retire** closes out
-  anything that isn't going to sell.
-- **Awaiting Payout** -- sold items, oldest first, with the split already computed.
-  **Mark Paid** once the finder has their gold; the row moves to History.
-- **History** -- paid and retired items, newest first.
-
-**The split** is guild policy and guild-wide rather than per-team, set on the site admin
-dashboard: the finder gets a percentage of the gross sale, or a flat floor below a pivot sale
-price, whichever is larger, and never more than the sale itself. The guild keeps the rest and
-absorbs the AH cut. Both constants are snapshotted onto each sold row, so editing the policy
-later never rewrites what an earlier sale paid out.
-
-Price fields take the formats people actually paste -- `250,000`, `250000g`, `1 000 000`.
-Anything else is refused with a message on the row rather than read as zero.
-
----
-
 ## Season Settings tab
 
 Three sub-tabs: **Settings**, **Raid Progression**, **History**.
@@ -522,3 +483,49 @@ the tab at all. In practice this is usually one or two people per team. Five sub
   - Clear Self-Received -- wipes self-reported item requests
   - There's no undo -- double-check the season selector and what's about to be cleared before
     confirming
+
+---
+
+## BoE Sales (on the guild page, not this dashboard)
+
+Reached from the **Guild** link in the top nav, at the bottom of the guild page. It lived
+on this dashboard as a tab until #774 moved it: BoEs are guild property and the read spans
+every team, so a per-team page was the wrong home, and a BoE manager who runs the guild
+bank without staffing a raid team could not open this dashboard at all. An old
+`?tab=boe` bookmark redirects there.
+
+Runs the auction lifecycle for BoEs the guild sells -- **found -> listed -> sold -> paid**, plus
+**retire** for anything that never moves. Raiders report a find from the public **BoE** tab
+(#746) or the guild page card; everything after the report happens here.
+
+- **The tab is guild-wide, not per-team** (#765). It shows every find you're allowed to see
+  rather than only the team whose page you're on, because BoEs are guild property. A BoE manager
+  or site admin sees all four teams, Wrathless included; a plain officer sees the teams they
+  staff. Every row names the finding team, History included -- that's credit, not a
+  disambiguator.
+- **Actions need the BoE manager grant** (#766), assigned by a site admin on the site admin
+  dashboard. Without it it is read-only: totals and rows, no buttons. Officers on any team
+  see it read-only; everyone else does not see the section at all. The grant is
+  guild-wide, so a manager is authorized on every team's finds rather than one team's.
+
+A summary strip and three sections:
+
+- **Summary** -- **Guild income to date** (the guild's cut across sold and paid rows) and
+  **Outstanding payouts** (what's still owed on sold-but-unpaid rows). Per-team find counts and
+  gold raised sit underneath, shown only once more than one team has found something.
+- **Open** -- found and listed items, oldest first. **Record Listing** logs a price and an
+  optional note; an item can be listed more than once, so relists accumulate rather than replace
+  each other. **Record Sale** takes the sale price and computes the split. **Retire** closes out
+  anything that isn't going to sell.
+- **Awaiting Payout** -- sold items, oldest first, with the split already computed.
+  **Mark Paid** once the finder has their gold; the row moves to History.
+- **History** -- paid and retired items, newest first.
+
+**The split** is guild policy and guild-wide rather than per-team, set on the site admin
+dashboard: the finder gets a percentage of the gross sale, or a flat floor below a pivot sale
+price, whichever is larger, and never more than the sale itself. The guild keeps the rest and
+absorbs the AH cut. Both constants are snapshotted onto each sold row, so editing the policy
+later never rewrites what an earlier sale paid out.
+
+Price fields take the formats people actually paste -- `250,000`, `250000g`, `1 000 000`.
+Anything else is refused with a message on the row rather than read as zero.

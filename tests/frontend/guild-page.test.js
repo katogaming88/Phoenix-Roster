@@ -20,6 +20,7 @@ const COMMON_JS = readFileSync(path.join(HERE, '../../js/common.js'), 'utf8');
 const GUILD_JS = readFileSync(path.join(HERE, '../../js/guild.js'), 'utf8');
 const STREAMERS_JS = readFileSync(path.join(HERE, '../../js/streamers.js'), 'utf8');
 const NEWS_JS = readFileSync(path.join(HERE, '../../js/news.js'), 'utf8');
+const BOE_MANAGE_JS = readFileSync(path.join(HERE, '../../js/boe-manage.js'), 'utf8');
 
 const PAGE_ELS = [
   'main-content',
@@ -35,6 +36,11 @@ const PAGE_ELS = [
   'guildBoeTeam',
   'guildBoeGo',
   'boe',
+  'boe-manage',
+  'guildBoeSummary',
+  'guildBoeOpen',
+  'guildBoeAwaiting',
+  'guildBoeHistory',
   'guildWhoAmI',
   'guildAuthBtn',
   'guildVersion'
@@ -48,6 +54,8 @@ function builder(result) {
     eq: () => b,
     order: () => b,
     limit: () => b,
+    // fetchAllPaged() walks pages by keyset; without this the BoE read throws.
+    gt: () => b,
     maybeSingle: () => Promise.resolve(result),
     then: (resolve, reject) => Promise.resolve(result).then(resolve, reject)
   };
@@ -72,6 +80,9 @@ function makeSandbox({
   teamSettings = ALL_OPEN,
   teamSettingsError = null,
   streamers = null,
+  // Which of the three access RPCs answer true (#774).
+  boeRpc = {},
+  boeItems = [],
   news = [],
   newsFails = false,
   bios = null,
@@ -108,6 +119,10 @@ function makeSandbox({
   PAGE_ELS.forEach(el);
 
   const client = {
+    rpc: (name) => {
+      calls.push({ kind: 'rpc', name });
+      return Promise.resolve({ data: boeRpc[name] === true, error: null });
+    },
     auth: {
       getSession: () => Promise.resolve({ data: { session } }),
       onAuthStateChange: () => {},
@@ -131,6 +146,10 @@ function makeSandbox({
       }
       if (table === 'streamers') {
         return builder({ data: streamers, error: null });
+      }
+      if (table === 'boe_items' || table === 'boe_listings') {
+        const rows = table === 'boe_items' ? boeItems : [];
+        return builder({ data: rows, error: null, count: rows.length });
       }
       if (table === 'team_settings') {
         if (teamSettingsError) return builder({ data: null, error: teamSettingsError });
@@ -185,12 +204,17 @@ function makeSandbox({
   // Same order guild.html loads them in.
   vm.runInContext(STREAMERS_JS, sandbox, { filename: 'streamers.js' });
   vm.runInContext(NEWS_JS, sandbox, { filename: 'news.js' });
+  vm.runInContext(BOE_MANAGE_JS, sandbox, { filename: 'boe-manage.js' });
   vm.runInContext(GUILD_JS, sandbox, { filename: 'guild.js' });
   sandbox.supabaseClient = client;
   return { sandbox, els, calls, el };
 }
 
 const SESSION = { user: { id: 'auth-1', user_metadata: { full_name: 'Rex' } } };
+
+// renderGuildSections() kicks off the BoE read without awaiting it, so
+// bootGuildPage() resolves before those rows land.
+const flush = () => new Promise((r) => setTimeout(r, 0)).then(() => new Promise((r) => setTimeout(r, 0)));
 
 function claim(teamId, nameRealm) {
   return { team_id: teamId, players: [{ name_realm: nameRealm }] };
@@ -1118,5 +1142,86 @@ describe('boot with no supabase client', () => {
     sandbox.supabaseClient = null;
     await expect(sandbox.bootGuildPage()).resolves.not.toThrow();
     expect(els.guildLoading.style.display).toBe('none');
+  });
+});
+
+// Who sees the lifecycle surface, and who can act in it. js/boe-manage.js
+// takes canManage as a parameter and asks nothing about identity, so this is
+// the only place the three grants are resolved.
+describe('BoE lifecycle access (#774)', () => {
+  const shown = (els) => els['boe-manage'].style.display !== 'none';
+
+  it('is hidden for a signed-out visitor, and asks nothing about them', async () => {
+    const { sandbox, els, calls } = makeSandbox();
+    await sandbox.bootGuildPage();
+    expect(shown(els)).toBe(false);
+    expect(calls.filter((c) => c.kind === 'rpc')).toEqual([]);
+  });
+
+  it('is hidden for a signed-in raider who holds none of the three grants', async () => {
+    const { sandbox, els } = makeSandbox({ session: SESSION });
+    await sandbox.bootGuildPage();
+    expect(shown(els)).toBe(false);
+  });
+
+  it('shows read-only for a plain team officer', async () => {
+    const { sandbox, els } = makeSandbox({
+      session: SESSION,
+      boeRpc: { is_any_team_officer: true }
+    });
+    await sandbox.bootGuildPage();
+    for (let i = 0; i < 8; i++) await flush();
+    expect(shown(els)).toBe(true);
+    expect(els.guildBoeSummary.innerHTML).toContain('assigned by a site admin');
+    expect(els.guildBoeOpen.innerHTML).not.toContain('<button');
+  });
+
+  it('shows with actions for a BoE manager holding no officer role anywhere', async () => {
+    // The person #774 was filed for: #766 decoupled the grant from
+    // team_members precisely so the guild bank can be run by someone who
+    // staffs no raid team.
+    const { sandbox, els } = makeSandbox({
+      session: SESSION,
+      boeRpc: { is_boe_manager: true },
+      boeItems: [{ id: 1, team_id: 4, item_name: 'Wrathless Find', status: 'found', found_at: '2026-08-20T01:00:00Z' }]
+    });
+    await sandbox.bootGuildPage();
+    for (let i = 0; i < 8; i++) await flush();
+    expect(shown(els)).toBe(true);
+    expect(els.guildBoeOpen.innerHTML).toContain('Record Listing');
+  });
+
+  it('shows with actions for a site admin, whom is_boe_manager does not cover', async () => {
+    const { sandbox, els } = makeSandbox({
+      session: SESSION,
+      boeRpc: { is_site_admin: true },
+      boeItems: [{ id: 1, team_id: 1, item_name: 'Phoenix Find', status: 'found', found_at: '2026-08-20T01:00:00Z' }]
+    });
+    await sandbox.bootGuildPage();
+    for (let i = 0; i < 8; i++) await flush();
+    expect(shown(els)).toBe(true);
+    expect(els.guildBoeOpen.innerHTML).toContain('Record Listing');
+  });
+
+  it('stays hidden when no team runs BoE, even for a manager', async () => {
+    const { sandbox, els } = makeSandbox({
+      session: SESSION,
+      boeRpc: { is_boe_manager: true },
+      teamSettings: [1, 2, 3, 4].map((id) => ({ team_id: id, config: { features: { boe: false } } }))
+    });
+    await sandbox.bootGuildPage();
+    expect(shown(els)).toBe(false);
+  });
+
+  // The whole point of moving off officer.html. Every section after BoE has
+  // to still render, which is what the swallowed-error shape broke last time.
+  it('does not stop the sections after it', async () => {
+    const { sandbox, els } = makeSandbox({
+      session: SESSION,
+      boeRpc: { is_boe_manager: true },
+      bios: [{ name: 'Kat', bio: 'Guild lead' }]
+    });
+    await sandbox.bootGuildPage();
+    expect(els.guildBios.innerHTML).toContain('Kat');
   });
 });

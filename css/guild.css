@@ -252,6 +252,19 @@
   max-width: 18rem;
 }
 
+/* ── BoE lifecycle (#774) ───────────────────────────────────────────── */
+
+/* Open / Awaiting Payout / History. A real <h3> under the section's <h2>,
+   where the officer tab this replaced drew the same three labels with a
+   styled <div> -- three group names a screen reader could not navigate by. */
+.guild-boe-subheading {
+  font-family: 'Cinzel', serif;
+  font-size: 1.05rem;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin: 1.5rem 0 0.75rem;
+}
+
 /* ── Keyboard and motion baselines (scoped, see header) ─────────────── */
 
 .guild-page :focus-visible {

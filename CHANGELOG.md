@@ -8,7 +8,7 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
-## [3.75.1] - 2026-08-27
+## [3.76.1] - 2026-08-27
 
 ### Frontend
 
@@ -17,6 +17,15 @@ with each release split into `### Frontend` (drives the version number) and
 ### Backend
 
 - `rclc_loot` gains a `response` column, populated by `import_rclc_loot()` going forward. Existing rows stay unset -- not recoverable without each import's original RCLC export.
+
+---
+
+## [3.76.0] - 2026-08-27
+
+### Frontend
+
+- The BoE Sales surface moved off the officer dashboard and onto the guild page, where the Guild link in the top nav reaches it. It was always guild-wide (the read spans every team, and the manager grant is guild-wide), so a per-team dashboard was the wrong home for it. More to the point, a BoE manager who runs the guild bank without staffing a raid team could not open the officer dashboard at all, so the grant landed on someone who then could not use it. Officers on any team still see it read-only; recording listings, sales, payouts and retirements still needs the manager grant. An old `officer.html?tab=boe` bookmark redirects to the new location.
+- Audit entries for BoE actions now name the team that found the item. They previously named whichever team dashboard the officer happened to be looking at, so a cross-team find was logged against the wrong team.
 
 ---
 

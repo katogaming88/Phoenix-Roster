@@ -369,7 +369,7 @@ function submitRevokeGuildOfficer(discordId) {
 // they live here rather than on a team's officer dashboard.
 //
 // admin.html loads this file and nothing else, so common.js's and
-// tab-boe.js's helpers are not reachable here. The two gold helpers below are
+// js/boe-manage.js's helpers are not reachable here. The two gold helpers below are
 // private copies for that reason, the same situation js/signup.js documents.
 
 // ── BoE managers
@@ -471,7 +471,7 @@ function submitRevokeBoeManager(discordId) {
 
 // ── BoE payout constants
 
-// Private copies of tab-boe.js's parseGoldInput()/formatGold() -- that bundle
+// Private copies of js/boe-manage.js's parseGoldInput()/formatGold() -- that bundle
 // is the officer dashboard's and isn't loaded on this page. Named distinctly
 // so a grep for either original still finds only the officer-side call sites.
 // This one adds the safe-integer bound the officer inputs don't need: floor

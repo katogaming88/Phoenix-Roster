@@ -55,7 +55,6 @@ function switchTab(name) {
     buildSignupsTab();
   }
   if (name === 'requests') buildRequestsTab();
-  if (name === 'boe') buildBoeTab();
   if (name === 'bis') {
     resetBisSubTab();
     buildBisTab();
@@ -376,6 +375,15 @@ function buildOfficerDashboard() {
   // already showing, or every such refresh would redundantly re-click and
   // rebuild the tab the officer is already sitting on.
   var tabParam = (location.search.match(/[?&]tab=([^&]+)/) || [])[1];
+  // The BoE tab moved to the guild page in #774. openTab() would find no
+  // button and silently no-op, leaving an old bookmark on Roster with no
+  // explanation, so send it where the surface actually lives. Only a real
+  // deep link can carry this now: switchTab() can no longer sync '?tab=boe'
+  // back into the URL, because there is no BoE button to make active.
+  if (tabParam === 'boe') {
+    window.location.href = 'guild.html#boe-manage';
+    return;
+  }
   if (tabParam) {
     var activeNav = document.querySelector('.nav-item.active');
     var alreadyOnTab = activeNav && (activeNav.getAttribute('onclick') || '').indexOf("'" + tabParam + "'") !== -1;

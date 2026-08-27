@@ -77,7 +77,7 @@ boe:
   - changed-files:
     - any-glob-to-any-file:
       - js/boe.js
-      - js/tabs/tab-boe.js
+      - js/boe-manage.js
       - supabase/functions/boe-webhook/**
 
 # The guild-wide landing page. guild.html is deliberately absent for the same

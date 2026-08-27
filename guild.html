@@ -8,8 +8,8 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=3.75.1">
-<link rel="stylesheet" href="css/guild.css?v=3.75.1">
+<link rel="stylesheet" href="css/styles.css?v=3.76.1">
+<link rel="stylesheet" href="css/guild.css?v=3.76.1">
 </head>
 <body class="guild-page">
 <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -82,6 +82,18 @@
     </div>
   </section>
 
+  <!-- BoE lifecycle, for officers, BoE managers and site admins (#774). Hidden
+       for everyone else, including signed-out visitors: this page is public, so
+       the section is absent rather than showing a denial that advertises it. -->
+  <section class="guild-section" id="boe-manage" aria-labelledby="boeManageHeading" style="display:none;">
+    <h2 id="boeManageHeading">BoE Sales</h2>
+    <p class="guild-section-intro">Every find across the guild, from reported through to the finder being paid. Recording a listing, a sale, a payout or a retirement needs the BoE manager grant; other officers see this read-only.</p>
+    <div id="guildBoeSummary"></div>
+    <div id="guildBoeOpen"></div>
+    <div id="guildBoeAwaiting"></div>
+    <div id="guildBoeHistory"></div>
+  </section>
+
   <section class="guild-section" id="about" aria-labelledby="aboutHeading">
     <h2 id="aboutHeading">About the Guild</h2>
     <p class="guild-section-intro">We Go Again is a Tichondrius guild raiding across three teams, from AOTC-paced groups to Mythic progression. The officers below run the guild as a whole; each team has its own officers on its About tab.</p>
@@ -97,10 +109,11 @@
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/common.js?v=3.75.1"></script>
-<script src="js/news.js?v=3.75.1"></script>
-<script src="js/streamers.js?v=3.75.1"></script>
-<script src="js/guild.js?v=3.75.1"></script>
+<script src="js/common.js?v=3.76.1"></script>
+<script src="js/news.js?v=3.76.1"></script>
+<script src="js/streamers.js?v=3.76.1"></script>
+<script src="js/boe-manage.js?v=3.76.1"></script>
+<script src="js/guild.js?v=3.76.1"></script>
 <script>
 document.getElementById('guildVersion').textContent = VERSION;
 </script>
