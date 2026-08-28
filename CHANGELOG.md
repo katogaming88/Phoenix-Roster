@@ -8,6 +8,26 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.77.8] - 2026-08-28
+
+### Frontend
+
+- Team Officer Bios (Officer Bios tab) failed to save with "Not authorized"
+  for any officer who isn't a team leader -- the Save button was never
+  gated to team leaders even though the underlying write path was. Any
+  officer can now add or edit their team's officer bio cards.
+
+### Backend
+
+- New `set_team_officer_bios()` RPC, the write path for
+  `team_settings.config -> 'teamOfficerBios'` -- gated on officer/team
+  leader/site admin/guild officer, same admission set as the `players` and
+  `attendance` officer-write policies, instead of riding the generic
+  `set_team_setting()` RPC whose `team_settings` write policy is
+  team-leader-only.
+
+---
+
 ## [3.77.7] - 2026-08-28
 
 ### Frontend
