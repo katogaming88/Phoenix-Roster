@@ -8,6 +8,28 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.77.3] - 2026-08-27
+
+### Frontend
+
+- Every page now has a **Skip to main content** link as its first stop, so
+  reaching the actual content by keyboard no longer means tabbing through the
+  whole header and nav on every page. The guild page already had one, and it
+  now moves focus rather than only scrolling.
+- Every page now has a single main landmark and a real footer, which is how
+  someone using a screen reader jumps straight to the content or to the site
+  info. The public page had been repeating its footer ten times, once inside
+  each view, and had no main landmark at all.
+- The officer dashboard's Season Settings, Officer Bios and Admin panel
+  headings, and the site admin page's section headings, sit at the right level
+  now. Both pages had been skipping a level, which makes the heading list a
+  screen reader builds read as though sections are missing.
+- Each page's navigation bars are named ("Site", "Dashboard sections"), so a
+  page with both no longer offers two identical unlabelled ones. The officer
+  dashboard's own nav item is marked as the current page.
+
+---
+
 ## [3.77.2] - 2026-08-27
 
 ### Frontend
