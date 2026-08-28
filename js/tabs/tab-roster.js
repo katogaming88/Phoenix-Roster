@@ -865,7 +865,8 @@ function addPlayerToRosterSupabase(payload) {
             is_trial: !!payload.isTrial,
             is_bench: false,
             join_date: payload.joinDate || null,
-            archived_at: null
+            archived_at: null,
+            archived_reason: null
           };
           return row
             ? supabaseClient.from('players').update(fields).eq('id', row.id).select('id').single()
@@ -986,6 +987,18 @@ function cancelRemovePlayer(firstName) {
 
 function executeRemovePlayer(nameRealm, firstName) {
   var msgEl = document.getElementById('removePlayerMsg-' + firstName);
+  var reasonEl = document.getElementById('removePlayerReason-' + firstName);
+  var reason = reasonEl ? reasonEl.value : '';
+
+  if (!reason) {
+    if (msgEl) {
+      msgEl.textContent = 'Failed: pick a reason first.';
+      msgEl.style.color = 'var(--melee)';
+      msgEl.style.display = '';
+    }
+    return;
+  }
+
   if (msgEl) {
     msgEl.textContent = 'Removing...';
     msgEl.style.color = 'var(--text-muted)';
@@ -1003,14 +1016,15 @@ function executeRemovePlayer(nameRealm, firstName) {
 
   // Soft-delete via archived_at, not a hard DELETE -- an archived row keeps
   // its id so rclc_loot/bis_items/attendance rows referencing it stay intact
-  // (docs/database-decisions.md).
+  // (docs/database-decisions.md). archived_reason (#476) captures why, for
+  // spotting retention patterns across seasons.
   supabaseClient
     .from('players')
-    .update({ archived_at: new Date().toISOString() })
+    .update({ archived_at: new Date().toISOString(), archived_reason: reason })
     .eq('id', player.id)
     .then(function (result) {
       if (result.error) throw new Error(result.error.message);
-      return writeAuditLog('Player Removed', 'players', player.id, null);
+      return writeAuditLog('Player Removed', 'players', player.id, reason);
     })
     .then(function () {
       if (DATA && DATA.roster) {

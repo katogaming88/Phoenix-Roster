@@ -1265,6 +1265,11 @@
           "name": "bonus_roll_encounter_id",
           "type": "integer",
           "nullable": true
+        },
+        {
+          "name": "archived_reason",
+          "type": "text",
+          "nullable": true
         }
       ],
       "indexes": [
@@ -1287,6 +1292,16 @@
         }
       ],
       "constraints": [
+        {
+          "name": "players_archived_reason_check",
+          "type": "CHECK",
+          "def": "CHECK (((archived_reason IS NULL) OR (archived_reason = ANY (ARRAY['schedule_conflict'::text, 'performance'::text, 'drama'::text, 'moved_guilds'::text, 'switching_mains'::text, 'other'::text]))))",
+          "table": "public.players",
+          "referenced_table": "",
+          "columns": [
+            "archived_reason"
+          ]
+        },
         {
           "name": "players_tier_pieces_equipped_range",
           "type": "CHECK",

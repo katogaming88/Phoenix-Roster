@@ -8,6 +8,23 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.77.5] - 2026-08-28
+
+### Frontend
+
+- Removing a player from the roster now asks for a reason (schedule
+  conflict, performance, drama, moved guilds, switching mains, other)
+  before the removal goes through, so officers can see why people left
+  the roster over time.
+
+### Backend
+
+- `players.archived_reason` -- new column, sibling to `archived_at`,
+  restricted to a fixed set of reasons via a CHECK constraint. Cleared
+  when a previously-removed player rejoins.
+
+---
+
 ## [3.77.4] - 2026-08-27
 
 ### Frontend
