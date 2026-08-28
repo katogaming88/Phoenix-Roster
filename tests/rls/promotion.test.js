@@ -228,6 +228,73 @@ describe('main swap archiving', () => {
       expect(newPlayer.join_date_text).toBe('2024-03-15');
     });
   });
+
+  it("carries the old character's attendance rows to the new one (20260828122750)", async () => {
+    await withTxn(async (q, asOfficer) => {
+      const old = await q(
+        `insert into public.players (team_id, name_realm, class_spec_id, join_date)
+         values (1, 'Oldmain3-Illidan', 1, '2024-03-15') returning id`
+      );
+      const oldId = old.rows[0].id;
+      await q(
+        `insert into public.attendance (team_id, player_id, raid_date, status)
+         values (1, $1, '2026-08-01', 'Present'), (1, $1, '2026-08-08', 'Present')`,
+        [oldId]
+      );
+
+      const res = await promote(asOfficer, APPROVED_SIGNUP, true, oldId);
+      const newId = res.rows[0].player_id;
+
+      const oldRows = await q('select count(*)::int as n from public.attendance where player_id = $1', [oldId]);
+      expect(oldRows.rows[0].n).toBe(0);
+      const newRows = await q(
+        'select raid_date::text as raid_date from public.attendance where player_id = $1 order by raid_date',
+        [newId]
+      );
+      expect(newRows.rows.map((r) => r.raid_date)).toEqual(['2026-08-01', '2026-08-08']);
+    });
+  });
+
+  it('swap onto a reactivated alt with its own attendance keeps the alt row on colliding raid dates', async () => {
+    await withTxn(async (q, asOfficer) => {
+      const old = await q(
+        `insert into public.players (team_id, name_realm, class_spec_id, join_date)
+         values (1, 'Oldmain4-Illidan', 1, '2024-03-15') returning id`
+      );
+      const oldId = old.rows[0].id;
+      const alt = await q(
+        `insert into public.players (team_id, name_realm, class_spec_id, join_date, archived_at)
+         values (1, $1, 1, '2023-06-01', now()) returning id`,
+        [APPROVED_NAME]
+      );
+      const altId = alt.rows[0].id;
+      await q(
+        `insert into public.attendance (team_id, player_id, raid_date, status)
+         values (1, $1, '2026-08-01', 'No Show')`,
+        [altId]
+      );
+      await q(
+        `insert into public.attendance (team_id, player_id, raid_date, status)
+         values (1, $1, '2026-08-01', 'Present'), (1, $1, '2026-08-08', 'Present')`,
+        [oldId]
+      );
+
+      const res = await promote(asOfficer, APPROVED_SIGNUP, true, oldId);
+      const newId = res.rows[0].player_id;
+      expect(newId).toBe(altId);
+
+      const rows = await q(
+        'select raid_date::text as raid_date, status from public.attendance where player_id = $1 order by raid_date',
+        [newId]
+      );
+      expect(rows.rows).toEqual([
+        { raid_date: '2026-08-01', status: 'No Show' },
+        { raid_date: '2026-08-08', status: 'Present' }
+      ]);
+      const stranded = await q('select count(*)::int as n from public.attendance where player_id = $1', [oldId]);
+      expect(stranded.rows[0].n).toBe(1);
+    });
+  });
 });
 
 describe('season_signups_player_only_when_added CHECK', () => {

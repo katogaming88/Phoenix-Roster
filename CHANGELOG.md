@@ -28,6 +28,21 @@ with each release split into `### Frontend` (drives the version number) and
   into both their Team and Guild cards). Removing a photo now only clears
   it from that one card; it no longer deletes the underlying file.
 
+### Backend
+
+- `add_signup_to_roster()` carries `team_member_id` and `join_date` from an
+  archived character to the new one on a main-swap, but never repointed
+  attendance -- `attendance.player_id` FKs straight to `players(id)`, so the
+  swapped-from character silently kept all raid attendance history while the
+  new character started at zero. Now repoints attendance rows to the new
+  character on swap, skipping any raid date the destination already has its
+  own row for (a reactivated alt with independent attendance)
+  (`20260828122750_add_signup_to_roster_carry_attendance.sql`).
+- One-time backfill for two Team 1 main-swaps pushed earlier today, before
+  the fix above landed: Atilladapun-Area 52 -> Spoonsakimbo-Area 52 and
+  Phluffy-Stormrage -> Fluffyfistz-Stormrage
+  (`20260828122825_backfill_mainswap_attendance_2026-08-28.sql`).
+
 ---
 
 ## [3.77.8] - 2026-08-28
