@@ -228,7 +228,7 @@ function renderSignupStep() {
       '<div class="signup-radio-group">';
     specData.specs.forEach(function (s) {
       html +=
-        '<label class="signup-radio-label"><input type="radio" name="mainSpec" value="' +
+        '<label class="signup-radio-label"><input class="sr-only" type="radio" name="mainSpec" value="' +
         s +
         '"' +
         (signupData.mainSpec === s ? ' checked' : '') +
@@ -252,7 +252,7 @@ function renderSignupStep() {
         '<div class="signup-radio-group">';
       specData.roles.forEach(function (r) {
         html +=
-          '<label class="signup-radio-label"><input type="radio" name="primaryRole" value="' +
+          '<label class="signup-radio-label"><input class="sr-only" type="radio" name="primaryRole" value="' +
           r +
           '"' +
           (signupData.role === r ? ' checked' : '') +
@@ -391,7 +391,7 @@ function buildOffSpecHTML(specs, mainSpec, selectedOffSpecs) {
     .forEach(function (s) {
       var checked = selectedOffSpecs && selectedOffSpecs.indexOf(s) !== -1 ? ' checked' : '';
       html +=
-        '<label class="signup-checkbox-label"><input type="checkbox" name="offSpec" value="' +
+        '<label class="signup-checkbox-label"><input class="sr-only" type="checkbox" name="offSpec" value="' +
         s +
         '"' +
         checked +
