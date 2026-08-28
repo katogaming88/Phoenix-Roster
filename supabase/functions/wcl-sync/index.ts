@@ -395,6 +395,15 @@ async function refreshPerformance(
 // write, same reasoning as refreshPerformance/js/tabs/tab-scoring.js: no
 // WCL secret is needed to aggregate rows that are already in the table.
 const SEASON_REPORT_LIMIT = 50;
+// reports(guildID, limit) returns only one page (up to SEASON_REPORT_LIMIT
+// reports) per call, oldest-first -- a guild with more than 50 reports since
+// season start (raid nights plus every M+/delve/alt log anyone uploaded)
+// silently never reaches its most recent nights on a single-page fetch. Same
+// has_more_pages pagination wcl-progression-sync already needed for the same
+// reason (see its REPORT_LIMIT/MAX_REPORT_PAGES comment). 20 pages * 50/page
+// = 1000 reports per run -- far beyond any real season, just a guard against
+// an unexpected has_more_pages loop.
+const MAX_REPORT_PAGES = 20;
 const ALT_RUN_KEYWORD = 'Alt';
 
 async function getReportZone(token: string, reportCode: string): Promise<number | null> {
@@ -561,17 +570,26 @@ async function refreshAttendance(
   );
   const startTimeMs = seasonStart && !Number.isNaN(Date.parse(seasonStart)) ? Date.parse(seasonStart) : null;
 
-  const reportsQuery = `
-    query {
-      reportData {
-        reports(guildID: ${guildId}, limit: ${SEASON_REPORT_LIMIT}${startTimeMs ? `, startTime: ${startTimeMs}` : ''}) {
-          data { code title startTime }
+  const reports: Array<{ code: string; title: string; startTime: number }> = [];
+  let page = 1;
+  for (;;) {
+    const reportsQuery = `
+      query {
+        reportData {
+          reports(guildID: ${guildId}, limit: ${SEASON_REPORT_LIMIT}, page: ${page}${startTimeMs ? `, startTime: ${startTimeMs}` : ''}) {
+            data { code title startTime }
+            has_more_pages
+          }
         }
       }
-    }
-  `;
-  const reportsResult = await wclQuery(token, reportsQuery);
-  const reports = (reportsResult?.data?.reportData?.reports?.data || []).filter((r: any) => r.title);
+    `;
+    const pageResult = await wclQuery(token, reportsQuery);
+    const pageReports = pageResult?.data?.reportData?.reports;
+    if (!pageReports) break;
+    reports.push(...(pageReports.data || []).filter((r: any) => r.title));
+    if (!pageReports.has_more_pages || page >= MAX_REPORT_PAGES) break;
+    page++;
+  }
   if (reports.length === 0) return { success: true, mainNights: 0, excluded: 0 };
 
   // A report already recorded (some attendance row references its code) is
