@@ -42,6 +42,17 @@ with each release split into `### Frontend` (drives the version number) and
   the fix above landed: Atilladapun-Area 52 -> Spoonsakimbo-Area 52 and
   Phluffy-Stormrage -> Fluffyfistz-Stormrage
   (`20260828122825_backfill_mainswap_attendance_2026-08-28.sql`).
+- `remove_player_priority_order()` (#821) only got wired into the explicit
+  "Remove Player" roster flow -- a main-swap also archives a player but never
+  called it, so a swapped-from character kept showing up in the officer
+  Priority tab, the RCLootCouncil export, and the addon's Full Priority
+  Order panel indefinitely. `add_signup_to_roster()` now clears the archived
+  character's live-season `priority_order` rows itself, so it applies no
+  matter which UI path does the archiving
+  (`20260828124142_add_signup_to_roster_clear_priority_order.sql`). One-time
+  backfill for the same two Team 1 swaps above, which had already left 20
+  and 26 stale rows in the live season
+  (`20260828124211_backfill_mainswap_priority_order_2026-08-28.sql`).
 
 ---
 
