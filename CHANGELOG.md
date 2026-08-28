@@ -8,6 +8,31 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.77.7] - 2026-08-28
+
+### Frontend
+
+- Removing a player from the roster now also clears them out of the current
+  season's standing priority order, not just the roster itself --
+  previously a departed raider kept showing up ranked in the officer
+  Priority tab, the RCLootCouncil export, and the addon's Full Priority
+  Order panel until every item/track they were ranked on happened to get
+  manually re-suggested.
+
+### Backend
+
+- `remove_player_priority_order()` -- new RPC, called by the roster
+  removal flow, deletes a player's `priority_order` rows for the given
+  team/season only (past seasons are left alone as a historical record).
+- `build_rclc_export()`'s wishlist-status attachment double-counted a
+  player who has two `item_preferences` rows for the same item (e.g. a
+  dual-wieldable weapon's separate Weapon + Off Hand picks) -- they showed
+  up twice in the ranked list, with an arbitrary one of their two statuses
+  winning. Deduped to one row per player+item, keeping the best-tier
+  status, same precedence `generate_priority_order()` already uses.
+
+---
+
 ## [3.77.6] - 2026-08-28
 
 ### Frontend

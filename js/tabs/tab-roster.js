@@ -1044,6 +1044,23 @@ function executeRemovePlayer(nameRealm, firstName) {
       return writeAuditLog('Player Removed', 'players', player.id, reason + ': ' + detail);
     })
     .then(function () {
+      // Drop them from the current season's standing priority_order too --
+      // generate_priority_order() already excludes archived players from
+      // new suggestions, but that only takes effect per item/track the next
+      // time an officer regenerates it; without this a removed raider kept
+      // showing up in the Priority tab, the RCLootCouncil export, and the
+      // addon's Full Priority Order panel until every item happened to get
+      // re-suggested. Best-effort: a failure here shouldn't block or
+      // rollback the roster removal itself, so it's a fire-and-forget catch.
+      return supabaseClient
+        .rpc('remove_player_priority_order', {
+          p_team_id: _teamCfg.supabaseTeamId,
+          p_season: resolveSeasonViewCode(),
+          p_player_id: player.id
+        })
+        .catch(function () {});
+    })
+    .then(function () {
       if (DATA && DATA.roster) {
         DATA.roster = DATA.roster.filter(function (p) {
           return p.nameRealm !== nameRealm;
