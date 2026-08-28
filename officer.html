@@ -11,8 +11,8 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=3.77.2">
-  <link rel="stylesheet" href="css/officer.css?v=3.77.2">
+  <link rel="stylesheet" href="css/styles.css?v=3.77.3">
+  <link rel="stylesheet" href="css/officer.css?v=3.77.3">
   <!-- Hover tooltips for Buff Coverage's spell links (#491) and item links
        (Priority tab/BiS grid, itemNameBlockHtml(), #567). Auto-attaches to
        any <a class="wowhead">. whTooltips must be set before power.js loads
@@ -24,6 +24,8 @@
 </head>
 
 <body>
+
+  <a class="skip-link" href="#main-content">Skip to main content</a>
 
   <header class="header">
     <a href="index.html" class="header-link">
@@ -46,7 +48,7 @@
     <div class="header-divider"></div>
   </header>
 
-  <nav class="site-nav" id="siteNav">
+  <nav class="site-nav" id="siteNav" aria-label="Site">
     <div id="siteNavItems" style="display:contents;"></div>
     <div class="site-nav-right">
       <select id="teamSwitcherSelect" class="team-switcher" title="Switch team"></select>
@@ -57,7 +59,7 @@
         <div id="notifDropdown" class="notif-dropdown" style="display:none"></div>
       </div>
       <button class="site-nav-item site-nav-discord" id="navDiscord" onclick="loginWithDiscord()" data-tooltip="Sign in with Discord -- officers with a claimed character bypass the password prompt">Login with Discord</button>
-      <button class="site-nav-item active" id="navOfficer" data-tooltip="Officer dashboard -- manage roster, loot, and signups">Officer Access</button>
+      <button class="site-nav-item active" id="navOfficer" aria-current="page" data-tooltip="Officer dashboard -- manage roster, loot, and signups">Officer Access</button>
     </div>
   </nav>
 
@@ -65,6 +67,11 @@
     <h2 style="margin-bottom:0.5rem;">Down for Maintenance</h2>
     <p id="maintenanceBannerMessage"></p>
   </div>
+
+  <!-- #maintenanceBanner stays outside main on purpose: showMaintenanceBanner()
+       hides #main-content, so a banner inside it would hide itself the moment
+       maintenance mode turns on. #officerPrompt stays outside as a dialog. -->
+  <main id="main-content" class="app-main" tabindex="-1">
 
   <div id="loadingMsg" class="state-msg">
     <div class="spinner"></div><br>Loading roster data...
@@ -90,7 +97,7 @@
       <div id="officerStats" class="officer-stats"></div>
 
       <div class="officer-body">
-        <nav class="officer-sidebar">
+        <nav class="officer-sidebar" aria-label="Dashboard sections">
           <button class="nav-item active" onclick="switchTab('roster')">Roster</button>
           <button class="nav-item" id="navTab-loot" onclick="switchTab('loot')">Loot</button>
           <button class="nav-item" id="navTab-priority" onclick="switchTab('priority')">Priority<span
@@ -649,7 +656,7 @@
 
               <!-- Season Name -->
               <div class="help-ref-card">
-                <h4 class="help-ref-title">Season<button class="help-btn" onclick="toggleHelp('help-season-name')" title="Show help">?</button></h4>
+                <h3 class="help-ref-title">Season<button class="help-btn" onclick="toggleHelp('help-season-name')" title="Show help">?</button></h3>
                 <div id="help-season-name" class="help-tip">
                   The season number, applied to every loot entry imported through RCLootCouncil while it's set. It is used by the <strong>Season</strong> toolbar dropdown to let you filter loot, fairness, and attendance to a specific season. Set this before importing loot at the start of each season.
                 </div>
@@ -664,7 +671,7 @@
 
               <!-- Season View -->
               <div class="help-ref-card">
-                <h4 class="help-ref-title">Season View<button class="help-btn" onclick="toggleHelp('help-season-view')" title="Show help">?</button></h4>
+                <h3 class="help-ref-title">Season View<button class="help-btn" onclick="toggleHelp('help-season-view')" title="Show help">?</button></h3>
                 <div id="help-season-view" class="help-tip">
                   The season your team is planning items/BiS/Wishlist for. Leave on "Live season" and the Priority tab, BiS grid, and Wishlist reflect the current raiding season automatically. Pick a specific season here to prep its item catalog, wishlist, and BiS ahead of time without touching the live raid -- useful once that season's raid zone has been added in Season Settings > Raid Progression for a future tier, or to audit an old season's data. A season with no items imported yet will show up empty here -- that's expected until the import for it is finished. This does not affect signups; see Signup Season below for that.
                 </div>
@@ -680,7 +687,7 @@
 
               <!-- Signup Season -->
               <div class="help-ref-card">
-                <h4 class="help-ref-title">Signup Season<button class="help-btn" onclick="toggleHelp('help-signup-season')" title="Show help">?</button></h4>
+                <h3 class="help-ref-title">Signup Season<button class="help-btn" onclick="toggleHelp('help-signup-season')" title="Show help">?</button></h3>
                 <div id="help-signup-season" class="help-tip">
                   The season label stamped on every signup submission. Set this before opening signups so all responses are tagged correctly. If left blank, signups will be recorded with no season and will not appear in the Missing Signups list once a season is set. Independent of Season View above -- signups for the next tier routinely open while the current tier is still live, so this can point ahead of the live season without changing what raiders see on the Priority tab/BiS/Wishlist.
                 </div>
@@ -695,7 +702,7 @@
 
               <!-- Season Start Date -->
               <div class="help-ref-card">
-                <h4 class="help-ref-title">Season Start Date<button class="help-btn" onclick="toggleHelp('help-season-start')" title="Show help">?</button></h4>
+                <h3 class="help-ref-title">Season Start Date<button class="help-btn" onclick="toggleHelp('help-season-start')" title="Show help">?</button></h3>
                 <div id="help-season-start" class="help-tip">
                   Raids before this date are excluded from attendance scoring. Players who joined after this date use their own join date as the window start instead, so latecomers are not penalised for raids they were not part of.
                   Leave blank to include all raids in scoring (no season filter).
@@ -722,7 +729,7 @@
 
               <!-- Season End Date -->
               <div class="help-ref-card">
-                <h4 class="help-ref-title">Season End Date<button class="help-btn" onclick="toggleHelp('help-season-end')" title="Show help">?</button></h4>
+                <h3 class="help-ref-title">Season End Date<button class="help-btn" onclick="toggleHelp('help-season-end')" title="Show help">?</button></h3>
                 <div id="help-season-end" class="help-tip">
                   Optional. Set this when the current season closes before the next one officially begins -- for example if your guild stops raiding a week before the new patch. When set, it acts as the upper bound for attendance and loot filtering in the season selector. Leave blank if the season is still active.
                 </div>
@@ -747,7 +754,7 @@
 
               <!-- Trial Promotion Thresholds -->
               <div class="help-ref-card">
-                <h4 class="help-ref-title">Trial Promotion Thresholds</h4>
+                <h3 class="help-ref-title">Trial Promotion Thresholds</h3>
                 <p class="signup-officer-note" style="margin-top:0.25rem;">A trial player appears in the promotion alert once they meet both thresholds.</p>
                 <div style="display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;margin-top:0.75rem;">
                   <span style="font-size:0.92rem;color:var(--text-muted);">At least</span>
@@ -762,7 +769,7 @@
 
               <!-- Target Roster Sizes -->
               <div class="help-ref-card">
-                <h4 class="help-ref-title">Target Roster Sizes<button class="help-btn" onclick="toggleHelp('help-roster-targets')" title="Show help">?</button></h4>
+                <h3 class="help-ref-title">Target Roster Sizes<button class="help-btn" onclick="toggleHelp('help-roster-targets')" title="Show help">?</button></h3>
                 <div id="help-roster-targets" class="help-tip">
                   Shown to raiders signing up as Tank or Healer: once the confirmed roster plus already-approved incoming roster meets or exceeds a target, they see a nudge to consider DPS/backup instead, or talk to an officer. Leave a field blank to skip the nudge for that role -- raiders still see the plain count either way.
                 </div>
@@ -778,7 +785,7 @@
 
               <!-- WarcraftLogs Guild URL -->
               <div class="help-ref-card">
-                <h4 class="help-ref-title">WarcraftLogs Guild URL<button class="help-btn" onclick="toggleHelp('help-wcl-url')" title="Show help">?</button></h4>
+                <h3 class="help-ref-title">WarcraftLogs Guild URL<button class="help-btn" onclick="toggleHelp('help-wcl-url')" title="Show help">?</button></h3>
                 <div id="help-wcl-url" class="help-tip">
                   This team's own WarcraftLogs guild page (Phoenix and Hellfire log separately even though both are part of the same WoW guild). Powers the WCL icon link in the header. Raider.IO and Armory are guild-wide and not set here.
                 </div>
@@ -795,7 +802,7 @@
 
             <div id="season-sub-progression" class="season-settings-wrap" style="display:none;">
               <div class="help-ref-card">
-                <h4 class="help-ref-title">Raid Progression<button class="help-btn" onclick="toggleHelp('help-raid-prog')" title="Show help">?</button></h4>
+                <h3 class="help-ref-title">Raid Progression<button class="help-btn" onclick="toggleHelp('help-raid-prog')" title="Show help">?</button></h3>
                 <div id="help-raid-prog" class="help-tip">
                   Track mythic progression and AOTC dates for each raid in the current season. Multiple raids can be added (e.g. if the season has a mid-patch raid). Boss kill dates appear on the public landing page. Mini-raids (single or small standalone bosses) have no AOTC date. Progression is archived with the season when you archive it.
                 </div>
@@ -812,7 +819,7 @@
             <div id="season-sub-history" class="season-settings-wrap" style="display:none;">
               <!-- Archive Season -->
               <div class="help-ref-card">
-                <h4 class="help-ref-title">Start New Season<button class="help-btn" onclick="toggleHelp('help-season-archive')" title="Show help">?</button></h4>
+                <h3 class="help-ref-title">Start New Season<button class="help-btn" onclick="toggleHelp('help-season-archive')" title="Show help">?</button></h3>
                 <div id="help-season-archive" class="help-tip">
                   Archiving pushes the current Season Name, Start Date, and End Date into the season history list, then applies the next season's name automatically. Once archived, the season appears in the <strong>Season</strong> toolbar dropdown so officers can filter by it at any time.
                   <br><br>
@@ -843,7 +850,7 @@
 
               <!-- Season History -->
               <div id="seasonHistoryWrap" class="help-ref-card" style="display:none;">
-                <h4 class="help-ref-title">Season History</h4>
+                <h3 class="help-ref-title">Season History</h3>
                 <p class="signup-officer-note" style="margin-top:0.25rem;">Past archived seasons. Use Unarchive to restore a season as the active one if it was archived by mistake. The most recent entry offers a WCL Performance Baseline fetch -- run once at the start of a new season to seed heroic priority scoring before the new season has raid reports of its own.</p>
                 <div id="seasonHistoryList" style="margin-top:0.5rem;font-size:0.92rem;color:var(--text-muted);"></div>
                 <div id="seasonUnarchiveConfirm"
@@ -864,7 +871,7 @@
           <!-- Officer Bios tab -->
           <div id="tab-bios" class="tab-panel">
             <div class="help-ref-card" style="margin-bottom:1rem;">
-              <h4 class="help-ref-title">Team Officer Bios<button class="help-btn" onclick="toggleHelp('help-bios')" title="Show help">?</button></h4>
+              <h3 class="help-ref-title">Team Officer Bios<button class="help-btn" onclick="toggleHelp('help-bios')" title="Show help">?</button></h3>
               <div id="help-bios" class="help-tip">
                 Shown publicly on the "About" tab's Team sub-tab, in the order listed here. Picking a roster player fills in their name/character name/class/spec to start -- everything stays editable afterward and isn't kept in sync with the roster, so it's fine for someone who has since changed spec or left. Photos are static files -- send Kat the image you want to use and she'll add it and give you the path to paste into the Image Path field. Leave blank to show initials instead.
               </div>
@@ -880,7 +887,7 @@
             </div>
 
             <div class="help-ref-card" style="margin-bottom:1rem;">
-              <h4 class="help-ref-title">Guild Officer Bios<button class="help-btn" onclick="toggleHelp('help-guild-bios')" title="Show help">?</button></h4>
+              <h3 class="help-ref-title">Guild Officer Bios<button class="help-btn" onclick="toggleHelp('help-guild-bios')" title="Show help">?</button></h3>
               <div id="help-guild-bios" class="help-tip">
                 Shown publicly on the "About" tab's Guild sub-tab, in the order listed here -- guild-wide, the same list on every team's site, not per-team like Team Officer Bios above. Only site admins can edit this, since it isn't any one team's content to own.
               </div>
@@ -993,7 +1000,7 @@
             <!-- Properties -->
             <div id="admin-sub-properties">
               <div class="help-ref-card" style="margin-bottom:1rem;">
-                <h4 class="help-ref-title">Season Properties</h4>
+                <h3 class="help-ref-title">Season Properties</h3>
                 <p class="signup-officer-note" style="margin-top:0.25rem;">Live read of this team's season settings and feature flags.</p>
                 <div id="adminPropsContent" style="margin-top:0.75rem;"></div>
                 <div style="margin-top:0.75rem;">
@@ -1005,7 +1012,7 @@
             <!-- Data Export -->
             <div id="admin-sub-export" style="display:none;">
               <div class="help-ref-card">
-                <h4 class="help-ref-title">Export All Data</h4>
+                <h3 class="help-ref-title">Export All Data</h3>
                 <p class="signup-officer-note" style="margin-top:0.25rem;">Downloads everything currently loaded in the dashboard (roster, loot history, priority order, BiS lists, season history, scoring) as a JSON file. No GAS call -- exports from the in-memory cache.</p>
                 <div style="margin-top:0.75rem;">
                   <button class="btn btn-gold" id="adminExportBtn" onclick="downloadExport()">Download JSON</button>
@@ -1025,7 +1032,7 @@
                 Takes effect immediately.</p>
               <div id="adminFeatureFlagsContent"></div>
 
-              <h4 class="help-ref-title" style="margin-top:1.5rem;">Wishlist Tier Labels</h4>
+              <h3 class="help-ref-title" style="margin-top:1.5rem;">Wishlist Tier Labels</h3>
               <p class="signup-officer-note" style="margin-bottom:0.75rem;">Rename the 5 raider wishlist status tiers for this team. Leave a field blank to keep the default. Colors stay the same either way.</p>
               <div id="adminWishlistLabelsContent"></div>
             </div>
@@ -1078,10 +1085,13 @@
         </div>
       </div>
     </div>
-    <div class="footer">We Go Again &middot; <span class="team-name">Phoenix</span> &middot; v<span id="versionNum"></span> &middot; <a
-        class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank"
-        rel="noopener">Changelog</a></div>
   </div>
+
+  </main>
+
+  <footer class="footer">We Go Again &middot; <span class="team-name">Phoenix</span> &middot; v<span id="versionNum"></span> &middot; <a
+      class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank"
+      rel="noopener">Changelog</a></footer>
 
   <!-- Priority Edit modal -->
   <div id="prioEditModal" class="officer-prompt">
@@ -1195,27 +1205,27 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/common.js?v=3.77.2"></script>
-  <script src="js/discord.js?v=3.77.2"></script>
-  <script src="js/officer.js?v=3.77.2"></script>
-  <script src="js/tabs/tab-roster.js?v=3.77.2"></script>
-  <script src="js/tabs/tab-conflicts.js?v=3.77.2"></script>
-  <script src="js/tabs/tab-fairness.js?v=3.77.2"></script>
-  <script src="js/tabs/tab-attendance.js?v=3.77.2"></script>
-  <script src="js/tabs/tab-bench-fairness.js?v=3.77.2"></script>
-  <script src="js/tabs/tab-signups.js?v=3.77.2"></script>
-  <script src="js/tabs/tab-requests.js?v=3.77.2"></script>
-  <script src="js/tabs/tab-bis.js?v=3.77.2"></script>
-  <script src="js/tabs/tab-pending-roster.js?v=3.77.2"></script>
-  <script src="js/tabs/tab-mplus.js?v=3.77.2"></script>
-  <script src="js/tabs/tab-priority.js?v=3.77.2"></script>
-  <script src="js/tabs/tab-audit.js?v=3.77.2"></script>
-  <script src="js/tabs/tab-reports.js?v=3.77.2"></script>
-  <script src="js/tabs/tab-season.js?v=3.77.2"></script>
-  <script src="js/tabs/tab-bios.js?v=3.77.2"></script>
-  <script src="js/tabs/tab-loot-import.js?v=3.77.2"></script>
-  <script src="js/tabs/tab-scoring.js?v=3.77.2"></script>
-  <script src="js/tabs/tab-admin.js?v=3.77.2"></script>
+  <script src="js/common.js?v=3.77.3"></script>
+  <script src="js/discord.js?v=3.77.3"></script>
+  <script src="js/officer.js?v=3.77.3"></script>
+  <script src="js/tabs/tab-roster.js?v=3.77.3"></script>
+  <script src="js/tabs/tab-conflicts.js?v=3.77.3"></script>
+  <script src="js/tabs/tab-fairness.js?v=3.77.3"></script>
+  <script src="js/tabs/tab-attendance.js?v=3.77.3"></script>
+  <script src="js/tabs/tab-bench-fairness.js?v=3.77.3"></script>
+  <script src="js/tabs/tab-signups.js?v=3.77.3"></script>
+  <script src="js/tabs/tab-requests.js?v=3.77.3"></script>
+  <script src="js/tabs/tab-bis.js?v=3.77.3"></script>
+  <script src="js/tabs/tab-pending-roster.js?v=3.77.3"></script>
+  <script src="js/tabs/tab-mplus.js?v=3.77.3"></script>
+  <script src="js/tabs/tab-priority.js?v=3.77.3"></script>
+  <script src="js/tabs/tab-audit.js?v=3.77.3"></script>
+  <script src="js/tabs/tab-reports.js?v=3.77.3"></script>
+  <script src="js/tabs/tab-season.js?v=3.77.3"></script>
+  <script src="js/tabs/tab-bios.js?v=3.77.3"></script>
+  <script src="js/tabs/tab-loot-import.js?v=3.77.3"></script>
+  <script src="js/tabs/tab-scoring.js?v=3.77.3"></script>
+  <script src="js/tabs/tab-admin.js?v=3.77.3"></script>
   <script>
 renderSiteNav('officer');
 document.getElementById('versionNum').textContent = VERSION;

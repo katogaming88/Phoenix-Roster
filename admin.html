@@ -11,11 +11,13 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=3.77.2">
-  <link rel="stylesheet" href="css/admin.css?v=3.77.2">
+  <link rel="stylesheet" href="css/styles.css?v=3.77.3">
+  <link rel="stylesheet" href="css/admin.css?v=3.77.3">
 </head>
 
 <body>
+
+  <a class="skip-link" href="#main-content">Skip to main content</a>
 
   <header class="header">
     <a href="admin.html" class="header-link">
@@ -26,12 +28,14 @@
     <div class="header-divider"></div>
   </header>
 
-  <nav class="site-nav">
+  <nav class="site-nav" aria-label="Site">
     <a href="index.html" class="site-nav-item">Back to Roster</a>
     <div class="site-nav-right">
       <span class="site-nav-item" id="adminWhoAmI"></span>
     </div>
   </nav>
+
+  <main id="main-content" class="app-main" tabindex="-1">
 
   <div id="adminLoadingMsg" class="state-msg">
     <div class="spinner"></div><br>Checking access...
@@ -49,7 +53,7 @@
 
   <div id="adminView" class="admin-page" style="display:none;">
     <div class="officer-body">
-      <nav class="officer-sidebar">
+      <nav class="officer-sidebar" aria-label="Dashboard sections">
         <button class="nav-item active" onclick="switchTab('teams')">Teams</button>
         <button class="nav-item" onclick="switchTab('siteadmins')">Site Admins</button>
         <button class="nav-item" onclick="switchTab('guildofficers')">Guild Officers</button>
@@ -116,7 +120,7 @@
         </div>
 
         <div id="tab-boe" class="tab-panel">
-          <h3 class="admin-section-title">BoE Managers</h3>
+          <h2 class="admin-section-title">BoE Managers</h2>
           <p class="admin-hint">Whoever runs the guild bank (#748). The grant is what allows recording a listing, a
             sale, a payout or a retirement -- plain officers see the BoE tab read-only without it. It is guild-wide,
             so a manager handles finds from every team regardless of which one they raid on, and it stays until it is
@@ -139,7 +143,7 @@
             <tbody id="adminBoeManagerRows"></tbody>
           </table>
 
-          <h3 class="admin-section-title">Payout Settings</h3>
+          <h2 class="admin-section-title">Payout Settings</h2>
           <p class="admin-hint">Guild-wide, not per-team: the guild runs one payout policy across every team. Each
             sale records the values in force at the time, so changing these does not rewrite what past finders were
             paid.</p>
@@ -215,10 +219,12 @@
     </div>
   </div>
 
+  </main>
+
   <!-- Create/edit team modal -->
   <div id="teamModal" class="modal-overlay" style="display:none;">
     <div class="modal-box">
-      <h3 class="modal-title" id="teamModalTitle">New Team</h3>
+      <h2 class="modal-title" id="teamModalTitle">New Team</h2>
       <input type="hidden" id="teamModalId">
       <label class="admin-field-label" for="teamModalName">Name</label>
       <input type="text" id="teamModalName" placeholder="Team name">
@@ -232,12 +238,12 @@
     </div>
   </div>
 
-  <div class="footer">We Go Again &middot; Site Admin &middot; <a class="footer-link"
+  <footer class="footer">We Go Again &middot; Site Admin &middot; <a class="footer-link"
       href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank"
-      rel="noopener">Changelog</a></div>
+      rel="noopener">Changelog</a></footer>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/admin.js?v=3.77.2"></script>
+  <script src="js/admin.js?v=3.77.3"></script>
 
 </body>
 

@@ -7,11 +7,13 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=3.77.2">
+<link rel="stylesheet" href="css/styles.css?v=3.77.3">
 <script>var whTooltips = {colorLinks: true, iconizeLinks: true, iconSize: 'small'};</script>
 <script src="https://wow.zamimg.com/widgets/power.js"></script>
 </head>
 <body>
+
+<a class="skip-link" href="#main-content">Skip to main content</a>
 
 <header class="header">
   <a href="index.html" class="header-link">
@@ -34,7 +36,7 @@
   <div class="header-divider"></div>
 </header>
 
-<nav class="site-nav" id="siteNav">
+<nav class="site-nav" id="siteNav" aria-label="Site">
   <div id="siteNavItems" style="display:contents;"></div>
   <div class="site-nav-right">
     <select id="teamSwitcherSelect" class="team-switcher" title="Switch team"></select>
@@ -77,6 +79,11 @@
   <p id="maintenanceBannerMessage"></p>
 </div>
 
+<!-- #maintenanceBanner and #streamLiveTopbar stay outside main on purpose:
+     showMaintenanceBanner() hides #main-content, so a banner inside it would
+     hide itself the moment maintenance mode turns on. -->
+<main id="main-content" class="app-main" tabindex="-1">
+
 <div id="loadingMsg" class="state-msg">
   <div class="spinner"></div><br>Loading roster data...
 </div>
@@ -107,7 +114,6 @@
     <div id="landingProgression"></div>
     <div id="landingLoot" class="pub-loot"></div>
   </div>
-  <div class="footer">We Go Again &middot; <span class="team-name">Phoenix</span> &middot; v<span id="versionNum"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a> &middot; <a class="footer-link footer-icon-link" href="https://patreon.com/Katorri" target="_blank" rel="noopener" aria-label="Support on Patreon" title="Support on Patreon"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M0 .48v23.04h4.22V.48zm15.385 0c-4.764 0-8.641 3.88-8.641 8.65 0 4.755 3.877 8.623 8.641 8.623 4.75 0 8.615-3.868 8.615-8.623C24 4.36 20.136.48 15.385.48z"/></svg></a></div>
 </div>
 
 <!-- Roster -->
@@ -120,7 +126,6 @@
     <div id="rosterView" class="pub-loot"></div>
     <div id="incomingRosterSection" class="pub-loot" style="display:none"></div>
   </div>
-  <div class="footer">We Go Again &middot; <span class="team-name">Phoenix</span> &middot; v<span id="versionNumRoster"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a> &middot; <a class="footer-link footer-icon-link" href="https://patreon.com/Katorri" target="_blank" rel="noopener" aria-label="Support on Patreon" title="Support on Patreon"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M0 .48v23.04h4.22V.48zm15.385 0c-4.764 0-8.641 3.88-8.641 8.65 0 4.755 3.877 8.623 8.641 8.623 4.75 0 8.615-3.868 8.615-8.623C24 4.36 20.136.48 15.385.48z"/></svg></a></div>
 </div>
 
 <!-- Streamers -->
@@ -128,7 +133,6 @@
   <div class="landing-body">
     <div id="streamersView" class="pub-loot"></div>
   </div>
-  <div class="footer">We Go Again &middot; <span class="team-name">Team Phoenix</span> &middot; v<span id="versionNumStreamers"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a> &middot; <a class="footer-link footer-icon-link" href="https://patreon.com/Katorri" target="_blank" rel="noopener" aria-label="Support on Patreon" title="Support on Patreon"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M0 .48v23.04h4.22V.48zm15.385 0c-4.764 0-8.641 3.88-8.641 8.65 0 4.755 3.877 8.623 8.641 8.623 4.75 0 8.615-3.868 8.615-8.623C24 4.36 20.136.48 15.385.48z"/></svg></a></div>
 </div>
 
 <!-- History -->
@@ -136,7 +140,6 @@
   <div class="landing-body">
     <div id="historyView"></div>
   </div>
-  <div class="footer">We Go Again &middot; <span class="team-name">Phoenix</span> &middot; v<span id="versionNumHistory"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a> &middot; <a class="footer-link footer-icon-link" href="https://patreon.com/Katorri" target="_blank" rel="noopener" aria-label="Support on Patreon" title="Support on Patreon"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M0 .48v23.04h4.22V.48zm15.385 0c-4.764 0-8.641 3.88-8.641 8.65 0 4.755 3.877 8.623 8.641 8.623 4.75 0 8.615-3.868 8.615-8.623C24 4.36 20.136.48 15.385.48z"/></svg></a></div>
 </div>
 
 <!-- About -->
@@ -178,7 +181,6 @@
       </div>
     </div>
   </div>
-  <div class="footer">We Go Again &middot; <span class="team-name">Phoenix</span> &middot; v<span id="versionNumAbout"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a> &middot; <a class="footer-link footer-icon-link" href="https://patreon.com/Katorri" target="_blank" rel="noopener" aria-label="Support on Patreon" title="Support on Patreon"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M0 .48v23.04h4.22V.48zm15.385 0c-4.764 0-8.641 3.88-8.641 8.65 0 4.755 3.877 8.623 8.641 8.623 4.75 0 8.615-3.868 8.615-8.623C24 4.36 20.136.48 15.385.48z"/></svg></a></div>
 </div>
 
 <!-- News -->
@@ -186,13 +188,11 @@
   <div class="landing-body">
     <div id="newsView" class="pub-loot"></div>
   </div>
-  <div class="footer">We Go Again &middot; <span class="team-name">Phoenix</span> &middot; v<span id="versionNumNews"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a> &middot; <a class="footer-link footer-icon-link" href="https://patreon.com/Katorri" target="_blank" rel="noopener" aria-label="Support on Patreon" title="Support on Patreon"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M0 .48v23.04h4.22V.48zm15.385 0c-4.764 0-8.641 3.88-8.641 8.65 0 4.755 3.877 8.623 8.641 8.623 4.75 0 8.615-3.868 8.615-8.623C24 4.36 20.136.48 15.385.48z"/></svg></a></div>
 </div>
 
 <!-- Profile -->
 <div id="profileViewWrap" class="view">
   <div id="profileView"></div>
-  <div class="footer">We Go Again &middot; <span class="team-name">Phoenix</span> &middot; v<span id="versionNumProfile"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a> &middot; <a class="footer-link footer-icon-link" href="https://patreon.com/Katorri" target="_blank" rel="noopener" aria-label="Support on Patreon" title="Support on Patreon"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M0 .48v23.04h4.22V.48zm15.385 0c-4.764 0-8.641 3.88-8.641 8.65 0 4.755 3.877 8.623 8.641 8.623 4.75 0 8.615-3.868 8.615-8.623C24 4.36 20.136.48 15.385.48z"/></svg></a></div>
 </div>
 
 <!-- Signup -->
@@ -206,7 +206,6 @@
       <div id="signupForm"></div>
     </div>
   </div>
-  <div class="footer">We Go Again &middot; <span class="team-name">Phoenix</span> &middot; v<span id="versionNumSignup"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a> &middot; <a class="footer-link footer-icon-link" href="https://patreon.com/Katorri" target="_blank" rel="noopener" aria-label="Support on Patreon" title="Support on Patreon"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M0 .48v23.04h4.22V.48zm15.385 0c-4.764 0-8.641 3.88-8.641 8.65 0 4.755 3.877 8.623 8.641 8.623 4.75 0 8.615-3.868 8.615-8.623C24 4.36 20.136.48 15.385.48z"/></svg></a></div>
 </div>
 
 <!-- BoE Found (#746) -- replaces the BoE Google Form. Works with zero login
@@ -240,7 +239,6 @@
       </div>
     </section>
   </div>
-  <div class="footer">We Go Again &middot; <span class="team-name">Phoenix</span> &middot; v<span id="versionNumBoe"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a> &middot; <a class="footer-link footer-icon-link" href="https://patreon.com/Katorri" target="_blank" rel="noopener" aria-label="Support on Patreon" title="Support on Patreon"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M0 .48v23.04h4.22V.48zm15.385 0c-4.764 0-8.641 3.88-8.641 8.65 0 4.755 3.877 8.623 8.641 8.623 4.75 0 8.615-3.868 8.615-8.623C24 4.36 20.136.48 15.385.48z"/></svg></a></div>
 </div>
 
 <!-- Help -->
@@ -320,8 +318,11 @@
 
     </div>
   </div>
-  <div class="footer">We Go Again &middot; <span class="team-name">Phoenix</span> &middot; v<span id="versionNumHelp"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a> &middot; <a class="footer-link footer-icon-link" href="https://patreon.com/Katorri" target="_blank" rel="noopener" aria-label="Support on Patreon" title="Support on Patreon"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M0 .48v23.04h4.22V.48zm15.385 0c-4.764 0-8.641 3.88-8.641 8.65 0 4.755 3.877 8.623 8.641 8.623 4.75 0 8.615-3.868 8.615-8.623C24 4.36 20.136.48 15.385.48z"/></svg></a></div>
 </div>
+
+</main>
+
+<footer class="footer">We Go Again &middot; <span class="team-name">Phoenix</span> &middot; v<span id="versionNum"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a> &middot; <a class="footer-link footer-icon-link" href="https://patreon.com/Katorri" target="_blank" rel="noopener" aria-label="Support on Patreon" title="Support on Patreon"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M0 .48v23.04h4.22V.48zm15.385 0c-4.764 0-8.641 3.88-8.641 8.65 0 4.755 3.877 8.623 8.641 8.623 4.75 0 8.615-3.868 8.615-8.623C24 4.36 20.136.48 15.385.48z"/></svg></a></footer>
 
 <!-- Discord claiming modal -->
 <div id="discordClaimModal" class="modal-overlay" style="display:none">
@@ -352,20 +353,20 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/common.js?v=3.77.2"></script>
-<script src="js/discord.js?v=3.77.2"></script>
-<script src="js/officer-quick-actions.js?v=3.77.2"></script>
-<script src="js/streamers.js?v=3.77.2"></script>
-<script src="js/news.js?v=3.77.2"></script>
-<script src="js/roster.js?v=3.77.2"></script>
-<script src="js/contact.js?v=3.77.2"></script>
-<script src="js/signup.js?v=3.77.2"></script>
-<script src="js/wishlist.js?v=3.77.2"></script>
-<script src="js/bonusRoll.js?v=3.77.2"></script>
-<script src="js/boe.js?v=3.77.2"></script>
+<script src="js/common.js?v=3.77.3"></script>
+<script src="js/discord.js?v=3.77.3"></script>
+<script src="js/officer-quick-actions.js?v=3.77.3"></script>
+<script src="js/streamers.js?v=3.77.3"></script>
+<script src="js/news.js?v=3.77.3"></script>
+<script src="js/roster.js?v=3.77.3"></script>
+<script src="js/contact.js?v=3.77.3"></script>
+<script src="js/signup.js?v=3.77.3"></script>
+<script src="js/wishlist.js?v=3.77.3"></script>
+<script src="js/bonusRoll.js?v=3.77.3"></script>
+<script src="js/boe.js?v=3.77.3"></script>
 <script>
 renderSiteNav('public');
-['versionNum','versionNumProfile','versionNumSignup','versionNumRoster','versionNumStreamers','versionNumHistory','versionNumAbout','versionNumNews','versionNumHelp','versionNumBoe'].forEach(function(id){document.getElementById(id).textContent=VERSION;});
+document.getElementById('versionNum').textContent = VERSION;
 document.getElementById('headerTeamName').textContent = TEAM_NAME;
 document.querySelectorAll('.team-name').forEach(function(el){el.textContent=TEAM_NAME;});
 if (TEAM_SLUG !== 'phoenix') {

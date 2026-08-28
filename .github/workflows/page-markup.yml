@@ -1,0 +1,38 @@
+name: Page markup check
+
+# Pure node, no database -- the same cheap job shape as the asset version check.
+# The markup test is the only thing in CI that reads HTML, and it lived behind
+# the changelog-check workflow's path filter until #437, which has no *.html
+# entry: editing a page never ran it. Its own workflow, triggered by the pages
+# it judges, is what makes the landmark and heading rules hold going forward.
+on:
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'officer.html'
+      - 'admin.html'
+      - 'guild.html'
+      # The guild-page rules also read js/guild.js.
+      - 'js/guild.js'
+      - 'tests/ci/page-markup.test.js'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/page-markup.yml'
+
+# A new push to the PR supersedes any still-running check on the old commit.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  page-markup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Run page markup check
+        run: npx vitest run tests/ci/page-markup.test.js
