@@ -30,6 +30,11 @@ with each release split into `### Frontend` (drives the version number) and
   up twice in the ranked list, with an arbitrary one of their two statuses
   winning. Deduped to one row per player+item, keeping the best-tier
   status, same precedence `generate_priority_order()` already uses.
+- One-time backfill: `remove_player_priority_order()` (above) only cleans up
+  future roster removals -- anyone already archived before it shipped still
+  had stale `priority_order` rows in the live season. Deleted those rows for
+  every currently-archived player, scoped to their team's live season only
+  (`20260828023851_backfill_archived_players_priority_order.sql`).
 
 ---
 
