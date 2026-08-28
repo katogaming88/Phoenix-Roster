@@ -44,8 +44,9 @@ When merging a PR:
 
 Bumping the version means more than one file: every local `css/`/`js/`
 tag on every page carries a `?v=<VERSION>` cache-bust query string
-(#431), around 40 of them. `npm run stamp -- 3.67.0` rewrites the
-`VERSION` constant and every one of those tags in a single pass, and
+(#431), 45 of them across the four pages. `npm run stamp -- 3.67.0`
+rewrites the `VERSION` constant and every one of those tags in a single
+pass, and
 prints a per-page count so a page that matched nothing is visible rather
 than reported as a silent success. It refuses a version that is not
 `x.y.z`, and it writes nothing at all if any page would fail.
@@ -73,6 +74,27 @@ or add the `chore` label.
   pins `TZ=America/New_York`, the project's canonical zone: date logic reads
   the viewer's local calendar date, so a UTC runner cannot catch a
   local-vs-UTC regression (#703)
+- Structural checks over the HTML and the CI tooling live in `tests/ci/`
+  (`npm run test:ci`): landmarks, heading order, resolvable anchors, the
+  `?v=` asset tags, and the changelog classifier. These read the pages as
+  text, so they judge markup and never behaviour
+- Accessibility runs in a real browser under `tests/browser/`
+  (`npm run test:a11y`), which needs a one-time
+  `npx playwright install chromium`. It serves the site locally and answers
+  every third-party and Supabase request from `tests/browser/fixtures/`, so
+  it is offline and does not touch production. Ten public page states are
+  loaded, checked against axe at WCAG 2.1 AA, and measured for reflow at
+  480px. Each state waits on a sentinel selector that only exists once its
+  async reads have rendered, so a page that silently truncated fails rather
+  than passing empty
+- `tests/browser/a11y-baseline.json` records every violation the site has
+  today, compared for exact equality. A PR that fixes one has to delete its
+  entries, and a PR that adds one fails. Refresh it with
+  `UPDATE_A11Y_BASELINE=1 npm run test:a11y` and read the diff before
+  committing it: the file is the accessibility milestone's scoreboard, so a
+  refresh that grows a count needs a reason. An axe-core or playwright bump
+  can shift the numbers on its own; that is the harness working, and the fix
+  is to refresh the baseline on the bump's own branch
 
 ## Project structure
 

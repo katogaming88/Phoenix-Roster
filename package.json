@@ -13,6 +13,7 @@
     "test:rls": "vitest run tests/rls",
     "test:import": "vitest run tests/import",
     "test:frontend": "vitest run tests/frontend",
+    "test:a11y": "vitest run tests/browser --testTimeout=30000 --hookTimeout=60000",
     "db:docs": "tbls doc --force",
     "db:docs:check": "tbls diff",
     "db:rls": "psql \"postgres://postgres:postgres@127.0.0.1:54322/postgres?sslmode=disable\" -f docs/rls_policies.sql"
