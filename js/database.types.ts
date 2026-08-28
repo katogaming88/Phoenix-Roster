@@ -2221,6 +2221,7 @@ export type Database = {
         Returns: number;
       };
       set_guild_officer_bios: { Args: { p_bios: Json }; Returns: Json };
+      set_team_officer_bios: { Args: { p_bios: Json; p_team_id: number }; Returns: Json };
       set_team_setting: {
         Args: { p_skip_audit?: boolean; p_team_id: number; p_updates: Json };
         Returns: Json;

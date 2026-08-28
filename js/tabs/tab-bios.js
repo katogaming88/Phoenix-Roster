@@ -4,8 +4,11 @@
 // SEASON_RAIDS/raidCollectFromDOM()/renderRaidProgressionCards() round trip
 // in this same folder (tab-season.js) -- same add/remove/collect/render/save
 // shape, just a flat list instead of nested raid/boss arrays. Saved through
-// the existing saveTeamSetting() -> set_team_setting RPC (js/common.js);
-// team_settings.config is jsonb, so this new key needed no migration.
+// saveTeamOfficerBios() -> the set_team_officer_bios RPC (js/common.js) --
+// its own SECURITY DEFINER function, officer-or-above gated, since the
+// generic set_team_setting RPC's underlying RLS policy is team-leader-only
+// (20260828153448_team_officer_bios_officer_write.sql). team_settings.config
+// is jsonb, so this new key needed no schema migration.
 //
 // Fields are self-contained (name/class/spec typed in here, not looked up
 // live from an existing players row) -- deliberate, since the later Guild
@@ -324,14 +327,15 @@ function saveBios() {
     btn.textContent = 'Saving...';
   }
 
-  saveTeamSetting({ teamOfficerBios: TEAM_OFFICER_BIOS }, true)
+  saveTeamOfficerBios(TEAM_OFFICER_BIOS)
     .then(function () {
       if (btn) {
         btn.disabled = false;
         btn.textContent = 'Save Bios';
       }
+      // No client-side writeAuditLog() call here -- unlike set_team_setting,
+      // set_team_officer_bios logs its own audit entry server-side.
       DATA.teamOfficerBios = JSON.parse(JSON.stringify(TEAM_OFFICER_BIOS));
-      writeAuditLog('Team Officer Bios Saved', null, null, TEAM_OFFICER_BIOS.length + ' bio(s)');
       if (status) {
         status.textContent = 'Saved!';
         setTimeout(function () {

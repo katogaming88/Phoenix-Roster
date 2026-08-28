@@ -120,6 +120,7 @@
 | public.admin_revoke_boe_manager | void | p_discord_id text | FUNCTION |
 | public.is_team_leader_anywhere | bool |  | FUNCTION |
 | public.remove_player_priority_order | int4 | p_team_id integer, p_season text, p_player_id integer | FUNCTION |
+| public.set_team_officer_bios | jsonb | p_team_id integer, p_bios jsonb | FUNCTION |
 
 ## Enums
 

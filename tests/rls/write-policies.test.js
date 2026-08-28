@@ -287,6 +287,32 @@ describe('set_guild_officer_bios admits site admins and guild officers (#607)', 
   });
 });
 
+describe('set_team_officer_bios admits any team-1 officer, not just team leaders', () => {
+  const sql = "select public.set_team_officer_bios(1, '[]'::jsonb) as bios";
+  it('a plain team 1 officer can call it', async () => {
+    const res = await queryAs('authenticated', OFFICER_T1, sql);
+    expect(res.rows[0].bios.teamOfficerBios).toEqual([]);
+  });
+  it('team 1 team leader can call it', async () => {
+    const res = await queryAs('authenticated', TEAM_LEADER_T1, sql);
+    expect(res.rows[0].bios.teamOfficerBios).toEqual([]);
+  });
+  it('site admin can call it', async () => {
+    const res = await queryAs('authenticated', SITE_ADMIN, sql);
+    expect(res.rows[0].bios.teamOfficerBios).toEqual([]);
+  });
+  it('guild officer can call it', async () => {
+    const res = await queryAs('authenticated', GUILD_OFFICER, sql);
+    expect(res.rows[0].bios.teamOfficerBios).toEqual([]);
+  });
+  it('a team 2 officer cannot call it for team 1', async () => {
+    await expect(queryAs('authenticated', OFFICER_T2, sql)).rejects.toThrow(/Not authorized/);
+  });
+  it('a plain raider cannot call it', async () => {
+    await expect(queryAs('authenticated', RAIDER_T1, sql)).rejects.toThrow(/Not authorized/);
+  });
+});
+
 describe('guild officer grant/revoke/list is site-admin only (#607)', () => {
   it('site admin can grant, list, and revoke', async () => {
     // Grant/list/revoke must run in the same transaction -- queryAs() rolls
