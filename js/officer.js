@@ -67,8 +67,7 @@ function switchTab(name) {
   }
   if (name === 'season') buildSeasonTab();
   if (name === 'bios') {
-    buildBioCards();
-    buildGuildBioCards();
+    resetBiosSubTab();
   }
   if (name === 'admin') buildAdminTab();
 
@@ -223,6 +222,23 @@ function switchReportsSubTab(name, btnEl) {
 function resetLootSubTab() {
   var defaultName = featureEnabled('loot') || !featureEnabled('fairness') ? 'import' : 'fairness';
   switchLootSubTab(defaultName, document.getElementById('loot-subtab-btn-' + defaultName));
+}
+
+function resetBiosSubTab() {
+  switchBiosSubTab('team', document.getElementById('bios-subtab-btn-team'));
+}
+
+function switchBiosSubTab(name, btnEl) {
+  document.querySelectorAll('[id^="bios-subtab-btn-"]').forEach(function (b) {
+    b.classList.remove('active');
+  });
+  if (btnEl) btnEl.classList.add('active');
+  var subTeam = document.getElementById('bios-sub-team');
+  var subGuild = document.getElementById('bios-sub-guild');
+  if (subTeam) subTeam.style.display = name === 'team' ? '' : 'none';
+  if (subGuild) subGuild.style.display = name === 'guild' ? '' : 'none';
+  if (name === 'team') buildBioCards();
+  if (name === 'guild') buildGuildBioCards();
 }
 
 function switchLootSubTab(name, btnEl) {

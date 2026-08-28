@@ -8,6 +8,23 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.77.9] - 2026-08-28
+
+### Frontend
+
+- Officer Bios tab now splits Team Officer Bios and Guild Officer Bios into
+  separate sub-tabs (like Loot, BiS Manager, Signups, and Reports already
+  do), instead of stacking both editors on the same page. Also refreshed
+  the Guild Officer Bios help text, which still said "only site admins can
+  edit this" after guild officers gained write access in #607.
+- Fixed Guild Officer Bios sometimes showing "No guild officer bios added
+  yet" on the officer dashboard even though bios exist -- they're loaded
+  as part of the heavy (non-core) data batch, but the Officer Bios tab
+  could render before that batch resolved (e.g. a `?tab=bios` deep link at
+  boot). The guild sub-tab now re-renders once the real data arrives.
+
+---
+
 ## [3.77.8] - 2026-08-28
 
 ### Frontend
