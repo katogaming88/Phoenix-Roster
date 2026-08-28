@@ -8,6 +8,18 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.77.4] - 2026-08-27
+
+### Frontend
+
+- Reduced-motion support now covers the whole site, not just the guild page.
+  With "reduce motion" turned on in your OS the loading spinner stops
+  spinning, hover and focus transitions stop animating, and the two places
+  the site scrolls you somewhere (the team switcher after a character claim,
+  and the officer roster's inline profile row) jump instead of gliding.
+
+---
+
 ## [3.77.3] - 2026-08-27
 
 ### Frontend
