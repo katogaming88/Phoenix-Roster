@@ -94,7 +94,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.77.9';
+var VERSION = '3.77.10';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -5293,8 +5293,15 @@ function submitSelfReceivedRequest(firstName, nameRealm, item, slot, rowId, dbSl
       .then(function (result) {
         if (!formEl) return;
         if (result.error) {
+          // submit_self_received() raises human-readable exceptions (e.g. the
+          // self-reported-raid-loot block) that are worth showing verbatim
+          // instead of masking them behind a generic retry message. Escaped
+          // since some of those messages echo back raider-supplied input
+          // (e.g. "Unknown item: <name>").
           formEl.innerHTML =
-            '<p style="font-size:1.07rem;color:var(--melee);padding:0.5rem 0;">Failed to submit. Try again.</p>';
+            '<p style="font-size:1.07rem;color:var(--melee);padding:0.5rem 0;">' +
+            _esc(result.error.message || 'Failed to submit. Try again.') +
+            '</p>';
           return;
         }
         var row = result.data && result.data[0];

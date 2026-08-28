@@ -8,6 +8,29 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.77.10] - 2026-08-28
+
+### Frontend
+
+- The self-received request form ("Mark received" on a BiS row) now shows
+  the server's actual error message instead of a generic "Failed to
+  submit. Try again." -- most usefully for the new raid-loot block below,
+  but also for existing cases like an unrecognized item or a character not
+  on the roster.
+
+### Backend
+
+- `submit_self_received()` now rejects a note that mentions "raid" as its
+  own word, regardless of source. The form only ever offers sources for
+  loot earned outside of raid (M+, Great Vault, Crafted, Catalyst, Bonus
+  Roll, Other) -- there's no "Raid Drop" option, since actual raid drops
+  are recorded by the officer's RCLootCouncil import instead. Raiders kept
+  working around that by picking `Other` and describing a raid drop in the
+  note, which double-counts the item once the import processes the same
+  drop (`20260828125630_submit_self_received_block_raid_note.sql`).
+
+---
+
 ## [3.77.9] - 2026-08-28
 
 ### Frontend
