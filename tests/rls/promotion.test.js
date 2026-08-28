@@ -295,6 +295,39 @@ describe('main swap archiving', () => {
       expect(stranded.rows[0].n).toBe(1);
     });
   });
+
+  it("clears the old character's live-season priority_order rows, but leaves past seasons and other players alone (20260828124142)", async () => {
+    await withTxn(async (q, asOfficer) => {
+      await q(`update public.team_settings set config = '{"seasonName":"Midnight Season 2"}' where team_id = 1`);
+
+      const old = await q(
+        `insert into public.players (team_id, name_realm, class_spec_id, join_date)
+         values (1, 'Oldmain5-Illidan', 1, '2024-03-15') returning id`
+      );
+      const oldId = old.rows[0].id;
+      await q(
+        `insert into public.priority_order (team_id, season, item_id, track, rank, player_id)
+         values (1, 'MID2', 1, 'Hero', 1, $1), (1, 'MID1', 1, 'Hero', 1, $1)`,
+        [oldId]
+      );
+      // player 2 (Seedplayertwo-Illidan) is a different, non-swapped player
+      // on the same team -- their live-season row must survive untouched.
+      await q(
+        `insert into public.priority_order (team_id, season, item_id, track, rank, player_id)
+         values (1, 'MID2', 1, 'Hero', 2, 2)`
+      );
+
+      await promote(asOfficer, APPROVED_SIGNUP, true, oldId);
+
+      const rows = await q('select season from public.priority_order where player_id = $1 order by season', [oldId]);
+      expect(rows.rows.map((r) => r.season)).toEqual(['MID1']);
+
+      const otherPlayer = await q(
+        "select count(*)::int as n from public.priority_order where player_id = 2 and season = 'MID2'"
+      );
+      expect(otherPlayer.rows[0].n).toBe(1);
+    });
+  });
 });
 
 describe('season_signups_player_only_when_added CHECK', () => {
