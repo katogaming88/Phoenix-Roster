@@ -5646,6 +5646,12 @@
       "return_type": "bool",
       "arguments": "",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.remove_player_priority_order",
+      "return_type": "int4",
+      "arguments": "p_team_id integer, p_season text, p_player_id integer",
+      "type": "FUNCTION"
     }
   ],
   "enums": [

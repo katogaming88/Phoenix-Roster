@@ -196,6 +196,42 @@ describe('build_rclc_export', () => {
     });
   });
 
+  it("dedupes a player's multiple item_preferences rows for the same item (e.g. dual-wield Weapon + Off Hand), keeping only the best status", async () => {
+    // player 1 has two rows for item 2 -- a 'bis' Weapon pick and a 'good'
+    // Off Hand pick, the same shape a dual-wield-capable class's real
+    // wishlist can produce for one weapon (item_preferences_no_dupe_item_key
+    // is unique on player_id/item_id/slot, not player_id/item_id, precisely
+    // so both rows can coexist). Without dedup this joined twice, duplicating
+    // the name in the H array and racing on which status won.
+    const client = await pool.connect();
+    try {
+      await client.query('begin');
+      await client.query(
+        `insert into public.priority_order (team_id, season, item_id, track, rank, player_id) values
+           (1, 'export-test', 2, 'Hero', 1, 2),
+           (1, 'export-test', 2, 'Hero', 2, 1),
+           (1, 'export-test', 2, 'Myth', 1, 1)`
+      );
+      await client.query(
+        `insert into public.item_preferences (team_id, player_id, item_id, status, season, slot) values
+           (1, 1, 2, 'bis', 'export-test', 'Weapon'),
+           (1, 1, 2, 'good', 'export-test', 'Off Hand')`
+      );
+      await client.query("select set_config('request.jwt.claims', $1, true)", [
+        JSON.stringify({ sub: OFFICER_T1, role: 'authenticated' })
+      ]);
+      await client.query('set local role authenticated');
+      const res = await client.query('select public.build_rclc_export(1, $1) as payload', ['export-test']);
+      const priority = res.rows[0].payload.priority['100002'];
+
+      expect(priority.H).toEqual(['Seedplayertwo-Illidan', 'Seedraider-Illidan']);
+      expect(priority.H_status).toEqual({ 'Seedraider-Illidan': 'bis' });
+    } finally {
+      await client.query('rollback');
+      client.release();
+    }
+  });
+
   it('ignores catalyst/pass rows -- only bis/good/ok are wishlist status', async () => {
     await withPriorityAndWishlistSeeded(
       'authenticated',
