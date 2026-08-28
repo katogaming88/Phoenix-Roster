@@ -8,6 +8,20 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.77.11] - 2026-08-28
+
+### Frontend
+
+- The Priority tab's Notes sub-tab (and its nav badge count) kept showing
+  wishlist notes from players no longer on the roster -- `item_preferences`
+  has no archived-player cleanup, so a departed player's note just sat
+  there forever and rendered as "Player #123" (the active-roster-only
+  lookup had nothing to show for their name). Both now skip any player no
+  longer on the roster, matching the underlying data being kept as a
+  historical record rather than actively displayed.
+
+---
+
 ## [3.77.10] - 2026-08-28
 
 ### Frontend
