@@ -5462,6 +5462,12 @@
       "type": "FUNCTION"
     },
     {
+      "name": "public.set_team_officer_bios",
+      "return_type": "jsonb",
+      "arguments": "p_team_id integer, p_bios jsonb",
+      "type": "FUNCTION"
+    },
+    {
       "name": "public.flag_bis_list_changed",
       "return_type": "int4",
       "arguments": "p_team_id integer, p_name_realm text, p_player_note text DEFAULT NULL::text",

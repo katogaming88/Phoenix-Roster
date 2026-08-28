@@ -94,7 +94,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.77.7';
+var VERSION = '3.77.9';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -1631,6 +1631,19 @@ function saveGuildOfficerBios(bios) {
     if (result.error) throw new Error(result.error.message);
     return result.data;
   });
+}
+
+// Saves Team Officer Bios via the set_team_officer_bios RPC (SECURITY
+// DEFINER, officer/team_leader/site-admin/guild-officer-gated) -- NOT
+// saveTeamSetting(), whose underlying team_settings RLS policy is
+// team-leader-only and would reject a plain officer's own bio save.
+function saveTeamOfficerBios(bios) {
+  return supabaseClient
+    .rpc('set_team_officer_bios', { p_team_id: _teamCfg.supabaseTeamId, p_bios: bios })
+    .then(function (result) {
+      if (result.error) throw new Error(result.error.message);
+      return result.data;
+    });
 }
 
 /**

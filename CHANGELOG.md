@@ -8,6 +8,48 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.77.9] - 2026-08-28
+
+### Frontend
+
+- Officer Bios tab now splits Team Officer Bios and Guild Officer Bios into
+  separate sub-tabs (like Loot, BiS Manager, Signups, and Reports already
+  do), instead of stacking both editors on the same page. Also refreshed
+  the Guild Officer Bios help text, which still said "only site admins can
+  edit this" after guild officers gained write access in #607.
+- Fixed Guild Officer Bios sometimes showing "No guild officer bios added
+  yet" on the officer dashboard even though bios exist -- they're loaded
+  as part of the heavy (non-core) data batch, but the Officer Bios tab
+  could render before that batch resolved (e.g. a `?tab=bios` deep link at
+  boot). The guild sub-tab now re-renders once the real data arrives.
+- Fixed Remove Photo on a Team or Guild Officer Bios card silently
+  deleting the photo out from under any *other* bio card that happened to
+  reference the same uploaded file (e.g. one person's photo copy-pasted
+  into both their Team and Guild cards). Removing a photo now only clears
+  it from that one card; it no longer deletes the underlying file.
+
+---
+
+## [3.77.8] - 2026-08-28
+
+### Frontend
+
+- Team Officer Bios (Officer Bios tab) failed to save with "Not authorized"
+  for any officer who isn't a team leader -- the Save button was never
+  gated to team leaders even though the underlying write path was. Any
+  officer can now add or edit their team's officer bio cards.
+
+### Backend
+
+- New `set_team_officer_bios()` RPC, the write path for
+  `team_settings.config -> 'teamOfficerBios'` -- gated on officer/team
+  leader/site admin/guild officer, same admission set as the `players` and
+  `attendance` officer-write policies, instead of riding the generic
+  `set_team_setting()` RPC whose `team_settings` write policy is
+  team-leader-only.
+
+---
+
 ## [3.77.7] - 2026-08-28
 
 ### Frontend
