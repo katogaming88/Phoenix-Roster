@@ -1,0 +1,32 @@
+[
+  {
+    "boss": "Warden of Ash",
+    "items": {
+      "name": "Ashwarden Greatshield"
+    }
+  },
+  {
+    "boss": "The Hollow Choir",
+    "items": {
+      "name": "Choirmaster's Silent Bell"
+    }
+  },
+  {
+    "boss": "The Hollow Choir",
+    "items": {
+      "name": "Hollow Choir Signet"
+    }
+  },
+  {
+    "boss": "Grimwrack the Tidebound",
+    "items": {
+      "name": "Tidebound Vestments"
+    }
+  },
+  {
+    "boss": "Aetherius Prime",
+    "items": {
+      "name": "Aetherius Bladeform"
+    }
+  }
+]

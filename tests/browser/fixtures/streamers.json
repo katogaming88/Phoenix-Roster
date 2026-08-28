@@ -1,0 +1,28 @@
+[
+  {
+    "id": 1,
+    "team_id": 1,
+    "player_id": 1,
+    "twitch_channel": "aurelithplays",
+    "schedule_note": "Tue and Thu, 8pm ET",
+    "guild_wide_opt_out": false,
+    "is_live": true,
+    "players": {
+      "name_realm": "Aurelith-Illidan",
+      "nickname": "Aur"
+    }
+  },
+  {
+    "id": 2,
+    "team_id": 1,
+    "player_id": 3,
+    "twitch_channel": "cinderfallvods",
+    "schedule_note": "Weekend mornings",
+    "guild_wide_opt_out": false,
+    "is_live": false,
+    "players": {
+      "name_realm": "Cinderfall-Illidan",
+      "nickname": "Cinder"
+    }
+  }
+]

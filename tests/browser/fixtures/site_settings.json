@@ -1,0 +1,19 @@
+[
+  {
+    "id": 1,
+    "maintenance_mode": false,
+    "maintenance_message": "",
+    "guild_officer_bios": [
+      {
+        "name": "Aurelith",
+        "title": "Guild Master",
+        "bio": "Runs the guild and the Tuesday night pull count."
+      },
+      {
+        "name": "Cinderfall",
+        "title": "Officer",
+        "bio": "Handles recruitment and the BoE ledger."
+      }
+    ]
+  }
+]
