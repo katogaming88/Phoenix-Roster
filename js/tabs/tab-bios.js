@@ -28,7 +28,6 @@ var TEAM_OFFICER_BIOS = [];
 // round trip) and the request/response plumbing.
 var BIO_PHOTO_MAX_BYTES = 5 * 1024 * 1024;
 var BIO_PHOTO_ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
-var BIO_PHOTO_STORAGE_PREFIX = SUPABASE_URL + '/storage/v1/object/public/bio-photos/';
 
 function _bioValidatePhotoFile(file) {
   if (!file) return 'No file selected.';
@@ -44,26 +43,6 @@ function _bioUploadPhotoFile(file) {
       if (res.error) throw new Error(res.error.message || 'Upload failed.');
       if (!res.data || !res.data.success) throw new Error((res.data && res.data.error) || 'Upload failed.');
       return res.data.url;
-    });
-}
-
-// A bio's imagePath is a bare URL/path string with no owner metadata of its
-// own -- ownership for the delete call is recovered by checking whether it
-// falls under the bucket's public URL prefix at all. A legacy hand-typed
-// assets/officers/*.jpg path simply doesn't match, and is skipped rather
-// than sent to the Edge Function.
-function _bioStoragePathFromImagePath(imagePath) {
-  if (!imagePath || imagePath.indexOf(BIO_PHOTO_STORAGE_PREFIX) !== 0) return null;
-  return imagePath.slice(BIO_PHOTO_STORAGE_PREFIX.length);
-}
-
-function _bioRemovePhotoFile(imagePath) {
-  var targetPath = _bioStoragePathFromImagePath(imagePath);
-  if (!targetPath) return Promise.resolve();
-  return supabaseClient.functions
-    .invoke('upload-bio-photo', { method: 'DELETE', body: { targetPath: targetPath } })
-    .then(function (res) {
-      if (res.error) throw new Error(res.error.message || 'Remove failed.');
     });
 }
 
@@ -304,18 +283,19 @@ function bioUploadPhoto(idx, inputEl) {
     });
 }
 
-// Best-effort remote cleanup, then clear the reference locally regardless
-// (matches how the manual path field has always worked -- clearing it is
-// unrestricted client-side, the real gate is the save RPC).
+// Only clears the local reference -- deliberately never deletes the
+// underlying Storage file. A single uploaded photo can end up referenced
+// by more than one bio entry (e.g. the same person's Team and Guild
+// Officer Bios cards, copy-pasted rather than re-uploaded), and imagePath
+// carries no ownership/reference metadata to tell those apart -- deleting
+// here used to silently break every other card pointing at the same file.
+// Compressed bio photos are capped at 300KB server-side (upload-bio-photo),
+// so leaving an orphaned file behind is a negligible, one-time storage
+// cost, not a correctness problem.
 function bioRemovePhoto(idx) {
   bioCollectFromDOM();
-  var imagePath = TEAM_OFFICER_BIOS[idx].imagePath;
-  _bioRemovePhotoFile(imagePath)
-    .catch(function () {})
-    .then(function () {
-      TEAM_OFFICER_BIOS[idx].imagePath = '';
-      renderBioCards();
-    });
+  TEAM_OFFICER_BIOS[idx].imagePath = '';
+  renderBioCards();
 }
 
 function saveBios() {
@@ -625,15 +605,12 @@ function guildBioUploadPhoto(idx, inputEl) {
     });
 }
 
+// See bioRemovePhoto()'s comment above -- same reasoning, never deletes
+// the underlying Storage file, just clears the local reference.
 function guildBioRemovePhoto(idx) {
   guildBioCollectFromDOM();
-  var imagePath = GUILD_OFFICER_BIOS[idx].imagePath;
-  _bioRemovePhotoFile(imagePath)
-    .catch(function () {})
-    .then(function () {
-      GUILD_OFFICER_BIOS[idx].imagePath = '';
-      renderGuildBioCards();
-    });
+  GUILD_OFFICER_BIOS[idx].imagePath = '';
+  renderGuildBioCards();
 }
 
 function saveGuildBios() {

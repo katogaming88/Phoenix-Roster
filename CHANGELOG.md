@@ -22,6 +22,11 @@ with each release split into `### Frontend` (drives the version number) and
   as part of the heavy (non-core) data batch, but the Officer Bios tab
   could render before that batch resolved (e.g. a `?tab=bios` deep link at
   boot). The guild sub-tab now re-renders once the real data arrives.
+- Fixed Remove Photo on a Team or Guild Officer Bios card silently
+  deleting the photo out from under any *other* bio card that happened to
+  reference the same uploaded file (e.g. one person's photo copy-pasted
+  into both their Team and Guild cards). Removing a photo now only clears
+  it from that one card; it no longer deletes the underlying file.
 
 ---
 
