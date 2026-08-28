@@ -27,6 +27,11 @@ with each release split into `### Frontend` (drives the version number) and
   every M+/delve/alt log anyone uploads) -- it only ever fetched the first,
   oldest-first page of results. Paginates through `has_more_pages` now, same
   fix the raid-progression sync already needed for the same reason.
+- A raid night was still missing from Attendance after the pagination fix
+  above -- its report title was `"Phoenix Heroic 8/27 - The Coiled Altar
+  (...)"`, and the alt-run exclusion check matched "Alt" as a plain substring,
+  so the boss name **Altar** false-flagged a real raid night as an alt run.
+  Now matches "Alt" as its own word only.
 
 ---
 
