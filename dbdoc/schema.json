@@ -1270,6 +1270,11 @@
           "name": "archived_reason",
           "type": "text",
           "nullable": true
+        },
+        {
+          "name": "archived_reason_detail",
+          "type": "text",
+          "nullable": true
         }
       ],
       "indexes": [

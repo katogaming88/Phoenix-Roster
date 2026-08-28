@@ -8,6 +8,21 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.77.6] - 2026-08-28
+
+### Frontend
+
+- Removing a player from the roster now also requires a short detail
+  alongside the exit-reason dropdown, so officers have the specifics
+  (not just the category) on record.
+
+### Backend
+
+- `players.archived_reason_detail` -- new column, sibling to
+  `archived_reason`. Cleared when a previously-removed player rejoins.
+
+---
+
 ## [3.77.5] - 2026-08-28
 
 ### Frontend

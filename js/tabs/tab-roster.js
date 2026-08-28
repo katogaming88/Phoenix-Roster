@@ -866,7 +866,8 @@ function addPlayerToRosterSupabase(payload) {
             is_bench: false,
             join_date: payload.joinDate || null,
             archived_at: null,
-            archived_reason: null
+            archived_reason: null,
+            archived_reason_detail: null
           };
           return row
             ? supabaseClient.from('players').update(fields).eq('id', row.id).select('id').single()
@@ -989,10 +990,21 @@ function executeRemovePlayer(nameRealm, firstName) {
   var msgEl = document.getElementById('removePlayerMsg-' + firstName);
   var reasonEl = document.getElementById('removePlayerReason-' + firstName);
   var reason = reasonEl ? reasonEl.value : '';
+  var detailEl = document.getElementById('removePlayerReasonDetail-' + firstName);
+  var detail = detailEl ? detailEl.value.trim() : '';
 
   if (!reason) {
     if (msgEl) {
       msgEl.textContent = 'Failed: pick a reason first.';
+      msgEl.style.color = 'var(--melee)';
+      msgEl.style.display = '';
+    }
+    return;
+  }
+
+  if (!detail) {
+    if (msgEl) {
+      msgEl.textContent = 'Failed: add a detail for the reason.';
       msgEl.style.color = 'var(--melee)';
       msgEl.style.display = '';
     }
@@ -1017,14 +1029,19 @@ function executeRemovePlayer(nameRealm, firstName) {
   // Soft-delete via archived_at, not a hard DELETE -- an archived row keeps
   // its id so rclc_loot/bis_items/attendance rows referencing it stay intact
   // (docs/database-decisions.md). archived_reason (#476) captures why, for
-  // spotting retention patterns across seasons.
+  // spotting retention patterns across seasons; archived_reason_detail is
+  // the required freeform specifics behind that category.
   supabaseClient
     .from('players')
-    .update({ archived_at: new Date().toISOString(), archived_reason: reason })
+    .update({
+      archived_at: new Date().toISOString(),
+      archived_reason: reason,
+      archived_reason_detail: detail
+    })
     .eq('id', player.id)
     .then(function (result) {
       if (result.error) throw new Error(result.error.message);
-      return writeAuditLog('Player Removed', 'players', player.id, reason);
+      return writeAuditLog('Player Removed', 'players', player.id, reason + ': ' + detail);
     })
     .then(function () {
       if (DATA && DATA.roster) {

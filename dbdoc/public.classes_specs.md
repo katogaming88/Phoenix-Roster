@@ -65,6 +65,7 @@ erDiagram
   timestamp_with_time_zone tier_pieces_synced_at
   integer bonus_roll_encounter_id FK
   text archived_reason
+  text archived_reason_detail
 }
 "public.season_signups" {
   integer id
