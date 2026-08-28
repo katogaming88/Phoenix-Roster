@@ -20,6 +20,7 @@ with each release split into `### Frontend` (drives the version number) and
 
 - `players.archived_reason_detail` -- new column, sibling to
   `archived_reason`. Cleared when a previously-removed player rejoins.
+- `build_rclc_export()`'s wishlist-status attachment (added the same day, `20260826011447_rclc_export_wishlist_status.sql`) never matched a single row -- it filtered `item_preferences` by `season = p_season`, but `p_season` is the short season code (e.g. `MID2`) while `item_preferences.season` is always stamped with the season display name (e.g. `Midnight Season 2`). Every ranked player in the RCLootCouncil export came back with no wishlist status at all. Dropped the season filter, matching how `generate_priority_order()` itself already reads `item_preferences` (`20260828021126_rclc_export_wishlist_status_season_fix.sql`).
 
 ---
 
