@@ -873,10 +873,12 @@ function checkMaintenanceMode() {
 // at all (js/admin.js is deliberately standalone, see its own header
 // comment), so the dashboard that turns maintenance mode back off is never
 // itself blocked by it.
-// #main-content is guild.html's single <main> (#777). That page has no .view
-// wrappers at all, so without it here the banner rendered over a fully visible
-// page. index.html and officer.html have no such id yet, making it inert on
-// them until #437 gives them a main landmark, and correct on all of them after.
+// #main-content is the single <main> on every page that loads this file
+// (guild.html since #777, index.html and officer.html since #437). guild.html
+// has no .view wrappers at all, so without it here the banner rendered over a
+// fully visible page; on the other two it overlaps .view and costs nothing.
+// Each page keeps its #maintenanceBanner outside its main, or this would hide
+// the banner along with everything else.
 function showMaintenanceBanner(message) {
   document.querySelectorAll('.view, #loadingMsg, #officerPrompt, .site-nav, #main-content').forEach(function (el) {
     /** @type {HTMLElement} */ (el).style.display = 'none';
