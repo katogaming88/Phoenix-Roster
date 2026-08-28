@@ -1,0 +1,156 @@
+[
+  {
+    "id": 1,
+    "name_realm": "Aurelith-Illidan",
+    "nickname": "Aur",
+    "is_trial": false,
+    "is_bench": false,
+    "is_backup_tank": false,
+    "is_backup_healer": false,
+    "bis_link": "https://example.invalid/bis/aurelith",
+    "bis_allowed": true,
+    "wishlist_allowed": true,
+    "m_plus_excluded": false,
+    "m_plus_note": "",
+    "join_date": "2026-01-06",
+    "officer_notes": "",
+    "tier_pieces_equipped": 4,
+    "tier_pieces_synced_at": "2026-08-20T18:00:00+00:00",
+    "bonus_roll_encounter_id": 2,
+    "raid_encounters": {
+      "name": "The Hollow Choir"
+    },
+    "classes_specs": {
+      "class": "Warrior",
+      "spec": "Protection",
+      "role": "Tank"
+    }
+  },
+  {
+    "id": 2,
+    "name_realm": "Brightmoor-Illidan",
+    "nickname": "",
+    "is_trial": false,
+    "is_bench": false,
+    "is_backup_tank": true,
+    "is_backup_healer": false,
+    "bis_link": "",
+    "bis_allowed": true,
+    "wishlist_allowed": true,
+    "m_plus_excluded": false,
+    "m_plus_note": "",
+    "join_date": "2026-01-06",
+    "officer_notes": "",
+    "tier_pieces_equipped": 2,
+    "tier_pieces_synced_at": "2026-08-20T18:00:00+00:00",
+    "bonus_roll_encounter_id": null,
+    "raid_encounters": null,
+    "classes_specs": {
+      "class": "Paladin",
+      "spec": "Holy",
+      "role": "Heal"
+    }
+  },
+  {
+    "id": 3,
+    "name_realm": "Cinderfall-Illidan",
+    "nickname": "Cinder",
+    "is_trial": false,
+    "is_bench": false,
+    "is_backup_tank": false,
+    "is_backup_healer": true,
+    "bis_link": "https://example.invalid/bis/cinderfall",
+    "bis_allowed": true,
+    "wishlist_allowed": true,
+    "m_plus_excluded": true,
+    "m_plus_note": "Raid nights only",
+    "join_date": "2026-02-10",
+    "officer_notes": "",
+    "tier_pieces_equipped": 4,
+    "tier_pieces_synced_at": "2026-08-20T18:00:00+00:00",
+    "bonus_roll_encounter_id": 1,
+    "raid_encounters": {
+      "name": "Warden of Ash"
+    },
+    "classes_specs": {
+      "class": "Mage",
+      "spec": "Frost",
+      "role": "Ranged"
+    }
+  },
+  {
+    "id": 4,
+    "name_realm": "Dawnthistle-Illidan",
+    "nickname": "",
+    "is_trial": true,
+    "is_bench": false,
+    "is_backup_tank": false,
+    "is_backup_healer": false,
+    "bis_link": "",
+    "bis_allowed": true,
+    "wishlist_allowed": false,
+    "m_plus_excluded": false,
+    "m_plus_note": "",
+    "join_date": "2026-08-04",
+    "officer_notes": "",
+    "tier_pieces_equipped": 0,
+    "tier_pieces_synced_at": null,
+    "bonus_roll_encounter_id": null,
+    "raid_encounters": null,
+    "classes_specs": {
+      "class": "Druid",
+      "spec": "Balance",
+      "role": "Ranged"
+    }
+  },
+  {
+    "id": 5,
+    "name_realm": "Emberlyn-Illidan",
+    "nickname": "Em",
+    "is_trial": false,
+    "is_bench": true,
+    "is_backup_tank": false,
+    "is_backup_healer": false,
+    "bis_link": "",
+    "bis_allowed": false,
+    "wishlist_allowed": true,
+    "m_plus_excluded": false,
+    "m_plus_note": "",
+    "join_date": "2026-01-20",
+    "officer_notes": "",
+    "tier_pieces_equipped": 3,
+    "tier_pieces_synced_at": "2026-08-20T18:00:00+00:00",
+    "bonus_roll_encounter_id": null,
+    "raid_encounters": null,
+    "classes_specs": {
+      "class": "Priest",
+      "spec": "Shadow",
+      "role": "Ranged"
+    }
+  },
+  {
+    "id": 6,
+    "name_realm": "Frostvale-Illidan",
+    "nickname": "",
+    "is_trial": false,
+    "is_bench": false,
+    "is_backup_tank": false,
+    "is_backup_healer": false,
+    "bis_link": "https://example.invalid/bis/frostvale",
+    "bis_allowed": true,
+    "wishlist_allowed": true,
+    "m_plus_excluded": false,
+    "m_plus_note": "",
+    "join_date": "2026-03-15",
+    "officer_notes": "",
+    "tier_pieces_equipped": 4,
+    "tier_pieces_synced_at": "2026-08-20T18:00:00+00:00",
+    "bonus_roll_encounter_id": null,
+    "raid_encounters": null,
+    "classes_specs": {
+      "class": "Rogue",
+      "spec": "Assassination",
+      "role": "Melee"
+    }
+  }
+]

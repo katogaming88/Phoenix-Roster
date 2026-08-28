@@ -1,0 +1,50 @@
+[
+  {
+    "player_id": 1,
+    "item_id": 102,
+    "obtained": true,
+    "slot": "Off Hand",
+    "season": "Season 3",
+    "items": {
+      "name": "Ashwarden Greatshield",
+      "slot": "Off Hand",
+      "is_placeholder": false
+    },
+    "players": {
+      "name_realm": "Aurelith-Illidan",
+      "team_id": 1
+    }
+  },
+  {
+    "player_id": 3,
+    "item_id": 101,
+    "obtained": false,
+    "slot": "Trinket",
+    "season": "Season 3",
+    "items": {
+      "name": "Choirmaster's Silent Bell",
+      "slot": "Trinket",
+      "is_placeholder": false
+    },
+    "players": {
+      "name_realm": "Cinderfall-Illidan",
+      "team_id": 1
+    }
+  },
+  {
+    "player_id": 5,
+    "item_id": 103,
+    "obtained": false,
+    "slot": "Chest",
+    "season": "Season 3",
+    "items": {
+      "name": "Tidebound Vestments",
+      "slot": "Chest",
+      "is_placeholder": false
+    },
+    "players": {
+      "name_realm": "Emberlyn-Illidan",
+      "team_id": 1
+    }
+  }
+]

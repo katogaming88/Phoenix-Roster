@@ -13,16 +13,19 @@
     "test:rls": "vitest run tests/rls",
     "test:import": "vitest run tests/import",
     "test:frontend": "vitest run tests/frontend",
+    "test:a11y": "vitest run tests/browser --testTimeout=30000 --hookTimeout=60000",
     "db:docs": "tbls doc --force",
     "db:docs:check": "tbls diff",
     "db:rls": "psql \"postgres://postgres:postgres@127.0.0.1:54322/postgres?sslmode=disable\" -f docs/rls_policies.sql"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@supabase/supabase-js": "^2.112.3",
     "acorn": "^8.18.0",
     "csv-parse": "^7.0.2",
     "eslint": "^8.57.0",
     "pg": "^8.23.0",
+    "playwright": "^1.62.1",
     "prettier": "^3.9.6",
     "typescript": "^7.0.2",
     "vitest": "^4.1.11"

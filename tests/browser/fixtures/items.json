@@ -1,0 +1,72 @@
+[
+  {
+    "id": 101,
+    "wow_item_id": 210001,
+    "name": "Choirmaster's Silent Bell",
+    "slot": "Trinket",
+    "armor_type": "",
+    "is_placeholder": false,
+    "icon": "inv_misc_bell_01",
+    "wcl_zone_id": 42,
+    "secondary_stats": "Haste, Mastery",
+    "main_stats": "Intellect",
+    "weapon_subtype": "",
+    "is_ptr": false
+  },
+  {
+    "id": 102,
+    "wow_item_id": 210002,
+    "name": "Ashwarden Greatshield",
+    "slot": "Off Hand",
+    "armor_type": "Plate",
+    "is_placeholder": false,
+    "icon": "inv_shield_01",
+    "wcl_zone_id": 42,
+    "secondary_stats": "Versatility",
+    "main_stats": "Strength",
+    "weapon_subtype": "Shield",
+    "is_ptr": false
+  },
+  {
+    "id": 103,
+    "wow_item_id": 210003,
+    "name": "Tidebound Vestments",
+    "slot": "Chest",
+    "armor_type": "Cloth",
+    "is_placeholder": false,
+    "icon": "inv_chest_cloth_01",
+    "wcl_zone_id": 42,
+    "secondary_stats": "Crit, Haste",
+    "main_stats": "Intellect",
+    "weapon_subtype": "",
+    "is_ptr": false
+  },
+  {
+    "id": 104,
+    "wow_item_id": 210004,
+    "name": "Hollow Choir Signet",
+    "slot": "Finger",
+    "armor_type": "",
+    "is_placeholder": false,
+    "icon": "inv_jewelry_ring_01",
+    "wcl_zone_id": 42,
+    "secondary_stats": "Mastery",
+    "main_stats": "Agility",
+    "weapon_subtype": "",
+    "is_ptr": false
+  },
+  {
+    "id": 105,
+    "wow_item_id": 210005,
+    "name": "Aetherius Bladeform",
+    "slot": "Two Hand",
+    "armor_type": "",
+    "is_placeholder": false,
+    "icon": "inv_sword_01",
+    "wcl_zone_id": 42,
+    "secondary_stats": "Crit",
+    "main_stats": "Strength",
+    "weapon_subtype": "Two-Handed Sword",
+    "is_ptr": false
+  }
+]

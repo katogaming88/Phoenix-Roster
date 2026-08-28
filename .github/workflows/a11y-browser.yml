@@ -1,0 +1,59 @@
+name: Accessibility browser tests
+
+# The only job here that runs a real browser (#810). Everything else in CI
+# reads the pages as text or loads js/ into a vm sandbox, neither of which can
+# see contrast, reflow, or anything a page renders after its async reads land.
+#
+# Hermetic: the suite serves the site from tests/browser/static-server.js and
+# answers every third-party and Supabase request from fixtures, so this job
+# never reaches the network past npm and the browser download.
+on:
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'officer.html'
+      - 'admin.html'
+      - 'guild.html'
+      - 'css/**'
+      - 'js/**'
+      - 'tests/browser/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/a11y-browser.yml'
+
+# A new push to the PR supersedes any still-running check on the old commit.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  a11y-browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+
+      # Keyed on the resolved playwright version rather than the lockfile hash:
+      # the browser build a playwright release pins is what the cache holds, so
+      # an unrelated dependency bump should not throw it away.
+      - name: Resolve the playwright version
+        id: playwright
+        run: echo "version=$(node -p "require('./node_modules/playwright/package.json').version")" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ms-playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
+      # --with-deps here but not in CONTRIBUTING.md: it shells out to apt, so
+      # it works on this runner and fails on a contributor's Mac or Windows
+      # box. It stays even on a cache hit, since the cache holds the browser
+      # build and not the system libraries it links against.
+      - name: Install chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run the accessibility browser tests
+        run: npm run test:a11y

@@ -1,0 +1,101 @@
+{
+  "index-landing": {
+    "axe": {
+      "frame-title": 1,
+      "link-in-text-block": 1
+    },
+    "axeIncomplete": {
+      "color-contrast": 3
+    },
+    "reflow480": "overflow"
+  },
+  "index-roster": {
+    "axe": {
+      "frame-title": 1,
+      "link-in-text-block": 1
+    },
+    "axeIncomplete": {
+      "color-contrast": 3
+    },
+    "reflow480": "overflow"
+  },
+  "index-streams": {
+    "axe": {
+      "frame-title": 2,
+      "link-in-text-block": 1
+    },
+    "axeIncomplete": {
+      "color-contrast": 4
+    },
+    "reflow480": "overflow"
+  },
+  "index-signup": {
+    "axe": {
+      "link-in-text-block": 1
+    },
+    "axeIncomplete": {
+      "color-contrast": 3
+    },
+    "reflow480": "overflow"
+  },
+  "index-boe": {
+    "axe": {
+      "frame-title": 1,
+      "link-in-text-block": 1
+    },
+    "axeIncomplete": {
+      "color-contrast": 3
+    },
+    "reflow480": "overflow"
+  },
+  "index-history": {
+    "axe": {
+      "frame-title": 1,
+      "link-in-text-block": 1
+    },
+    "axeIncomplete": {
+      "color-contrast": 3
+    },
+    "reflow480": "overflow"
+  },
+  "index-about": {
+    "axe": {
+      "frame-title": 1,
+      "link-in-text-block": 1
+    },
+    "axeIncomplete": {
+      "color-contrast": 3
+    },
+    "reflow480": "overflow"
+  },
+  "index-news": {
+    "axe": {
+      "frame-title": 1,
+      "link-in-text-block": 1
+    },
+    "axeIncomplete": {
+      "color-contrast": 27
+    },
+    "reflow480": "overflow"
+  },
+  "index-help": {
+    "axe": {
+      "frame-title": 1,
+      "link-in-text-block": 1
+    },
+    "axeIncomplete": {
+      "color-contrast": 3
+    },
+    "reflow480": "overflow"
+  },
+  "guild": {
+    "axe": {
+      "frame-title": 1,
+      "link-in-text-block": 1
+    },
+    "axeIncomplete": {
+      "color-contrast": 3
+    },
+    "reflow480": "ok"
+  }
+}

@@ -4,7 +4,10 @@ on:
   pull_request:
     paths:
       - 'supabase/**'
-      - 'tests/**'
+      # tests/rls/** rather than tests/**: this job boots a full Postgres
+      # stack, and the RLS tests import nothing outside their own directory,
+      # so a browser or frontend test had no business starting one.
+      - 'tests/rls/**'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/rls-tests.yml'

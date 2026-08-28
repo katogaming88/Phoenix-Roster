@@ -1,0 +1,254 @@
+[
+  {
+    "id": 1,
+    "player_id": 1,
+    "raid_date": "2026-07-07",
+    "status": "Present",
+    "report_excluded": false
+  },
+  {
+    "id": 2,
+    "player_id": 1,
+    "raid_date": "2026-07-09",
+    "status": "Present",
+    "report_excluded": false
+  },
+  {
+    "id": 3,
+    "player_id": 1,
+    "raid_date": "2026-07-14",
+    "status": "Present",
+    "report_excluded": false
+  },
+  {
+    "id": 4,
+    "player_id": 1,
+    "raid_date": "2026-07-16",
+    "status": "Present",
+    "report_excluded": false
+  },
+  {
+    "id": 5,
+    "player_id": 1,
+    "raid_date": "2026-07-21",
+    "status": "Present",
+    "report_excluded": false
+  },
+  {
+    "id": 6,
+    "player_id": 1,
+    "raid_date": "2026-07-23",
+    "status": "Present",
+    "report_excluded": false
+  },
+  {
+    "id": 7,
+    "player_id": 2,
+    "raid_date": "2026-07-07",
+    "status": "Present",
+    "report_excluded": false
+  },
+  {
+    "id": 8,
+    "player_id": 2,
+    "raid_date": "2026-07-09",
+    "status": "Present",
+    "report_excluded": false
+  },
+  {
+    "id": 9,
+    "player_id": 2,
+    "raid_date": "2026-07-14",
+    "status": "Present",
+    "report_excluded": false
+  },
+  {
+    "id": 10,
+    "player_id": 2,
+    "raid_date": "2026-07-16",
+    "status": "Present",
+    "report_excluded": false
+  },
+  {
+    "id": 11,
+    "player_id": 2,
+    "raid_date": "2026-07-21",
+    "status": "Present",
+    "report_excluded": false
+  },
+  {
+    "id": 12,
+    "player_id": 2,
+    "raid_date": "2026-07-23",
+    "status": "Present",
+    "report_excluded": false
+  },
+  {
+    "id": 13,
+    "player_id": 3,
+    "raid_date": "2026-07-07",
+    "status": "Present",
+    "report_excluded": false
+  },
+  {
+    "id": 14,
+    "player_id": 3,
+    "raid_date": "2026-07-09",
+    "status": "Present",
+    "report_excluded": false
+  },
+  {
+    "id": 15,
+    "player_id": 3,
+    "raid_date": "2026-07-14",
+    "status": "Present",
+    "report_excluded": false
+  },
+  {
+    "id": 16,
+    "player_id": 3,
+    "raid_date": "2026-07-16",
+    "status": "Present",
+    "report_excluded": false
+  },
+  {
+    "id": 17,
+    "player_id": 3,
+    "raid_date": "2026-07-21",
+    "status": "Present",
+    "report_excluded": false
+  },
+  {
+    "id": 18,
+    "player_id": 3,
+    "raid_date": "2026-07-23",
+    "status": "No Show",
+    "report_excluded": false
+  },
+  {
+    "id": 19,
+    "player_id": 4,
+    "raid_date": "2026-07-07",
+    "status": "Present",
+    "report_excluded": false
+  },
+  {
+    "id": 20,
+    "player_id": 4,
+    "raid_date": "2026-07-09",
+    "status": "Present",
+    "report_excluded": false
+  },
+  {
+    "id": 21,
+    "player_id": 4,
+    "raid_date": "2026-07-14",
+    "status": "Present",
+    "report_excluded": false
+  },
+  {
+    "id": 22,
+    "player_id": 4,
+    "raid_date": "2026-07-16",
+    "status": "No Show",
+    "report_excluded": false
+  },
+  {
+    "id": 23,
+    "player_id": 4,
+    "raid_date": "2026-07-21",
+    "status": "No Show",
+    "report_excluded": false
+  },
+  {
+    "id": 24,
+    "player_id": 4,
+    "raid_date": "2026-07-23",
+    "status": "No Show",
+    "report_excluded": false
+  },
+  {
+    "id": 25,
+    "player_id": 5,
+    "raid_date": "2026-07-07",
+    "status": "Present",
+    "report_excluded": false
+  },
+  {
+    "id": 26,
+    "player_id": 5,
+    "raid_date": "2026-07-09",
+    "status": "Present",
+    "report_excluded": false
+  },
+  {
+    "id": 27,
+    "player_id": 5,
+    "raid_date": "2026-07-14",
+    "status": "Present",
+    "report_excluded": false
+  },
+  {
+    "id": 28,
+    "player_id": 5,
+    "raid_date": "2026-07-16",
+    "status": "Present",
+    "report_excluded": false
+  },
+  {
+    "id": 29,
+    "player_id": 5,
+    "raid_date": "2026-07-21",
+    "status": "No Show",
+    "report_excluded": false
+  },
+  {
+    "id": 30,
+    "player_id": 5,
+    "raid_date": "2026-07-23",
+    "status": "No Show",
+    "report_excluded": false
+  },
+  {
+    "id": 31,
+    "player_id": 6,
+    "raid_date": "2026-07-07",
+    "status": "Present",
+    "report_excluded": false
+  },
+  {
+    "id": 32,
+    "player_id": 6,
+    "raid_date": "2026-07-09",
+    "status": "Present",
+    "report_excluded": false
+  },
+  {
+    "id": 33,
+    "player_id": 6,
+    "raid_date": "2026-07-14",
+    "status": "Present",
+    "report_excluded": false
+  },
+  {
+    "id": 34,
+    "player_id": 6,
+    "raid_date": "2026-07-16",
+    "status": "Present",
+    "report_excluded": false
+  },
+  {
+    "id": 35,
+    "player_id": 6,
+    "raid_date": "2026-07-21",
+    "status": "Present",
+    "report_excluded": false
+  },
+  {
+    "id": 36,
+    "player_id": 6,
+    "raid_date": "2026-07-23",
+    "status": "Present",
+    "report_excluded": false
+  }
+]

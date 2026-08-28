@@ -1,0 +1,38 @@
+[
+  {
+    "mythic_pulls": 0,
+    "mythic_best_pct": null,
+    "mythic_report_code": null,
+    "mythic_fight_id": null,
+    "heroic_date": "2026-03-18",
+    "heroic_pulls": 6,
+    "heroic_best_pct": 0,
+    "heroic_report_code": "aBcD1234",
+    "heroic_fight_id": 11,
+    "raid_encounters": {
+      "name": "Warden of Ash",
+      "wcl_encounter_id": 3001,
+      "raid_zones": {
+        "wcl_zone_id": 42
+      }
+    }
+  },
+  {
+    "mythic_pulls": 34,
+    "mythic_best_pct": 12.4,
+    "mythic_report_code": "aBcD1234",
+    "mythic_fight_id": 22,
+    "heroic_date": "2026-03-25",
+    "heroic_pulls": 9,
+    "heroic_best_pct": 0,
+    "heroic_report_code": "aBcD1234",
+    "heroic_fight_id": 12,
+    "raid_encounters": {
+      "name": "Grimwrack the Tidebound",
+      "wcl_encounter_id": 3003,
+      "raid_zones": {
+        "wcl_zone_id": 42
+      }
+    }
+  }
+]

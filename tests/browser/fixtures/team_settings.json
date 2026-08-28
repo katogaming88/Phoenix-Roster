@@ -1,0 +1,113 @@
+[
+  {
+    "team_id": 1,
+    "config": {
+      "seasonName": "Season 3",
+      "seasonStart": "2026-03-04",
+      "seasonEnd": "2026-09-30",
+      "seasonView": null,
+      "activeSignupSeason": "Season 4",
+      "trialWeeks": 4,
+      "trialAttend": 75,
+      "signupsOpen": true,
+      "bisSubmissionsOpen": true,
+      "mPlusExclusionsOpen": true,
+      "wishlistOpen": true,
+      "features": {},
+      "externalLinks": {
+        "warcraftlogs": "https://www.warcraftlogs.com/guild/id/000000",
+        "raiderio": "https://raider.io/guilds/us/illidan/Example"
+      },
+      "wishlistStatusLabels": {},
+      "teamOfficerBios": [
+        {
+          "name": "Aurelith",
+          "title": "Raid Leader",
+          "bio": "Calls the pulls and keeps the roster honest about cooldowns."
+        },
+        {
+          "name": "Brightmoor",
+          "title": "Healer Lead",
+          "bio": "Runs the healing assignments and the mana economy."
+        }
+      ],
+      "raidProgression": [
+        {
+          "name": "Halls of the Fallen Choir",
+          "aotcDate": "",
+          "isMiniRaid": false,
+          "bosses": [
+            {
+              "name": "Warden of Ash",
+              "mythicDate": "2026-04-02"
+            },
+            {
+              "name": "The Hollow Choir",
+              "mythicDate": "2026-04-16"
+            },
+            {
+              "name": "Grimwrack the Tidebound",
+              "mythicDate": ""
+            },
+            {
+              "name": "Aetherius Prime",
+              "mythicDate": ""
+            }
+          ]
+        }
+      ],
+      "seasonHistory": [
+        {
+          "name": "Season 2",
+          "raids": [
+            {
+              "name": "Vault of the Sundered Sky",
+              "bosses": [
+                {
+                  "name": "Stormcaller Vesh",
+                  "mythicDate": "2025-11-12",
+                  "mythicPulls": 41,
+                  "mythicBestPct": 0
+                },
+                {
+                  "name": "The Riven Herald",
+                  "mythicDate": "2025-12-03",
+                  "mythicPulls": 88,
+                  "mythicBestPct": 0
+                },
+                {
+                  "name": "Sablewing the Undimmed",
+                  "mythicDate": "",
+                  "mythicPulls": 63,
+                  "mythicBestPct": 8.2
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Season 1",
+          "raids": [
+            {
+              "name": "The Gilded Reliquary",
+              "bosses": [
+                {
+                  "name": "Keeper Ulveth",
+                  "mythicDate": "2025-05-14",
+                  "mythicPulls": 22,
+                  "mythicBestPct": 0
+                },
+                {
+                  "name": "Auronn the Pale",
+                  "mythicDate": "2025-06-02",
+                  "mythicPulls": 55,
+                  "mythicBestPct": 0
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+]

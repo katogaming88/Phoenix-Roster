@@ -1,0 +1,50 @@
+[
+  {
+    "id": 1,
+    "name": "Warden of Ash",
+    "sort_index": 1,
+    "wcl_encounter_id": 3001,
+    "raid_zones": {
+      "name": "Halls of the Fallen Choir",
+      "season": "Season 3",
+      "sort_index": 1,
+      "wcl_zone_id": 42
+    }
+  },
+  {
+    "id": 2,
+    "name": "The Hollow Choir",
+    "sort_index": 2,
+    "wcl_encounter_id": 3002,
+    "raid_zones": {
+      "name": "Halls of the Fallen Choir",
+      "season": "Season 3",
+      "sort_index": 1,
+      "wcl_zone_id": 42
+    }
+  },
+  {
+    "id": 3,
+    "name": "Grimwrack the Tidebound",
+    "sort_index": 3,
+    "wcl_encounter_id": 3003,
+    "raid_zones": {
+      "name": "Halls of the Fallen Choir",
+      "season": "Season 3",
+      "sort_index": 1,
+      "wcl_zone_id": 42
+    }
+  },
+  {
+    "id": 4,
+    "name": "Aetherius Prime",
+    "sort_index": 4,
+    "wcl_encounter_id": 3004,
+    "raid_zones": {
+      "name": "Halls of the Fallen Choir",
+      "season": "Season 3",
+      "sort_index": 1,
+      "wcl_zone_id": 42
+    }
+  }
+]
