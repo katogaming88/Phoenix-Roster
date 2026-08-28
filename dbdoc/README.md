@@ -119,6 +119,7 @@
 | public.admin_grant_boe_manager | int4 | p_discord_id text | FUNCTION |
 | public.admin_revoke_boe_manager | void | p_discord_id text | FUNCTION |
 | public.is_team_leader_anywhere | bool |  | FUNCTION |
+| public.remove_player_priority_order | int4 | p_team_id integer, p_season text, p_player_id integer | FUNCTION |
 
 ## Enums
 
