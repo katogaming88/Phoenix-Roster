@@ -20,15 +20,35 @@
 }
 body { background:var(--bg); color:var(--text); font-family:'Rajdhani',sans-serif; font-size:18px; min-height:100vh; display:flex; flex-direction:column; }
 
-/* Accessibility utilities (#777). Used by guild.html today and unreferenced by
-   the other three pages, so adding them here changes nothing on those. #435
-   wants exactly these two to build a skip link with, which is why they live in
-   the shared sheet; the focus-visible and reduced-motion baselines that issue
-   also covers are scoped to .guild-page in css/guild.css instead, so this PR
-   does not quietly restyle pages it did not test. */
+/* Accessibility utilities (#777). Guild-only when they landed; every page uses
+   them since #437 gave the other three a skip link. The focus-visible baseline
+   #435 also covers is still scoped to .guild-page in css/guild.css, and moves
+   here in its own PR because it restyles focus on every page and that wants a
+   look rather than a test. */
 .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 .skip-link { position:absolute; left:0.5rem; top:-4rem; z-index:100; padding:0.6rem 1rem; background:var(--bg-elevated); color:var(--gold-light); border:1px solid var(--gold-dim); border-radius:4px; text-decoration:none; letter-spacing:0.08em; transition:top 0.15s; }
 .skip-link:focus { top:0.5rem; }
+
+/* Motion baseline (#435). Was scoped to .guild-page (css/guild.css) while only
+   that page had been checked in a browser; tests/browser/reduced-motion.test.js
+   checks it on index.html now, so it applies everywhere.
+
+   0.01ms rather than 0: a zero-length animation never fires animationend or
+   transitionend, and anything waiting on one would hang instead of finishing
+   instantly.
+
+   scroll-behavior here reaches CSS-driven scrolling only. The two places this
+   site scrolls pass behavior as an argument to scrollIntoView(), which
+   overrides this property, so they ask prefersReducedMotion() in js/common.js
+   instead. This line is for anything that scrolls without asking. */
+@media (prefers-reduced-motion:reduce) {
+  *, *::before, *::after {
+    animation-duration:0.01ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:0.01ms !important;
+    scroll-behavior:auto !important;
+  }
+}
 
 /* Header */
 .header { position:relative; padding:2.5rem 2rem 2rem; text-align:center; border-bottom:1px solid var(--border); overflow:hidden; }

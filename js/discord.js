@@ -416,7 +416,7 @@ function goToTeamSwitcher() {
   closeDiscordClaimModal();
   var sel = document.getElementById('teamSwitcherSelect');
   if (!sel) return;
-  sel.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  sel.scrollIntoView({ block: 'center', behavior: motionSafeScrollBehavior() });
   sel.focus();
   if (typeof sel.showPicker === 'function') {
     try {
