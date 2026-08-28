@@ -32,8 +32,7 @@ const labelledBy = (html) => [...html.matchAll(/\saria-labelledby="([^"]+)"/g)].
 // A bare href="#" is a no-op link paired with an onclick, not a navigation
 // target. It is its own accessibility problem and #440 owns it; here it would
 // only ever read as an anchor pointing at nothing.
-const hashLinks = (html) =>
-  [...html.matchAll(/\shref="#([^"]+)"/g)].map((m) => m[1]).filter((t) => t !== '');
+const hashLinks = (html) => [...html.matchAll(/\shref="#([^"]+)"/g)].map((m) => m[1]).filter((t) => t !== '');
 const indexLinks = (html) => [...html.matchAll(/\shref="(index\.html[^"]*)"/g)].map((m) => m[1]);
 const tagCount = (html, tag) => (html.match(new RegExp('<' + tag + '[\\s>]', 'g')) || []).length;
 const headingLevels = (html) => [...html.matchAll(/<h([1-6])[\s>]/g)].map((m) => Number(m[1]));
@@ -116,9 +115,7 @@ describe.each(PAGES)('%s references resolve (#437)', (page) => {
   // minimum: officer.html and admin.html legitimately have no aria-labelledby
   // and no in-page anchors, and requiring one would be inventing a rule.
   it('every aria-labelledby points at an id that exists', () => {
-    expect(labelledBy(html).filter((r) => !r.split(/\s+/).every((id) => present.has(id)))).toEqual(
-      []
-    );
+    expect(labelledBy(html).filter((r) => !r.split(/\s+/).every((id) => present.has(id)))).toEqual([]);
   });
 
   it('every in-page anchor points at an id that exists', () => {
