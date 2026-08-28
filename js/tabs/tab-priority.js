@@ -640,6 +640,11 @@ function buildPriorityNotesTab() {
   var seenPlayerNote = {};
   _teamItemPreferences.forEach(function (p) {
     if (!p.note || !p.note.trim()) return;
+    // item_preferences has no archived-player cleanup (unlike priority_order,
+    // #824) -- a departed player's notes just sit there forever, and used to
+    // still show up here as "Player #123" since rosterById only has active
+    // roster members. Skip anyone no longer on the roster.
+    if (!rosterById[p.player_id]) return;
     var name = idToName[p.item_id];
     if (!name) return;
     if (itemPlaceholders[name]) return;
@@ -1199,6 +1204,10 @@ function updatePriorityNotesBadge() {
     idToName[itemIds[name]] = name;
   });
   var itemPlaceholders = DATA.itemPlaceholders || {};
+  var rosterById = {};
+  (DATA.roster || []).forEach(function (p) {
+    rosterById[p.id] = true;
+  });
   // Same per-(item, player, note) dedupe as buildPriorityNotesTab() -- a
   // Finger 1/2 or Trinket 1/2 pair with the identical note text is one
   // raider opinion, not two, so the badge count should match what the tab
@@ -1206,6 +1215,9 @@ function updatePriorityNotesBadge() {
   var seenPlayerNote = {};
   var count = _teamItemPreferences.filter(function (p) {
     if (!p.note || !p.note.trim()) return false;
+    // Same archived-player skip as buildPriorityNotesTab() -- keeps the
+    // badge count matching what the tab actually renders.
+    if (!rosterById[p.player_id]) return false;
     var name = idToName[p.item_id];
     if (itemPlaceholders[name]) return false;
     var dedupeKey = name + '|' + p.player_id + '|' + p.note.trim();

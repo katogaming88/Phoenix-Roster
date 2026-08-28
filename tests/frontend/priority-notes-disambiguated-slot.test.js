@@ -116,9 +116,10 @@ describe('buildPriorityNotesTab (disambiguated-slot real items)', () => {
 describe('updatePriorityNotesBadge (disambiguated-slot real items)', () => {
   it('counts a note on a real item tagged under a numbered slot', () => {
     const itemIds = { "Zul'jin's Guillotine Technique": 1 };
+    const roster = [{ id: 5, firstName: 'Phluffy', nameRealm: 'Phluffy-Stormrage' }];
     const prefs = [{ player_id: 5, item_id: 1, status: 'bis', slot: 'Trinket 2', note: 'a real note' }];
     const badge = { textContent: '', style: { display: '' } };
-    const sandbox = makeSandbox({ itemIds, prefs });
+    const sandbox = makeSandbox({ itemIds, roster, prefs });
     sandbox.document.getElementById = (id) => (id === 'prioNotesBadge' ? badge : null);
 
     sandbox.updatePriorityNotesBadge();
@@ -130,9 +131,10 @@ describe('updatePriorityNotesBadge (disambiguated-slot real items)', () => {
   it('excludes a placeholder note from the count', () => {
     const itemIds = { 'M+': 2 };
     const itemPlaceholders = { 'M+': true };
+    const roster = [{ id: 5, firstName: 'Phluffy', nameRealm: 'Phluffy-Stormrage' }];
     const prefs = [{ player_id: 5, item_id: 2, status: 'bis', slot: 'Neck', note: 'placeholder note' }];
     const badge = { textContent: '', style: { display: '' } };
-    const sandbox = makeSandbox({ itemIds, itemPlaceholders, prefs });
+    const sandbox = makeSandbox({ itemIds, itemPlaceholders, roster, prefs });
     sandbox.document.getElementById = (id) => (id === 'prioNotesBadge' ? badge : null);
 
     sandbox.updatePriorityNotesBadge();
@@ -143,12 +145,13 @@ describe('updatePriorityNotesBadge (disambiguated-slot real items)', () => {
 
   it('counts an identical note tagged on both Finger 1 and Finger 2 only once', () => {
     const itemIds = { 'Alluring Bubbleband': 3 };
+    const roster = [{ id: 7, firstName: 'Fxhp', nameRealm: 'Fxhp-Area 52' }];
     const prefs = [
       { player_id: 7, item_id: 3, status: 'good', slot: 'Finger 1', note: 'M+' },
       { player_id: 7, item_id: 3, status: 'good', slot: 'Finger 2', note: 'M+' }
     ];
     const badge = { textContent: '', style: { display: '' } };
-    const sandbox = makeSandbox({ itemIds, prefs });
+    const sandbox = makeSandbox({ itemIds, roster, prefs });
     sandbox.document.getElementById = (id) => (id === 'prioNotesBadge' ? badge : null);
 
     sandbox.updatePriorityNotesBadge();
