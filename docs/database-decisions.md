@@ -8,6 +8,19 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-08-28 -- players.archived_reason_detail: required freeform detail alongside the exit-reason dropdown
+
+Tracking issue: [katogaming88/WGA-Raid-Hub#476](https://github.com/katogaming88/WGA-Raid-Hub/issues/476), follow-up to the `archived_reason` dropdown shipped earlier the same day. The fixed-vocabulary category alone (`schedule_conflict`, `drama`, etc.) doesn't capture the specifics an officer actually wants on record -- which guild someone moved to, what the schedule conflict was.
+
+- **New `players.archived_reason_detail text`, nullable, sibling to `archived_reason`.** No CHECK constraint -- freeform by design, the category column already carries the queryable structure.
+- **Required at removal time** alongside the reason dropdown -- `executeRemovePlayer()` blocks the removal until both are filled in.
+- **Cleared (`null`) on reactivation**, same as `archived_reason`.
+- **Audit log detail now reads `"<reason>: <detail>"`** instead of just the reason code.
+
+[Full discussion -> #476](https://github.com/katogaming88/WGA-Raid-Hub/issues/476)
+
+---
+
 ## 2026-08-28 -- players.archived_reason: fixed-vocabulary exit reason captured at roster removal
 
 Tracking issue: [katogaming88/WGA-Raid-Hub#476](https://github.com/katogaming88/WGA-Raid-Hub/issues/476). Nothing tracked *why* a player left the roster, only that they had (`players.archived_at`). Over a few seasons that makes it impossible to spot retention patterns (e.g. losing people right after bench stretches).

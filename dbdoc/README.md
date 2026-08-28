@@ -14,7 +14,7 @@
 | [public.rclc_loot](public.rclc_loot.md) | 11 |  | BASE TABLE |
 | [public.mplus_exclusion_requests](public.mplus_exclusion_requests.md) | 9 |  | BASE TABLE |
 | [public.player_wcl_season_perf](public.player_wcl_season_perf.md) | 7 |  | BASE TABLE |
-| [public.players](public.players.md) | 23 |  | BASE TABLE |
+| [public.players](public.players.md) | 24 |  | BASE TABLE |
 | [public.priority_order](public.priority_order.md) | 8 |  | BASE TABLE |
 | [public.scoring](public.scoring.md) | 10 |  | BASE TABLE |
 | [public.season_signups](public.season_signups.md) | 18 |  | BASE TABLE |
@@ -316,6 +316,7 @@ erDiagram
   timestamp_with_time_zone tier_pieces_synced_at
   integer bonus_roll_encounter_id FK
   text archived_reason
+  text archived_reason_detail
 }
 "public.priority_order" {
   integer id

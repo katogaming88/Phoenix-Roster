@@ -94,7 +94,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.77.5';
+var VERSION = '3.77.6';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -6286,6 +6286,9 @@ function renderProfile(firstName, backTo, container) {
       '<option value="switching_mains">Switching mains</option>' +
       '<option value="other">Other</option>' +
       '</select>' +
+      '<input id="removePlayerReasonDetail-' +
+      player.firstName +
+      '" type="text" placeholder="Details..." style="font-size:1rem;padding:0.25rem 0.5rem;flex:1;min-width:8rem;" />' +
       '<button class="btn btn-danger" style="font-size:1rem;padding:0.25rem 0.75rem;" onclick="executeRemovePlayer(\'' +
       nrSafe +
       "','" +

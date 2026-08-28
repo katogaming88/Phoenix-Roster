@@ -27,6 +27,7 @@
 | tier_pieces_synced_at | timestamp with time zone |  | true |  |  |  |
 | bonus_roll_encounter_id | integer |  | true |  | [public.raid_encounters](public.raid_encounters.md) |  |
 | archived_reason | text |  | true |  |  |  |
+| archived_reason_detail | text |  | true |  |  |  |
 
 ## Constraints
 
@@ -103,6 +104,7 @@ erDiagram
   timestamp_with_time_zone tier_pieces_synced_at
   integer bonus_roll_encounter_id FK
   text archived_reason
+  text archived_reason_detail
 }
 "public.attendance" {
   integer id
