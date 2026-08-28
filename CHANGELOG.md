@@ -22,6 +22,11 @@ with each release split into `### Frontend` (drives the version number) and
 - `players.archived_reason` -- new column, sibling to `archived_at`,
   restricted to a fixed set of reasons via a CHECK constraint. Cleared
   when a previously-removed player rejoins.
+- Attendance's "Refresh from WCL" was silently stuck on old raid nights once
+  a guild passed 50 WarcraftLogs reports since season start (raid nights plus
+  every M+/delve/alt log anyone uploads) -- it only ever fetched the first,
+  oldest-first page of results. Paginates through `has_more_pages` now, same
+  fix the raid-progression sync already needed for the same reason.
 
 ---
 
