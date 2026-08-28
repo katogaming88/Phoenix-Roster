@@ -405,6 +405,14 @@ const SEASON_REPORT_LIMIT = 50;
 // an unexpected has_more_pages loop.
 const MAX_REPORT_PAGES = 20;
 const ALT_RUN_KEYWORD = 'Alt';
+// A plain substring match on ALT_RUN_KEYWORD false-positives on any boss name
+// containing "Alt" as a run of letters inside a longer word -- confirmed live
+// against "Phoenix Heroic 8/27 - The Coiled Altar (...)", where "Altar"
+// silently excluded a real raid night as an alt run. Alt-run titles are
+// always "Alt" as its own word (e.g. "Phoenix Alt run", see
+// tests/import/attendance.test.js), so this only matches "Alt" with a word
+// boundary on both sides.
+const ALT_RUN_PATTERN = new RegExp(`\\b${ALT_RUN_KEYWORD}\\b`);
 
 async function getReportZone(token: string, reportCode: string): Promise<number | null> {
   const query = `query { reportData { report(code: "${reportCode}") { zone { id } } } }`;
@@ -669,7 +677,7 @@ async function refreshAttendance(
       continue;
     }
 
-    if (String(report.title).includes(ALT_RUN_KEYWORD)) {
+    if (ALT_RUN_PATTERN.test(String(report.title))) {
       excluded++;
       continue;
     }
