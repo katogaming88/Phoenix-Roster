@@ -591,7 +591,7 @@ function officerSelectPlayer(firstName) {
   playerRow.parentNode.insertBefore(inlineRow, playerRow.nextSibling);
 
   renderProfile(firstName, 'officer', inlineCell);
-  inlineRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  inlineRow.scrollIntoView({ behavior: motionSafeScrollBehavior(), block: 'nearest' });
 }
 
 // Re-renders the currently open player card. Originally only ever called

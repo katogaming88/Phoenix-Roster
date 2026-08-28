@@ -841,6 +841,36 @@ function syncOwnBisFromRaiderIo(firstName, nameRealm) {
   });
 }
 
+// True when the viewer has asked their OS for less motion (#435). The CSS
+// baseline in css/styles.css handles animations and transitions on its own,
+// but scroll-behavior only governs scrolling the CSS started: a
+// scrollIntoView() call that passes behavior:'smooth' overrides it and the
+// media query never sees it. So the two call sites that do that ask here
+// instead (js/discord.js's team-switcher jump, js/tabs/tab-roster.js's inline
+// profile row).
+//
+// Read per call, not cached: both macOS and Windows let the preference change
+// while a page is open, and a cached answer would keep animating until reload.
+// Guarded rather than assumed, because the vm-sandbox tests and any other
+// non-browser host have no matchMedia, and throwing from a helper this small
+// would take down whichever render path called it.
+/**
+ * @returns {boolean}
+ */
+function prefersReducedMotion() {
+  if (typeof matchMedia !== 'function') return false;
+  return !!matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+/**
+ * The scrollIntoView() behavior to use, honouring the reduced-motion
+ * preference. Exists so the two call sites cannot drift apart on the query.
+ * @returns {ScrollBehavior}
+ */
+function motionSafeScrollBehavior() {
+  return prefersReducedMotion() ? 'auto' : 'smooth';
+}
+
 // Maintenance mode (#245). Checked at the earliest point each page's boot
 // sequence branches (js/roster.js, js/officer.js), before loadData() or any
 // login prompt -- degrades to "not in maintenance" on any error/no-row

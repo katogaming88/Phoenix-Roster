@@ -280,7 +280,7 @@
   margin: 1.5rem 0 0.75rem;
 }
 
-/* ── Keyboard and motion baselines (scoped, see header) ─────────────── */
+/* ── Keyboard baseline (scoped, see header) ─────────────────────────── */
 
 .guild-page :focus-visible {
   outline: 2px solid var(--gold);
@@ -291,17 +291,6 @@
 /* Elsewhere in this codebase focus is signalled by a 1px border-colour change
    paired with outline:none, which is close to invisible. Nothing on this page
    does that, so the ring above is the only focus style it needs. */
-
-@media (prefers-reduced-motion: reduce) {
-  .guild-page *,
-  .guild-page *::before,
-  .guild-page *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-}
 
 @media (max-width: 640px) {
   .guild-body {
