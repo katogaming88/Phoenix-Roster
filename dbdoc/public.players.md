@@ -26,11 +26,13 @@
 | tier_pieces_equipped | integer |  | true |  |  |  |
 | tier_pieces_synced_at | timestamp with time zone |  | true |  |  |  |
 | bonus_roll_encounter_id | integer |  | true |  | [public.raid_encounters](public.raid_encounters.md) |  |
+| archived_reason | text |  | true |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| players_archived_reason_check | CHECK | CHECK (((archived_reason IS NULL) OR (archived_reason = ANY (ARRAY['schedule_conflict'::text, 'performance'::text, 'drama'::text, 'moved_guilds'::text, 'switching_mains'::text, 'other'::text])))) |
 | players_tier_pieces_equipped_range | CHECK | CHECK (((tier_pieces_equipped IS NULL) OR ((tier_pieces_equipped >= 0) AND (tier_pieces_equipped <= 5)))) |
 | players_class_spec_id_fkey | FOREIGN KEY | FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE |
 | players_pkey | PRIMARY KEY | PRIMARY KEY (id) |
@@ -50,8 +52,8 @@
 
 | Name | Definition |
 | ---- | ---------- |
-| trg_players_restrict_self_update | CREATE TRIGGER trg_players_restrict_self_update BEFORE UPDATE ON public.players FOR EACH ROW EXECUTE FUNCTION restrict_players_self_update_to_bonus_roll() |
 | trg_players_updated_at | CREATE TRIGGER trg_players_updated_at BEFORE UPDATE ON public.players FOR EACH ROW EXECUTE FUNCTION set_updated_at() |
+| trg_players_restrict_self_update | CREATE TRIGGER trg_players_restrict_self_update BEFORE UPDATE ON public.players FOR EACH ROW EXECUTE FUNCTION restrict_players_self_update_to_bonus_roll() |
 
 ## Relations
 
@@ -100,6 +102,7 @@ erDiagram
   integer tier_pieces_equipped
   timestamp_with_time_zone tier_pieces_synced_at
   integer bonus_roll_encounter_id FK
+  text archived_reason
 }
 "public.attendance" {
   integer id

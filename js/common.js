@@ -6275,6 +6275,17 @@ function renderProfile(firstName, backTo, container) {
       player.firstName +
       '" style="display:none;gap:0.5rem;align-items:center;">' +
       '<span style="font-size:1.04rem;color:var(--melee);">Confirm?</span>' +
+      '<select id="removePlayerReason-' +
+      player.firstName +
+      '" style="font-size:1rem;padding:0.25rem 0.5rem;">' +
+      '<option value="">Reason...</option>' +
+      '<option value="schedule_conflict">Schedule conflict</option>' +
+      '<option value="performance">Performance</option>' +
+      '<option value="drama">Drama</option>' +
+      '<option value="moved_guilds">Moved guilds</option>' +
+      '<option value="switching_mains">Switching mains</option>' +
+      '<option value="other">Other</option>' +
+      '</select>' +
       '<button class="btn btn-danger" style="font-size:1rem;padding:0.25rem 0.75rem;" onclick="executeRemovePlayer(\'' +
       nrSafe +
       "','" +

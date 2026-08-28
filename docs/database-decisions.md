@@ -8,6 +8,20 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-08-28 -- players.archived_reason: fixed-vocabulary exit reason captured at roster removal
+
+Tracking issue: [katogaming88/WGA-Raid-Hub#476](https://github.com/katogaming88/WGA-Raid-Hub/issues/476). Nothing tracked *why* a player left the roster, only that they had (`players.archived_at`). Over a few seasons that makes it impossible to spot retention patterns (e.g. losing people right after bench stretches).
+
+- **New `players.archived_reason text`, nullable, sibling to `archived_at`.** No new table -- smallest change that captures the data.
+- **Fixed vocabulary via CHECK constraint** (`schedule_conflict` / `performance` / `drama` / `moved_guilds` / `switching_mains` / `other`) rather than free text, backing an officer-facing dropdown in the remove-player confirm panel. Keeps the data queryable for pattern-spotting instead of needing NLP over freeform notes.
+- **Required at removal time** -- `executeRemovePlayer()` blocks the removal until a reason is picked, so the column doesn't silently stay null on new removals the way `archived_at`'s companion data has elsewhere.
+- **Cleared (`null`) on reactivation** -- `addPlayerToRosterSupabase()`'s un-archive path resets it alongside `archived_at` when a previously-removed name_realm rejoins.
+- **Left `null` on the main-swap auto-archive path** (`add_signup_to_roster()` archiving the old character when a new one is promoted). That isn't a real roster exit -- the player is still active under the new character -- so backfilling a reason there would muddy the column's meaning.
+
+[Full discussion -> #476](https://github.com/katogaming88/WGA-Raid-Hub/issues/476)
+
+---
+
 ## 2026-08-27 -- Database default timezone set to America/New_York
 
 Tracking issue: [katogaming88/WGA-Raid-Hub#803](https://github.com/katogaming88/WGA-Raid-Hub/issues/803). Every `timestamptz` column was already stored correctly -- Postgres always stores `timestamptz` as UTC internally, and `import_rclc_loot()`'s `at time zone 'America/New_York'` conversion correctly interpreted RCLC's raid-local wall-clock time before storing it. But the database's session-level `timezone` setting was still Postgres/Supabase's default of `UTC`, so any raw read that doesn't explicitly convert -- Supabase Studio's table grid, an ad-hoc query -- displayed every timestamptz in UTC (e.g. `rclc_loot.awarded_at` showing 1-4am for raid times that were really 9-11pm Eastern).
