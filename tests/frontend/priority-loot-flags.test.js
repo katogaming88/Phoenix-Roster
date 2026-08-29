@@ -33,6 +33,10 @@ function lootCounts() {
     snarge: {
       count: 1,
       items: [{ name: 'Signet of the Starved Beast', difficulty: 'Heroic' }]
+    },
+    fxhp: {
+      count: 1,
+      items: [{ name: 'Signet of the Starved Beast', difficulty: 'Normal' }]
     }
   };
 }
@@ -65,12 +69,12 @@ function makeSandbox({ item, difficulty }) {
 describe('prioEditLootFlags accent handling (#360)', () => {
   it('finds an accented player mythic loot entry (was silently missed)', () => {
     const sandbox = makeSandbox({ item: 'Signet of the Starved Beast', difficulty: 'Mythic' });
-    expect(sandbox.prioEditLootFlags('Katorrí')).toEqual({ hasHeroic: false, hasMythic: true });
+    expect(sandbox.prioEditLootFlags('Katorrí')).toEqual({ hasNormal: false, hasHeroic: false, hasMythic: true });
   });
 
   it('finds an accented player heroic loot entry', () => {
     const sandbox = makeSandbox({ item: 'Bond of Light', difficulty: 'Mythic' });
-    expect(sandbox.prioEditLootFlags('Katorrí')).toEqual({ hasHeroic: true, hasMythic: false });
+    expect(sandbox.prioEditLootFlags('Katorrí')).toEqual({ hasNormal: false, hasHeroic: true, hasMythic: false });
   });
 
   it('still blocks an accented mythic recipient from being re-ranked (the fairness bug)', () => {
@@ -82,7 +86,7 @@ describe('prioEditLootFlags accent handling (#360)', () => {
 
   it('unaccented names keep working exactly as before', () => {
     const sandbox = makeSandbox({ item: 'Signet of the Starved Beast', difficulty: 'Mythic' });
-    expect(sandbox.prioEditLootFlags('Snarge')).toEqual({ hasHeroic: true, hasMythic: false });
+    expect(sandbox.prioEditLootFlags('Snarge')).toEqual({ hasNormal: false, hasHeroic: true, hasMythic: false });
     // Heroic recipient is still eligible (penalized) for mythic, per the
     // generate_priority_order() exclusion rule.
     expect(sandbox.prioEditIsBlocked('Snarge')).toBe(false);
@@ -93,7 +97,18 @@ describe('prioEditLootFlags accent handling (#360)', () => {
 
   it('a player with no loot at all is unblocked', () => {
     const sandbox = makeSandbox({ item: 'Signet of the Starved Beast', difficulty: 'Mythic' });
-    expect(sandbox.prioEditLootFlags('Nobody')).toEqual({ hasHeroic: false, hasMythic: false });
+    expect(sandbox.prioEditLootFlags('Nobody')).toEqual({ hasNormal: false, hasHeroic: false, hasMythic: false });
     expect(sandbox.prioEditIsBlocked('Nobody')).toBe(false);
+  });
+
+  // Champion/Normal is informational only -- it never blocks a Heroic or
+  // Mythic rank, unlike hasHeroic/hasMythic (Champion loot sits outside the
+  // priority system entirely, docs/database-decisions.md 2026-07-07).
+  it('flags a Champion (Normal) recipient without blocking either track', () => {
+    const mythic = makeSandbox({ item: 'Signet of the Starved Beast', difficulty: 'Mythic' });
+    expect(mythic.prioEditLootFlags('Fxhp')).toEqual({ hasNormal: true, hasHeroic: false, hasMythic: false });
+    expect(mythic.prioEditIsBlocked('Fxhp')).toBe(false);
+    const heroic = makeSandbox({ item: 'Signet of the Starved Beast', difficulty: 'Heroic' });
+    expect(heroic.prioEditIsBlocked('Fxhp')).toBe(false);
   });
 });

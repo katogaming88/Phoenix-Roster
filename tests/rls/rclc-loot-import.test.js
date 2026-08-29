@@ -103,6 +103,112 @@ describe('import_rclc_loot track parsing', () => {
   });
 });
 
+// 20260829200033: track is preferred from the item's own bonus IDs (baked in
+// at generation, immune to drift) over the free-text instance string (which
+// can go stale -- see the migration header comment for the live incident
+// that prompted this: loot passed out after the raid had already moved to a
+// different pull recorded the wrong instance/boss). Season MID2 bonus-ID
+// ranges confirmed against Wowhead for the "Font of Venomous Rage" trinket;
+// synthetic itemStrings below mirror the real RCLC export shape (verified
+// against three real Season MID2 export entries) with just the bonus ID(s)
+// swapped -- "item:<id>::::::::90:266::3:<numBonusIds>:<bonusId...>:1:28:<n>".
+describe('import_rclc_loot track from bonus IDs (20260829200033)', () => {
+  it('reads Champion track from a single bonus ID in the Champion range', async () => {
+    await withTxn(async (q, asRole) => {
+      await importAs(asRole, OFFICER_T1, [
+        row({
+          id: 'bonus-champion',
+          instance: 'The Voidspire-Heroic',
+          itemString: 'item:100001::::::::90:266::3:1:12835:1:28:1000'
+        })
+      ]);
+      const track = await q(`select track from public.rclc_loot where rclc_id = 'bonus-champion'`);
+      expect(track.rows[0].track).toBe('Champion');
+    });
+  });
+
+  it('reads Hero track from a single bonus ID in the Hero range', async () => {
+    await withTxn(async (q, asRole) => {
+      await importAs(asRole, OFFICER_T1, [
+        row({
+          id: 'bonus-hero',
+          instance: 'The Voidspire-Heroic',
+          itemString: 'item:100001::::::::90:266::3:1:12843:1:28:1000'
+        })
+      ]);
+      const track = await q(`select track from public.rclc_loot where rclc_id = 'bonus-hero'`);
+      expect(track.rows[0].track).toBe('Hero');
+    });
+  });
+
+  it('reads Myth track from a single bonus ID in the Myth range', async () => {
+    await withTxn(async (q, asRole) => {
+      await importAs(asRole, OFFICER_T1, [
+        row({
+          id: 'bonus-myth',
+          instance: 'The Voidspire-Heroic',
+          itemString: 'item:100001::::::::90:266::3:1:12851:1:28:1000'
+        })
+      ]);
+      const track = await q(`select track from public.rclc_loot where rclc_id = 'bonus-myth'`);
+      expect(track.rows[0].track).toBe('Myth');
+    });
+  });
+
+  it('reads Myth track from the 9/6 special-drop bonus ID (13848)', async () => {
+    await withTxn(async (q, asRole) => {
+      await importAs(asRole, OFFICER_T1, [
+        row({
+          id: 'bonus-myth-special',
+          instance: 'The Voidspire-Heroic',
+          itemString: 'item:100001::::::::90:266::5:2:13335:13848:1:28:1000'
+        })
+      ]);
+      const track = await q(`select track from public.rclc_loot where rclc_id = 'bonus-myth-special'`);
+      expect(track.rows[0].track).toBe('Myth');
+    });
+  });
+
+  it('prefers the bonus ID over a stale/misleading instance string (the live incident)', async () => {
+    await withTxn(async (q, asRole) => {
+      // Instance string claims Heroic (as if the drop came from a later
+      // Heroic pull), but the item's own bonus ID says Champion -- bonus ID
+      // must win, since it's what actually generated the item.
+      await importAs(asRole, OFFICER_T1, [
+        row({
+          id: 'bonus-overrides-instance',
+          instance: 'The Twin Fangs-Heroic',
+          itemString: 'item:100001::::::::90:266::3:1:12836:1:28:1000'
+        })
+      ]);
+      const track = await q(`select track from public.rclc_loot where rclc_id = 'bonus-overrides-instance'`);
+      expect(track.rows[0].track).toBe('Champion');
+    });
+  });
+
+  it('falls back to instance-string parsing when itemString has no recognized bonus ID', async () => {
+    await withTxn(async (q, asRole) => {
+      await importAs(asRole, OFFICER_T1, [
+        row({
+          id: 'bonus-unmatched-fallback',
+          instance: 'The Voidspire-Mythic',
+          itemString: 'item:100001::::::::90:266::3:1:99999:1:28:1000'
+        })
+      ]);
+      const track = await q(`select track from public.rclc_loot where rclc_id = 'bonus-unmatched-fallback'`);
+      expect(track.rows[0].track).toBe('Myth');
+    });
+  });
+
+  it('falls back to instance-string parsing when itemString is missing entirely', async () => {
+    await withTxn(async (q, asRole) => {
+      await importAs(asRole, OFFICER_T1, [row({ id: 'bonus-missing-fallback', instance: 'The Voidspire-Normal' })]);
+      const track = await q(`select track from public.rclc_loot where rclc_id = 'bonus-missing-fallback'`);
+      expect(track.rows[0].track).toBe('Champion');
+    });
+  });
+});
+
 describe('import_rclc_loot general behavior', () => {
   it('resolves item_id by wow_item_id and player_id by exact name match', async () => {
     await withTxn(async (q, asRole) => {

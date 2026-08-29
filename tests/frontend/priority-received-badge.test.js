@@ -30,11 +30,22 @@ function makeSandbox() {
   vm.createContext(sandbox);
   vm.runInContext(COMMON_JS, sandbox, { filename: 'common.js' });
   vm.runInContext(PRIORITY_JS, sandbox, { filename: 'tab-priority.js' });
+  // Real DATA.lootCounts is keyed by normalise(name_realm), not first name
+  // alone (#359) -- both fixtures below share the "Raz" first name on
+  // different realms, matching the shape that exposed the bug.
   sandbox.DATA = {
     lootCounts: {
-      fxhp: {
+      'fxhp-illidan': {
         count: 1,
         items: [{ name: 'Soulcoiler Ritual Vessel', difficulty: 'Heroic' }]
+      },
+      'raz-illidan': {
+        count: 1,
+        items: [{ name: 'Voracious Heart of Ula’tek', difficulty: 'Normal' }]
+      },
+      'raz-stormrage': {
+        count: 1,
+        items: [{ name: 'Voracious Heart of Ula’tek', difficulty: 'Heroic' }]
       }
     }
   };
@@ -44,30 +55,46 @@ function makeSandbox() {
 describe('playerReceivedItem', () => {
   it('flags a player who already received this exact item on this exact difficulty', () => {
     const sandbox = makeSandbox();
-    const player = { firstName: 'Fxhp' };
+    const player = { firstName: 'Fxhp', nameRealm: 'Fxhp-Illidan' };
     expect(sandbox.playerReceivedItem(player, 'Soulcoiler Ritual Vessel', 'Heroic')).toBe(true);
   });
 
   it('does not flag the same item on a different difficulty', () => {
     const sandbox = makeSandbox();
-    const player = { firstName: 'Fxhp' };
+    const player = { firstName: 'Fxhp', nameRealm: 'Fxhp-Illidan' };
     expect(sandbox.playerReceivedItem(player, 'Soulcoiler Ritual Vessel', 'Mythic')).toBe(false);
   });
 
   it('does not flag a different item', () => {
     const sandbox = makeSandbox();
-    const player = { firstName: 'Fxhp' };
+    const player = { firstName: 'Fxhp', nameRealm: 'Fxhp-Illidan' };
     expect(sandbox.playerReceivedItem(player, 'Some Other Trinket', 'Heroic')).toBe(false);
   });
 
   it('does not flag a player with no loot history', () => {
     const sandbox = makeSandbox();
-    const player = { firstName: 'Nobody' };
+    const player = { firstName: 'Nobody', nameRealm: 'Nobody-Illidan' };
     expect(sandbox.playerReceivedItem(player, 'Soulcoiler Ritual Vessel', 'Heroic')).toBe(false);
   });
 
   it('handles a missing player gracefully', () => {
     const sandbox = makeSandbox();
     expect(sandbox.playerReceivedItem(null, 'Soulcoiler Ritual Vessel', 'Heroic')).toBe(false);
+  });
+
+  // Regression: two players sharing a first name on different realms used to
+  // collapse into one loot record via getLootEntry()'s ambiguous first-name
+  // fallback, which only triggers when the caller passes a bare first name
+  // instead of the full name_realm identity.
+  it('does not misattribute a same-first-name player on another realm’s Heroic drop', () => {
+    const sandbox = makeSandbox();
+    const player = { firstName: 'Raz', nameRealm: 'Raz-Illidan' };
+    expect(sandbox.playerReceivedItem(player, 'Voracious Heart of Ula’tek', 'Heroic')).toBe(false);
+  });
+
+  it('still flags the actual Heroic recipient sharing that first name', () => {
+    const sandbox = makeSandbox();
+    const player = { firstName: 'Raz', nameRealm: 'Raz-Stormrage' };
+    expect(sandbox.playerReceivedItem(player, 'Voracious Heart of Ula’tek', 'Heroic')).toBe(true);
   });
 });
