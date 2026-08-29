@@ -606,12 +606,12 @@ select#playerSelect option { background:#1a1d27; }
 .prio-export-copy-msg { font-size:0.97rem; color:var(--heal); }
 
 /* Priority Edit Modal */
-.prio-edit-box { max-width:720px; width:95vw; max-height:90vh; min-height:0; overflow:hidden; }
+.prio-edit-box { max-width:900px; width:95vw; max-height:90vh; min-height:0; overflow:hidden; }
 .prio-edit-header { display:flex; align-items:center; gap:0.75rem; flex-shrink:0; }
 .prio-edit-title { font-family:'Cinzel',serif; font-size:1rem; color:var(--gold-light); letter-spacing:0.1em; flex:1; min-width:0; word-break:break-word; }
 .prio-edit-body { display:flex; gap:1.5rem; min-height:260px; margin-top:0.25rem; flex:1; overflow-y:auto; }
 .prio-edit-ranked { flex:1; min-width:0; display:flex; flex-direction:column; }
-.prio-edit-pool-col { width:190px; flex-shrink:0; display:flex; flex-direction:column; }
+.prio-edit-pool-col { width:280px; flex-shrink:0; display:flex; flex-direction:column; }
 .prio-edit-section-label { font-size:0.91rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:var(--text-muted); margin-bottom:0.4rem; }
 .prio-drag-list { display:flex; flex-direction:column; gap:0.2rem; flex:1; }
 .prio-drag-list-empty { font-size:0.97rem; color:var(--text-muted); font-style:italic; padding:0.4rem 0; }
@@ -627,8 +627,8 @@ select#playerSelect option { background:#1a1d27; }
 .prio-drag-item .prio-role-badge { font-size:0.84rem; padding:1px 4px; flex-shrink:0; }
 .prio-drag-meta { font-size:0.89rem; color:var(--text-muted); padding-left:calc(18px + 0.45rem); display:flex; flex-wrap:wrap; align-items:baseline; gap:0.3rem; }
 .prio-drag-meta-status { font-style:italic; }
-.prio-pool-list { display:flex; flex-direction:column; gap:0.2rem; flex:1; overflow-y:auto; max-height:240px; margin-bottom:0.4rem; }
-.prio-pool-item { display:flex; align-items:center; gap:0.4rem; padding:0.3rem 0.45rem; background:var(--bg-elevated); border:1px solid var(--border); border-radius:3px; cursor:pointer; font-size:1rem; transition:background 0.1s; }
+.prio-pool-list { display:flex; flex-direction:column; gap:0.2rem; flex:1; overflow-y:auto; overflow-x:hidden; max-height:240px; margin-bottom:0.4rem; }
+.prio-pool-item { display:flex; align-items:center; flex-wrap:wrap; gap:0.3rem 0.4rem; padding:0.3rem 0.45rem; background:var(--bg-elevated); border:1px solid var(--border); border-radius:3px; cursor:pointer; font-size:1rem; transition:background 0.1s; }
 .prio-pool-item:hover { border-color:var(--gold); background:rgba(197,153,83,0.1); }
 .prio-pool-name { flex:1; font-weight:600; color:var(--text); }
 .prio-pool-add { font-size:0.93rem; color:var(--gold); flex-shrink:0; }
@@ -641,6 +641,7 @@ select#playerSelect option { background:#1a1d27; }
 .prio-diff-badge { font-size:0.87rem; font-weight:700; padding:1px 6px; border-radius:3px; text-transform:uppercase; letter-spacing:0.06em; flex-shrink:0; }
 .prio-diff-heroic { background:rgba(72,187,120,0.18); color:var(--heal); }
 .prio-diff-mythic { background:rgba(231,76,60,0.18); color:var(--melee); }
+.prio-diff-champion { background:rgba(74,158,255,0.18); color:var(--tank); }
 
 /* Footer */
 .footer { text-align:center; padding:1.5rem; font-size:1.04rem; color:var(--text); letter-spacing:0.12em; text-transform:uppercase; border-top:1px solid var(--border); margin-top:auto; }

@@ -1417,7 +1417,11 @@ function playerOtherSlotItems(player, slot, currentItem, itemSlots) {
 
 function playerReceivedItem(player, item, difficulty) {
   if (!player) return false;
-  var seasonItems = getSeasonLootItems(player.firstName);
+  // nameRealm, not firstName -- DATA.lootCounts is keyed by full identity
+  // (#359) and getLootEntry() only exact-matches that; a bare first name
+  // falls through to its ambiguous same-first-name-any-realm fallback, which
+  // can misattribute another player's Heroic drop to this one.
+  var seasonItems = getSeasonLootItems(player.nameRealm);
   return seasonItems.some(function (it) {
     if (typeof it === 'string') return false;
     return it.name === item && it.difficulty === difficulty;
@@ -1832,6 +1836,47 @@ function prioEditGetBisPlayers() {
   return result;
 }
 
+// Wishlist status a player tagged for the item currently open in the modal,
+// read straight from _teamItemPreferences (not PRIO_EDIT.scores, which is
+// only populated after a Suggest Order click) so officers can see wishlist
+// tags -- including 'pass'/'catalyst', deliberately excluded from the
+// BiS-pool candidate list -- while manually assigning ranks without
+// triggering a re-suggest. Returns null if untagged or data isn't loaded.
+function prioEditWishlistStatus(nameRealm) {
+  if (!_teamItemPreferences) return null;
+  var itemId = (DATA.itemIds || {})[PRIO_EDIT.item];
+  var player = (DATA.roster || []).filter(function (p) {
+    return normalise(p.nameRealm) === normalise(nameRealm);
+  })[0];
+  if (!itemId || !player) return null;
+  return _prioBestWishlistStatus(itemId, player.id);
+}
+
+// Label + color for a wishlist status badge, honoring team overrides -- same
+// source buildPriorityTab()'s ranked-row badges and PRIO_EDIT.ranked's
+// post-suggest meta text use.
+function prioEditWishlistBadgeHtml(status) {
+  if (!status) return '';
+  var labelOverrides = (DATA && DATA.wishlistStatusLabels) || {};
+  var defaultLabel = (typeof WISHLIST_LABEL_DEFAULTS !== 'undefined' ? WISHLIST_LABEL_DEFAULTS : []).filter(
+    function (t) {
+      return t.value === status;
+    }
+  )[0];
+  var label = labelOverrides[status] || (defaultLabel && defaultLabel.label) || status;
+  var color = PRIO_NOTES_TIER_COLORS[status];
+  if (!color) return '';
+  return (
+    '<span class="prio-rank-wishlist" style="color:' +
+    color.css +
+    ';border-color:' +
+    color.css +
+    ';">' +
+    escHtml(label) +
+    '</span>'
+  );
+}
+
 function prioEditUpdateVersionWarning() {
   var el = document.getElementById('prioEditVersionWarning');
   if (!el) return;
@@ -1941,43 +1986,52 @@ function prioEditRenderList() {
     html += '<span class="prio-drag-rank">' + (i + 1) + '</span>';
     html += '<span class="prio-drag-name" style="color:' + roleColor + ';">' + display + '</span>';
     if (role) html += '<span class="prio-role-badge prio-role-' + role + '">' + role.toUpperCase() + '</span>';
+    // Shown unconditionally (not just after Suggest Order populates
+    // PRIO_EDIT.scores) so an officer manually building the list from the
+    // pool can still see what everyone tagged.
+    html += prioEditWishlistBadgeHtml(prioEditWishlistStatus(nameRealm));
+    // A saved list can end up with someone who already received this exact
+    // item/difficulty after the fact (e.g. the item was imported into loot
+    // history after the priority order was last saved) -- prioEditIsBlocked
+    // only stops a *new* add, so flag it here too rather than leaving it
+    // silently invisible in an existing ranked row.
+    if (playerReceivedItem(player, PRIO_EDIT.item, PRIO_EDIT.difficulty)) {
+      html +=
+        '<span class="prio-rank-received" title="Already received this item on ' +
+        PRIO_EDIT.difficulty +
+        ' this season">RECEIVED</span>';
+    }
+    // Loot flags shown unconditionally, same as the BiS pool's badges,
+    // instead of only appearing after Suggest Order populates
+    // PRIO_EDIT.scores -- an officer manually building the list needs to see
+    // these without triggering a re-suggest.
+    var rowLootFlags = prioEditLootFlags(nameRealm);
+    // Champion/Normal is informational only (never blocks a Heroic or
+    // Mythic rank -- see prioEditLootFlags()), so shown on both tracks.
+    if (rowLootFlags.hasNormal) {
+      html += '<span class="prio-diff-badge prio-diff-champion" title="Has the Champion (Normal) version">N</span>';
+    }
+    // "Has Heroic" is mythic-track only -- still eligible for mythic, but
+    // penalized.
+    if (PRIO_EDIT.difficulty === 'Mythic' && rowLootFlags.hasHeroic) {
+      html += '<span class="prio-diff-badge prio-diff-heroic" title="Has the Heroic version">H</span>';
+    }
     var scoreData = PRIO_EDIT.scores && PRIO_EDIT.scores[nameRealm];
     var metaHtml = '';
     if (scoreData) {
       if (scoreData.weightedTotal !== null && scoreData.weightedTotal !== undefined) {
         metaHtml += '<span>Score: ' + scoreData.weightedTotal + '</span>';
       }
-      // "Has Heroic" (mythic track only -- still eligible for mythic, but
-      // penalized) gets its own badge instead of sitting in the grey status
-      // text, same as the BiS pool's "H" badge -- easy to miss otherwise.
       // Filters out empty entries too -- ''.split(', ') returns [''], not
       // [], so a player with no other status text at all used to still
-      // render an empty "()" once nothing was left to join.
+      // render an empty "()" once nothing was left to join. "Has Heroic" is
+      // dropped here since it now has its own always-on badge above.
       var statusParts = (scoreData.statusLabel || '').split(', ').filter(function (p) {
         return p && p !== 'Has Heroic';
       });
-      var hasHeroicStatus = (scoreData.statusLabel || '').indexOf('Has Heroic') !== -1;
-      if (hasHeroicStatus)
-        html += '<span class="prio-diff-badge prio-diff-heroic" title="Has the Heroic version">H</span>';
-      // Wishlist sidegrade label built from the raw status + the team's own
-      // custom overrides (team_settings.config.wishlistStatusLabels, set via
-      // the admin panel) instead of generate_priority_order()'s old hardcoded
-      // "Wishlist: Good"/"OK"/"Catalyst Only" text -- every other wishlist
-      // status display on the site already respects these overrides.
-      // 'bis'/untagged intentionally stay unlabeled here, same as before:
-      // BiS is the default "really keeping this" case, only a sidegrade tag
-      // gets called out.
-      if (scoreData.wishlistStatus && scoreData.wishlistStatus !== 'bis') {
-        var labelOverrides = (DATA && DATA.wishlistStatusLabels) || {};
-        var defaultLabel = (typeof WISHLIST_LABEL_DEFAULTS !== 'undefined' ? WISHLIST_LABEL_DEFAULTS : []).filter(
-          function (t) {
-            return t.value === scoreData.wishlistStatus;
-          }
-        )[0];
-        var wishlistLabel =
-          labelOverrides[scoreData.wishlistStatus] || (defaultLabel && defaultLabel.label) || scoreData.wishlistStatus;
-        statusParts.push('Wishlist: ' + wishlistLabel);
-      }
+      // Wishlist status now has its own always-on badge (see
+      // prioEditWishlistBadgeHtml() above the row), so it's no longer
+      // duplicated into this status text.
       if (statusParts.length) {
         metaHtml += '<span class="prio-drag-meta-status">(' + statusParts.join(', ') + ')</span>';
       }
@@ -2025,11 +2079,17 @@ function prioEditRenderList() {
 function prioEditLootFlags(firstName) {
   var itemLower = PRIO_EDIT.item.toLowerCase();
   var loot = getLootEntry(firstName);
-  var flags = { hasHeroic: false, hasMythic: false };
+  var flags = { hasNormal: false, hasHeroic: false, hasMythic: false };
   if (loot && loot.items) {
     for (var j = 0; j < loot.items.length; j++) {
       if (loot.items[j].name.toLowerCase() !== itemLower) continue;
-      if (loot.items[j].difficulty === 'Heroic') flags.hasHeroic = true;
+      // 'Normal' is mapSupabaseLoot()'s label for a Champion-track drop
+      // (js/common.js) -- informational only here, never blocking: Champion
+      // loot sits outside the priority system entirely (docs/database-
+      // decisions.md, 2026-07-07), so already having it doesn't disqualify
+      // someone from a Heroic or Mythic rank the way hasHeroic/hasMythic do.
+      if (loot.items[j].difficulty === 'Normal') flags.hasNormal = true;
+      else if (loot.items[j].difficulty === 'Heroic') flags.hasHeroic = true;
       else if (loot.items[j].difficulty === 'Mythic') flags.hasMythic = true;
     }
   }
@@ -2115,6 +2175,16 @@ function prioEditRenderPool() {
     if (flags.hasMythic) html += '<span class="prio-diff-badge prio-diff-mythic" title="' + badgeTitle + '">M</span>';
     else if (flags.hasHeroic)
       html += '<span class="prio-diff-badge prio-diff-heroic" title="' + badgeTitle + '">H</span>';
+    // Champion/Normal never blocks -- it's outside the priority system
+    // entirely (see prioEditLootFlags()) -- so it's shown independently of
+    // the blocking H/M badge above, not as an else-if.
+    if (flags.hasNormal)
+      html += '<span class="prio-diff-badge prio-diff-champion" title="Has the Champion (Normal) version">N</span>';
+    // Surfaces what this player tagged the item on their own wishlist --
+    // including 'pass'/'catalyst', which never make the BiS-players pool but
+    // are still worth an officer seeing under "Show all roster" while
+    // manually assigning ranks.
+    html += prioEditWishlistBadgeHtml(prioEditWishlistStatus(nameRealm));
     if (!blocked) html += '<span class="prio-pool-add">+</span>';
     html += '</div>';
   }
