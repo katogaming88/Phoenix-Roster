@@ -8,6 +8,28 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.77.12] - 2026-08-29
+
+### Frontend
+
+- The Priority Edit modal (Set Priority) now shows wishlist status, a
+  RECEIVED badge, and Champion/Heroic version badges on every ranked player
+  and pool candidate at all times -- previously these only appeared after
+  clicking Suggest Order, which risked reshuffling an already-correct list
+  just to see them. Also fixed `RECEIVED` looking up loot by first name
+  instead of full character identity, which could misattribute another
+  player's drop of the same name.
+
+### Backend
+
+- `import_rclc_loot()` now derives an item's track (Champion/Hero/Myth) from
+  its own bonus IDs first, falling back to the free-text instance string
+  only when no bonus ID matches. The instance string can go stale when loot
+  is passed out after the raid has already moved to a different pull, which
+  silently mislabeled several drops this season.
+
+---
+
 ## [3.77.11] - 2026-08-28
 
 ### Frontend
