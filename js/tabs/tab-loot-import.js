@@ -99,6 +99,12 @@ function submitLootImport() {
       time: String(e.time || '').trim(),
       itemID: e.itemID != null ? e.itemID : null,
       itemName: String(e.itemName || '').trim(),
+      // itemString carries the item's own bonus IDs, which import_rclc_loot()
+      // now prefers over the instance string for track detection -- the
+      // bonus IDs are baked into the item at generation and can't drift the
+      // way the instance/boss text can when loot is passed out after the
+      // raid has already moved to a different pull (20260829200033).
+      itemString: String(e.itemString || '').trim(),
       instance: instance,
       boss: String(e.boss || '').trim(),
       response: String(e.response || '').trim()
