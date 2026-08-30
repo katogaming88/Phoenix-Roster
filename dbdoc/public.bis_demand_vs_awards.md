@@ -9,12 +9,12 @@
 CREATE VIEW bis_demand_vs_awards AS (
  WITH demand AS (
          SELECT p.team_id,
-            bi.item_id,
-            count(DISTINCT bi.player_id) AS demand_count
-           FROM (bis_items bi
-             JOIN players p ON ((p.id = bi.player_id)))
-          WHERE (p.archived_at IS NULL)
-          GROUP BY p.team_id, bi.item_id
+            ip.item_id,
+            count(DISTINCT ip.player_id) AS demand_count
+           FROM (item_preferences ip
+             JOIN players p ON ((p.id = ip.player_id)))
+          WHERE ((p.archived_at IS NULL) AND (ip.status = 'bis'::text))
+          GROUP BY p.team_id, ip.item_id
         ), awards AS (
          SELECT rclc_loot.team_id,
             rclc_loot.item_id,
@@ -56,7 +56,7 @@ CREATE VIEW bis_demand_vs_awards AS (
 
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
-| [public.bis_items](public.bis_items.md) | 7 |  | BASE TABLE |
+| [public.item_preferences](public.item_preferences.md) | 11 |  | BASE TABLE |
 | [public.players](public.players.md) | 24 |  | BASE TABLE |
 | [public.rclc_loot](public.rclc_loot.md) | 11 |  | BASE TABLE |
 | [public.items](public.items.md) | 13 |  | BASE TABLE |

@@ -164,7 +164,7 @@ function loadBisDemandReport() {
     return;
   }
   container.innerHTML = '<p style="color:var(--text-muted);">Loading...</p>';
-  // team-read-guard: a view aggregated to one row per item on a BiS list.
+  // team-read-guard: a view aggregated to one row per item wishlisted 'bis'.
   supabaseClient
     .from('bis_demand_vs_awards')
     .select('*')
