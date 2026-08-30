@@ -2602,12 +2602,12 @@
           "nullable": true
         }
       ],
-      "def": "CREATE VIEW bis_demand_vs_awards AS (\n WITH demand AS (\n         SELECT p.team_id,\n            ip.item_id,\n            count(DISTINCT ip.player_id) AS demand_count\n           FROM (item_preferences ip\n             JOIN players p ON ((p.id = ip.player_id)))\n          WHERE ((p.archived_at IS NULL) AND (ip.status = 'bis'::text))\n          GROUP BY p.team_id, ip.item_id\n        ), awards AS (\n         SELECT rclc_loot.team_id,\n            rclc_loot.item_id,\n            rclc_loot.season,\n            count(*) AS awarded_count\n           FROM rclc_loot\n          WHERE (rclc_loot.item_id IS NOT NULL)\n          GROUP BY rclc_loot.team_id, rclc_loot.item_id, rclc_loot.season\n        )\n SELECT d.team_id,\n    d.item_id,\n    i.name AS item_name,\n    i.slot,\n    d.demand_count,\n    a.season,\n    COALESCE(a.awarded_count, (0)::bigint) AS awarded_count\n   FROM ((demand d\n     JOIN items i ON ((i.id = d.item_id)))\n     LEFT JOIN awards a ON (((a.team_id = d.team_id) AND (a.item_id = d.item_id))))\n  ORDER BY d.team_id, d.demand_count DESC, COALESCE(a.awarded_count, (0)::bigint)\n)",
+      "def": "CREATE VIEW bis_demand_vs_awards AS (\n WITH demand AS (\n         SELECT p.team_id,\n            ip.item_id,\n            count(DISTINCT ip.player_id) AS demand_count\n           FROM ((item_preferences ip\n             JOIN players p ON ((p.id = ip.player_id)))\n             JOIN items i_1 ON ((i_1.id = ip.item_id)))\n          WHERE ((p.archived_at IS NULL) AND (ip.status = 'bis'::text) AND (NOT i_1.is_placeholder))\n          GROUP BY p.team_id, ip.item_id\n        ), awards AS (\n         SELECT rclc_loot.team_id,\n            rclc_loot.item_id,\n            rclc_loot.season,\n            count(*) AS awarded_count\n           FROM rclc_loot\n          WHERE (rclc_loot.item_id IS NOT NULL)\n          GROUP BY rclc_loot.team_id, rclc_loot.item_id, rclc_loot.season\n        )\n SELECT d.team_id,\n    d.item_id,\n    i.name AS item_name,\n    i.slot,\n    d.demand_count,\n    a.season,\n    COALESCE(a.awarded_count, (0)::bigint) AS awarded_count\n   FROM ((demand d\n     JOIN items i ON ((i.id = d.item_id)))\n     LEFT JOIN awards a ON (((a.team_id = d.team_id) AND (a.item_id = d.item_id))))\n  ORDER BY d.team_id, d.demand_count DESC, COALESCE(a.awarded_count, (0)::bigint)\n)",
       "referenced_tables": [
         "public.item_preferences",
         "public.players",
-        "public.rclc_loot",
         "public.items",
+        "public.rclc_loot",
         "awards"
       ]
     },

@@ -32,6 +32,9 @@ with each release split into `### Frontend` (drives the version number) and
   Manager grid (`bis_items`), which almost nobody keeps up to date. Reports
   > BiS Demand vs Awards was showing "No BiS demand recorded" for every team
   as a result.
+- `bis_demand_vs_awards` also excludes placeholder items from demand now --
+  they're catalog stand-ins (e.g. "any trinket"), not real drops that could
+  ever show an awarded count.
 
 ---
 
