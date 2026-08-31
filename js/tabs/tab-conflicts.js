@@ -28,9 +28,11 @@ function buildContestedItemMap() {
   var itemMap = {};
   (DATA.roster || []).forEach(function (player) {
     var officerBis = getBisItems(player.nameRealm);
-    var prefs = (_teamItemPreferences || []).filter(function (p) {
-      return p.player_id === player.id;
-    });
+    // #829: was a full unindexed scan of _teamItemPreferences (3000+ rows)
+    // per roster member, and buildConflicts() re-runs this on every
+    // item-row expand/collapse click -- _teamItemPreferencesByPlayer()
+    // (tab-priority.js) is the same array pre-grouped by player_id once.
+    var prefs = (typeof _teamItemPreferencesByPlayer === 'function' && _teamItemPreferencesByPlayer()[player.id]) || [];
     var merged = bisMergeWishlistPrefs(prefs, officerBis, player.id);
     var items = merged.fromWishlist.concat(merged.officerSet);
     items.forEach(function (entry) {

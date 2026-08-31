@@ -90,6 +90,15 @@ function makeSandbox({ roster = [], bisList = {}, teamItemPreferences = null, pr
   };
   sandbox._teamItemPreferencesUnavailable = () =>
     sandbox._teamItemPreferences === null && sandbox._teamItemPreferencesFailed;
+  // Mirrors tab-priority.js's real index (#829) -- buildContestedItemMap()
+  // reads this instead of scanning _teamItemPreferences itself.
+  sandbox._teamItemPreferencesByPlayer = () => {
+    var byPlayer = {};
+    (sandbox._teamItemPreferences || []).forEach((p) => {
+      (byPlayer[p.player_id] = byPlayer[p.player_id] || []).push(p);
+    });
+    return byPlayer;
+  };
   vm.runInContext(CONFLICTS_JS, sandbox, { filename: 'tab-conflicts.js' });
   return sandbox;
 }

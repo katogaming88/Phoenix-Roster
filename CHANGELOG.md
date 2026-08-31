@@ -8,6 +8,22 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.77.14] - 2026-08-30
+
+### Frontend
+
+- Fixed the Officer dashboard getting slower over the season on the Priority
+  List, Roster, and Loot Conflicts tabs (#829). Several functions each
+  re-scanned the whole team's wishlist data (`item_preferences`, 3000+ rows
+  and growing) on every call instead of once: `_prioBestWishlistStatus()`
+  ran once per ranked-player row per difficulty per item on every Priority
+  List render; `onboardingWishlistNotStarted()` ran once per roster row on
+  every Roster tab render; `buildContestedItemMap()` ran once per roster
+  member and re-scanned in full on every single item-row expand/collapse
+  click on the Loot Conflicts tab. All three (plus two smaller call sites)
+  now read from a shared item+player and player-only index built once per
+  fetch instead of re-scanning the array per call.
+
 ## [3.77.13] - 2026-08-30
 
 ### Frontend
