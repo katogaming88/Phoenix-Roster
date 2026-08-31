@@ -172,6 +172,39 @@ drops an RLS policy, also update [RLS.md](RLS.md) and regenerate the raw policy
 export with `npm run db:rls` (commit `docs/rls_policies.csv`) in the same PR;
 CI checks both.
 
+## 7. Applying migrations to production
+
+The rule: a migration reaches prod through `supabase db push`, run from the
+repo root with the CLI linked (section 4). Running the SQL in the dashboard
+SQL Editor does not count as applying it, even though the schema change lands.
+
+The why: the SQL Editor never writes `supabase_migrations.schema_migrations`,
+the ledger that `db push` and `migration list` read. Every editor-applied
+migration leaves the ledger one row behind reality, `migration list` misreports
+prod, and once an unrecorded version sits behind a recorded one, `db push`
+refuses to run at all (`LegacyDbPushMissingRemoteError`). On 2026-08-31 the
+ledger was 22 migrations behind the live schema for exactly this reason and
+had to be reconciled by hand (`supabase migration repair --status applied`,
+after verifying each migration's effect was live on prod first; marking an
+unapplied migration applied would tell push to never run it).
+
+CI enforces the rule: the Migration ledger check workflow compares
+`supabase/migrations/` filenames against the ledger on every PR touching
+migrations, on pushes to main, and in a weekly sweep. A PR adding a migration
+stays red until someone runs `supabase db push`. One wrinkle: a push writes
+only to the database, so GitHub does not notice it happened. After pushing,
+re-run the check from the PR's Checks tab (or push any commit) to turn it
+green.
+
+Known limits:
+
+- SQL run in the editor with no committed migration file is invisible to this
+  check. Catching that needs `supabase db diff` against a shadow database,
+  which is not wired up.
+- Two open PRs can carry migrations whose timestamps interleave; the CLI
+  refuses out-of-order pushes. Renaming the not-yet-pushed file to a later
+  timestamp is the usual fix.
+
 ## Known quirk: vector container restart loop (Windows)
 
 On Docker Desktop for Windows the `supabase_vector` container (log shipping for the
