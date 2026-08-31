@@ -2061,10 +2061,11 @@ function prioEditRenderList() {
       }
       // Filters out empty entries too -- ''.split(', ') returns [''], not
       // [], so a player with no other status text at all used to still
-      // render an empty "()" once nothing was left to join. "Has Heroic" is
-      // dropped here since it now has its own always-on badge above.
+      // render an empty "()" once nothing was left to join. Kept alongside
+      // the always-on H badge above (not deduped away) -- the badge and the
+      // text serve different purposes at a glance and Kat wants both shown.
       var statusParts = (scoreData.statusLabel || '').split(', ').filter(function (p) {
-        return p && p !== 'Has Heroic';
+        return p;
       });
       // Wishlist status now has its own always-on badge (see
       // prioEditWishlistBadgeHtml() above the row), so it's no longer
@@ -2300,21 +2301,24 @@ function prioEditDragEnd(e) {
 
 // -- Generate suggested order --
 
-// How many OTHER item/difficulty saved priority orders each name currently
-// holds rank 1 on -- used by prioEditGenerate() below to avoid stacking
-// another #1 priority on someone who already has one on a re-click.
-// Excludes the item/difficulty currently being edited (nothing saved for it
-// yet anyway). Names with zero #1s elsewhere are simply absent from the map.
+// How many OTHER saved priority orders on THIS SAME difficulty each name
+// currently holds rank 1 on -- used by prioEditGenerate() below to avoid
+// stacking another #1 priority on someone who already has one on a re-click.
+// Heroic and Mythic are separate priority lists with separate #1s by design
+// (Kat-confirmed) -- a player's Heroic #1 on some other item must not count
+// against them while building a Mythic list, or vice versa, and mixing the
+// two used to promote/demote candidates based on an unrelated difficulty's
+// priority. Excludes the item currently being edited (nothing saved for it
+// yet anyway). Names with zero #1s elsewhere on this difficulty are simply
+// absent from the map.
 function prioEditFirstPriorityCounts() {
   var order = DATA.priorityOrder || {};
   var currentDiff = PRIO_EDIT.difficulty.toLowerCase();
   var counts = {};
   Object.keys(order).forEach(function (itemName) {
-    ['heroic', 'mythic'].forEach(function (diff) {
-      if (itemName === PRIO_EDIT.item && diff === currentDiff) return;
-      var arr = (order[itemName] || {})[diff];
-      if (arr && arr.length) counts[arr[0]] = (counts[arr[0]] || 0) + 1;
-    });
+    if (itemName === PRIO_EDIT.item) return;
+    var arr = (order[itemName] || {})[currentDiff];
+    if (arr && arr.length) counts[arr[0]] = (counts[arr[0]] || 0) + 1;
   });
   return counts;
 }

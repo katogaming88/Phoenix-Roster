@@ -8,6 +8,20 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.77.15] - 2026-08-30
+
+### Frontend
+
+- Priority Edit's "Suggest Order" re-click nudge no longer treats Heroic and
+  Mythic #1 priorities as the same pool. It used to avoid stacking a #1 on
+  someone who already held rank 1 on *either* difficulty for another item,
+  so a player's Heroic #1 could bump them out of a Mythic #1 slot (or vice
+  versa) even though Heroic and Mythic are separate priority lists. Now only
+  counts #1s on the difficulty currently being edited.
+- Restored the "(Has Heroic)" status text in Priority Edit's ranked list
+  alongside the always-on H badge -- it was dropped in #830 on the
+  assumption the badge alone was enough, which wasn't the intent.
+
 ## [3.77.14] - 2026-08-30
 
 ### Frontend
