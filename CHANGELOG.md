@@ -8,6 +8,18 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.77.18] - 2026-08-31
+
+### Frontend
+
+- Priority Edit's "BiS Players"/"Show all roster" pool no longer lets an
+  officer add a player who already has the item confirmed via an approved
+  Mark Received (Great Vault, catalyzed, crafted, or hand-confirmed) --
+  previously it only checked actual addon-imported loot history, so someone
+  whose receive never went through that import still showed up addable even
+  though a regenerated Suggest Order would already exclude them
+  (20260831131137).
+
 ## [3.77.17] - 2026-08-31
 
 ### Frontend
