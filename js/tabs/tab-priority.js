@@ -847,6 +847,33 @@ function _setTeamItemPreferences(rows) {
   _teamItemPreferences = rows;
 }
 
+// item_id + '|' + player_id -> that pair's item_preferences rows (usually
+// one, but Finger 1/2 / Trinket 1/2 / Weapon+Off Hand can each write a
+// separate row for the same item_id+player_id). _prioBestWishlistStatus() is
+// called once per ranked-player row, per difficulty, per item on every
+// Priority List render -- with item_preferences at 3000+ rows and no early
+// exit, a full re-scan per call was millions of iterations per render (#829).
+// Cached by array identity rather than rebuilt in _setTeamItemPreferences()
+// itself, so it stays correct even for the handful of test/tool call sites
+// that assign _teamItemPreferences directly instead of going through that
+// setter -- the cache just rebuilds itself the next time the array changes.
+// A unique sentinel, not null/undefined -- _teamItemPreferences legitimately
+// starts out null (fetch pending), and that value has to be a cache miss the
+// first time through, not mistaken for "already matches the last build".
+var _teamItemPreferencesIndexSource = {};
+var _teamItemPreferencesIndexCache = {};
+function _teamItemPreferencesIndex() {
+  if (_teamItemPreferencesIndexSource !== _teamItemPreferences) {
+    _teamItemPreferencesIndexSource = _teamItemPreferences;
+    _teamItemPreferencesIndexCache = {};
+    (_teamItemPreferences || []).forEach(function (p) {
+      var key = p.item_id + '|' + p.player_id;
+      (_teamItemPreferencesIndexCache[key] = _teamItemPreferencesIndexCache[key] || []).push(p);
+    });
+  }
+  return _teamItemPreferencesIndexCache;
+}
+
 // True once the fetch has settled one way or the other, so a render knows
 // whether waiting is still the right thing to do.
 function _teamItemPreferencesUnavailable() {
@@ -1446,8 +1473,8 @@ function getItemGroup(slot) {
 function _prioBestWishlistStatus(itemId, playerId) {
   var order = { bis: 1, good: 2, catalyst: 3, ok: 4, pass: 5 };
   var best = null;
-  (_teamItemPreferences || []).forEach(function (p) {
-    if (p.item_id !== itemId || p.player_id !== playerId) return;
+  var rows = _teamItemPreferencesIndex()[itemId + '|' + playerId] || [];
+  rows.forEach(function (p) {
     if (!best || order[p.status] < order[best]) best = p.status;
   });
   return best;
