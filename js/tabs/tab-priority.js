@@ -1906,7 +1906,15 @@ var PRIO_EDIT = {
   // switch so the very first suggestion always shows the algorithm's raw
   // top pick, conflict or not -- the officer can see it and re-click to fix
   // it rather than have it silently overridden every time.
-  suggestedOnce: false
+  suggestedOnce: false,
+  // name_realm -> true for players pinned to their current row. A locked
+  // player's position survives prioEditGenerate() re-suggesting the list --
+  // everyone else gets re-ranked around them instead of the officer having
+  // to remember and re-drag them back afterward. Keyed by name_realm (not
+  // index) since indices shift as the algorithm reorders. Reset alongside
+  // suggestedOnce on modal open/diff switch -- a lock is scoped to one
+  // item/difficulty's edit session, not persisted.
+  locked: {}
 };
 
 function openPrioEditModal(item, slot, autoGenerate, difficulty) {
@@ -1927,6 +1935,7 @@ function openPrioEditModal(item, slot, autoGenerate, difficulty) {
   PRIO_EDIT.scores = {};
   PRIO_EDIT.fairnessWarnings = {};
   PRIO_EDIT.suggestedOnce = false;
+  PRIO_EDIT.locked = {};
 
   document.getElementById('prioEditTitle').textContent = item;
   var slotEl = document.getElementById('prioEditSlot');
@@ -1973,6 +1982,7 @@ function prioEditSwitchDiff(diff) {
   PRIO_EDIT.scores = {};
   PRIO_EDIT.fairnessWarnings = {};
   PRIO_EDIT.suggestedOnce = false;
+  PRIO_EDIT.locked = {};
   PRIO_EDIT.showAllRoster = false;
   document.getElementById('prioEditShowAllBtn').textContent = 'Show all roster';
   document.getElementById('prioEditPoolLabel').textContent = 'BiS Players';
@@ -2173,7 +2183,9 @@ function prioEditRenderList() {
     var role = player ? player.role : '';
     var roleColor = getRoleColor(role);
     html +=
-      '<div class="prio-drag-item" draggable="true"' +
+      '<div class="prio-drag-item' +
+      (PRIO_EDIT.locked[nameRealm] ? ' locked' : '') +
+      '" draggable="true"' +
       ' data-idx="' +
       i +
       '"' +
@@ -2261,6 +2273,17 @@ function prioEditRenderList() {
         }
       }
     }
+    var isLocked = !!PRIO_EDIT.locked[nameRealm];
+    html +=
+      '<button class="prio-drag-lock' +
+      (isLocked ? ' active' : '') +
+      '" onclick="prioEditToggleLock(' +
+      i +
+      ')" title="' +
+      (isLocked ? 'Locked to this spot -- click to unlock' : 'Lock to this spot') +
+      '">' +
+      (isLocked ? '&#128274;' : '&#128275;') +
+      '</button>';
     html += '<button class="prio-drag-remove" onclick="prioEditRemove(' + i + ')" title="Remove">&times;</button>';
     html += '</div>';
     if (metaHtml) html += '<div class="prio-drag-meta">' + metaHtml + '</div>';
@@ -2435,10 +2458,19 @@ function prioEditAdd(nameRealm) {
 }
 
 function prioEditRemove(idx) {
+  var nameRealm = PRIO_EDIT.ranked[idx];
   PRIO_EDIT.ranked.splice(idx, 1);
+  if (nameRealm) delete PRIO_EDIT.locked[nameRealm];
   document.getElementById('prioEditStatus').textContent = '';
   prioEditRenderList();
   prioEditRenderPool();
+}
+
+function prioEditToggleLock(idx) {
+  var nameRealm = PRIO_EDIT.ranked[idx];
+  if (!nameRealm) return;
+  PRIO_EDIT.locked[nameRealm] = !PRIO_EDIT.locked[nameRealm];
+  prioEditRenderList();
 }
 
 function prioEditToggleAllRoster() {
@@ -2571,7 +2603,10 @@ function prioEditGenerate() {
       // first suggestion always shows the algorithm's raw #1 pick as-is, so
       // the officer can actually see the conflict before choosing to avoid
       // it, rather than have it silently swapped every time.
-      if (PRIO_EDIT.suggestedOnce && ranked.length > 1) {
+      // Skipped when the algorithm's #1 pick is locked -- the officer put
+      // them there on purpose, so the fairness swap shouldn't move them off
+      // it even if they also hold a #1 elsewhere.
+      if (PRIO_EDIT.suggestedOnce && ranked.length > 1 && !PRIO_EDIT.locked[ranked[0]]) {
         var firstCounts = prioEditFirstPriorityCounts();
         var topCount = firstCounts[ranked[0]] || 0;
         if (topCount > 0) {
@@ -2603,6 +2638,42 @@ function prioEditGenerate() {
                   ').') +
               ' Review and adjust as needed.';
           }
+        }
+      }
+      // Locked players keep the row position they had before this
+      // (re-)generate, regardless of where the algorithm would otherwise
+      // place them -- pull them out of the fresh result wherever they
+      // landed, then reinsert at their pre-generate index so everyone else
+      // just flows around them. Sourced from PRIO_EDIT.ranked/scores as they
+      // stood right before this .then() fired (not yet overwritten below).
+      var lockedNames = Object.keys(PRIO_EDIT.locked).filter(function (n) {
+        return PRIO_EDIT.locked[n];
+      });
+      if (lockedNames.length) {
+        var prevRanked = PRIO_EDIT.ranked;
+        var prevScores = PRIO_EDIT.scores;
+        var lockedPositions = [];
+        lockedNames.forEach(function (name) {
+          var idx = prevRanked.indexOf(name);
+          if (idx !== -1) lockedPositions.push({ name: name, idx: idx });
+        });
+        lockedPositions.sort(function (a, b) {
+          return a.idx - b.idx;
+        });
+        if (lockedPositions.length) {
+          ranked = ranked.filter(function (n) {
+            return lockedNames.indexOf(n) === -1;
+          });
+          lockedPositions.forEach(function (p) {
+            // A locked player who no longer qualifies under the algorithm
+            // (e.g. dropped off BiS) has no fresh score row -- fall back to
+            // whatever was shown for them before rather than going blank.
+            if (!scoreMap[p.name] && prevScores[p.name]) scoreMap[p.name] = prevScores[p.name];
+            var insertIdx = Math.min(p.idx, ranked.length);
+            ranked.splice(insertIdx, 0, p.name);
+          });
+          statusMsg +=
+            ' (' + lockedPositions.length + ' locked position' + (lockedPositions.length === 1 ? '' : 's') + ' kept.)';
         }
       }
       PRIO_EDIT.suggestedOnce = true;
