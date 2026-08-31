@@ -47,6 +47,13 @@ no_character_dismissals,Raiders manage own no_character_dismissal,public,ALL,PER
 notifications,Claude readers read notifications,claude_readers,SELECT,PERMISSIVE,true,
 notifications,Raiders mark own notifications read,public,UPDATE,PERMISSIVE,is_own_player(player_id),is_own_player(player_id)
 notifications,Raiders read own notifications,public,SELECT,PERMISSIVE,is_own_player(player_id),
+player_equipped_gear,Claude readers read player_equipped_gear,claude_readers,SELECT,PERMISSIVE,true,
+player_equipped_gear,Officers write player_equipped_gear,public,ALL,PERMISSIVE,"((my_team_role(( SELECT players.team_id
+   FROM players
+  WHERE (players.id = player_equipped_gear.player_id))) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())","((my_team_role(( SELECT players.team_id
+   FROM players
+  WHERE (players.id = player_equipped_gear.player_id))) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())"
+player_equipped_gear,Public read player_equipped_gear,public,SELECT,PERMISSIVE,true,
 player_wcl_season_perf,Claude readers read player_wcl_season_perf,claude_readers,SELECT,PERMISSIVE,true,
 player_wcl_season_perf,Officers write player_wcl_season_perf,public,ALL,PERMISSIVE,"((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())","((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())"
 player_wcl_season_perf,Public read player_wcl_season_perf,public,SELECT,PERMISSIVE,true,
