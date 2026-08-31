@@ -38,6 +38,15 @@ with each release split into `### Frontend` (drives the version number) and
   now read from a shared item+player and player-only index built once per
   fetch instead of re-scanning the array per call.
 
+### Backend
+
+- `generate_priority_order()`'s `avg_existing_rank` fairness factor (#714)
+  averaged a candidate's existing priority placements across both Heroic
+  and Mythic combined, so a great Heroic rank on some other item could
+  deprioritize a candidate for a Mythic suggestion, or the reverse. Heroic
+  and Mythic are separate priority lists on purpose -- now only averages a
+  candidate's placements on the same difficulty being generated.
+
 ## [3.77.13] - 2026-08-30
 
 ### Frontend

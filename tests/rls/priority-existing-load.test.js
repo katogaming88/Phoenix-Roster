@@ -171,6 +171,47 @@ describe('generate_priority_order avg_existing_rank tiebreaker', () => {
       expect(res.rows[0].wishlist_status).toBe('bis');
     });
   });
+
+  // Caught live: avg_existing_rank pooled a candidate's Heroic and Mythic
+  // placements together, so a great Heroic rank on some other item could
+  // deprioritize a candidate for a MYTHIC suggestion, or the reverse --
+  // Heroic and Mythic are separate priority lists on purpose (Kat-confirmed:
+  // the point of this factor is that the same few people shouldn't land in
+  // the same order on every item within one difficulty, not across
+  // difficulties). avg_existing_rank must only average a candidate's OTHER
+  // placements on the SAME track being generated.
+  it('does not count a Heroic placement against a candidate when generating a Mythic suggestion', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await seedItems(q);
+      await seedScoring(q, 1, 100, 100);
+      await seedScoring(q, 2, 100, 100);
+      await seedBoth1And2Bis(q);
+      // Player 1's real Mythic-track average (the only thing that should
+      // count here) is a poor rank 10 -- deserves the biggest boost. A
+      // Heroic rank 1 on a different item is also seeded for them; under the
+      // old cross-track pooling this would have dragged their average down
+      // to (10+1)/2 = 5.5, a *better*-looking average than player 2's real
+      // rank 7, flipping who gets boosted.
+      await q(
+        "insert into public.priority_order (team_id, season, item_id, track, rank, player_id) values (1, $1, $2, 'Myth', 10, 1)",
+        [SEASON, OTHER_ITEM_ID]
+      );
+      await q(
+        "insert into public.priority_order (team_id, season, item_id, track, rank, player_id) values (1, $1, $2, 'Hero', 1, 1)",
+        [SEASON, OTHER_ITEM_ID_2]
+      );
+      // Player 2's only placement: a real Mythic rank 7 elsewhere.
+      await q(
+        "insert into public.priority_order (team_id, season, item_id, track, rank, player_id) values (1, $1, $2, 'Myth', 7, 2)",
+        [SEASON, OTHER_ITEM_ID]
+      );
+
+      const res = await generate(asUser, TARGET_ITEM_ID, 'Myth');
+      // Player 1's true Mythic-only average (10) is worse than player 2's
+      // (7), so player 1 should be boosted ahead of player 2.
+      expect(res.rows[0].player_id).toBe(1);
+    });
+  });
 });
 
 afterAll(async () => {
