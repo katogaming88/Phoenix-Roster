@@ -120,7 +120,19 @@ describe('prioEditLootFlags accent handling (#360)', () => {
 // from a fresh Suggest Order. prioEditLootFlags() only ever checked
 // DATA.lootCounts, so the client-side "BiS Players" pool and its block guard
 // disagreed with what the SQL side would actually produce.
+//
+// prioEditRenderPool() (js/tabs/tab-priority.js) actually calls
+// prioEditLootFlags() with the player's full nameRealm ("Voljiin-Tichondrius"),
+// not the bare first name -- DATA.selfReceived is keyed by first name only
+// ("Voljiin", mapSupabaseSelfReceived()), the opposite orientation from
+// DATA.lootCounts (keyed by the full normalised nameRealm, mapSupabaseLoot()).
+// Every test below calls with the full nameRealm, matching that real call
+// site, so a first-attempt fix that happened to only handle a bare first
+// name (as these looked like they were testing before this comment was
+// added) would have shipped broken again.
 describe('prioEditLootFlags self-received handling', () => {
+  const VOLJIIN = 'Voljiin-Tichondrius';
+
   function selfReceivedSandbox(selfReceived) {
     const sandbox = makeSandbox({ item: 'Crown of the Eternal Fang', difficulty: 'Mythic' });
     sandbox.DATA.selfReceived = selfReceived;
@@ -131,8 +143,8 @@ describe('prioEditLootFlags self-received handling', () => {
     const sandbox = selfReceivedSandbox({
       Voljiin: [{ item: 'Crown of the Eternal Fang', slot: '', source: 'Mythic: Great Vault' }]
     });
-    expect(sandbox.prioEditLootFlags('Voljiin')).toEqual({ hasNormal: false, hasHeroic: false, hasMythic: true });
-    expect(sandbox.prioEditIsBlocked('Voljiin')).toBe(true);
+    expect(sandbox.prioEditLootFlags(VOLJIIN)).toEqual({ hasNormal: false, hasHeroic: false, hasMythic: true });
+    expect(sandbox.prioEditIsBlocked(VOLJIIN)).toBe(true);
   });
 
   it('only blocks Heroic (still eligible for Mythic) for an approved self-received Heroic entry', () => {
@@ -140,18 +152,18 @@ describe('prioEditLootFlags self-received handling', () => {
     sandbox.DATA.selfReceived = {
       Voljiin: [{ item: 'Crown of the Eternal Fang', slot: '', source: 'Heroic: M+' }]
     };
-    expect(sandbox.prioEditIsBlocked('Voljiin')).toBe(true);
+    expect(sandbox.prioEditIsBlocked(VOLJIIN)).toBe(true);
     const mythicView = makeSandbox({ item: 'Crown of the Eternal Fang', difficulty: 'Mythic' });
     mythicView.DATA.selfReceived = {
       Voljiin: [{ item: 'Crown of the Eternal Fang', slot: '', source: 'Heroic: M+' }]
     };
-    expect(mythicView.prioEditIsBlocked('Voljiin')).toBe(false);
+    expect(mythicView.prioEditIsBlocked(VOLJIIN)).toBe(false);
   });
 
   it('does not block on a self-received entry for a different item', () => {
     const sandbox = selfReceivedSandbox({
       Voljiin: [{ item: 'Some Other Item', slot: '', source: 'Mythic: Great Vault' }]
     });
-    expect(sandbox.prioEditIsBlocked('Voljiin')).toBe(false);
+    expect(sandbox.prioEditIsBlocked(VOLJIIN)).toBe(false);
   });
 });

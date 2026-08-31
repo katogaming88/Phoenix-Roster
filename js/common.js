@@ -4213,12 +4213,23 @@ function toggleOfficerWishlistExpanded(playerId, firstName, backTo) {
   else if (typeof renderProfile === 'function') renderProfile(firstName, backTo);
 }
 
-function getSelfReceivedItems(firstName) {
+// Accepts either a bare first name or a full name-realm -- mirrors
+// getLootEntry()'s same dual lookup (js/common.js), since DATA.selfReceived
+// is keyed by first name only (mapSupabaseSelfReceived()) but at least one
+// caller (prioEditLootFlags(), js/tabs/tab-priority.js) passes the full
+// nameRealm it already has on hand rather than splitting it first. Without
+// this fallback a full "Voljiin-Tichondrius" input never matches the
+// "Voljiin" key, so an approved self-received entry silently looked
+// unreceived to that caller.
+function getSelfReceivedItems(nameOrNameRealm) {
   var map = DATA.selfReceived || {};
-  var norm = normalise(firstName);
+  var norm = normalise(nameOrNameRealm);
   var keys = Object.keys(map);
   for (var i = 0; i < keys.length; i++) {
     if (normalise(keys[i]) === norm) return map[keys[i]];
+  }
+  for (var j = 0; j < keys.length; j++) {
+    if (normalise(norm.split('-')[0]) === normalise(keys[j])) return map[keys[j]];
   }
   return [];
 }
