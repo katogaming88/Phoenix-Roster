@@ -4,38 +4,27 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import {
-  versionsFromFilenames,
-  parseLedger,
-  compareLedger
-} from '../../scripts/ci/migration-ledger-check.js';
+import { versionsFromFilenames, parseLedger, compareLedger } from '../../scripts/ci/migration-ledger-check.js';
 
 const SCRIPT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'scripts', 'ci', 'migration-ledger-check.js');
 
 describe('versionsFromFilenames', () => {
   it('extracts the leading 14-digit version from migration filenames', () => {
-    expect(versionsFromFilenames([
-      '20260825225243_boe_tracker.sql',
-      '20260831174200_blizzard_gear_sync_cron.sql'
-    ])).toEqual(['20260825225243', '20260831174200']);
+    expect(
+      versionsFromFilenames(['20260825225243_boe_tracker.sql', '20260831174200_blizzard_gear_sync_cron.sql'])
+    ).toEqual(['20260825225243', '20260831174200']);
   });
 
   it('ignores files that are not timestamped .sql migrations', () => {
-    expect(versionsFromFilenames([
-      '.gitkeep',
-      'README.md',
-      '20260825225243_boe_tracker.sql',
-      'notes.sql'
-    ])).toEqual(['20260825225243']);
+    expect(versionsFromFilenames(['.gitkeep', 'README.md', '20260825225243_boe_tracker.sql', 'notes.sql'])).toEqual([
+      '20260825225243'
+    ]);
   });
 });
 
 describe('parseLedger', () => {
   it('reads one version per line, ignoring blanks and surrounding whitespace', () => {
-    expect(parseLedger(' 20260704204411 \n\n20260704205433\n')).toEqual([
-      '20260704204411',
-      '20260704205433'
-    ]);
+    expect(parseLedger(' 20260704204411 \n\n20260704205433\n')).toEqual(['20260704204411', '20260704205433']);
   });
 });
 
@@ -46,28 +35,19 @@ describe('compareLedger', () => {
   });
 
   it('names every local-only version (committed but never recorded as applied)', () => {
-    const result = compareLedger(
-      ['20260704204411', '20260827144514', '20260828011851'],
-      ['20260704204411']
-    );
+    const result = compareLedger(['20260704204411', '20260827144514', '20260828011851'], ['20260704204411']);
     expect(result.localOnly).toEqual(['20260827144514', '20260828011851']);
     expect(result.remoteOnly).toEqual([]);
   });
 
   it('names every remote-only version (recorded on prod but missing from the repo)', () => {
-    const result = compareLedger(
-      ['20260704204411'],
-      ['20260704204411', '20260812045902']
-    );
+    const result = compareLedger(['20260704204411'], ['20260704204411', '20260812045902']);
     expect(result.localOnly).toEqual([]);
     expect(result.remoteOnly).toEqual(['20260812045902']);
   });
 
   it('reports both directions at once', () => {
-    const result = compareLedger(
-      ['20260704204411', '20260827144514'],
-      ['20260704204411', '20260812045902']
-    );
+    const result = compareLedger(['20260704204411', '20260827144514'], ['20260704204411', '20260812045902']);
     expect(result.localOnly).toEqual(['20260827144514']);
     expect(result.remoteOnly).toEqual(['20260812045902']);
   });
