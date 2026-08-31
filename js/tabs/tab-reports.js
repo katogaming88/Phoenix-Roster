@@ -37,6 +37,33 @@ function reportsSeasonLabel(code) {
   return (typeof seasonDisplayName === 'function' && seasonDisplayName(code)) || code;
 }
 
+// Season dropdown options must include every real season (raid_zones.season,
+// DATA.raidZones -- same catalog populateSeasonViewOptions() in tab-season.js
+// draws from), not just seasons a report's underlying rows happen to touch.
+// A season with zero stale entries/gaps is a healthy season, not a missing
+// one -- deriving options solely from row data made a clean current season
+// disappear from the picker entirely, with no way to confirm it as checked.
+function reportsAllKnownSeasons(rowSeasons) {
+  var seasons = [];
+  var seen = {};
+  ((DATA && DATA.raidZones) || []).forEach(function (rz) {
+    if (rz.season && !seen[rz.season]) {
+      seen[rz.season] = true;
+      seasons.push(rz.season);
+    }
+  });
+  (rowSeasons || []).forEach(function (s) {
+    if (s && !seen[s]) {
+      seen[s] = true;
+      seasons.push(s);
+    }
+  });
+  var current = reportsCurrentSeasonCode();
+  if (current && !seen[current]) seasons.push(current);
+  seasons.sort();
+  return seasons;
+}
+
 function reportsCurrentSeasonCode() {
   return window.DATA && DATA.seasonName ? seasonCodeForDisplay(DATA.seasonName.trim()) : '';
 }
@@ -176,7 +203,7 @@ function loadBisDemandReport() {
       }
       REPORTS_STATE.bisDemandRows = result.data || [];
       var select = document.getElementById('reportsBisSeasonFilter');
-      var seasons = reportsUniqueSorted(
+      var seasons = reportsAllKnownSeasons(
         REPORTS_STATE.bisDemandRows.map(function (r) {
           return r.season;
         })
@@ -264,7 +291,7 @@ function loadPriorityHealthReport() {
     REPORTS_STATE.gapRows = results[1].data || [];
     REPORTS_STATE.staleAfterHeroicRows = results[2].data || [];
     var select = document.getElementById('reportsPriorityHealthSeasonFilter');
-    var seasons = reportsUniqueSorted(
+    var seasons = reportsAllKnownSeasons(
       REPORTS_STATE.staleRows
         .map(function (r) {
           return r.season;
