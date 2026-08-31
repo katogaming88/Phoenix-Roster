@@ -8,6 +8,17 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.77.19] - 2026-08-31
+
+### Frontend
+
+- Priority Edit's per-row fairness warning ("Holds N other #1 priorities")
+  no longer counts a #1 held on the other difficulty -- Hero and Myth are
+  separate priority lists, same scoping already applied to the re-click
+  nudge (#838) and the existing-load fairness factor (#839). Only the
+  same-boss half of this warning was track-scoped before; the general count
+  wasn't.
+
 ## [3.77.18] - 2026-08-31
 
 ### Frontend
