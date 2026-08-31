@@ -8,6 +8,19 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.77.13] - 2026-08-30
+
+### Frontend
+
+- Officer Reports > Priority Order Health and BiS Demand vs Awards now build
+  their season dropdown from the team's real season catalog
+  (`raid_zones.season`) instead of only from seasons the report's underlying
+  rows happened to touch. A clean current season (no stale entries, no gaps)
+  is a healthy result, not a missing one -- deriving options solely from row
+  data made the current season disappear from the picker entirely whenever
+  it had nothing to flag, leaving stale prior-season data as the only thing
+  visible with no way to confirm the current season had even been checked.
+
 ## [3.77.12] - 2026-08-29
 
 ### Frontend
