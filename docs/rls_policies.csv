@@ -66,6 +66,9 @@ priority_conflict_dismissals,Officers manage priority_conflict_dismissals,public
 priority_order,Claude readers read priority_order,claude_readers,SELECT,PERMISSIVE,true,
 priority_order,Officers write priority_order,public,ALL,PERMISSIVE,"((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())","((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())"
 priority_order,Public read priority_order,public,SELECT,PERMISSIVE,true,
+priority_order_confirmed_empty,Claude readers read priority_order_confirmed_empty,claude_readers,SELECT,PERMISSIVE,true,
+priority_order_confirmed_empty,Officers write priority_order_confirmed_empty,public,ALL,PERMISSIVE,"((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())","((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())"
+priority_order_confirmed_empty,Public read priority_order_confirmed_empty,public,SELECT,PERMISSIVE,true,
 raid_encounters,Claude readers read raid_encounters,claude_readers,SELECT,PERMISSIVE,true,
 raid_encounters,Public read raid_encounters,public,SELECT,PERMISSIVE,true,
 raid_zones,Claude readers read raid_zones,claude_readers,SELECT,PERMISSIVE,true,

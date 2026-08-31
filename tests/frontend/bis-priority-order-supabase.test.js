@@ -122,3 +122,45 @@ describe('mapSupabasePriorityOrder (#529)', () => {
     expect(result['Signet of the Starved Beast'].heroic).toEqual(['Katorri-Stormrage', 'Katorri-Illidan']);
   });
 });
+
+// priority_order_confirmed_empty (20260831190443): an officer saving
+// Priority Edit with nobody ranked is a legitimate outcome, not an
+// unfinished list -- these marker rows are what keeps that item/track out
+// of Unmanaged Items across a reload, since a plain zero-row save leaves
+// nothing in priority_order itself to distinguish "confirmed empty" from
+// "never touched".
+function emptyMarkRow(overrides) {
+  return {
+    season: 'MID1',
+    track: 'Hero',
+    items: { name: 'Signet of the Starved Beast' },
+    ...overrides
+  };
+}
+
+describe('mapSupabasePriorityOrder empty marks (#confirmed-empty)', () => {
+  it('seeds an empty-but-present array for a marked item/track with no ranked rows', () => {
+    const sandbox = loadCommonJs();
+    const result = sandbox.mapSupabasePriorityOrder([], 'MID1', [emptyMarkRow()]);
+    expect(result['Signet of the Starved Beast'].heroic).toEqual([]);
+    expect('heroic' in result['Signet of the Starved Beast']).toBe(true);
+  });
+
+  it('does not overwrite a diff that already has real ranked rows', () => {
+    const sandbox = loadCommonJs();
+    const result = sandbox.mapSupabasePriorityOrder([prioRow()], 'MID1', [emptyMarkRow()]);
+    expect(result['Signet of the Starved Beast'].heroic).toEqual(['Katorri-Stormrage']);
+  });
+
+  it('ignores an empty mark from a different season', () => {
+    const sandbox = loadCommonJs();
+    const result = sandbox.mapSupabasePriorityOrder([], 'MID1', [emptyMarkRow({ season: 'MID2' })]);
+    expect(result['Signet of the Starved Beast']).toBeUndefined();
+  });
+
+  it('leaves the other difficulty unset so the item still counts as unmanaged until both are addressed', () => {
+    const sandbox = loadCommonJs();
+    const result = sandbox.mapSupabasePriorityOrder([], 'MID1', [emptyMarkRow({ track: 'Hero' })]);
+    expect('mythic' in result['Signet of the Starved Beast']).toBe(false);
+  });
+});

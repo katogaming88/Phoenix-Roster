@@ -1097,6 +1097,45 @@ export type Database = {
           },
         ]
       }
+      priority_order_confirmed_empty: {
+        Row: {
+          item_id: number
+          marked_at: string
+          season: string
+          team_id: number
+          track: string
+        }
+        Insert: {
+          item_id: number
+          marked_at?: string
+          season: string
+          team_id: number
+          track: string
+        }
+        Update: {
+          item_id?: number
+          marked_at?: string
+          season?: string
+          team_id?: number
+          track?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "priority_order_confirmed_empty_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "priority_order_confirmed_empty_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       raid_encounters: {
         Row: {
           id: number

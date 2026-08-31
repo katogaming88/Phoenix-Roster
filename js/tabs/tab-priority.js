@@ -2764,6 +2764,22 @@ function prioEditSave() {
           players: { name_realm: nameRealm }
         });
       });
+      // Mirrors save_priority_order()'s own priority_order_confirmed_empty
+      // upsert/clear (20260831190443): a zero-player save marks this
+      // item/track deliberately empty so it stays out of Unmanaged Items;
+      // a non-empty save clears any stale mark left over from an earlier
+      // empty save of the same item/track. Same "why cache it locally"
+      // reasoning as the raw-rows mirror just above.
+      DATA._priorityOrderConfirmedEmptyRawRows = (DATA._priorityOrderConfirmedEmptyRawRows || []).filter(function (r) {
+        return !(r.season === season && r.track === track && r.items && r.items.name === PRIO_EDIT.item);
+      });
+      if (!PRIO_EDIT.ranked.length) {
+        DATA._priorityOrderConfirmedEmptyRawRows.push({
+          season: season,
+          track: track,
+          items: { name: PRIO_EDIT.item }
+        });
+      }
       buildPriorityTab();
       buildUnmanagedTab();
       updatePriorityBadges();

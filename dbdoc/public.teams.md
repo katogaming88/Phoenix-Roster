@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer | nextval('teams_id_seq'::regclass) | false | [public.attendance](public.attendance.md) [public.audit_log](public.audit_log.md) [public.bis_requests](public.bis_requests.md) [public.rclc_loot](public.rclc_loot.md) [public.mplus_exclusion_requests](public.mplus_exclusion_requests.md) [public.player_wcl_season_perf](public.player_wcl_season_perf.md) [public.players](public.players.md) [public.priority_order](public.priority_order.md) [public.season_signups](public.season_signups.md) [public.self_received_requests](public.self_received_requests.md) [public.team_members](public.team_members.md) [public.team_settings](public.team_settings.md) [public.streamers](public.streamers.md) [public.notifications](public.notifications.md) [public.team_raid_progress](public.team_raid_progress.md) [public.item_preferences](public.item_preferences.md) [public.boe_items](public.boe_items.md) [public.boe_listings](public.boe_listings.md) [public.priority_conflict_dismissals](public.priority_conflict_dismissals.md) |  |  |
+| id | integer | nextval('teams_id_seq'::regclass) | false | [public.attendance](public.attendance.md) [public.audit_log](public.audit_log.md) [public.bis_requests](public.bis_requests.md) [public.rclc_loot](public.rclc_loot.md) [public.mplus_exclusion_requests](public.mplus_exclusion_requests.md) [public.player_wcl_season_perf](public.player_wcl_season_perf.md) [public.players](public.players.md) [public.priority_order](public.priority_order.md) [public.season_signups](public.season_signups.md) [public.self_received_requests](public.self_received_requests.md) [public.team_members](public.team_members.md) [public.team_settings](public.team_settings.md) [public.streamers](public.streamers.md) [public.notifications](public.notifications.md) [public.team_raid_progress](public.team_raid_progress.md) [public.item_preferences](public.item_preferences.md) [public.boe_items](public.boe_items.md) [public.boe_listings](public.boe_listings.md) [public.priority_conflict_dismissals](public.priority_conflict_dismissals.md) [public.priority_order_confirmed_empty](public.priority_order_confirmed_empty.md) |  |  |
 | name | text |  | false |  |  |  |
 | slug | text |  | false |  |  |  |
 | archived_at | timestamp with time zone |  | true |  |  |  |
@@ -50,6 +50,7 @@ erDiagram
 "public.boe_items" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.boe_listings" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.priority_conflict_dismissals" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.priority_order_confirmed_empty" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 
 "public.teams" {
   integer id
@@ -295,6 +296,13 @@ erDiagram
   text track
   uuid dismissed_by FK
   timestamp_with_time_zone dismissed_at
+}
+"public.priority_order_confirmed_empty" {
+  integer team_id FK
+  text season
+  integer item_id FK
+  text track
+  timestamp_with_time_zone marked_at
 }
 ```
 
