@@ -2129,11 +2129,19 @@ function prioEditFetchFairnessWarnings() {
       var byPlayer = {};
       result.data.forEach(function (r) {
         if (r.item_id === itemId) return;
+        // Hero and Myth are separate priority lists (Kat-confirmed, same
+        // scoping already applied to prioEditFirstPriorityCounts() and
+        // avg_existing_rank -- #838/#839/20260831122259) -- a #1 on the
+        // other track isn't a competing claim on this one, so it shouldn't
+        // count toward "holds N other #1 priorities" here either. Only
+        // sameBossItems used to filter on r.track === track; otherItems
+        // counted every track combined.
+        if (r.track !== track) return;
         var player = rosterById[r.player_id];
         if (!player) return;
         var entry = byPlayer[player.nameRealm] || { otherItems: {}, sameBossItems: {} };
         entry.otherItems[r.item_name] = true;
-        if (boss && r.boss === boss && r.track === track) entry.sameBossItems[r.item_name] = true;
+        if (boss && r.boss === boss) entry.sameBossItems[r.item_name] = true;
         byPlayer[player.nameRealm] = entry;
       });
       PRIO_EDIT.fairnessWarnings = byPlayer;
