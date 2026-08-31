@@ -343,10 +343,12 @@ function _rosterScoreCellHtml(p) {
 // wishlistHtml above -- else true/false.
 function onboardingWishlistNotStarted(playerId) {
   if (typeof _teamItemPreferences === 'undefined' || _teamItemPreferences === null) return null;
-  for (var i = 0; i < _teamItemPreferences.length; i++) {
-    if (_teamItemPreferences[i].player_id === playerId) return false;
-  }
-  return true;
+  // #829: was a full unindexed scan of _teamItemPreferences (3000+ rows) per
+  // call, and this runs once per rendered roster row on every
+  // buildRosterTable() render -- _teamItemPreferencesByPlayer()
+  // (tab-priority.js) is the same array pre-grouped by player_id once.
+  var prefs = typeof _teamItemPreferencesByPlayer === 'function' ? _teamItemPreferencesByPlayer()[playerId] : null;
+  return !(prefs && prefs.length);
 }
 
 function buildRosterTable() {

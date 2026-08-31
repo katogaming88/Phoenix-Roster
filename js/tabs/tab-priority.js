@@ -847,12 +847,19 @@ function _setTeamItemPreferences(rows) {
   _teamItemPreferences = rows;
 }
 
-// item_id + '|' + player_id -> that pair's item_preferences rows (usually
-// one, but Finger 1/2 / Trinket 1/2 / Weapon+Off Hand can each write a
-// separate row for the same item_id+player_id). _prioBestWishlistStatus() is
-// called once per ranked-player row, per difficulty, per item on every
-// Priority List render -- with item_preferences at 3000+ rows and no early
-// exit, a full re-scan per call was millions of iterations per render (#829).
+// Two indexes over the same 3000+-row item_preferences dataset, rebuilt
+// together in one pass: item_id + '|' + player_id -> that pair's rows
+// (usually one, but Finger 1/2 / Trinket 1/2 / Weapon+Off Hand can each
+// write a separate row for the same item_id+player_id), and player_id ->
+// every row that player has. Both exist because several call sites --
+// _prioBestWishlistStatus() (once per ranked-player row, per difficulty, per
+// item, every Priority List render), onboardingWishlistNotStarted()
+// (js/tabs/tab-roster.js, once per rendered roster row) and
+// buildContestedItemMap() (js/tabs/tab-conflicts.js, once per roster member,
+// on every item-row expand/collapse) -- were each doing their own full
+// unindexed re-scan of the array per call, which with no early exit is
+// millions of iterations per render (#829).
+//
 // Cached by array identity rather than rebuilt in _setTeamItemPreferences()
 // itself, so it stays correct even for the handful of test/tool call sites
 // that assign _teamItemPreferences directly instead of going through that
@@ -862,16 +869,24 @@ function _setTeamItemPreferences(rows) {
 // first time through, not mistaken for "already matches the last build".
 var _teamItemPreferencesIndexSource = {};
 var _teamItemPreferencesIndexCache = {};
+var _teamItemPreferencesByPlayerCache = {};
+function _rebuildTeamItemPreferencesIndexes() {
+  _teamItemPreferencesIndexSource = _teamItemPreferences;
+  _teamItemPreferencesIndexCache = {};
+  _teamItemPreferencesByPlayerCache = {};
+  (_teamItemPreferences || []).forEach(function (p) {
+    var key = p.item_id + '|' + p.player_id;
+    (_teamItemPreferencesIndexCache[key] = _teamItemPreferencesIndexCache[key] || []).push(p);
+    (_teamItemPreferencesByPlayerCache[p.player_id] = _teamItemPreferencesByPlayerCache[p.player_id] || []).push(p);
+  });
+}
 function _teamItemPreferencesIndex() {
-  if (_teamItemPreferencesIndexSource !== _teamItemPreferences) {
-    _teamItemPreferencesIndexSource = _teamItemPreferences;
-    _teamItemPreferencesIndexCache = {};
-    (_teamItemPreferences || []).forEach(function (p) {
-      var key = p.item_id + '|' + p.player_id;
-      (_teamItemPreferencesIndexCache[key] = _teamItemPreferencesIndexCache[key] || []).push(p);
-    });
-  }
+  if (_teamItemPreferencesIndexSource !== _teamItemPreferences) _rebuildTeamItemPreferencesIndexes();
   return _teamItemPreferencesIndexCache;
+}
+function _teamItemPreferencesByPlayer() {
+  if (_teamItemPreferencesIndexSource !== _teamItemPreferences) _rebuildTeamItemPreferencesIndexes();
+  return _teamItemPreferencesByPlayerCache;
 }
 
 // True once the fetch has settled one way or the other, so a render knows
@@ -1075,9 +1090,7 @@ function wishlistCompletionForPlayer(player) {
   Object.keys(itemIds).forEach(function (name) {
     idToName[itemIds[name]] = name;
   });
-  var prefs = _teamItemPreferences.filter(function (p) {
-    return p.player_id === player.id;
-  });
+  var prefs = _teamItemPreferencesByPlayer()[player.id] || [];
   var officerBuckets =
     typeof getBisItems === 'function' && typeof bisSlotBuckets === 'function'
       ? bisSlotBuckets(getBisItems(player.nameRealm)).buckets
@@ -1106,10 +1119,7 @@ function getIncompleteWishlists(roster) {
     idToName[itemIds[name]] = name;
   });
 
-  var prefsByPlayer = {};
-  _teamItemPreferences.forEach(function (p) {
-    (prefsByPlayer[p.player_id] = prefsByPlayer[p.player_id] || []).push(p);
-  });
+  var prefsByPlayer = _teamItemPreferencesByPlayer();
 
   roster = roster || DATA.roster || [];
   var raiders = [];
