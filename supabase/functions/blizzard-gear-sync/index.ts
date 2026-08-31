@@ -7,7 +7,7 @@
 // shapes this repo already has (twitch-live-check vs wcl-sync):
 //   - Scheduled full sweep, no logged-in caller: gated on the
 //     x-cron-secret header against BLIZZARD_GEAR_SYNC_SECRET (see the
-//     pg_cron migration), writes with the service role, every team.
+//     pg_cron migration), writes with the service role, loops every team.
 //   - Officer-triggered on-demand sync: forwards the caller's JWT (like
 //     wcl-sync), checks my_team_role(teamId)/is_site_admin, and syncs only
 //     that team's roster -- or a single player, if playerId is passed.
@@ -24,16 +24,32 @@
 // That existing tier sync is untouched -- Raider.IO stays the source for
 // class-tier-set detection, only equipped-gear-track detection moved here.
 //
-// Track label: an equipped item's `name_description.display_string`
-// confirmed live against 3 real roster characters (#845) -- "Normal" for a
-// Champion-track raid piece, "Heroic" for Hero, "Mythic" for Myth, exact
-// match only (a Mythic+ dungeon drop's "Mythic+" or a special boss-specific
-// item's "Mythic Sporefused: Myth" -- not a catalyst conversion, a distinct
-// unique item with no raid track of its own -- must NOT match "Mythic").
-// This is a display-only label -- generate_priority_order()'s actual
-// fairness comparison uses raw item_level against team_settings.config's
-// trackIlvlThresholds instead (Kat-confirmed: a Mythic+/crafted/special
-// piece at Hero-equivalent ilvl should count too, not just true raid drops).
+// Track label: originally derived from an equipped item's own
+// `name_description.display_string` ("Heroic"/"Mythic"/etc), but that only
+// ever covered actual raid drops -- a Mythic+/crafted/delve piece carries a
+// completely different descriptor (or none at all), so most of a real
+// roster's gear showed no label whatsoever (confirmed live, #845). Kat
+// pointed at WoWAudit/Viserio-style tools instead, which show a full
+// Explorer/Adventurer/Veteran/Champion/Hero/Myth breakdown for every
+// equipped item regardless of source -- that only works off a season's
+// published item-level floor per track (cross-checked live against
+// WoWAudit's own embedded per-season config), not any Blizzard API field.
+// So `track` here is the highest tier in team_settings.config's
+// trackIlvlThresholds (an object like {"Myth": 318, "Hero": 305, ...}, all
+// 6 keys optional) whose floor the item's item_level clears -- same
+// "≥ floor" shape generate_priority_order()'s fairness comparison already
+// uses, just applied to all 6 tracks instead of 2, and now the actual
+// source of the display label instead of a separate thing.
+//
+// Kat-confirmed live: adjacent tracks' ilvl ranges genuinely overlap within
+// a single track's own upgrade ranks (e.g. Champion's later ranks and
+// Hero's earlier ranks land at similar item levels) -- there is no way to
+// perfectly separate them at the boundary from ilvl alone. Not a bug here:
+// it mirrors how WoWAudit's own single-floor-per-track display works. Ties
+// resolve to the HIGHER track (descending scan, first match wins), matching
+// the fairness comparison's own "already itemized at least this well"
+// philosophy -- an ambiguous boundary item undercounting as a lower track
+// would be the wrong direction to err in for that comparison.
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 const CORS_HEADERS = {
@@ -47,6 +63,17 @@ function jsonResponse(body: unknown, status = 200) {
     status,
     headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
   });
+}
+
+const TRACKS_HIGH_TO_LOW = ['Myth', 'Hero', 'Champion', 'Veteran', 'Adventurer', 'Explorer'] as const;
+
+function deriveTrack(itemLevel: number | null, thresholds: Record<string, number> | null): string | null {
+  if (itemLevel == null || !thresholds) return null;
+  for (const track of TRACKS_HIGH_TO_LOW) {
+    const floor = thresholds[track];
+    if (typeof floor === 'number' && itemLevel >= floor) return track;
+  }
+  return null;
 }
 
 // Same realm-slug conversion as wcl-sync's realmToServerSlug (ported from
@@ -65,12 +92,6 @@ function realmSlug(realm: string): string {
     .replace(/\s+/g, '-')
     .toLowerCase();
 }
-
-const TRACK_LABELS: Record<string, string> = {
-  Normal: 'Champion',
-  Heroic: 'Hero',
-  Mythic: 'Myth'
-};
 
 async function getBlizzardToken(clientId: string, clientSecret: string): Promise<string | null> {
   const res = await fetch('https://oauth.battle.net/token', {
@@ -107,20 +128,19 @@ async function fetchEquipment(firstName: string, realm: string, token: string): 
   return data?.equipped_items || null;
 }
 
-function buildRows(playerId: number, equippedItems: any[]): EquippedRow[] {
+function buildRows(playerId: number, equippedItems: any[], thresholds: Record<string, number> | null): EquippedRow[] {
   const rows: EquippedRow[] = [];
   for (const it of equippedItems) {
     const slot = it?.slot?.type;
     const itemId = it?.item?.id;
     if (!slot || itemId == null) continue;
     const itemLevel = typeof it?.level?.value === 'number' ? it.level.value : null;
-    const descriptor = it?.name_description?.display_string;
     rows.push({
       player_id: playerId,
       equipment_slot: slot,
       item_id: itemId,
       item_level: itemLevel,
-      track: (descriptor && TRACK_LABELS[descriptor]) || null
+      track: deriveTrack(itemLevel, thresholds)
     });
   }
   return rows;
@@ -129,6 +149,7 @@ function buildRows(playerId: number, equippedItems: any[]): EquippedRow[] {
 async function syncRoster(
   supabase: ReturnType<typeof createClient>,
   players: Array<{ id: number; name_realm: string }>,
+  thresholds: Record<string, number> | null,
   token: string
 ): Promise<{ synced: number; skipped: number }> {
   let synced = 0;
@@ -149,7 +170,10 @@ async function syncRoster(
       continue;
     }
 
-    const rows = buildRows(player.id, equippedItems).map((r) => ({ ...r, synced_at: new Date().toISOString() }));
+    const rows = buildRows(player.id, equippedItems, thresholds).map((r) => ({
+      ...r,
+      synced_at: new Date().toISOString()
+    }));
     if (rows.length > 0) {
       const { error: upsertError } = await supabase
         .from('player_equipped_gear')
@@ -184,15 +208,30 @@ Deno.serve(async (req) => {
     const isCronCall = !!cronSecret && req.headers.get('x-cron-secret') === cronSecret;
 
     if (isCronCall) {
+      // Full sweep, every team -- each team keeps its own trackIlvlThresholds,
+      // so this loops team-by-team rather than pulling every player at once.
       const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-      const { data: players, error: playersError } = await supabase
-        .from('players')
-        .select('id, name_realm')
-        .is('archived_at', null);
-      if (playersError) return jsonResponse({ success: false, error: playersError.message }, 500);
+      const { data: teams, error: teamsError } = await supabase.from('team_settings').select('team_id, config');
+      if (teamsError) return jsonResponse({ success: false, error: teamsError.message }, 500);
 
-      const result = await syncRoster(supabase, players || [], token);
-      return jsonResponse({ success: true, ...result });
+      let synced = 0;
+      let skipped = 0;
+      for (const team of teams || []) {
+        const thresholds = (team.config as any)?.trackIlvlThresholds || null;
+        const { data: players, error: playersError } = await supabase
+          .from('players')
+          .select('id, name_realm')
+          .eq('team_id', team.team_id)
+          .is('archived_at', null);
+        if (playersError) {
+          console.error('blizzard-gear-sync: failed to load roster for team', team.team_id, playersError.message);
+          continue;
+        }
+        const result = await syncRoster(supabase, players || [], thresholds, token);
+        synced += result.synced;
+        skipped += result.skipped;
+      }
+      return jsonResponse({ success: true, synced, skipped });
     }
 
     // Officer-triggered, on-demand path -- forwards the caller's own JWT so
@@ -215,12 +254,19 @@ Deno.serve(async (req) => {
     const authorized = role === 'officer' || role === 'team_leader' || isSiteAdmin === true;
     if (!authorized) return jsonResponse({ success: false, error: 'Not authorized' }, 403);
 
+    const { data: settingsRow } = await supabase
+      .from('team_settings')
+      .select('config')
+      .eq('team_id', teamId)
+      .maybeSingle();
+    const thresholds = (settingsRow?.config as any)?.trackIlvlThresholds || null;
+
     let query = supabase.from('players').select('id, name_realm').eq('team_id', teamId).is('archived_at', null);
     if (playerId) query = query.eq('id', playerId);
     const { data: players, error: playersError } = await query;
     if (playersError) return jsonResponse({ success: false, error: playersError.message }, 500);
 
-    const result = await syncRoster(supabase, players || [], token);
+    const result = await syncRoster(supabase, players || [], thresholds, token);
     return jsonResponse({ success: true, ...result });
   } catch (err) {
     console.error('blizzard-gear-sync error:', err);

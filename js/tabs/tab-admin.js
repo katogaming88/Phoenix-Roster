@@ -685,11 +685,28 @@ function saveAdminWishlistLabels() {
 // The min item level for each track this season, stored on
 // team_settings.config.trackIlvlThresholds (DATA.trackIlvlThresholds, see
 // applyTeamSettingsToData()'s SEASON_CONFIG_KEYS pass-through in
-// js/common.js). Read by deriveEquippedTrack() (js/common.js) when syncing
-// Raider.IO gear into player_equipped_gear -- the API returns item_level per
-// equipped piece but no track name, and track floors move every season, so
-// this needs a manual reseed each tier, same as tier_token_map.
-var TRACK_THRESHOLD_TRACKS = ['Champion', 'Hero', 'Myth'];
+// js/common.js). Read server-side by the blizzard-gear-sync Edge Function
+// (deriveTrack()) when syncing player_equipped_gear, and by
+// generate_priority_order()'s equipped-item-level fairness comparison --
+// the Blizzard API returns item_level per equipped piece but no reliable
+// per-source track name, and track floors move every season, so this needs
+// a manual reseed each tier, same as tier_token_map.
+var TRACK_THRESHOLD_TRACKS = ['Myth', 'Hero', 'Champion', 'Veteran', 'Adventurer', 'Explorer'];
+
+// Starting defaults for Midnight Season 2, pulled from WoWAudit's own live
+// per-season config (confirmed directly against their page's embedded
+// track_cutoffs data, #845) -- WoWAudit uses these same single floors per
+// track for their own "Equipped items by track" columns (M/H/C/V/A/E),
+// which is exactly what this panel reproduces. Prefilled so the panel isn't
+// blank on first load; still officer-editable and reseeded each season.
+var TRACK_THRESHOLD_DEFAULTS = {
+  Myth: 318,
+  Hero: 305,
+  Champion: 292,
+  Veteran: 279,
+  Adventurer: 266,
+  Explorer: 207
+};
 
 function renderAdminTrackThresholds() {
   var el = document.getElementById('adminTrackThresholdsContent');
@@ -697,6 +714,7 @@ function renderAdminTrackThresholds() {
   var thresholds = (DATA && DATA.trackIlvlThresholds) || {};
   el.innerHTML =
     TRACK_THRESHOLD_TRACKS.map(function (track) {
+      var value = thresholds[track] != null ? thresholds[track] : TRACK_THRESHOLD_DEFAULTS[track];
       return (
         '<div style="display:flex;align-items:center;gap:0.6rem;padding:0.4rem 0;">' +
         '<span style="width:80px;flex-shrink:0;">' +
@@ -705,7 +723,7 @@ function renderAdminTrackThresholds() {
         '<input type="number" id="trackThresholdInput-' +
         track +
         '" class="add-player-input" placeholder="min ilvl" value="' +
-        (thresholds[track] != null ? escHtml(String(thresholds[track])) : '') +
+        (value != null ? escHtml(String(value)) : '') +
         '" style="max-width:140px;font-size:0.95rem;padding:0.35rem 0.6rem;">' +
         '</div>'
       );

@@ -14,22 +14,19 @@
 -- Equipment Summary endpoint already tells us the raider's actual
 -- positional assignment.
 --
--- `track` is a display-only label derived from the equipped item's own
--- `name_description.display_string` (confirmed live against 3 real roster
--- characters, #845): "Normal" -> Champion, "Heroic" -> Hero, "Mythic" ->
--- Myth, exact match only (a Mythic+ dungeon drop's "Mythic+" or a special
--- boss-specific item's "Mythic Sporefused: Myth" -- not a catalyst
--- conversion, a distinct unique item with no raid track of its own -- must
--- NOT match "Mythic"). Kat confirmed (#845) the actual fairness comparison
--- in generate_priority_order()
--- deliberately does NOT gate on this label -- it compares raw item_level
--- against the season's officer-maintained Hero/Myth ilvl floor
--- (team_settings.config.trackIlvlThresholds) instead, so a Mythic+/crafted/
--- catalyst piece at Hero-equivalent ilvl still counts. `track` exists purely
--- for the human-readable status label, and is null whenever the item's
--- descriptor doesn't exactly match one of the three raid-track strings
--- (including every non-raid source and the "(none)" case Champion items
--- carry when their descriptor is absent).
+-- `track` is a display-only label, populated by the blizzard-gear-sync Edge
+-- Function: the highest of Explorer/Adventurer/Veteran/Champion/Hero/Myth
+-- in team_settings.config.trackIlvlThresholds (officer-maintained per
+-- season, reseeded like tier_token_map) whose floor the item's item_level
+-- clears -- not derived from any Blizzard API field. An earlier version of
+-- this design tried reading the equipped item's own
+-- `name_description.display_string` ("Heroic"/"Mythic"/etc), but that only
+-- ever covers actual raid drops -- confirmed live (#845) that most of a
+-- real roster's gear (Mythic+, crafted, delve) carries a completely
+-- different descriptor or none at all, so most rows showed no label.
+-- generate_priority_order()'s actual fairness comparison reads
+-- `item_level` against the same thresholds directly, not this column --
+-- `track` is purely the human-readable status label.
 --
 -- Public read, like player_wcl_season_perf/team_raid_progress -- equipped
 -- gear is armory-visible information already, and this is what lets the
