@@ -25,7 +25,7 @@
 // empty ledger downstream and misreport every local migration as drift.
 // Exit codes: 0 agreement, 1 drift, 2 usage error.
 
-import { readdirSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 const MIGRATION_FILE = /^(\d{14})_.+\.sql$/;
@@ -55,16 +55,6 @@ export function compareLedger(localVersions, remoteVersions) {
   };
 }
 
-function readStdin() {
-  const chunks = [];
-  return new Promise((resolve, reject) => {
-    process.stdin
-      .on('data', (chunk) => chunks.push(chunk))
-      .on('end', () => resolve(Buffer.concat(chunks).toString('utf8')))
-      .on('error', reject);
-  });
-}
-
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const dir = process.argv[2] ?? 'supabase/migrations';
   let filenames;
@@ -75,7 +65,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
     process.exit(2);
   }
   const local = versionsFromFilenames(filenames);
-  const remote = parseLedger(await readStdin());
+  const remote = parseLedger(readFileSync(0, 'utf8'));
   const { localOnly, remoteOnly } = compareLedger(local, remote);
 
   if (localOnly.length === 0 && remoteOnly.length === 0) {
