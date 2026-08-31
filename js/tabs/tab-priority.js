@@ -2263,7 +2263,12 @@ function prioEditRenderList() {
 }
 
 // Whether firstName already has the current item at Heroic/Mythic, per
-// DATA.lootCounts. Shared by the pool render (badge + block add) and
+// DATA.lootCounts (addon-imported awards) OR an approved Mark Received
+// (DATA.selfReceived) -- generate_priority_order() itself pools both sources
+// the same way (20260831131137) after a Great Vault pick/catalyzed item/
+// crafted piece/hand-confirmed receive was found to leave that raider
+// addable here even though the SQL side would already exclude them from a
+// regenerated list. Shared by the pool render (badge + block add) and
 // prioEditAdd()'s guard, so "Show all roster" can't bypass the pool's
 // filtering.
 //
@@ -2292,6 +2297,18 @@ function prioEditLootFlags(firstName) {
       else if (loot.items[j].difficulty === 'Heroic') flags.hasHeroic = true;
       else if (loot.items[j].difficulty === 'Mythic') flags.hasMythic = true;
     }
+  }
+  // getSelfReceivedItems() only ever holds 'approved' rows (fetchSupabaseSelfReceived's
+  // own filter), and its `source` field is mapSupabaseSelfReceived()'s
+  // "<Track>: <source>" combined string (js/common.js) -- the track prefix is
+  // the only place the difficulty survives client-side, since the row's raw
+  // track isn't otherwise exposed here.
+  var selfRec = getSelfReceivedItems(firstName);
+  for (var k = 0; k < selfRec.length; k++) {
+    if ((selfRec[k].item || '').toLowerCase() !== itemLower) continue;
+    var source = selfRec[k].source || '';
+    if (source.indexOf('Mythic:') === 0) flags.hasMythic = true;
+    else if (source.indexOf('Heroic:') === 0) flags.hasHeroic = true;
   }
   return flags;
 }
