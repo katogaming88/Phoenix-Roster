@@ -1393,12 +1393,12 @@
       ],
       "triggers": [
         {
-          "name": "trg_players_updated_at",
-          "def": "CREATE TRIGGER trg_players_updated_at BEFORE UPDATE ON public.players FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
-        },
-        {
           "name": "trg_players_restrict_self_update",
           "def": "CREATE TRIGGER trg_players_restrict_self_update BEFORE UPDATE ON public.players FOR EACH ROW EXECUTE FUNCTION restrict_players_self_update_to_bonus_roll()"
+        },
+        {
+          "name": "trg_players_updated_at",
+          "def": "CREATE TRIGGER trg_players_updated_at BEFORE UPDATE ON public.players FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
         }
       ]
     },
