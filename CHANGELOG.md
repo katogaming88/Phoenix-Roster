@@ -8,6 +8,21 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.77.16] - 2026-08-31
+
+### Frontend
+
+- Fixed "Mark received" reverting back to unreceived on reload for any real
+  (non-placeholder) item. The button sent an empty slot on write, but the
+  self-received read path back-fills a blank slot with the item's catalog
+  slot, so the two never agreed and the approval never visibly stuck even
+  though it had saved.
+- `refreshBisCompletion()`'s live "X% (n/m)" badge after Mark Received, and
+  the Roster tab's "search by BiS item" filter, now include Wishlist-tagged
+  BiS picks instead of only the officer's BiS Manager entries -- most BiS
+  picks now come from a raider's own Wishlist, so reading officer `bis_items`
+  alone was missing almost everything.
+
 ## [3.77.15] - 2026-08-30
 
 ### Frontend
