@@ -8,6 +8,16 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.77.20] - 2026-08-31
+
+### Frontend
+
+- Priority List generation now mildly deprioritizes a candidate who already has a Hero- or Myth-equivalent item level equipped in the same slot as the drop being generated, even when it's a different item -- previously only an exact same-item loot-award match counted. A new "Track Item Level Thresholds" admin panel (Feature Flags) lets officers set the season's Hero/Myth ilvl floors, plus a "Sync Gear Levels Now" button to force a roster-wide equipped-gear refresh on demand (#845).
+
+### Backend
+
+- New `player_equipped_gear` table, synced from the Blizzard Character Equipment Summary endpoint by the new `blizzard-gear-sync` Edge Function (daily cron sweep, plus the officer on-demand call above). `generate_priority_order()` gained the new equipped-item-level fairness factor reading it (#845).
+
 ## [3.77.19] - 2026-08-31
 
 ### Frontend

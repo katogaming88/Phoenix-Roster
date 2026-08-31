@@ -41,6 +41,7 @@ function switchAdminSubTab(name, btnEl) {
   if (name === 'features') {
     renderAdminFeatureFlags();
     renderAdminWishlistLabels();
+    renderAdminTrackThresholds();
   }
   if (name === 'danger') renderDangerZone();
 }
@@ -673,6 +674,120 @@ function saveAdminWishlistLabels() {
     })
     .catch(function (err) {
       if (btn) btn.disabled = false;
+      if (statusEl) {
+        statusEl.style.color = 'var(--melee)';
+        statusEl.textContent = 'Failed: ' + err.message;
+      }
+    });
+}
+
+// ── Track Item Level Thresholds ──────────────────────────────────────────
+// The min item level for each track this season, stored on
+// team_settings.config.trackIlvlThresholds (DATA.trackIlvlThresholds, see
+// applyTeamSettingsToData()'s SEASON_CONFIG_KEYS pass-through in
+// js/common.js). Read by deriveEquippedTrack() (js/common.js) when syncing
+// Raider.IO gear into player_equipped_gear -- the API returns item_level per
+// equipped piece but no track name, and track floors move every season, so
+// this needs a manual reseed each tier, same as tier_token_map.
+var TRACK_THRESHOLD_TRACKS = ['Champion', 'Hero', 'Myth'];
+
+function renderAdminTrackThresholds() {
+  var el = document.getElementById('adminTrackThresholdsContent');
+  if (!el) return;
+  var thresholds = (DATA && DATA.trackIlvlThresholds) || {};
+  el.innerHTML =
+    TRACK_THRESHOLD_TRACKS.map(function (track) {
+      return (
+        '<div style="display:flex;align-items:center;gap:0.6rem;padding:0.4rem 0;">' +
+        '<span style="width:80px;flex-shrink:0;">' +
+        escHtml(track) +
+        '</span>' +
+        '<input type="number" id="trackThresholdInput-' +
+        track +
+        '" class="add-player-input" placeholder="min ilvl" value="' +
+        (thresholds[track] != null ? escHtml(String(thresholds[track])) : '') +
+        '" style="max-width:140px;font-size:0.95rem;padding:0.35rem 0.6rem;">' +
+        '</div>'
+      );
+    }).join('') +
+    '<div style="display:flex;align-items:center;gap:0.75rem;margin-top:0.5rem;">' +
+    '<button class="btn btn-gold" id="trackThresholdsSaveBtn" onclick="saveAdminTrackThresholds()">Save</button>' +
+    '<span id="trackThresholdsStatus" style="font-size:0.92rem;color:var(--heal);"></span>' +
+    '</div>';
+}
+
+function saveAdminTrackThresholds() {
+  var thresholds = {};
+  TRACK_THRESHOLD_TRACKS.forEach(function (track) {
+    var input = document.getElementById('trackThresholdInput-' + track);
+    var raw = input ? input.value.trim() : '';
+    var num = raw === '' ? NaN : Number(raw);
+    if (raw !== '' && !isNaN(num)) thresholds[track] = num;
+  });
+
+  var btn = document.getElementById('trackThresholdsSaveBtn');
+  var statusEl = document.getElementById('trackThresholdsStatus');
+  if (btn) btn.disabled = true;
+  if (statusEl) statusEl.textContent = 'Saving...';
+
+  saveTeamSetting({ trackIlvlThresholds: thresholds }, true)
+    .then(function (config) {
+      DATA.trackIlvlThresholds = config.trackIlvlThresholds || {};
+      writeAuditLog(
+        'Track Item Level Thresholds Saved',
+        null,
+        null,
+        TRACK_THRESHOLD_TRACKS.map(function (t) {
+          return t + ': ' + (thresholds[t] != null ? thresholds[t] : '(unset)');
+        }).join(', ')
+      );
+      if (btn) btn.disabled = false;
+      if (statusEl) statusEl.textContent = 'Saved';
+      setTimeout(function () {
+        if (statusEl) statusEl.textContent = '';
+      }, 2000);
+    })
+    .catch(function (err) {
+      if (btn) btn.disabled = false;
+      if (statusEl) {
+        statusEl.style.color = 'var(--melee)';
+        statusEl.textContent = 'Failed: ' + err.message;
+      }
+    });
+}
+
+// On-demand roster-wide gear sync (js/common.js's syncBlizzardGearForTeam),
+// invoked on top of the daily scheduled cron sweep -- lets an officer force
+// fresh data right before generating priority rather than waiting for the
+// next cron run.
+function runSyncBlizzardGearForTeam() {
+  var btn = document.getElementById('syncBlizzardGearBtn');
+  var statusEl = document.getElementById('syncBlizzardGearStatus');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Syncing...';
+  }
+  if (statusEl) {
+    statusEl.style.color = 'var(--heal)';
+    statusEl.textContent = '';
+  }
+
+  syncBlizzardGearForTeam()
+    .then(function (result) {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Sync Gear Levels Now';
+      }
+      if (statusEl) {
+        statusEl.textContent =
+          result.synced + ' synced' + (result.skipped ? ', ' + result.skipped + ' skipped' : '') + '.';
+      }
+    })
+    .catch(function (err) {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Sync Gear Levels Now';
+      }
       if (statusEl) {
         statusEl.style.color = 'var(--melee)';
         statusEl.textContent = 'Failed: ' + err.message;

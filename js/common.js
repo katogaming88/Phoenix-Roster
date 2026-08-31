@@ -94,7 +94,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.77.19';
+var VERSION = '3.77.20';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -755,6 +755,32 @@ function countEquippedTierPieces(player, gearItems) {
     if (wowId != null && equipped && equipped.item_id === wowId) count++;
   });
   return count;
+}
+
+// ── Equipped-gear track sync ─────────────────────────────────────────────
+//
+// Feeds generate_priority_order()'s equipped-item-level fairness factor via
+// public.player_equipped_gear, so a raider already carrying a Hero-level
+// item in a slot is mildly deprioritized on a *different* item in that same
+// slot, not just on the exact item they already have (recip's existing
+// has_myth/has_hero logic). Unlike the class-tier sync just above (which
+// stays on Raider.IO -- keyless, safe to call straight from the browser),
+// this reads the Blizzard API's Character Equipment Summary endpoint, which
+// needs OAuth client-credentials that can't be exposed client-side. So this
+// calls the blizzard-gear-sync Edge Function instead of fetching directly --
+// see that function for the actual sync logic; this is just the officer-
+// triggered on-demand invocation (its own scheduled cron sweep is the
+// primary refresh path and needs no client involvement at all).
+function syncBlizzardGearForTeam(playerId) {
+  var teamId = _teamCfg && _teamCfg.supabaseTeamId;
+  if (!teamId) return Promise.reject(new Error('No team configured'));
+  var body = { teamId: teamId };
+  if (playerId != null) body.playerId = playerId;
+  return supabaseClient.functions.invoke('blizzard-gear-sync', { body: body }).then(function (result) {
+    if (result.error) throw new Error(result.error.message);
+    if (result.data && result.data.success === false) throw new Error(result.data.error || 'Sync failed');
+    return result.data;
+  });
 }
 
 // Shared write path for both the bulk roster sync (js/tabs/tab-priority.js's
@@ -2577,7 +2603,13 @@ var SEASON_CONFIG_KEYS = [
   // count. Unset/0 means no target configured -- the advisory just shows
   // the plain count with no "we have enough" nudge.
   'targetTankCount',
-  'targetHealCount'
+  'targetHealCount',
+  // Officer-maintained {Hero, Myth} min item-level floors for the current
+  // season (a Champion floor is accepted too but unused today -- see the
+  // generate_priority_order() equipped-slot-track migration). Compared
+  // against public.player_equipped_gear.item_level server-side, not read
+  // client-side -- reseeded by hand each season, same as tier_token_map.
+  'trackIlvlThresholds'
 ];
 
 /**
