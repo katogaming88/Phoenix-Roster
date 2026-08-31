@@ -17,7 +17,7 @@ This file documents the RLS policies on every public table. The generated schema
 
 ### How to read this matrix
 
-RLS is deny-by-default: with RLS enabled (it is, on all 32 tables), nobody can touch any row unless a policy explicitly grants it. Policies are additive; if any one policy matches an actor and operation, the action is allowed. Each row below summarizes which grants exist for that table.
+RLS is deny-by-default: with RLS enabled (it is, on all 33 tables), nobody can touch any row unless a policy explicitly grants it. Policies are additive; if any one policy matches an actor and operation, the action is allowed. Each row below summarizes which grants exist for that table.
 
 - **Public SELECT**: "yes" means a `FOR SELECT USING (true)` policy exists, so anyone (including anonymous visitors) can read every row. This is how the public site serves roster, loot, and standings without login. "no" means there is no public read path.
 - **Officer**: what a team officer can do, scoped to their own team's rows via `my_team_role(team_id)`. "all ops" covers SELECT, INSERT, UPDATE, and DELETE. "SELECT, UPDATE" means they can see and modify existing rows but cannot insert or delete. Team leaders pass every officer check too, since these policies accept both roles.
@@ -25,7 +25,7 @@ RLS is deny-by-default: with RLS enabled (it is, on all 32 tables), nobody can t
 - **Notes**: exceptions and known gaps.
 - **A blank cell** means no policy grants that actor anything, so deny-by-default applies. A table with only Public SELECT (like `classes_specs` or `teams`) is a read-only lookup: everyone can read it and only the service role can write it. A table blank in every column except Notes (`site_admins`) is invisible to everyone but the actor named there.
 
-One thing the matrix hides on purpose: every table also carries a `claude_readers` SELECT policy (uniform across all 32 tables, so it is stated here instead of as a column).
+One thing the matrix hides on purpose: every table also carries a `claude_readers` SELECT policy (uniform across all 33 tables, so it is stated here instead of as a column).
 
 | Table | Public SELECT | Officer | Team leader | Notes |
 | --- | --- | --- | --- | --- |
@@ -46,6 +46,7 @@ One thing the matrix hides on purpose: every table also carries a `claude_reader
 | notifications | no | | | No table INSERT policy for anyone, including officers; `notify_player()` (SECURITY DEFINER) is the only write path ([#151](https://github.com/katogaming88/WGA-Raid-Hub/issues/151)). A raider reads and marks-read their own rows via `is_own_player(player_id)`, same self-service predicate as `streamers` |
 | player_wcl_season_perf | yes | all ops +site | (via officer) | |
 | players | yes | all ops +site | (via officer) | +guild ([#607](https://github.com/katogaming88/WGA-Raid-Hub/issues/607)): `is_guild_officer()` OR'd into the write policy, full access on every team. `is_site_admin()` OR'd in too. A raider can also UPDATE `bonus_roll_encounter_id` on their own row via `is_own_player(id)` (Bonus Roll target) -- a trigger (`restrict_players_self_update_to_bonus_roll`) locks every non-officer UPDATE to that one column, comparing the full row via `to_jsonb()` rather than an explicit column list so it can't silently go stale as `players` grows more columns |
+| priority_conflict_dismissals | no | all ops +site | (via officer) | Officer-acknowledged Priority List same-boss conflicts, one row per (player, season, boss, track) an officer has dismissed -- `buildPriorityConflictsBannerHtml()` (js/tabs/tab-priority.js) filters these out of the banner. `player_id` nullable (`ON DELETE SET NULL`) so an archived/removed player doesn't block the dismissal row from existing; team resolved directly from the row's own `team_id`, checked against `player_id`'s team by the same `check_team_id_matches_player()` trigger `self_received_requests` uses |
 | priority_order | yes | all ops +site | (via officer) | View-only for a guild officer is enforced purely at the frontend (edit/regenerate controls hidden) -- the table is already public-read, and the write policy deliberately does NOT get `is_guild_officer()` ([#607](https://github.com/katogaming88/WGA-Raid-Hub/issues/607)). `is_site_admin()` is OR'd in, no such carve-out for site admins anywhere in the schema |
 | raid_encounters | yes | | | Read-only lookup; no write policy ([#285](https://github.com/katogaming88/WGA-Raid-Hub/issues/285)) |
 | raid_zones | yes | | | Read-only lookup; no write policy ([#285](https://github.com/katogaming88/WGA-Raid-Hub/issues/285)) |

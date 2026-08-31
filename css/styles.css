@@ -519,6 +519,10 @@ select#playerSelect option { background:#1a1d27; }
 .prio-firstprio-count-flagged { background:rgba(214,90,60,0.1); color:#e05a3a; border-color:rgba(214,90,60,0.22); }
 .prio-firstprio-sameboss { font-size:0.87rem; padding:1px 6px; border-radius:2px; background:rgba(214,90,60,0.1); color:#e05a3a; border:1px solid rgba(214,90,60,0.22); }
 .prio-overalloc-diff { text-transform:uppercase; font-size:0.87rem; opacity:0.75; margin-left:2px; }
+/* Dismiss/Restore for same-boss conflict groups, and the collapsed "N dismissed" line below the main banner */
+.prio-conflict-dismiss-btn { font-size:0.82rem; padding:1px 8px; border-radius:2px; background:none; border:1px solid var(--border-mid); color:var(--text-muted); cursor:pointer; margin-left:auto; }
+.prio-conflict-dismiss-btn:hover { border-color:var(--text-muted); color:var(--text); }
+.prio-overalloc-dismissed { margin-top:0.65rem; padding-top:0.6rem; border-top:1px solid rgba(214,90,60,0.2); }
 
 /* Loot fairness */
 .fairness-section-header { font-size:1.02rem; font-weight:700; letter-spacing:0.16em; text-transform:uppercase; color:var(--text-muted); padding:0.5rem 0 0.35rem; margin-top:1rem; border-bottom:1px solid var(--border-mid); margin-bottom:0.5rem; }

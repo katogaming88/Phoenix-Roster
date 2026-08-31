@@ -54,6 +54,8 @@ players,Claude readers read players,claude_readers,SELECT,PERMISSIVE,true,
 players,Officers write players,public,ALL,PERMISSIVE,"((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_guild_officer() OR is_site_admin())","((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_guild_officer() OR is_site_admin())"
 players,Public read players,public,SELECT,PERMISSIVE,true,
 players,Raiders update own bonus_roll_encounter_id,public,UPDATE,PERMISSIVE,is_own_player(id),is_own_player(id)
+priority_conflict_dismissals,Claude readers read priority_conflict_dismissals,claude_readers,SELECT,PERMISSIVE,true,
+priority_conflict_dismissals,Officers manage priority_conflict_dismissals,public,ALL,PERMISSIVE,"((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())","((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())"
 priority_order,Claude readers read priority_order,claude_readers,SELECT,PERMISSIVE,true,
 priority_order,Officers write priority_order,public,ALL,PERMISSIVE,"((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())","((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())"
 priority_order,Public read priority_order,public,SELECT,PERMISSIVE,true,

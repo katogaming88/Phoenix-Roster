@@ -55,6 +55,12 @@ async function seedScoring(q, playerId, performance, attendance) {
 describe('check_priority_order_drift', () => {
   it('no drift when the saved top 3 still matches the live computation', async () => {
     await withTxn(async ({ q, asUser }) => {
+      // seed.sql's self_received_requests row 2 approves player 1 for item 1
+      // at Hero -- generate_priority_order() now excludes an approved
+      // self-receive the same as an rclc_loot award (20260831131137), which
+      // would otherwise drop player 1 as a live candidate here and desync
+      // from the saved top 3 this test relies on matching.
+      await q('delete from public.self_received_requests where id = 2');
       // Player 1 has a bis_items row for item 1 from seed.sql; player 2
       // needs an explicit wishlist tag to be a candidate too.
       await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 2, 1, 'bis')");
@@ -73,6 +79,8 @@ describe('check_priority_order_drift', () => {
 
   it('flags a swap within the top 3 after a scoring change', async () => {
     await withTxn(async ({ q, asUser }) => {
+      // See the previous test's comment -- same seed row 2 collision.
+      await q('delete from public.self_received_requests where id = 2');
       await q("insert into public.item_preferences (team_id, player_id, item_id, status) values (1, 2, 1, 'bis')");
       await seedScoring(q, 1, 100, 100);
       await seedScoring(q, 2, 50, 50);

@@ -77,6 +77,12 @@ describe('generate_priority_order wishlist integration', () => {
 
   it('a bis_items-only player (no wishlist tag) is unaffected -- same math as before this change', async () => {
     await withTxn(async ({ q, asUser }) => {
+      // seed.sql's self_received_requests row 2 approves player 1 for item 1
+      // at Hero -- generate_priority_order() now excludes an approved
+      // self-receive the same as an rclc_loot award (see the
+      // 20260831131137 migration), which would otherwise drop player 1 out
+      // of this list entirely and defeat what this test is isolating.
+      await q('delete from public.self_received_requests where id = 2');
       await seedScoring(q, 1, 100, 100);
       // Player 1 already has a bis_items row for item 1 from seed.sql --
       // no item_preferences row inserted here at all.
