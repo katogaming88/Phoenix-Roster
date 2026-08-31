@@ -224,15 +224,48 @@ function _priorityFirstPrioSameBossGroups(entry) {
 // not a "conflict" worth an attention banner, just an expected fact about a
 // deep priority list. That's now getPriorityFirstPrioSummary()'s full-roster
 // table instead, always visible rather than only surfacing outliers.
+// Officer-dismissed same-boss groups for the season currently in view
+// (DATA.priorityConflictDismissals, kept in sync with that season by
+// remapPriorityDataForSeasonView() the same way DATA.priorityLiveFirstPrios
+// is) -- a Set-ish lookup keyed the same way dismissPriorityConflict() writes
+// (player_id|boss|track), one dismissal per group.
+function _dismissedConflictKeys() {
+  var keys = {};
+  (DATA.priorityConflictDismissals || []).forEach(function (d) {
+    keys[d.player_id + '|' + d.boss + '|' + d.track] = true;
+  });
+  return keys;
+}
+
 function getPriorityListConflicts() {
   var staleEntries = DATA.priorityStaleAfterHeroic || [];
   var byPlayer = _priorityFirstPriosByPlayer();
+  var dismissed = _dismissedConflictKeys();
 
   var sameBossGroups = [];
   Object.keys(byPlayer).forEach(function (playerId) {
     var entry = byPlayer[playerId];
     _priorityFirstPrioSameBossGroups(entry).forEach(function (group) {
-      sameBossGroups.push({ nameRealm: entry.nameRealm, boss: group.boss, itemNames: group.itemNames });
+      // _priorityFirstPrioSameBossGroups() (shared with
+      // getPriorityFirstPrioSummary(), whose tests pin its exact
+      // {boss, itemNames} return shape) doesn't carry track on the group
+      // itself -- recovered here from entry.items, since every item in one
+      // group was grouped by the same boss+track pairing to begin with.
+      var track = null;
+      for (var gi = 0; gi < entry.items.length; gi++) {
+        if (entry.items[gi].boss === group.boss && group.itemNames.indexOf(entry.items[gi].itemName) !== -1) {
+          track = entry.items[gi].track;
+          break;
+        }
+      }
+      if (dismissed[playerId + '|' + group.boss + '|' + track]) return;
+      sameBossGroups.push({
+        playerId: playerId,
+        nameRealm: entry.nameRealm,
+        boss: group.boss,
+        track: track,
+        itemNames: group.itemNames
+      });
     });
   });
 
@@ -241,6 +274,61 @@ function getPriorityListConflicts() {
     staleEntries: staleEntries,
     sameBossGroups: sameBossGroups
   };
+}
+
+// Dismiss/restore write straight to priority_conflict_dismissals (RLS-gated
+// to officer/team_leader/site_admin, no RPC needed -- see the
+// 20260831132302 migration) then patch DATA.priorityConflictDismissals
+// in-memory and re-render, same optimistic-update shape submitDirectMarkReceived()
+// (js/common.js) uses rather than a full data reload.
+function dismissPriorityConflict(playerId, boss, track) {
+  if (!supabaseClient) return;
+  var season = resolveSeasonViewCode();
+  supabaseClient
+    .from('priority_conflict_dismissals')
+    .insert({
+      team_id: _teamCfg.supabaseTeamId,
+      player_id: playerId,
+      season: season,
+      boss: boss,
+      track: track
+    })
+    .then(function (result) {
+      if (result.error) {
+        console.warn('priority_conflict_dismissals insert failed.', result.error.message);
+        return;
+      }
+      if (!DATA.priorityConflictDismissals) DATA.priorityConflictDismissals = [];
+      DATA.priorityConflictDismissals.push({ player_id: playerId, season: season, boss: boss, track: track });
+      if (!DATA._priorityConflictDismissalsRawRows) DATA._priorityConflictDismissalsRawRows = [];
+      DATA._priorityConflictDismissalsRawRows.push({ player_id: playerId, season: season, boss: boss, track: track });
+      updatePriorityBadges();
+    });
+}
+
+function restorePriorityConflict(playerId, boss, track) {
+  if (!supabaseClient) return;
+  var season = resolveSeasonViewCode();
+  supabaseClient
+    .from('priority_conflict_dismissals')
+    .delete()
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .eq('player_id', playerId)
+    .eq('season', season)
+    .eq('boss', boss)
+    .eq('track', track)
+    .then(function (result) {
+      if (result.error) {
+        console.warn('priority_conflict_dismissals delete failed.', result.error.message);
+        return;
+      }
+      var stillMatches = function (d) {
+        return !(d.player_id === playerId && d.season === season && d.boss === boss && d.track === track);
+      };
+      DATA.priorityConflictDismissals = (DATA.priorityConflictDismissals || []).filter(stillMatches);
+      DATA._priorityConflictDismissalsRawRows = (DATA._priorityConflictDismissalsRawRows || []).filter(stillMatches);
+      updatePriorityBadges();
+    });
 }
 
 // Separated out from getPriorityListConflicts()/its banner -- drift is its
@@ -275,23 +363,29 @@ function togglePriorityFirstPrio() {
 }
 
 function buildPriorityConflictsBannerHtml(conflicts, expanded) {
-  if (!conflicts.count) return '';
+  var dismissedGroups = DATA.priorityConflictDismissals || [];
+  // Keep the banner around when every live conflict has been dismissed --
+  // otherwise dismissing the last one hides its own "N dismissed" Restore
+  // access point along with it.
+  if (!conflicts.count && !dismissedGroups.length) return '';
   var summaryParts = [];
   if (conflicts.staleEntries.length) summaryParts.push(conflicts.staleEntries.length + ' stale-after-Heroic');
   if (conflicts.sameBossGroups.length) summaryParts.push(conflicts.sameBossGroups.length + ' same-boss');
 
   var html = '<div class="prio-overalloc-banner">';
-  html +=
-    '<button type="button" class="prio-section-toggle" onclick="togglePriorityConflicts()">' +
-    '<span class="prio-section-chevron">' +
-    (expanded ? '▾' : '▸') +
-    '</span><span class="prio-overalloc-title" style="margin-bottom:0;">Priority List Conflicts (' +
-    conflicts.count +
-    ')</span><span class="prio-section-summary">' +
-    escHtml(summaryParts.join(', ')) +
-    '</span></button>';
+  if (conflicts.count) {
+    html +=
+      '<button type="button" class="prio-section-toggle" onclick="togglePriorityConflicts()">' +
+      '<span class="prio-section-chevron">' +
+      (expanded ? '▾' : '▸') +
+      '</span><span class="prio-overalloc-title" style="margin-bottom:0;">Priority List Conflicts (' +
+      conflicts.count +
+      ')</span><span class="prio-section-summary">' +
+      escHtml(summaryParts.join(', ')) +
+      '</span></button>';
+  }
 
-  if (expanded) {
+  if (expanded && conflicts.count) {
     html += '<div class="prio-overalloc-list">';
     conflicts.staleEntries.forEach(function (e) {
       html +=
@@ -302,6 +396,8 @@ function buildPriorityConflictsBannerHtml(conflicts, expanded) {
         ' <span class="prio-overalloc-diff">may be stale -- already has Heroic</span></span></div>';
     });
     conflicts.sameBossGroups.forEach(function (g) {
+      var bossSafe = g.boss.replace(/'/g, "\\'");
+      var trackSafe = g.track.replace(/'/g, "\\'");
       html +=
         '<div class="prio-overalloc-player"><span class="prio-overalloc-name">' +
         escHtml(g.nameRealm) +
@@ -309,7 +405,73 @@ function buildPriorityConflictsBannerHtml(conflicts, expanded) {
         escHtml(g.itemNames.join(', ')) +
         ' <span class="prio-overalloc-diff">same boss (' +
         escHtml(g.boss) +
-        ')</span></span></div>';
+        ')</span></span>' +
+        '<button type="button" class="prio-conflict-dismiss-btn" title="Dismiss -- I know about this" ' +
+        'onclick="event.stopPropagation();dismissPriorityConflict(' +
+        g.playerId +
+        ",'" +
+        bossSafe +
+        "','" +
+        trackSafe +
+        '\')">Dismiss</button></div>';
+    });
+    html += '</div>';
+  }
+
+  if (dismissedGroups.length) {
+    html += buildDismissedPriorityConflictsHtml(dismissedGroups, _priorityDismissedConflictsExpanded);
+  }
+
+  html += '</div>';
+  return html;
+}
+
+// Separate collapsed-by-default "N dismissed" line under the main banner --
+// showing every dismissal always would defeat the point of dismissing them,
+// but an officer who dismissed something by mistake still needs a way back.
+// Only player/boss/track are stored (see the 20260831132302 migration), not
+// which items -- resolved back to a display name via DATA.roster; the item
+// list itself isn't shown since a dismissed group's live items may have
+// changed since it was dismissed.
+var _priorityDismissedConflictsExpanded = false;
+
+function togglePriorityDismissedConflicts() {
+  _priorityDismissedConflictsExpanded = !_priorityDismissedConflictsExpanded;
+  updatePriorityBadges();
+}
+
+function buildDismissedPriorityConflictsHtml(dismissedGroups, expanded) {
+  var html =
+    '<div class="prio-overalloc-dismissed">' +
+    '<button type="button" class="prio-section-toggle" onclick="togglePriorityDismissedConflicts()">' +
+    '<span class="prio-section-chevron">' +
+    (expanded ? '▾' : '▸') +
+    '</span><span class="prio-section-summary">' +
+    dismissedGroups.length +
+    ' dismissed</span></button>';
+
+  if (expanded) {
+    html += '<div class="prio-overalloc-list">';
+    dismissedGroups.forEach(function (d) {
+      var player = (DATA.roster || []).find(function (p) {
+        return p.id === d.player_id;
+      });
+      var display = player ? player.nick || player.firstName : 'Player #' + d.player_id;
+      var bossSafe = d.boss.replace(/'/g, "\\'");
+      var trackSafe = d.track.replace(/'/g, "\\'");
+      html +=
+        '<div class="prio-overalloc-player"><span class="prio-overalloc-name">' +
+        escHtml(display) +
+        '</span><span class="prio-overalloc-item">same boss (' +
+        escHtml(d.boss) +
+        ')</span>' +
+        '<button type="button" class="prio-conflict-dismiss-btn" onclick="event.stopPropagation();restorePriorityConflict(' +
+        d.player_id +
+        ",'" +
+        bossSafe +
+        "','" +
+        trackSafe +
+        '\')">Restore</button></div>';
     });
     html += '</div>';
   }

@@ -16,7 +16,12 @@ import { fileURLToPath } from 'node:url';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PRIORITY_JS = readFileSync(path.join(HERE, '../../js/tabs/tab-priority.js'), 'utf8');
 
-function makeSandbox({ priorityLiveFirstPrios = [], priorityStaleAfterHeroic = [], priorityDrift = [] } = {}) {
+function makeSandbox({
+  priorityLiveFirstPrios = [],
+  priorityStaleAfterHeroic = [],
+  priorityDrift = [],
+  priorityConflictDismissals = []
+} = {}) {
   const sandbox = {
     console,
     window: {},
@@ -25,6 +30,7 @@ function makeSandbox({ priorityLiveFirstPrios = [], priorityStaleAfterHeroic = [
       priorityLiveFirstPrios,
       priorityStaleAfterHeroic,
       priorityDrift,
+      priorityConflictDismissals,
       itemSlots: {},
       itemIds: {},
       roster: []
@@ -70,7 +76,7 @@ describe('getPriorityListConflicts (no longer flags plain #1-count holders)', ()
     const conflicts = sandbox.getPriorityListConflicts();
     expect(conflicts.count).toBe(1);
     expect(conflicts.sameBossGroups).toEqual([
-      { nameRealm: 'Alpha-Realm', boss: 'Boss 1', itemNames: ['Item A', 'Item B'] }
+      { playerId: '1', nameRealm: 'Alpha-Realm', boss: 'Boss 1', track: 'Hero', itemNames: ['Item A', 'Item B'] }
     ]);
   });
 
@@ -90,6 +96,39 @@ describe('getPriorityListConflicts (no longer flags plain #1-count holders)', ()
     expect(conflicts.count).toBe(1);
     expect(conflicts.staleEntries).toEqual(stale);
     expect(conflicts).not.toHaveProperty('driftEntries');
+  });
+
+  // Dismiss/restore (priority_conflict_dismissals, #841-adjacent): an officer
+  // who has reviewed a same-boss conflict and confirmed it's fine can
+  // acknowledge it so the banner stops re-flagging it every render.
+  it('filters out a same-boss group the officer already dismissed', () => {
+    const rows = [
+      { player_id: 1, name_realm: 'Alpha-Realm', item_name: 'Item A', track: 'Hero', boss: 'Boss 1' },
+      { player_id: 1, name_realm: 'Alpha-Realm', item_name: 'Item B', track: 'Hero', boss: 'Boss 1' }
+    ];
+    const sandbox = makeSandbox({
+      priorityLiveFirstPrios: rows,
+      priorityConflictDismissals: [{ player_id: 1, season: 'test-season', boss: 'Boss 1', track: 'Hero' }]
+    });
+    const conflicts = sandbox.getPriorityListConflicts();
+    expect(conflicts.count).toBe(0);
+    expect(conflicts.sameBossGroups).toEqual([]);
+  });
+
+  it('does not filter a dismissal for a different track on the same boss', () => {
+    const rows = [
+      { player_id: 1, name_realm: 'Alpha-Realm', item_name: 'Item A', track: 'Myth', boss: 'Boss 1' },
+      { player_id: 1, name_realm: 'Alpha-Realm', item_name: 'Item B', track: 'Myth', boss: 'Boss 1' }
+    ];
+    const sandbox = makeSandbox({
+      priorityLiveFirstPrios: rows,
+      priorityConflictDismissals: [{ player_id: 1, season: 'test-season', boss: 'Boss 1', track: 'Hero' }]
+    });
+    const conflicts = sandbox.getPriorityListConflicts();
+    expect(conflicts.count).toBe(1);
+    expect(conflicts.sameBossGroups).toEqual([
+      { playerId: '1', nameRealm: 'Alpha-Realm', boss: 'Boss 1', track: 'Myth', itemNames: ['Item A', 'Item B'] }
+    ]);
   });
 });
 

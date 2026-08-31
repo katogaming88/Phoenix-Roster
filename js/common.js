@@ -94,7 +94,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.77.16';
+var VERSION = '3.77.17';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -2392,6 +2392,32 @@ function fetchSupabasePriorityLiveFirstPrios() {
     );
 }
 
+// Officer-acknowledged same-boss Priority List conflicts (20260831132302) --
+// buildPriorityConflictsBannerHtml() (js/tabs/tab-priority.js) filters these
+// out of the banner instead of re-flagging a conflict an officer already
+// reviewed. No public SELECT policy on this table (officer-only, unlike
+// priority_order itself), so this resolves to [] for a raider session on
+// index.html rather than erroring -- same failure shape as every other
+// fetchSupabaseX() here.
+function fetchSupabasePriorityConflictDismissals() {
+  if (!supabaseClient) return Promise.resolve([]);
+  // team-read-guard: one row per officer-dismissed same-boss group, bounded
+  // by roster size x managed items -- nowhere near 1000 rows for a single team.
+  return supabaseClient
+    .from('priority_conflict_dismissals')
+    .select('player_id, season, boss, track')
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .then(
+      function (result) {
+        if (result.error) return [];
+        return result.data || [];
+      },
+      function () {
+        return [];
+      }
+    );
+}
+
 function fetchSupabasePriorityOrder() {
   if (!supabaseClient) return Promise.resolve(null);
   // Not season-scoped, and a rollover does not clear the table, so this grows
@@ -3334,6 +3360,7 @@ function loadData(onCoreReady, onHeavyReady) {
   var priorityStaleAfterHeroicPromise = fetchSupabasePriorityStaleAfterHeroic();
   // Fired alongside; the heavy callback waits for it before setting priorityLiveFirstPrios.
   var priorityLiveFirstPriosPromise = fetchSupabasePriorityLiveFirstPrios();
+  var priorityConflictDismissalsPromise = fetchSupabasePriorityConflictDismissals();
   // Fired alongside; the heavy callback waits for it before setting selfReceived.
   var selfReceivedPromise = fetchSupabaseSelfReceived();
   // Fired alongside; the heavy callback waits for it before setting rawAttendanceData/attendanceDetails/recentAttendanceTrend.
@@ -3401,6 +3428,7 @@ function loadData(onCoreReady, onHeavyReady) {
       priorityOrderPromise,
       priorityStaleAfterHeroicPromise,
       priorityLiveFirstPriosPromise,
+      priorityConflictDismissalsPromise,
       selfReceivedPromise,
       attendancePromise,
       streamersPromise,
@@ -3418,14 +3446,15 @@ function loadData(onCoreReady, onHeavyReady) {
       var priorityRows = results[5];
       var priorityStaleAfterHeroicRows = results[6];
       var priorityLiveFirstPriosRows = results[7];
-      var selfReceivedRows = results[8];
-      var attendanceRows = results[9];
-      var streamerRows = results[10];
-      var raidProgressRows = results[11];
-      var incomingRosterRows = results[12];
-      var raidZonesRows = results[13];
-      var guildOfficerBiosRows = results[14];
-      var raidEncountersRows = results[15];
+      var priorityConflictDismissalsRows = results[8];
+      var selfReceivedRows = results[9];
+      var attendanceRows = results[10];
+      var streamerRows = results[11];
+      var raidProgressRows = results[12];
+      var incomingRosterRows = results[13];
+      var raidZonesRows = results[14];
+      var guildOfficerBiosRows = results[15];
+      var raidEncountersRows = results[16];
       DATA.raidZones = raidZonesRows || [];
       DATA.raidEncounters = raidEncountersRows || [];
       var mappedLoot = lootRows ? mapSupabaseLoot(lootRows) : null;
@@ -3447,6 +3476,7 @@ function loadData(onCoreReady, onHeavyReady) {
       DATA._priorityOrderRawRows = priorityRows || [];
       DATA._priorityStaleAfterHeroicRawRows = priorityStaleAfterHeroicRows || [];
       DATA._priorityLiveFirstPriosRawRows = priorityLiveFirstPriosRows || [];
+      DATA._priorityConflictDismissalsRawRows = priorityConflictDismissalsRows || [];
       remapPriorityDataForSeasonView();
       var itemMaps = buildItemMaps(itemRows);
       DATA.itemSlots = itemMaps.itemSlots;
@@ -3534,6 +3564,9 @@ function remapPriorityDataForSeasonView() {
     return r.season === seasonCode;
   });
   DATA.priorityLiveFirstPrios = (DATA._priorityLiveFirstPriosRawRows || []).filter(function (r) {
+    return r.season === seasonCode;
+  });
+  DATA.priorityConflictDismissals = (DATA._priorityConflictDismissalsRawRows || []).filter(function (r) {
     return r.season === seasonCode;
   });
 }

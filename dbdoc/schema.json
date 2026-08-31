@@ -4590,6 +4590,148 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.priority_conflict_dismissals",
+      "type": "BASE TABLE",
+      "comment": "Officer-acknowledged Priority List same-boss conflicts (a player holding #1 on 2+ items behind one boss+track kill), so buildPriorityConflictsBannerHtml() (js/tabs/tab-priority.js) stops re-flagging a reviewed one.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('priority_conflict_dismissals_id_seq'::regclass)"
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "player_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "season",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "boss",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "track",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "dismissed_by",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "dismissed_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "priority_conflict_dismissals_pkey",
+          "def": "CREATE UNIQUE INDEX priority_conflict_dismissals_pkey ON public.priority_conflict_dismissals USING btree (id)",
+          "table": "public.priority_conflict_dismissals",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "priority_conflict_dismissals_team_id_player_id_season_boss__key",
+          "def": "CREATE UNIQUE INDEX priority_conflict_dismissals_team_id_player_id_season_boss__key ON public.priority_conflict_dismissals USING btree (team_id, player_id, season, boss, track)",
+          "table": "public.priority_conflict_dismissals",
+          "columns": [
+            "team_id",
+            "player_id",
+            "season",
+            "boss",
+            "track"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "priority_conflict_dismissals_dismissed_by_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (dismissed_by) REFERENCES auth.users(id) ON DELETE SET NULL",
+          "table": "public.priority_conflict_dismissals",
+          "referenced_table": "auth.users",
+          "columns": [
+            "dismissed_by"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "priority_conflict_dismissals_player_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL",
+          "table": "public.priority_conflict_dismissals",
+          "referenced_table": "public.players",
+          "columns": [
+            "player_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "priority_conflict_dismissals_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.priority_conflict_dismissals",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "priority_conflict_dismissals_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.priority_conflict_dismissals",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "priority_conflict_dismissals_team_id_player_id_season_boss__key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (team_id, player_id, season, boss, track)",
+          "table": "public.priority_conflict_dismissals",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "player_id",
+            "season",
+            "boss",
+            "track"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_priority_conflict_dismissals_team_id_check",
+          "def": "CREATE TRIGGER trg_priority_conflict_dismissals_team_id_check BEFORE INSERT OR UPDATE ON public.priority_conflict_dismissals FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
+        }
+      ]
     }
   ],
   "relations": [
@@ -5242,6 +5384,32 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (boe_item_id) REFERENCES boe_items(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.priority_conflict_dismissals",
+      "columns": [
+        "player_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.players",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.priority_conflict_dismissals",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
     }
   ],
   "functions": [

@@ -898,6 +898,68 @@ export type Database = {
           }
         ];
       };
+      priority_conflict_dismissals: {
+        Row: {
+          boss: string;
+          dismissed_at: string;
+          dismissed_by: string | null;
+          id: number;
+          player_id: number | null;
+          season: string;
+          team_id: number;
+          track: string;
+        };
+        Insert: {
+          boss: string;
+          dismissed_at?: string;
+          dismissed_by?: string | null;
+          id?: number;
+          player_id?: number | null;
+          season: string;
+          team_id: number;
+          track: string;
+        };
+        Update: {
+          boss?: string;
+          dismissed_at?: string;
+          dismissed_by?: string | null;
+          id?: number;
+          player_id?: number | null;
+          season?: string;
+          team_id?: number;
+          track?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'priority_conflict_dismissals_player_id_fkey';
+            columns: ['player_id'];
+            isOneToOne: false;
+            referencedRelation: 'players';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'priority_conflict_dismissals_player_id_fkey';
+            columns: ['player_id'];
+            isOneToOne: false;
+            referencedRelation: 'priority_order_gaps';
+            referencedColumns: ['player_id'];
+          },
+          {
+            foreignKeyName: 'priority_conflict_dismissals_player_id_fkey';
+            columns: ['player_id'];
+            isOneToOne: false;
+            referencedRelation: 'rnlsi';
+            referencedColumns: ['player_id'];
+          },
+          {
+            foreignKeyName: 'priority_conflict_dismissals_team_id_fkey';
+            columns: ['team_id'];
+            isOneToOne: false;
+            referencedRelation: 'teams';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
       priority_order: {
         Row: {
           id: number;

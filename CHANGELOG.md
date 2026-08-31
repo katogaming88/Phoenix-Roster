@@ -8,6 +8,27 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.77.17] - 2026-08-31
+
+### Frontend
+
+- Priority List Conflicts' same-boss warnings can now be dismissed once an
+  officer has reviewed one and confirmed it's expected -- previously there
+  was no way to acknowledge one, so it kept re-flagging every render. A
+  collapsed "N dismissed" line under the banner lists what's been dismissed
+  with a Restore option.
+
+### Backend
+
+- `generate_priority_order()` now excludes a candidate who already has the
+  item confirmed via an approved Mark Received (`self_received_requests`),
+  not just an addon-imported award (`rclc_loot`) -- a Great Vault pick, a
+  catalyzed item, a crafted piece, or anything hand-confirmed through Mark
+  Received previously left that raider showing up as a normal candidate for
+  the same item/track.
+- New `priority_conflict_dismissals` table backing the same-boss dismiss
+  feature above.
+
 ## [3.77.16] - 2026-08-31
 
 ### Frontend

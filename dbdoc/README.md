@@ -47,6 +47,7 @@
 | [public.boe_items](public.boe_items.md) | 21 |  | BASE TABLE |
 | [public.boe_listings](public.boe_listings.md) | 8 |  | BASE TABLE |
 | [public.boe_managers](public.boe_managers.md) | 4 |  | BASE TABLE |
+| [public.priority_conflict_dismissals](public.priority_conflict_dismissals.md) | 8 | Officer-acknowledged Priority List same-boss conflicts (a player holding #1 on 2+ items behind one boss+track kill), so buildPriorityConflictsBannerHtml() (js/tabs/tab-priority.js) stops re-flagging a reviewed one. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -195,6 +196,8 @@ erDiagram
 "public.boe_items" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.boe_listings" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.boe_listings" }o--|| "public.boe_items" : "FOREIGN KEY (boe_item_id) REFERENCES boe_items(id) ON DELETE CASCADE"
+"public.priority_conflict_dismissals" }o--o| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL"
+"public.priority_conflict_dismissals" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 
 "public.attendance" {
   integer id
@@ -636,6 +639,16 @@ erDiagram
   text discord_id
   uuid auth_user_id FK
   timestamp_with_time_zone created_at
+}
+"public.priority_conflict_dismissals" {
+  integer id
+  integer team_id FK
+  integer player_id FK
+  text season
+  text boss
+  text track
+  uuid dismissed_by FK
+  timestamp_with_time_zone dismissed_at
 }
 ```
 
