@@ -3737,6 +3737,42 @@ function bisMergeWishlistPrefs(prefs, officerBisItems, playerId) {
   return { fromWishlist: fromWishlist, officerSet: officerSet };
 }
 
+// Officer bis_items is effectively a fallback now that raiders tag BiS
+// through their own Wishlist -- most players have zero real bis_items rows,
+// so any caller reading getBisItems() alone silently sees only the rare
+// officer-curated pick and misses every wishlist-tagged item. This is the
+// same three-branch prefs lookup renderProfile() runs inline (own profile ->
+// _wishlistPrefs, another player already fetched on this page ->
+// _profileWishlistPrefsCache, officer.html roster-wide -> _teamItemPreferences),
+// factored out so non-rendering callers (a live completion refresh, a roster
+// search filter) get the same merged view without duplicating that branch.
+// Falls back to plain officer bis_items when no prefs source is available
+// (wishlist.js/tab-priority.js not loaded, or prefs not fetched yet for this
+// player) rather than returning nothing.
+function mergedBisItemsForNameRealm(nameRealm) {
+  var officerBisItems = getBisItems(nameRealm);
+  var player = typeof findRosterPlayerByNameRealm === 'function' ? findRosterPlayerByNameRealm(nameRealm) : null;
+  if (!player || typeof bisMergeWishlistPrefs !== 'function') return officerBisItems;
+
+  var session = typeof getDiscordSession === 'function' ? getDiscordSession() : null;
+  var isOwn = !!(session && session.nameRealm && normalise(session.nameRealm) === normalise(player.nameRealm));
+
+  var prefs = null;
+  if (isOwn && typeof _wishlistPrefs !== 'undefined' && _wishlistPrefs) {
+    prefs = _wishlistPrefs;
+  } else if (typeof _profileWishlistPrefsCache !== 'undefined' && _profileWishlistPrefsCache[player.id]) {
+    prefs = _profileWishlistPrefsCache[player.id];
+  } else if (typeof _teamItemPreferences !== 'undefined' && _teamItemPreferences) {
+    prefs = _teamItemPreferences.filter(function (p) {
+      return p.player_id === player.id;
+    });
+  }
+  if (!prefs) return officerBisItems;
+
+  var merged = bisMergeWishlistPrefs(prefs, officerBisItems, player.id);
+  return merged.fromWishlist.concat(merged.officerSet);
+}
+
 // Canonical row order for the BiS List display (renderProfile below) --
 // bis_items has no ordering of its own (rows come back in whatever order
 // they were added/fetched, and the wishlist merge appends its own entries
@@ -4195,7 +4231,7 @@ function selfReceivedEntryForRow(selfRecItems, item, dbSlot) {
 function refreshBisCompletion(firstName, nameRealm) {
   var el = document.getElementById('bis-completion-' + firstName);
   if (!el) return;
-  var bisItems = getBisItems(nameRealm || firstName).filter(function (e) {
+  var bisItems = mergedBisItemsForNameRealm(nameRealm || firstName).filter(function (e) {
     return typeof isItemInSeasonScope !== 'function' || isItemInSeasonScope(e.item, e.season);
   });
   if (!bisItems.length) return;
@@ -5903,7 +5939,15 @@ function renderProfile(firstName, backTo, container) {
     // The raw bis_items.slot for this row, which "Mark received" sends so the
     // approval flips this exact row rather than every row sharing the item
     // (#386). Distinct from `slot` above, which prefers the catalog's name.
-    var dbSlot = entry.dbSlot || '';
+    // Falls back to the catalog slot when the row itself carries none (every
+    // wishlist-sourced real item, plus any officer bis_items row that never
+    // got a slot). mapSupabaseSelfReceived() applies this same itemRow.slot
+    // fallback reading self_received_requests.slot back (NULL for these same
+    // rows), so without matching it here, dbSlot='' sent on write never lines
+    // up with the non-empty slot the read side resolves to, and
+    // selfReceivedEntryForRow() can never find the match -- "Mark received"
+    // reverts on every reload even though the approval saved.
+    var dbSlot = entry.dbSlot || (DATA.itemSlots || {})[item] || '';
     var isGen = item === 'M+' || item === 'Crafted' || item === 'Catalyst';
     var received = receivedMap[normalise(item)] || null;
     var selfRec = selfReceivedEntryForRow(selfRecItems, item, dbSlot);
