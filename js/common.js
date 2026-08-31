@@ -94,7 +94,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.77.19';
+var VERSION = '3.77.20';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -755,6 +755,32 @@ function countEquippedTierPieces(player, gearItems) {
     if (wowId != null && equipped && equipped.item_id === wowId) count++;
   });
   return count;
+}
+
+// ── Equipped-gear track sync ─────────────────────────────────────────────
+//
+// Feeds generate_priority_order()'s equipped-item-level fairness factor via
+// public.player_equipped_gear, so a raider already carrying a Hero-level
+// item in a slot is mildly deprioritized on a *different* item in that same
+// slot, not just on the exact item they already have (recip's existing
+// has_myth/has_hero logic). Unlike the class-tier sync just above (which
+// stays on Raider.IO -- keyless, safe to call straight from the browser),
+// this reads the Blizzard API's Character Equipment Summary endpoint, which
+// needs OAuth client-credentials that can't be exposed client-side. So this
+// calls the blizzard-gear-sync Edge Function instead of fetching directly --
+// see that function for the actual sync logic; this is just the officer-
+// triggered on-demand invocation (its own scheduled cron sweep is the
+// primary refresh path and needs no client involvement at all).
+function syncBlizzardGearForTeam(playerId) {
+  var teamId = _teamCfg && _teamCfg.supabaseTeamId;
+  if (!teamId) return Promise.reject(new Error('No team configured'));
+  var body = { teamId: teamId };
+  if (playerId != null) body.playerId = playerId;
+  return supabaseClient.functions.invoke('blizzard-gear-sync', { body: body }).then(function (result) {
+    if (result.error) throw new Error(result.error.message);
+    if (result.data && result.data.success === false) throw new Error(result.data.error || 'Sync failed');
+    return result.data;
+  });
 }
 
 // Shared write path for both the bulk roster sync (js/tabs/tab-priority.js's
@@ -2113,6 +2139,78 @@ function mapSupabaseBisItems(rows) {
   return map;
 }
 
+// Equipped gear (#845), synced by the blizzard-gear-sync Edge Function --
+// team-scoped through the same players!inner join fetchSupabaseBisItems
+// above uses, since player_equipped_gear (like bis_items) carries no
+// team_id column of its own.
+function fetchSupabaseEquippedGear() {
+  if (!supabaseClient) return Promise.resolve(null);
+  var query = supabaseClient
+    .from('player_equipped_gear')
+    .select('player_id, equipment_slot, item_id, item_level, track, players!inner(team_id)')
+    .eq('players.team_id', _teamCfg.supabaseTeamId)
+    .then(
+      function (result) {
+        if (result.error) {
+          console.warn('Supabase equipped gear query failed.', result.error.message);
+          return null;
+        }
+        return result.data && result.data.length ? result.data : null;
+      },
+      function (err) {
+        console.warn('Supabase equipped gear query failed.', err);
+        return null;
+      }
+    );
+  var timeout = new Promise(function (resolve) {
+    setTimeout(function () {
+      resolve(null);
+    }, 10000);
+  });
+  return Promise.race([query, timeout]);
+}
+
+// Every Blizzard API equipment slot key, in display order, mapped to a
+// short human label -- renderProfile's Equipped Gear section (js/common.js)
+// walks this list rather than Object.keys() so slots always render in a
+// stable, gear-panel-like order regardless of sync/insert order.
+var EQUIPMENT_SLOT_LABELS = [
+  ['HEAD', 'Head'],
+  ['NECK', 'Neck'],
+  ['SHOULDER', 'Shoulder'],
+  ['BACK', 'Back'],
+  ['CHEST', 'Chest'],
+  ['WRIST', 'Wrist'],
+  ['HANDS', 'Hands'],
+  ['WAIST', 'Waist'],
+  ['LEGS', 'Legs'],
+  ['FEET', 'Feet'],
+  ['FINGER_1', 'Finger 1'],
+  ['FINGER_2', 'Finger 2'],
+  ['TRINKET_1', 'Trinket 1'],
+  ['TRINKET_2', 'Trinket 2'],
+  ['MAIN_HAND', 'Main Hand'],
+  ['OFF_HAND', 'Off Hand']
+];
+
+// Maps player_equipped_gear rows to {playerId: {slotKey: {itemId, itemLevel, track}}}
+// -- keyed by numeric player_id (not name_realm) since that's what
+// DATA.roster entries carry as player.id, and equipped gear has no natural
+// display-name join the way bis_items' embedded items(name) does.
+function mapSupabaseEquippedGear(rows) {
+  var map = {};
+  (rows || []).forEach(function (row) {
+    if (row.player_id == null || !row.equipment_slot) return;
+    if (!map[row.player_id]) map[row.player_id] = {};
+    map[row.player_id][row.equipment_slot] = {
+      itemId: row.item_id,
+      itemLevel: row.item_level,
+      track: row.track || null
+    };
+  });
+  return map;
+}
+
 // Self-received reads come from Supabase (#406): self_received_requests
 // carries its own team_id (unlike bis_items), so no join-through-players
 // filter is needed. Only 'approved' rows are pulled -- pending/rejected
@@ -2577,7 +2675,13 @@ var SEASON_CONFIG_KEYS = [
   // count. Unset/0 means no target configured -- the advisory just shows
   // the plain count with no "we have enough" nudge.
   'targetTankCount',
-  'targetHealCount'
+  'targetHealCount',
+  // Officer-maintained {Hero, Myth} min item-level floors for the current
+  // season (a Champion floor is accepted too but unused today -- see the
+  // generate_priority_order() equipped-slot-track migration). Compared
+  // against public.player_equipped_gear.item_level server-side, not read
+  // client-side -- reseeded by hand each season, same as tier_token_map.
+  'trackIlvlThresholds'
 ];
 
 /**
@@ -2891,6 +2995,7 @@ function buildItemMaps(rows) {
   var itemPlaceholders = {};
   var itemIds = {};
   var itemWowIds = {};
+  var itemNamesByWowId = {};
   var itemIcons = {};
   var itemZones = {};
   var itemSecondaryStats = {};
@@ -2904,7 +3009,17 @@ function buildItemMaps(rows) {
     if (row.armor_type) itemArmorTypes[name] = row.armor_type;
     if (row.is_placeholder) itemPlaceholders[name] = true;
     if (row.id != null) itemIds[name] = row.id;
-    if (row.wow_item_id != null) itemWowIds[name] = row.wow_item_id;
+    if (row.wow_item_id != null) {
+      itemWowIds[name] = row.wow_item_id;
+      // Equipped-gear display (renderProfile's Equipped Gear section) only
+      // has the Blizzard API's wow_item_id to go on, not this catalog's own
+      // id -- reverse lookup so it can show a real item name for anything
+      // that's also a tracked raid drop, rather than every slot falling back
+      // to "Item #<id>". Never assumed unique in general (this catalog can
+      // carry retired/PTR duplicates of the same wow_item_id), but last
+      // write wins here is fine -- any of those rows names the same item.
+      itemNamesByWowId[row.wow_item_id] = name;
+    }
     if (row.icon) itemIcons[name] = row.icon;
     if (row.wcl_zone_id != null) itemZones[name] = row.wcl_zone_id;
     if (row.secondary_stats) itemSecondaryStats[name] = row.secondary_stats;
@@ -2918,6 +3033,7 @@ function buildItemMaps(rows) {
     itemPlaceholders: itemPlaceholders,
     itemIds: itemIds,
     itemWowIds: itemWowIds,
+    itemNamesByWowId: itemNamesByWowId,
     itemIcons: itemIcons,
     itemZones: itemZones,
     itemSecondaryStats: itemSecondaryStats,
@@ -3348,6 +3464,8 @@ function loadData(onCoreReady, onHeavyReady) {
   var lootPromise = fetchSupabaseLoot();
   // Fired alongside; the heavy callback waits for it before setting bisList.
   var bisItemsPromise = fetchSupabaseBisItems();
+  // Fired alongside; the heavy callback waits for it before setting equippedGearByPlayerId.
+  var equippedGearPromise = fetchSupabaseEquippedGear();
   // Fired alongside; the heavy callback waits for it before setting itemSlots.
   var itemsPromise = fetchSupabaseItems();
   // Fired alongside; the heavy callback waits for it before setting itemBosses.
@@ -3422,6 +3540,7 @@ function loadData(onCoreReady, onHeavyReady) {
     return Promise.all([
       lootPromise,
       bisItemsPromise,
+      equippedGearPromise,
       itemsPromise,
       itemBossesPromise,
       tierTokenMapPromise,
@@ -3440,21 +3559,22 @@ function loadData(onCoreReady, onHeavyReady) {
     ]).then(function (results) {
       var lootRows = results[0];
       var bisRows = results[1];
-      var itemRows = results[2];
-      var itemBossRows = results[3];
-      var tierTokenMapRows = results[4];
-      var priorityRows = results[5];
-      var priorityStaleAfterHeroicRows = results[6];
-      var priorityLiveFirstPriosRows = results[7];
-      var priorityConflictDismissalsRows = results[8];
-      var selfReceivedRows = results[9];
-      var attendanceRows = results[10];
-      var streamerRows = results[11];
-      var raidProgressRows = results[12];
-      var incomingRosterRows = results[13];
-      var raidZonesRows = results[14];
-      var guildOfficerBiosRows = results[15];
-      var raidEncountersRows = results[16];
+      var equippedGearRows = results[2];
+      var itemRows = results[3];
+      var itemBossRows = results[4];
+      var tierTokenMapRows = results[5];
+      var priorityRows = results[6];
+      var priorityStaleAfterHeroicRows = results[7];
+      var priorityLiveFirstPriosRows = results[8];
+      var priorityConflictDismissalsRows = results[9];
+      var selfReceivedRows = results[10];
+      var attendanceRows = results[11];
+      var streamerRows = results[12];
+      var raidProgressRows = results[13];
+      var incomingRosterRows = results[14];
+      var raidZonesRows = results[15];
+      var guildOfficerBiosRows = results[16];
+      var raidEncountersRows = results[17];
       DATA.raidZones = raidZonesRows || [];
       DATA.raidEncounters = raidEncountersRows || [];
       var mappedLoot = lootRows ? mapSupabaseLoot(lootRows) : null;
@@ -3469,6 +3589,7 @@ function loadData(onCoreReady, onHeavyReady) {
       DATA.recentAttendanceTrend = mappedAttendance ? mapSupabaseAttendanceTrend(mappedAttendance.players) : {};
       var mappedBis = bisRows ? mapSupabaseBisItems(bisRows) : null;
       DATA.bisList = mappedBis || {};
+      DATA.equippedGearByPlayerId = mapSupabaseEquippedGear(equippedGearRows);
       // Raw rows aren't season-filtered by the query itself (see
       // fetchSupabasePriorityOrder()'s comment) -- cached here so
       // remapPriorityDataForSeasonView() can re-derive DATA.priorityOrder etc.
@@ -3484,6 +3605,7 @@ function loadData(onCoreReady, onHeavyReady) {
       DATA.itemPlaceholders = itemMaps.itemPlaceholders;
       DATA.itemIds = itemMaps.itemIds;
       DATA.itemWowIds = itemMaps.itemWowIds;
+      DATA.itemNamesByWowId = itemMaps.itemNamesByWowId;
       DATA.itemIcons = itemMaps.itemIcons;
       DATA.itemZones = itemMaps.itemZones;
       DATA.itemSecondaryStats = itemMaps.itemSecondaryStats;
@@ -6135,6 +6257,45 @@ function renderProfile(firstName, backTo, container) {
       ')</span></span>'
     : '';
 
+  // Equipped Gear (#845) -- per-slot item level/track, synced from the
+  // Blizzard API by the daily blizzard-gear-sync cron sweep or an officer's
+  // "Sync Gear Levels Now" button. Shown to anyone viewing the profile, same
+  // as attendance/loot below -- player_equipped_gear is public-read, no
+  // isOwnWishlistView gate. Slot rows this player has never synced (empty
+  // player_equipped_gear altogether) render nothing at all rather than a
+  // full grid of blanks.
+  var equippedGear = (DATA.equippedGearByPlayerId || {})[player.id] || {};
+  var equippedGearRows = EQUIPMENT_SLOT_LABELS.map(function (pair) {
+    var slotKey = pair[0];
+    var slotLabel = pair[1];
+    var entry = equippedGear[slotKey];
+    if (!entry) return '';
+    var itemNamesByWowId = DATA.itemNamesByWowId || {};
+    var itemName = (entry.itemId != null && itemNamesByWowId[entry.itemId]) || 'Item #' + entry.itemId;
+    // Not escHtml()-escaped, matching every other item-name string rendered
+    // in this function (priorityHTML/bisHTML above) -- item names and this
+    // module's own hardcoded slot labels are catalog/constant data, not
+    // raider input, same trust level already assumed throughout renderProfile.
+    var trackSuffix = entry.track ? ' <span style="color:var(--text-muted);">(' + entry.track + ')</span>' : '';
+    return (
+      '<div style="display:flex;justify-content:space-between;gap:0.75rem;font-size:0.95rem;padding:0.3rem 0;border-bottom:1px solid var(--border);">' +
+      '<span style="color:var(--text-muted);flex-shrink:0;">' +
+      slotLabel +
+      '</span>' +
+      '<span style="text-align:right;">' +
+      itemName +
+      (entry.itemLevel != null
+        ? ' <span style="color:var(--gold-light);font-weight:600;">' + entry.itemLevel + '</span>'
+        : '') +
+      trackSuffix +
+      '</span>' +
+      '</div>'
+    );
+  }).join('');
+  var equippedGearSectionHTML = equippedGearRows
+    ? '<div class="profile-section"><div class="section-label">Equipped Gear</div>' + equippedGearRows + '</div>'
+    : '';
+
   // Raw tier-set progress (#651) -- independent of any tagged BiS pick,
   // unlike bisCompletionHTML above. null means never synced (see
   // runRaiderIoTierSync/syncRosterTierCounts), not 0 -- shown as "--" rather
@@ -6715,6 +6876,7 @@ function renderProfile(firstName, backTo, container) {
       ';">' +
       attendanceSectionHTML +
       lootSectionHTML +
+      equippedGearSectionHTML +
       mplusSectionHTML +
       bonusRollSectionHTML +
       '</div>' +
@@ -6739,6 +6901,7 @@ function renderProfile(firstName, backTo, container) {
     profileTabsHTML =
       attendanceSectionHTML +
       lootSectionHTML +
+      equippedGearSectionHTML +
       bisSectionHTML +
       mplusSectionHTML +
       bonusRollSectionHTML +

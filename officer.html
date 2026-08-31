@@ -11,8 +11,8 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=3.77.19">
-  <link rel="stylesheet" href="css/officer.css?v=3.77.19">
+  <link rel="stylesheet" href="css/styles.css?v=3.77.20">
+  <link rel="stylesheet" href="css/officer.css?v=3.77.20">
   <!-- Hover tooltips for Buff Coverage's spell links (#491) and item links
        (Priority tab/BiS grid, itemNameBlockHtml(), #567). Auto-attaches to
        any <a class="wowhead">. whTooltips must be set before power.js loads
@@ -1046,6 +1046,14 @@
               <h3 class="help-ref-title" style="margin-top:1.5rem;">Wishlist Tier Labels</h3>
               <p class="signup-officer-note" style="margin-bottom:0.75rem;">Rename the 5 raider wishlist status tiers for this team. Leave a field blank to keep the default. Colors stay the same either way.</p>
               <div id="adminWishlistLabelsContent"></div>
+
+              <h3 class="help-ref-title" style="margin-top:1.5rem;">Track Item Level Thresholds</h3>
+              <p class="signup-officer-note" style="margin-bottom:0.75rem;">Minimum item level for each track this season, compared against each raider's synced equipped gear for Priority List generation. Reset these at the start of each new season -- leave blank to disable that track's detection.</p>
+              <div id="adminTrackThresholdsContent"></div>
+
+              <p class="signup-officer-note" style="margin-top:1rem;margin-bottom:0.5rem;">Equipped gear item levels sync automatically once a day, or trigger a sync for the whole roster now:</p>
+              <button class="btn btn-gold" id="syncBlizzardGearBtn" onclick="runSyncBlizzardGearForTeam()">Sync Gear Levels Now</button>
+              <span id="syncBlizzardGearStatus" style="font-size:0.92rem;color:var(--heal);margin-left:0.6rem;"></span>
             </div>
 
             <!-- Danger Zone -->
@@ -1216,27 +1224,27 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/common.js?v=3.77.19"></script>
-  <script src="js/discord.js?v=3.77.19"></script>
-  <script src="js/officer.js?v=3.77.19"></script>
-  <script src="js/tabs/tab-roster.js?v=3.77.19"></script>
-  <script src="js/tabs/tab-conflicts.js?v=3.77.19"></script>
-  <script src="js/tabs/tab-fairness.js?v=3.77.19"></script>
-  <script src="js/tabs/tab-attendance.js?v=3.77.19"></script>
-  <script src="js/tabs/tab-bench-fairness.js?v=3.77.19"></script>
-  <script src="js/tabs/tab-signups.js?v=3.77.19"></script>
-  <script src="js/tabs/tab-requests.js?v=3.77.19"></script>
-  <script src="js/tabs/tab-bis.js?v=3.77.19"></script>
-  <script src="js/tabs/tab-pending-roster.js?v=3.77.19"></script>
-  <script src="js/tabs/tab-mplus.js?v=3.77.19"></script>
-  <script src="js/tabs/tab-priority.js?v=3.77.19"></script>
-  <script src="js/tabs/tab-audit.js?v=3.77.19"></script>
-  <script src="js/tabs/tab-reports.js?v=3.77.19"></script>
-  <script src="js/tabs/tab-season.js?v=3.77.19"></script>
-  <script src="js/tabs/tab-bios.js?v=3.77.19"></script>
-  <script src="js/tabs/tab-loot-import.js?v=3.77.19"></script>
-  <script src="js/tabs/tab-scoring.js?v=3.77.19"></script>
-  <script src="js/tabs/tab-admin.js?v=3.77.19"></script>
+  <script src="js/common.js?v=3.77.20"></script>
+  <script src="js/discord.js?v=3.77.20"></script>
+  <script src="js/officer.js?v=3.77.20"></script>
+  <script src="js/tabs/tab-roster.js?v=3.77.20"></script>
+  <script src="js/tabs/tab-conflicts.js?v=3.77.20"></script>
+  <script src="js/tabs/tab-fairness.js?v=3.77.20"></script>
+  <script src="js/tabs/tab-attendance.js?v=3.77.20"></script>
+  <script src="js/tabs/tab-bench-fairness.js?v=3.77.20"></script>
+  <script src="js/tabs/tab-signups.js?v=3.77.20"></script>
+  <script src="js/tabs/tab-requests.js?v=3.77.20"></script>
+  <script src="js/tabs/tab-bis.js?v=3.77.20"></script>
+  <script src="js/tabs/tab-pending-roster.js?v=3.77.20"></script>
+  <script src="js/tabs/tab-mplus.js?v=3.77.20"></script>
+  <script src="js/tabs/tab-priority.js?v=3.77.20"></script>
+  <script src="js/tabs/tab-audit.js?v=3.77.20"></script>
+  <script src="js/tabs/tab-reports.js?v=3.77.20"></script>
+  <script src="js/tabs/tab-season.js?v=3.77.20"></script>
+  <script src="js/tabs/tab-bios.js?v=3.77.20"></script>
+  <script src="js/tabs/tab-loot-import.js?v=3.77.20"></script>
+  <script src="js/tabs/tab-scoring.js?v=3.77.20"></script>
+  <script src="js/tabs/tab-admin.js?v=3.77.20"></script>
   <script>
 renderSiteNav('officer');
 document.getElementById('versionNum').textContent = VERSION;
