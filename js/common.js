@@ -2401,6 +2401,8 @@ function fetchSupabasePriorityLiveFirstPrios() {
 // fetchSupabaseX() here.
 function fetchSupabasePriorityConflictDismissals() {
   if (!supabaseClient) return Promise.resolve([]);
+  // team-read-guard: one row per officer-dismissed same-boss group, bounded
+  // by roster size x managed items -- nowhere near 1000 rows for a single team.
   return supabaseClient
     .from('priority_conflict_dismissals')
     .select('player_id, season, boss, track')
