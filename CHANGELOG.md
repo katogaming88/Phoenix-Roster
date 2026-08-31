@@ -13,6 +13,7 @@ with each release split into `### Frontend` (drives the version number) and
 ### Frontend
 
 - Priority List generation now mildly deprioritizes a candidate who already has a Hero- or Myth-equivalent item level equipped in the same slot as the drop being generated, even when it's a different item -- previously only an exact same-item loot-award match counted. A new "Track Item Level Thresholds" admin panel (Feature Flags) lets officers set the season's Hero/Myth ilvl floors, plus a "Sync Gear Levels Now" button to force a roster-wide equipped-gear refresh on demand (#845).
+- A raider's profile page now shows an "Equipped Gear" section (per-slot item, item level, and track where known), visible to anyone viewing the profile -- previously this synced data had no visual display anywhere (#845).
 
 ### Backend
 
