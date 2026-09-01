@@ -94,7 +94,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.77.20';
+var VERSION = '3.77.21';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -2557,6 +2557,9 @@ function fetchSupabasePriorityOrder() {
 // affected items looking unmanaged rather than erroring.
 function fetchSupabasePriorityOrderConfirmedEmpty() {
   if (!supabaseClient) return Promise.resolve([]);
+  // team-read-guard: one row per team/season/item/track an officer has ever
+  // saved empty -- bounded by the item catalog's size (a few hundred rows),
+  // nowhere near the 1000-row page cap.
   return supabaseClient
     .from('priority_order_confirmed_empty')
     .select('item_id, track, season, items(name)')
