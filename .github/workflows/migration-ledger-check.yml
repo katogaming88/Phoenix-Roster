@@ -1,0 +1,112 @@
+name: Migration ledger check
+
+# Prod's supabase_migrations.schema_migrations ledger only advances when a
+# migration is applied through `supabase db push`. SQL applied through the
+# dashboard SQL Editor runs fine but writes no ledger row, so the schema and
+# the record drift apart silently until `db push` refuses to run at all
+# (LegacyDbPushMissingRemoteError on the first out-of-order version). On
+# 2026-08-31 the ledger was 22 migrations behind the live schema for exactly
+# this reason and had to be repaired by hand (supabase migration repair,
+# after verifying each migration's effect was live on prod).
+#
+# This check compares supabase/migrations/ filenames against the ledger and
+# fails on any drift, in either direction. The enforcement shape: a PR adding
+# a migration stays red until someone runs `supabase db push`, which writes
+# the ledger row and turns it green. A db push creates no GitHub event, so
+# after pushing, re-run this check from the PR's Checks tab (or push any
+# commit).
+#
+# Known limit: SQL run in the editor with no committed file is invisible here
+# (that is `supabase db diff` territory, not wired up).
+#
+# The weekly schedule is the backstop for drift that lands without a PR
+# touching migrations; failures there ping Discord via the db-backup.yml
+# pattern, since scheduled-workflow failure emails only reach whoever last
+# touched this file.
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/**'
+      - 'scripts/ci/migration-ledger-check.js'
+      - '.github/workflows/migration-ledger-check.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+  schedule:
+    - cron: '30 10 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ledger-check:
+    # Fork PRs get no secrets, so the ledger is unreadable there; both
+    # contributors work in-repo, so skipping forks costs nothing.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check required secret is set
+        id: check_secret
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$DB_URL" ]; then
+            echo "Missing required repo secret: SUPABASE_DB_URL"
+            exit 1
+          fi
+
+      # Two commands on purpose, not a pipeline: a pipe's exit code is the
+      # last command's, so a failed psql would feed an empty ledger to the
+      # script and misreport every local migration as drift. Separated, a
+      # psql failure kills the step before the comparison runs.
+      - name: Read ledger and compare
+        id: compare
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          psql "$DB_URL" -tAc "select version from supabase_migrations.schema_migrations" > ledger.txt
+          node scripts/ci/migration-ledger-check.js < ledger.txt
+
+      - name: Notify Discord on scheduled failure
+        if: failure() && github.event_name == 'schedule'
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          WORKFLOW: ${{ github.workflow }}
+          S_SECRET: ${{ steps.check_secret.outcome }}
+          S_COMPARE: ${{ steps.compare.outcome }}
+        run: |
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
+            echo "DISCORD_WEBHOOK_URL is not set -- cannot post, but the run above already failed loudly on its own."
+            exit 0
+          fi
+
+          FAILED_STEP="unknown step"
+          [ "$S_SECRET" = "failure" ] && FAILED_STEP="Check required secret is set"
+          [ "$S_COMPARE" = "failure" ] && FAILED_STEP="Read ledger and compare"
+
+          PAYLOAD=$(cat <<EOF
+          {
+            "embeds": [{
+              "title": "Migration ledger has drifted from supabase/migrations/",
+              "color": 15158332,
+              "fields": [
+                { "name": "Workflow", "value": "${WORKFLOW}", "inline": true },
+                { "name": "Failed step", "value": "${FAILED_STEP}", "inline": true }
+              ],
+              "url": "${RUN_URL}"
+            }]
+          }
+          EOF
+          )
+
+          curl -s -o /dev/null -w "%{http_code}" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            "$DISCORD_WEBHOOK_URL"
+          echo
