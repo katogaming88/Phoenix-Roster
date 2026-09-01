@@ -94,7 +94,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.77.20';
+var VERSION = '3.77.21';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -2545,6 +2545,40 @@ function fetchSupabasePriorityOrder() {
   });
 }
 
+// "Nobody wants this item" markers (20260831190443_priority_order_confirmed_
+// empty.sql) -- an officer can save Priority Edit with zero players ranked
+// when that's genuinely the outcome, and save_priority_order() upserts one
+// of these per team/season/item/track so mapSupabasePriorityOrder() can seed
+// an empty-but-present heroic/mythic array for it (same "key present" rule
+// _isFullyManaged() already uses), keeping it out of Unmanaged Items instead
+// of it looking untouched. Not season-filtered here, same reason as
+// fetchSupabasePriorityOrder() -- filtered downstream once DATA.seasonName
+// is known. Resolves to [] on any failure so a fetch hiccup just leaves the
+// affected items looking unmanaged rather than erroring.
+function fetchSupabasePriorityOrderConfirmedEmpty() {
+  if (!supabaseClient) return Promise.resolve([]);
+  // team-read-guard: one row per team/season/item/track an officer has ever
+  // saved empty -- bounded by the item catalog's size (a few hundred rows),
+  // nowhere near the 1000-row page cap.
+  return supabaseClient
+    .from('priority_order_confirmed_empty')
+    .select('item_id, track, season, items(name)')
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .then(
+      function (result) {
+        if (result.error) {
+          console.warn('Supabase priority_order_confirmed_empty query failed.', result.error.message);
+          return [];
+        }
+        return result.data || [];
+      },
+      function (err) {
+        console.warn('Supabase priority_order_confirmed_empty query failed.', err);
+        return [];
+      }
+    );
+}
+
 // Top-3 saved-vs-current mismatches after a scoring change, so a saved
 // priority order doesn't silently go stale once a player's performance
 // moves. Unlike the other
@@ -2585,9 +2619,15 @@ function fetchSupabasePriorityDrift(teamId, season) {
  * @param {string} seasonCode - current season's shorthand code (e.g. 'MID1') to filter rows to --
  *   NOT DATA.seasonName directly, which is Apps Script's free-text display label; pass it through
  *   seasonCodeForDisplay() first, same as priority_order.season/scoring.season/rclc_loot.season all store.
+ * @param {any[]} [emptyMarkRows] - priority_order_confirmed_empty rows (item_id/track/season with
+ *   embedded items), same shape fetchSupabasePriorityOrderConfirmedEmpty() resolves to. Each one seeds
+ *   an empty-but-present array for that item/diff -- _isFullyManaged() (tab-priority.js) only checks
+ *   key presence, not length, so this is what keeps a deliberately-empty item out of Unmanaged Items.
+ *   Applied after the ranked rows above and only where that diff key isn't already set, since a mark
+ *   is only ever meaningful when there's genuinely nothing ranked there.
  * @returns {Object<string, {heroic?: string[], mythic?: string[]}>}
  */
-function mapSupabasePriorityOrder(rows, seasonCode) {
+function mapSupabasePriorityOrder(rows, seasonCode, emptyMarkRows) {
   /** @type {Object<string, {heroic?: string[], mythic?: string[]}>} */
   var result = {};
   (rows || [])
@@ -2606,6 +2646,18 @@ function mapSupabasePriorityOrder(rows, seasonCode) {
       if (!result[itemName]) result[itemName] = {};
       if (!result[itemName][diff]) result[itemName][diff] = [];
       result[itemName][diff].push(nameRealm);
+    });
+  (emptyMarkRows || [])
+    .filter(function (row) {
+      return row.season === seasonCode;
+    })
+    .forEach(function (row) {
+      var itemName = row.items && row.items.name ? String(row.items.name).trim() : '';
+      if (!itemName) return;
+      var diff = row.track === 'Myth' ? 'mythic' : row.track === 'Hero' ? 'heroic' : null;
+      if (!diff) return;
+      if (!result[itemName]) result[itemName] = {};
+      if (!result[itemName][diff]) result[itemName][diff] = [];
     });
   return result;
 }
@@ -3474,6 +3526,8 @@ function loadData(onCoreReady, onHeavyReady) {
   var tierTokenMapPromise = fetchSupabaseTierTokenMap();
   // Fired alongside; the heavy callback waits for it before setting priorityOrder.
   var priorityOrderPromise = fetchSupabasePriorityOrder();
+  // Fired alongside; the heavy callback waits for it before setting priorityOrder's empty markers.
+  var priorityOrderConfirmedEmptyPromise = fetchSupabasePriorityOrderConfirmedEmpty();
   // Fired alongside; the heavy callback waits for it before setting priorityStaleAfterHeroic.
   var priorityStaleAfterHeroicPromise = fetchSupabasePriorityStaleAfterHeroic();
   // Fired alongside; the heavy callback waits for it before setting priorityLiveFirstPrios.
@@ -3545,6 +3599,7 @@ function loadData(onCoreReady, onHeavyReady) {
       itemBossesPromise,
       tierTokenMapPromise,
       priorityOrderPromise,
+      priorityOrderConfirmedEmptyPromise,
       priorityStaleAfterHeroicPromise,
       priorityLiveFirstPriosPromise,
       priorityConflictDismissalsPromise,
@@ -3564,17 +3619,18 @@ function loadData(onCoreReady, onHeavyReady) {
       var itemBossRows = results[4];
       var tierTokenMapRows = results[5];
       var priorityRows = results[6];
-      var priorityStaleAfterHeroicRows = results[7];
-      var priorityLiveFirstPriosRows = results[8];
-      var priorityConflictDismissalsRows = results[9];
-      var selfReceivedRows = results[10];
-      var attendanceRows = results[11];
-      var streamerRows = results[12];
-      var raidProgressRows = results[13];
-      var incomingRosterRows = results[14];
-      var raidZonesRows = results[15];
-      var guildOfficerBiosRows = results[16];
-      var raidEncountersRows = results[17];
+      var priorityOrderConfirmedEmptyRows = results[7];
+      var priorityStaleAfterHeroicRows = results[8];
+      var priorityLiveFirstPriosRows = results[9];
+      var priorityConflictDismissalsRows = results[10];
+      var selfReceivedRows = results[11];
+      var attendanceRows = results[12];
+      var streamerRows = results[13];
+      var raidProgressRows = results[14];
+      var incomingRosterRows = results[15];
+      var raidZonesRows = results[16];
+      var guildOfficerBiosRows = results[17];
+      var raidEncountersRows = results[18];
       DATA.raidZones = raidZonesRows || [];
       DATA.raidEncounters = raidEncountersRows || [];
       var mappedLoot = lootRows ? mapSupabaseLoot(lootRows) : null;
@@ -3595,6 +3651,7 @@ function loadData(onCoreReady, onHeavyReady) {
       // remapPriorityDataForSeasonView() can re-derive DATA.priorityOrder etc.
       // after a later Season View change without a round-trip to Supabase.
       DATA._priorityOrderRawRows = priorityRows || [];
+      DATA._priorityOrderConfirmedEmptyRawRows = priorityOrderConfirmedEmptyRows || [];
       DATA._priorityStaleAfterHeroicRawRows = priorityStaleAfterHeroicRows || [];
       DATA._priorityLiveFirstPriosRawRows = priorityLiveFirstPriosRows || [];
       DATA._priorityConflictDismissalsRawRows = priorityConflictDismissalsRows || [];
@@ -3681,7 +3738,11 @@ function resolveSeasonViewCode() {
 function remapPriorityDataForSeasonView() {
   if (!DATA) return;
   var seasonCode = resolveSeasonViewCode();
-  DATA.priorityOrder = mapSupabasePriorityOrder(DATA._priorityOrderRawRows, seasonCode);
+  DATA.priorityOrder = mapSupabasePriorityOrder(
+    DATA._priorityOrderRawRows,
+    seasonCode,
+    DATA._priorityOrderConfirmedEmptyRawRows
+  );
   DATA.priorityStaleAfterHeroic = (DATA._priorityStaleAfterHeroicRawRows || []).filter(function (r) {
     return r.season === seasonCode;
   });

@@ -8,6 +8,17 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.77.21] - 2026-08-31
+
+### Frontend
+
+- Priority Edit now lets an officer lock a player to their current row (lock icon on each ranked row) -- re-clicking "Suggest Order" keeps a locked player at that position and re-ranks everyone else around them, instead of the officer having to remember and re-drag them back after every regenerate.
+- Saving Priority Edit with nobody ranked (a legitimate "no one wants this item" outcome) no longer reappears in Unmanaged Items on the next reload or Season View switch -- previously a zero-player save was indistinguishable from an item nobody had ever touched (#847).
+
+### Backend
+
+- New `priority_order_confirmed_empty` table, upserted/cleared automatically by `save_priority_order()` -- one row per team/season/item/track an officer has explicitly saved empty (#847).
+
 ## [3.77.20] - 2026-08-31
 
 ### Frontend

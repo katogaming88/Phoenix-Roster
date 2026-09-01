@@ -1310,7 +1310,7 @@
         {
           "name": "players_tier_pieces_equipped_range",
           "type": "CHECK",
-          "def": "CHECK (((tier_pieces_equipped IS NULL) OR ((tier_pieces_equipped >= 0) AND (tier_pieces_equipped <= 5))))",
+          "def": "CHECK (((tier_pieces_equipped IS NULL) OR ((tier_pieces_equipped \u003e= 0) AND (tier_pieces_equipped \u003c= 5))))",
           "table": "public.players",
           "referenced_table": "",
           "columns": [
@@ -2553,7 +2553,7 @@
           "nullable": true
         }
       ],
-      "def": "CREATE VIEW rnlsi AS (\n SELECT p.id AS player_id,\n    p.team_id,\n    p.name_realm,\n    cs.role,\n    la.last_award_at,\n    ( SELECT count(DISTINCT a.raid_date) AS count\n           FROM attendance a\n          WHERE ((a.team_id = p.team_id) AND ((la.last_award_at IS NULL) OR (a.raid_date > (la.last_award_at)::date)))) AS raid_nights_since_last_item\n   FROM ((players p\n     LEFT JOIN classes_specs cs ON ((cs.id = p.class_spec_id)))\n     LEFT JOIN LATERAL ( SELECT max(rl.awarded_at) AS last_award_at\n           FROM rclc_loot rl\n          WHERE (rl.player_id = p.id)) la ON (true))\n  WHERE (p.archived_at IS NULL)\n  ORDER BY p.team_id, cs.role, ( SELECT count(DISTINCT a.raid_date) AS count\n           FROM attendance a\n          WHERE ((a.team_id = p.team_id) AND ((la.last_award_at IS NULL) OR (a.raid_date > (la.last_award_at)::date)))) DESC\n)",
+      "def": "CREATE VIEW rnlsi AS (\n SELECT p.id AS player_id,\n    p.team_id,\n    p.name_realm,\n    cs.role,\n    la.last_award_at,\n    ( SELECT count(DISTINCT a.raid_date) AS count\n           FROM attendance a\n          WHERE ((a.team_id = p.team_id) AND ((la.last_award_at IS NULL) OR (a.raid_date \u003e (la.last_award_at)::date)))) AS raid_nights_since_last_item\n   FROM ((players p\n     LEFT JOIN classes_specs cs ON ((cs.id = p.class_spec_id)))\n     LEFT JOIN LATERAL ( SELECT max(rl.awarded_at) AS last_award_at\n           FROM rclc_loot rl\n          WHERE (rl.player_id = p.id)) la ON (true))\n  WHERE (p.archived_at IS NULL)\n  ORDER BY p.team_id, cs.role, ( SELECT count(DISTINCT a.raid_date) AS count\n           FROM attendance a\n          WHERE ((a.team_id = p.team_id) AND ((la.last_award_at IS NULL) OR (a.raid_date \u003e (la.last_award_at)::date)))) DESC\n)",
       "referenced_tables": [
         "public.attendance",
         "public.players",
@@ -3453,7 +3453,7 @@
           "nullable": true
         }
       ],
-      "def": "CREATE VIEW priority_order_same_boss_conflicts AS (\n SELECT a.team_id,\n    a.season,\n    a.track,\n    a.boss,\n    a.player_id,\n    a.name_realm,\n    a.item_id,\n    a.item_name,\n    b.item_id AS other_item_id,\n    b.item_name AS other_item_name\n   FROM (priority_order_live_first_prios a\n     JOIN priority_order_live_first_prios b ON (((a.team_id = b.team_id) AND (a.season = b.season) AND (a.track = b.track) AND (a.boss = b.boss) AND (a.player_id = b.player_id) AND (a.item_id < b.item_id))))\n  WHERE (a.boss IS NOT NULL)\n)",
+      "def": "CREATE VIEW priority_order_same_boss_conflicts AS (\n SELECT a.team_id,\n    a.season,\n    a.track,\n    a.boss,\n    a.player_id,\n    a.name_realm,\n    a.item_id,\n    a.item_name,\n    b.item_id AS other_item_id,\n    b.item_name AS other_item_name\n   FROM (priority_order_live_first_prios a\n     JOIN priority_order_live_first_prios b ON (((a.team_id = b.team_id) AND (a.season = b.season) AND (a.track = b.track) AND (a.boss = b.boss) AND (a.player_id = b.player_id) AND (a.item_id \u003c b.item_id))))\n  WHERE (a.boss IS NOT NULL)\n)",
       "referenced_tables": [
         "public.priority_order_live_first_prios"
       ]
@@ -3726,7 +3726,7 @@
         {
           "name": "site_settings_boe_payout_floor_nonneg",
           "type": "CHECK",
-          "def": "CHECK ((boe_payout_floor >= 0))",
+          "def": "CHECK ((boe_payout_floor \u003e= 0))",
           "table": "public.site_settings",
           "referenced_table": "",
           "columns": [
@@ -3736,7 +3736,7 @@
         {
           "name": "site_settings_boe_payout_pivot_positive",
           "type": "CHECK",
-          "def": "CHECK ((boe_payout_pivot > 0))",
+          "def": "CHECK ((boe_payout_pivot \u003e 0))",
           "table": "public.site_settings",
           "referenced_table": "",
           "columns": [
@@ -3795,7 +3795,7 @@
           "nullable": true
         }
       ],
-      "def": "CREATE VIEW incoming_roster AS (\n SELECT s.id AS signup_id,\n    s.team_id,\n    s.signup_name_realm,\n    cs.class,\n    cs.spec,\n    cs.role,\n    s.swap_from_name_realm\n   FROM ((season_signups s\n     JOIN team_settings ts ON ((ts.team_id = s.team_id)))\n     LEFT JOIN classes_specs cs ON ((cs.id = COALESCE(s.swap_class_spec_id, s.class_spec_id))))\n  WHERE ((s.status = 'approved'::text) AND (s.approved_player_id IS NULL) AND (s.season = (ts.config ->> 'activeSignupSeason'::text)))\n)",
+      "def": "CREATE VIEW incoming_roster AS (\n SELECT s.id AS signup_id,\n    s.team_id,\n    s.signup_name_realm,\n    cs.class,\n    cs.spec,\n    cs.role,\n    s.swap_from_name_realm\n   FROM ((season_signups s\n     JOIN team_settings ts ON ((ts.team_id = s.team_id)))\n     LEFT JOIN classes_specs cs ON ((cs.id = COALESCE(s.swap_class_spec_id, s.class_spec_id))))\n  WHERE ((s.status = 'approved'::text) AND (s.approved_player_id IS NULL) AND (s.season = (ts.config -\u003e\u003e 'activeSignupSeason'::text)))\n)",
       "referenced_tables": [
         "public.season_signups",
         "public.team_settings",
@@ -4179,7 +4179,7 @@
         {
           "name": "boe_items_finder_payout_nonneg",
           "type": "CHECK",
-          "def": "CHECK ((finder_payout >= 0))",
+          "def": "CHECK ((finder_payout \u003e= 0))",
           "table": "public.boe_items",
           "referenced_table": "",
           "columns": [
@@ -4189,7 +4189,7 @@
         {
           "name": "boe_items_floor_nonneg",
           "type": "CHECK",
-          "def": "CHECK ((payout_floor >= 0))",
+          "def": "CHECK ((payout_floor \u003e= 0))",
           "table": "public.boe_items",
           "referenced_table": "",
           "columns": [
@@ -4199,7 +4199,7 @@
         {
           "name": "boe_items_guild_cut_nonneg",
           "type": "CHECK",
-          "def": "CHECK ((guild_cut >= 0))",
+          "def": "CHECK ((guild_cut \u003e= 0))",
           "table": "public.boe_items",
           "referenced_table": "",
           "columns": [
@@ -4209,7 +4209,7 @@
         {
           "name": "boe_items_money_complete_when_sold",
           "type": "CHECK",
-          "def": "CHECK (((status <> ALL (ARRAY['sold'::text, 'paid'::text])) OR ((sale_price IS NOT NULL) AND (finder_payout IS NOT NULL) AND (guild_cut IS NOT NULL) AND (payout_floor IS NOT NULL) AND (payout_pivot IS NOT NULL))))",
+          "def": "CHECK (((status \u003c\u003e ALL (ARRAY['sold'::text, 'paid'::text])) OR ((sale_price IS NOT NULL) AND (finder_payout IS NOT NULL) AND (guild_cut IS NOT NULL) AND (payout_floor IS NOT NULL) AND (payout_pivot IS NOT NULL))))",
           "table": "public.boe_items",
           "referenced_table": "",
           "columns": [
@@ -4250,7 +4250,7 @@
         {
           "name": "boe_items_payout_lte_sale",
           "type": "CHECK",
-          "def": "CHECK ((finder_payout <= sale_price))",
+          "def": "CHECK ((finder_payout \u003c= sale_price))",
           "table": "public.boe_items",
           "referenced_table": "",
           "columns": [
@@ -4261,7 +4261,7 @@
         {
           "name": "boe_items_pivot_positive",
           "type": "CHECK",
-          "def": "CHECK ((payout_pivot > 0))",
+          "def": "CHECK ((payout_pivot \u003e 0))",
           "table": "public.boe_items",
           "referenced_table": "",
           "columns": [
@@ -4282,7 +4282,7 @@
         {
           "name": "boe_items_sale_price_nonneg",
           "type": "CHECK",
-          "def": "CHECK ((sale_price >= 0))",
+          "def": "CHECK ((sale_price \u003e= 0))",
           "table": "public.boe_items",
           "referenced_table": "",
           "columns": [
@@ -4455,7 +4455,7 @@
         {
           "name": "boe_listings_price_check",
           "type": "CHECK",
-          "def": "CHECK ((price >= 0))",
+          "def": "CHECK ((price \u003e= 0))",
           "table": "public.boe_listings",
           "referenced_table": "",
           "columns": [
@@ -4828,6 +4828,103 @@
           "columns": [
             "player_id",
             "equipment_slot"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.priority_order_confirmed_empty",
+      "type": "BASE TABLE",
+      "comment": "Marks a team/season/item/track priority list as deliberately saved empty (no one wants the item) -- keeps it out of the Unmanaged Items list without a placeholder priority_order row. Cleared automatically the next time that item/track is saved with a non-empty roster.",
+      "columns": [
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "season",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "item_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "track",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "marked_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "priority_order_confirmed_empty_pkey",
+          "def": "CREATE UNIQUE INDEX priority_order_confirmed_empty_pkey ON public.priority_order_confirmed_empty USING btree (team_id, season, item_id, track)",
+          "table": "public.priority_order_confirmed_empty",
+          "columns": [
+            "team_id",
+            "season",
+            "item_id",
+            "track"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "priority_order_confirmed_empty_track_check",
+          "type": "CHECK",
+          "def": "CHECK ((track = ANY (ARRAY['Hero'::text, 'Myth'::text])))",
+          "table": "public.priority_order_confirmed_empty",
+          "referenced_table": "",
+          "columns": [
+            "track"
+          ]
+        },
+        {
+          "name": "priority_order_confirmed_empty_item_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE",
+          "table": "public.priority_order_confirmed_empty",
+          "referenced_table": "public.items",
+          "columns": [
+            "item_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "priority_order_confirmed_empty_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.priority_order_confirmed_empty",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "priority_order_confirmed_empty_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (team_id, season, item_id, track)",
+          "table": "public.priority_order_confirmed_empty",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "season",
+            "item_id",
+            "track"
           ]
         }
       ]
@@ -5522,6 +5619,32 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.priority_order_confirmed_empty",
+      "columns": [
+        "item_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.items",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.priority_order_confirmed_empty",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
     }
   ],
   "functions": [

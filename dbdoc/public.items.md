@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer | nextval('items_id_seq'::regclass) | false | [public.bis_items](public.bis_items.md) [public.item_bosses](public.item_bosses.md) [public.rclc_loot](public.rclc_loot.md) [public.priority_order](public.priority_order.md) [public.self_received_requests](public.self_received_requests.md) [public.item_preferences](public.item_preferences.md) [public.tier_token_map](public.tier_token_map.md) [public.boe_items](public.boe_items.md) |  |  |
+| id | integer | nextval('items_id_seq'::regclass) | false | [public.bis_items](public.bis_items.md) [public.item_bosses](public.item_bosses.md) [public.rclc_loot](public.rclc_loot.md) [public.priority_order](public.priority_order.md) [public.self_received_requests](public.self_received_requests.md) [public.item_preferences](public.item_preferences.md) [public.tier_token_map](public.tier_token_map.md) [public.boe_items](public.boe_items.md) [public.priority_order_confirmed_empty](public.priority_order_confirmed_empty.md) |  |  |
 | wow_item_id | integer |  | true |  |  |  |
 | name | text |  | false |  |  |  |
 | slot | text |  | false |  |  |  |
@@ -47,6 +47,7 @@ erDiagram
 "public.tier_token_map" }o--|| "public.items" : "FOREIGN KEY (resolved_item_id) REFERENCES items(id) ON DELETE CASCADE"
 "public.tier_token_map" }o--|| "public.items" : "FOREIGN KEY (token_item_id) REFERENCES items(id) ON DELETE CASCADE"
 "public.boe_items" }o--o| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL"
+"public.priority_order_confirmed_empty" }o--|| "public.items" : "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE"
 
 "public.items" {
   integer id
@@ -153,6 +154,13 @@ erDiagram
   bigint payout_pivot
   timestamp_with_time_zone updated_at
   timestamp_with_time_zone created_at
+}
+"public.priority_order_confirmed_empty" {
+  integer team_id FK
+  text season
+  integer item_id FK
+  text track
+  timestamp_with_time_zone marked_at
 }
 ```
 

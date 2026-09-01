@@ -622,10 +622,14 @@ select#playerSelect option { background:#1a1d27; }
 .prio-drag-item { display:flex; flex-direction:column; gap:0.15rem; padding:0.35rem 0.5rem; background:var(--bg-elevated); border:1px solid var(--border); border-radius:3px; cursor:grab; user-select:none; transition:opacity 0.1s; }
 .prio-drag-item.dragging { opacity:0.35; }
 .prio-drag-item.drag-over { border-color:var(--gold); background:rgba(197,153,83,0.12); }
+.prio-drag-item.locked { border-color:rgba(197,153,83,0.5); }
 .prio-drag-item-row { display:flex; align-items:center; gap:0.45rem; }
 .prio-drag-handle { color:var(--text-dim); font-size:0.97rem; line-height:1; flex-shrink:0; }
 .prio-drag-rank { font-size:0.97rem; font-weight:700; color:var(--text-dim); min-width:18px; text-align:right; flex-shrink:0; }
 .prio-drag-name { flex:1; font-size:1.05rem; font-weight:600; color:var(--text); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.prio-drag-lock { background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:0.95rem; padding:0 2px; line-height:1; flex-shrink:0; opacity:0.55; }
+.prio-drag-lock:hover { opacity:1; }
+.prio-drag-lock.active { color:var(--gold); opacity:1; }
 .prio-drag-remove { background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:1.07rem; padding:0 2px; line-height:1; flex-shrink:0; }
 .prio-drag-remove:hover { color:var(--melee); }
 .prio-drag-item .prio-role-badge { font-size:0.84rem; padding:1px 4px; flex-shrink:0; }

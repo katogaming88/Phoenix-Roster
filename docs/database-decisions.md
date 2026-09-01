@@ -8,6 +8,18 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-08-31 -- priority_order_confirmed_empty: mark a deliberately-empty priority list so it stays out of Unmanaged Items
+
+Tracking issue: [katogaming88/WGA-Raid-Hub#847](https://github.com/katogaming88/WGA-Raid-Hub/issues/847). Sometimes nobody legitimately wants a given item/track -- an officer opens Priority Edit, finds no candidates, and saves with zero players ranked. `save_priority_order()` had no way to represent that: a zero-player save just deletes any existing `priority_order` rows and inserts nothing, so there was nothing left in the DB to distinguish "officer confirmed empty" from "nobody has ever touched this." `_isFullyManaged()` (js/tabs/tab-priority.js) only checks whether the `heroic`/`mythic` key is present at all, and both cases looked identical -- a deliberately-empty item fell right back into Unmanaged Items on the next reload or Season View switch.
+
+- **New `public.priority_order_confirmed_empty`** marker table, one row per team/season/item/track, upserted/cleared by `save_priority_order()` itself (not written directly by the frontend). A zero-player save upserts the mark; a later save of the same item/track with a real roster clears it.
+- **Rejected a NULL `player_id` sentinel row in `priority_order` itself.** That table's `player_id` is NOT NULL with an FK/unique-constraint shape several other readers (RCLootCouncil export, drift check, fairness warnings) assume is always a real player -- a marker row there risked silently corrupting those. A separate table keeps every existing `priority_order` consumer untouched.
+- **Frontend:** `fetchSupabasePriorityOrderConfirmedEmpty()` (js/common.js) fetches the marks; `mapSupabasePriorityOrder()` seeds an empty-but-present array for that diff from them, which is all `_isFullyManaged()` needs to treat the item as handled. `prioEditSave()` (js/tabs/tab-priority.js) mirrors the same upsert/clear into the local raw-rows cache so the effect is immediate, not just after a reload.
+
+[Full discussion -> #847](https://github.com/katogaming88/WGA-Raid-Hub/issues/847)
+
+---
+
 ## 2026-08-31 -- player_equipped_gear: equipped-gear-level awareness for priority generation
 
 Tracking issue: [katogaming88/WGA-Raid-Hub#845](https://github.com/katogaming88/WGA-Raid-Hub/issues/845). `generate_priority_order()` only ever compared a candidate's loot-award history for the *exact item* being generated against the track being generated -- no way to see "this raider already has a Hero-equivalent item equipped in this slot, just a different one" (e.g. a Hero belt from an earlier boss shouldn't leave someone first priority on a different Hero belt drop).
