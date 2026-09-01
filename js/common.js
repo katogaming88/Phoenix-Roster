@@ -2516,6 +2516,28 @@ function fetchSupabasePriorityConflictDismissals() {
     );
 }
 
+// Officer-acknowledged stale-after-Heroic Priority List conflicts
+// (20260901164305) -- sibling to fetchSupabasePriorityConflictDismissals()
+// above, keyed by player+item rather than player+boss+track.
+function fetchSupabasePriorityStaleDismissals() {
+  if (!supabaseClient) return Promise.resolve([]);
+  // team-read-guard: one row per officer-dismissed stale entry, bounded by
+  // roster size x managed items -- nowhere near 1000 rows for a single team.
+  return supabaseClient
+    .from('priority_stale_dismissals')
+    .select('player_id, season, item_id')
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .then(
+      function (result) {
+        if (result.error) return [];
+        return result.data || [];
+      },
+      function () {
+        return [];
+      }
+    );
+}
+
 function fetchSupabasePriorityOrder() {
   if (!supabaseClient) return Promise.resolve(null);
   // Not season-scoped, and a rollover does not clear the table, so this grows
@@ -3533,6 +3555,7 @@ function loadData(onCoreReady, onHeavyReady) {
   // Fired alongside; the heavy callback waits for it before setting priorityLiveFirstPrios.
   var priorityLiveFirstPriosPromise = fetchSupabasePriorityLiveFirstPrios();
   var priorityConflictDismissalsPromise = fetchSupabasePriorityConflictDismissals();
+  var priorityStaleDismissalsPromise = fetchSupabasePriorityStaleDismissals();
   // Fired alongside; the heavy callback waits for it before setting selfReceived.
   var selfReceivedPromise = fetchSupabaseSelfReceived();
   // Fired alongside; the heavy callback waits for it before setting rawAttendanceData/attendanceDetails/recentAttendanceTrend.
@@ -3603,6 +3626,7 @@ function loadData(onCoreReady, onHeavyReady) {
       priorityStaleAfterHeroicPromise,
       priorityLiveFirstPriosPromise,
       priorityConflictDismissalsPromise,
+      priorityStaleDismissalsPromise,
       selfReceivedPromise,
       attendancePromise,
       streamersPromise,
@@ -3623,14 +3647,15 @@ function loadData(onCoreReady, onHeavyReady) {
       var priorityStaleAfterHeroicRows = results[8];
       var priorityLiveFirstPriosRows = results[9];
       var priorityConflictDismissalsRows = results[10];
-      var selfReceivedRows = results[11];
-      var attendanceRows = results[12];
-      var streamerRows = results[13];
-      var raidProgressRows = results[14];
-      var incomingRosterRows = results[15];
-      var raidZonesRows = results[16];
-      var guildOfficerBiosRows = results[17];
-      var raidEncountersRows = results[18];
+      var priorityStaleDismissalsRows = results[11];
+      var selfReceivedRows = results[12];
+      var attendanceRows = results[13];
+      var streamerRows = results[14];
+      var raidProgressRows = results[15];
+      var incomingRosterRows = results[16];
+      var raidZonesRows = results[17];
+      var guildOfficerBiosRows = results[18];
+      var raidEncountersRows = results[19];
       DATA.raidZones = raidZonesRows || [];
       DATA.raidEncounters = raidEncountersRows || [];
       var mappedLoot = lootRows ? mapSupabaseLoot(lootRows) : null;
@@ -3655,6 +3680,7 @@ function loadData(onCoreReady, onHeavyReady) {
       DATA._priorityStaleAfterHeroicRawRows = priorityStaleAfterHeroicRows || [];
       DATA._priorityLiveFirstPriosRawRows = priorityLiveFirstPriosRows || [];
       DATA._priorityConflictDismissalsRawRows = priorityConflictDismissalsRows || [];
+      DATA._priorityStaleDismissalsRawRows = priorityStaleDismissalsRows || [];
       remapPriorityDataForSeasonView();
       var itemMaps = buildItemMaps(itemRows);
       DATA.itemSlots = itemMaps.itemSlots;
@@ -3750,6 +3776,9 @@ function remapPriorityDataForSeasonView() {
     return r.season === seasonCode;
   });
   DATA.priorityConflictDismissals = (DATA._priorityConflictDismissalsRawRows || []).filter(function (r) {
+    return r.season === seasonCode;
+  });
+  DATA.priorityStaleDismissals = (DATA._priorityStaleDismissalsRawRows || []).filter(function (r) {
     return r.season === seasonCode;
   });
 }

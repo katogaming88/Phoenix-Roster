@@ -237,8 +237,23 @@ function _dismissedConflictKeys() {
   return keys;
 }
 
+// Same shape as _dismissedConflictKeys() above, but for stale-after-Heroic
+// entries (DATA.priorityStaleDismissals, priority_stale_dismissals) -- keyed
+// by player_id|item_id since a stale entry has no boss/track pairing of its
+// own (priority_order_stale_after_heroic is always Myth-track by definition).
+function _dismissedStaleKeys() {
+  var keys = {};
+  (DATA.priorityStaleDismissals || []).forEach(function (d) {
+    keys[d.player_id + '|' + d.item_id] = true;
+  });
+  return keys;
+}
+
 function getPriorityListConflicts() {
-  var staleEntries = DATA.priorityStaleAfterHeroic || [];
+  var dismissedStale = _dismissedStaleKeys();
+  var staleEntries = (DATA.priorityStaleAfterHeroic || []).filter(function (e) {
+    return !dismissedStale[e.player_id + '|' + e.item_id];
+  });
   var byPlayer = _priorityFirstPriosByPlayer();
   var dismissed = _dismissedConflictKeys();
 
@@ -331,6 +346,58 @@ function restorePriorityConflict(playerId, boss, track) {
     });
 }
 
+// Dismiss/restore for a stale-after-Heroic entry -- sibling to
+// dismissPriorityConflict()/restorePriorityConflict() above, writing to
+// priority_stale_dismissals (20260901164305) and keyed by player+item
+// instead of player+boss+track.
+function dismissPriorityStale(playerId, itemId) {
+  if (!supabaseClient) return;
+  var season = resolveSeasonViewCode();
+  supabaseClient
+    .from('priority_stale_dismissals')
+    .insert({
+      team_id: _teamCfg.supabaseTeamId,
+      player_id: playerId,
+      season: season,
+      item_id: itemId
+    })
+    .then(function (result) {
+      if (result.error) {
+        console.warn('priority_stale_dismissals insert failed.', result.error.message);
+        return;
+      }
+      if (!DATA.priorityStaleDismissals) DATA.priorityStaleDismissals = [];
+      DATA.priorityStaleDismissals.push({ player_id: playerId, season: season, item_id: itemId });
+      if (!DATA._priorityStaleDismissalsRawRows) DATA._priorityStaleDismissalsRawRows = [];
+      DATA._priorityStaleDismissalsRawRows.push({ player_id: playerId, season: season, item_id: itemId });
+      updatePriorityBadges();
+    });
+}
+
+function restorePriorityStale(playerId, itemId) {
+  if (!supabaseClient) return;
+  var season = resolveSeasonViewCode();
+  supabaseClient
+    .from('priority_stale_dismissals')
+    .delete()
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .eq('player_id', playerId)
+    .eq('season', season)
+    .eq('item_id', itemId)
+    .then(function (result) {
+      if (result.error) {
+        console.warn('priority_stale_dismissals delete failed.', result.error.message);
+        return;
+      }
+      var stillMatches = function (d) {
+        return !(d.player_id === playerId && d.season === season && d.item_id === itemId);
+      };
+      DATA.priorityStaleDismissals = (DATA.priorityStaleDismissals || []).filter(stillMatches);
+      DATA._priorityStaleDismissalsRawRows = (DATA._priorityStaleDismissalsRawRows || []).filter(stillMatches);
+      updatePriorityBadges();
+    });
+}
+
 // Separated out from getPriorityListConflicts()/its banner -- drift is its
 // own section now (see buildPriorityDriftBannerHtml()) rather than a third
 // entry type mixed into the stale/same-boss conflicts list.
@@ -364,10 +431,11 @@ function togglePriorityFirstPrio() {
 
 function buildPriorityConflictsBannerHtml(conflicts, expanded) {
   var dismissedGroups = DATA.priorityConflictDismissals || [];
+  var dismissedStale = DATA.priorityStaleDismissals || [];
   // Keep the banner around when every live conflict has been dismissed --
   // otherwise dismissing the last one hides its own "N dismissed" Restore
   // access point along with it.
-  if (!conflicts.count && !dismissedGroups.length) return '';
+  if (!conflicts.count && !dismissedGroups.length && !dismissedStale.length) return '';
   var summaryParts = [];
   if (conflicts.staleEntries.length) summaryParts.push(conflicts.staleEntries.length + ' stale-after-Heroic');
   if (conflicts.sameBossGroups.length) summaryParts.push(conflicts.sameBossGroups.length + ' same-boss');
@@ -393,7 +461,13 @@ function buildPriorityConflictsBannerHtml(conflicts, expanded) {
         escHtml(e.name_realm) +
         '</span><span class="prio-overalloc-item">' +
         escHtml(e.item_name) +
-        ' <span class="prio-overalloc-diff">may be stale -- already has Heroic</span></span></div>';
+        ' <span class="prio-overalloc-diff">may be stale -- already has Heroic</span></span>' +
+        '<button type="button" class="prio-conflict-dismiss-btn" title="Dismiss -- I know about this" ' +
+        'onclick="event.stopPropagation();dismissPriorityStale(' +
+        e.player_id +
+        ',' +
+        e.item_id +
+        ')">Dismiss</button></div>';
     });
     conflicts.sameBossGroups.forEach(function (g) {
       var bossSafe = g.boss.replace(/'/g, "\\'");
@@ -418,8 +492,8 @@ function buildPriorityConflictsBannerHtml(conflicts, expanded) {
     html += '</div>';
   }
 
-  if (dismissedGroups.length) {
-    html += buildDismissedPriorityConflictsHtml(dismissedGroups, _priorityDismissedConflictsExpanded);
+  if (dismissedGroups.length || dismissedStale.length) {
+    html += buildDismissedPriorityConflictsHtml(dismissedGroups, dismissedStale, _priorityDismissedConflictsExpanded);
   }
 
   html += '</div>';
@@ -429,10 +503,11 @@ function buildPriorityConflictsBannerHtml(conflicts, expanded) {
 // Separate collapsed-by-default "N dismissed" line under the main banner --
 // showing every dismissal always would defeat the point of dismissing them,
 // but an officer who dismissed something by mistake still needs a way back.
-// Only player/boss/track are stored (see the 20260831132302 migration), not
-// which items -- resolved back to a display name via DATA.roster; the item
-// list itself isn't shown since a dismissed group's live items may have
-// changed since it was dismissed.
+// Same-boss dismissals only store player/boss/track (see the 20260831132302
+// migration), not which items -- resolved back to a display name via
+// DATA.roster; the item list itself isn't shown since a dismissed group's
+// live items may have changed since it was dismissed. Stale dismissals
+// (20260901164305) store player/item, resolved to a name via DATA.itemIds.
 var _priorityDismissedConflictsExpanded = false;
 
 function togglePriorityDismissedConflicts() {
@@ -440,14 +515,15 @@ function togglePriorityDismissedConflicts() {
   updatePriorityBadges();
 }
 
-function buildDismissedPriorityConflictsHtml(dismissedGroups, expanded) {
+function buildDismissedPriorityConflictsHtml(dismissedGroups, dismissedStale, expanded) {
+  var total = dismissedGroups.length + dismissedStale.length;
   var html =
     '<div class="prio-overalloc-dismissed">' +
     '<button type="button" class="prio-section-toggle" onclick="togglePriorityDismissedConflicts()">' +
     '<span class="prio-section-chevron">' +
     (expanded ? '▾' : '▸') +
     '</span><span class="prio-section-summary">' +
-    dismissedGroups.length +
+    total +
     ' dismissed</span></button>';
 
   if (expanded) {
@@ -472,6 +548,28 @@ function buildDismissedPriorityConflictsHtml(dismissedGroups, expanded) {
         "','" +
         trackSafe +
         '\')">Restore</button></div>';
+    });
+    var itemNameById = {};
+    Object.keys(DATA.itemIds || {}).forEach(function (name) {
+      itemNameById[DATA.itemIds[name]] = name;
+    });
+    dismissedStale.forEach(function (d) {
+      var player = (DATA.roster || []).find(function (p) {
+        return p.id === d.player_id;
+      });
+      var display = player ? player.nick || player.firstName : 'Player #' + d.player_id;
+      var itemName = itemNameById[d.item_id] || 'Item #' + d.item_id;
+      html +=
+        '<div class="prio-overalloc-player"><span class="prio-overalloc-name">' +
+        escHtml(display) +
+        '</span><span class="prio-overalloc-item">' +
+        escHtml(itemName) +
+        ' (stale-after-Heroic)</span>' +
+        '<button type="button" class="prio-conflict-dismiss-btn" onclick="event.stopPropagation();restorePriorityStale(' +
+        d.player_id +
+        ',' +
+        d.item_id +
+        ')">Restore</button></div>';
     });
     html += '</div>';
   }
