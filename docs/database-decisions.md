@@ -8,6 +8,18 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-01 -- priority_stale_dismissals: let officers dismiss stale-after-Heroic Priority List conflicts too
+
+Tracking issue: [katogaming88/WGA-Raid-Hub#850](https://github.com/katogaming88/WGA-Raid-Hub/issues/850). Same-boss Priority List conflicts were already dismissible (`priority_conflict_dismissals`) -- an officer who reviewed one and confirmed it's fine could acknowledge it so the banner stopped re-flagging it. The other conflict kind the same banner shows -- a Mythic #1 who already has the Heroic version of that exact item (`priority_order_stale_after_heroic`) -- had no such path.
+
+- **New `priority_stale_dismissals` table**, sibling to `priority_conflict_dismissals` (same RLS policy shape, same `check_team_id_matches_player()` trigger, same nullable `player_id` via `ON DELETE SET NULL`), but keyed by (team, player, season, item) instead of (team, player, season, boss, track) -- a stale entry has no boss/track pairing of its own; the underlying view is always Myth-track by definition.
+- **Rejected reusing `priority_conflict_dismissals` directly.** Its `boss`/`track` columns are NOT NULL, and its unique constraint would need a partial-index rework to safely support a second, differently-shaped key (player+item) alongside the existing one -- Postgres doesn't treat two NULLs as equal for uniqueness purposes, so a plain nullable-column approach risked silent duplicate dismissal rows.
+- **Frontend:** `getPriorityListConflicts()` (js/tabs/tab-priority.js) filters `DATA.priorityStaleAfterHeroic` against `DATA.priorityStaleDismissals` the same way it already filters same-boss groups. The banner's per-row Dismiss button and the collapsed "N dismissed" section now cover both conflict kinds together.
+
+[Full discussion -> #850](https://github.com/katogaming88/WGA-Raid-Hub/issues/850)
+
+---
+
 ## 2026-08-31 -- priority_order_confirmed_empty: mark a deliberately-empty priority list so it stays out of Unmanaged Items
 
 Tracking issue: [katogaming88/WGA-Raid-Hub#847](https://github.com/katogaming88/WGA-Raid-Hub/issues/847). Sometimes nobody legitimately wants a given item/track -- an officer opens Priority Edit, finds no candidates, and saves with zero players ranked. `save_priority_order()` had no way to represent that: a zero-player save just deletes any existing `priority_order` rows and inserts nothing, so there was nothing left in the DB to distinguish "officer confirmed empty" from "nobody has ever touched this." `_isFullyManaged()` (js/tabs/tab-priority.js) only checks whether the `heroic`/`mythic` key is present at all, and both cases looked identical -- a deliberately-empty item fell right back into Unmanaged Items on the next reload or Season View switch.

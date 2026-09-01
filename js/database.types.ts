@@ -1136,6 +1136,72 @@ export type Database = {
           },
         ]
       }
+      priority_stale_dismissals: {
+        Row: {
+          dismissed_at: string
+          dismissed_by: string | null
+          id: number
+          item_id: number
+          player_id: number | null
+          season: string
+          team_id: number
+        }
+        Insert: {
+          dismissed_at?: string
+          dismissed_by?: string | null
+          id?: number
+          item_id: number
+          player_id?: number | null
+          season: string
+          team_id: number
+        }
+        Update: {
+          dismissed_at?: string
+          dismissed_by?: string | null
+          id?: number
+          item_id?: number
+          player_id?: number | null
+          season?: string
+          team_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "priority_stale_dismissals_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "priority_stale_dismissals_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "priority_stale_dismissals_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "priority_order_gaps"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "priority_stale_dismissals_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "rnlsi"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "priority_stale_dismissals_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       raid_encounters: {
         Row: {
           id: number
@@ -2037,14 +2103,14 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "priority_order_item_id_fkey"
-            columns: ["other_item_id"]
+            columns: ["item_id"]
             isOneToOne: false
             referencedRelation: "items"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "priority_order_item_id_fkey"
-            columns: ["item_id"]
+            columns: ["other_item_id"]
             isOneToOne: false
             referencedRelation: "items"
             referencedColumns: ["id"]

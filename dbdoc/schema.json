@@ -4928,6 +4928,154 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.priority_stale_dismissals",
+      "type": "BASE TABLE",
+      "comment": "Officer-acknowledged \"stale-after-Heroic\" Priority List conflicts (a Mythic #1 who already has the Heroic version of the same item), so buildPriorityConflictsBannerHtml() (js/tabs/tab-priority.js) stops re-flagging a reviewed one. Sibling to priority_conflict_dismissals, kept separate since this is keyed by player+item rather than player+boss+track.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('priority_stale_dismissals_id_seq'::regclass)"
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "player_id",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "season",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "item_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "dismissed_by",
+          "type": "uuid",
+          "nullable": true
+        },
+        {
+          "name": "dismissed_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "priority_stale_dismissals_pkey",
+          "def": "CREATE UNIQUE INDEX priority_stale_dismissals_pkey ON public.priority_stale_dismissals USING btree (id)",
+          "table": "public.priority_stale_dismissals",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "priority_stale_dismissals_team_id_player_id_season_item_id_key",
+          "def": "CREATE UNIQUE INDEX priority_stale_dismissals_team_id_player_id_season_item_id_key ON public.priority_stale_dismissals USING btree (team_id, player_id, season, item_id)",
+          "table": "public.priority_stale_dismissals",
+          "columns": [
+            "team_id",
+            "player_id",
+            "season",
+            "item_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "priority_stale_dismissals_dismissed_by_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (dismissed_by) REFERENCES auth.users(id) ON DELETE SET NULL",
+          "table": "public.priority_stale_dismissals",
+          "referenced_table": "auth.users",
+          "columns": [
+            "dismissed_by"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "priority_stale_dismissals_item_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE",
+          "table": "public.priority_stale_dismissals",
+          "referenced_table": "public.items",
+          "columns": [
+            "item_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "priority_stale_dismissals_player_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL",
+          "table": "public.priority_stale_dismissals",
+          "referenced_table": "public.players",
+          "columns": [
+            "player_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "priority_stale_dismissals_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.priority_stale_dismissals",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "priority_stale_dismissals_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.priority_stale_dismissals",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "priority_stale_dismissals_team_id_player_id_season_item_id_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (team_id, player_id, season, item_id)",
+          "table": "public.priority_stale_dismissals",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "player_id",
+            "season",
+            "item_id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_priority_stale_dismissals_team_id_check",
+          "def": "CREATE TRIGGER trg_priority_stale_dismissals_team_id_check BEFORE INSERT OR UPDATE ON public.priority_stale_dismissals FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
+        }
+      ]
     }
   ],
   "relations": [
@@ -5635,6 +5783,45 @@
     },
     {
       "table": "public.priority_order_confirmed_empty",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.priority_stale_dismissals",
+      "columns": [
+        "item_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.items",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.priority_stale_dismissals",
+      "columns": [
+        "player_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.players",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.priority_stale_dismissals",
       "columns": [
         "team_id"
       ],

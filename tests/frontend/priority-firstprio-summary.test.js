@@ -20,7 +20,8 @@ function makeSandbox({
   priorityLiveFirstPrios = [],
   priorityStaleAfterHeroic = [],
   priorityDrift = [],
-  priorityConflictDismissals = []
+  priorityConflictDismissals = [],
+  priorityStaleDismissals = []
 } = {}) {
   const sandbox = {
     console,
@@ -31,6 +32,7 @@ function makeSandbox({
       priorityStaleAfterHeroic,
       priorityDrift,
       priorityConflictDismissals,
+      priorityStaleDismissals,
       itemSlots: {},
       itemIds: {},
       roster: []
@@ -129,6 +131,42 @@ describe('getPriorityListConflicts (no longer flags plain #1-count holders)', ()
     expect(conflicts.sameBossGroups).toEqual([
       { playerId: '1', nameRealm: 'Alpha-Realm', boss: 'Boss 1', track: 'Myth', itemNames: ['Item A', 'Item B'] }
     ]);
+  });
+
+  // Dismiss/restore for stale-after-Heroic entries (priority_stale_dismissals,
+  // 20260901164305) -- sibling to the same-boss dismiss tests above, keyed by
+  // player+item instead of player+boss+track.
+  it('filters out a stale-after-heroic entry the officer already dismissed', () => {
+    const stale = [{ player_id: 1, item_id: 100, name_realm: 'Alpha-Realm', item_name: 'Item A' }];
+    const sandbox = makeSandbox({
+      priorityStaleAfterHeroic: stale,
+      priorityStaleDismissals: [{ player_id: 1, season: 'test-season', item_id: 100 }]
+    });
+    const conflicts = sandbox.getPriorityListConflicts();
+    expect(conflicts.count).toBe(0);
+    expect(conflicts.staleEntries).toEqual([]);
+  });
+
+  it('does not filter a stale dismissal for a different item', () => {
+    const stale = [{ player_id: 1, item_id: 100, name_realm: 'Alpha-Realm', item_name: 'Item A' }];
+    const sandbox = makeSandbox({
+      priorityStaleAfterHeroic: stale,
+      priorityStaleDismissals: [{ player_id: 1, season: 'test-season', item_id: 999 }]
+    });
+    const conflicts = sandbox.getPriorityListConflicts();
+    expect(conflicts.count).toBe(1);
+    expect(conflicts.staleEntries).toEqual(stale);
+  });
+
+  it('does not filter a stale dismissal for the same item but a different player', () => {
+    const stale = [{ player_id: 1, item_id: 100, name_realm: 'Alpha-Realm', item_name: 'Item A' }];
+    const sandbox = makeSandbox({
+      priorityStaleAfterHeroic: stale,
+      priorityStaleDismissals: [{ player_id: 2, season: 'test-season', item_id: 100 }]
+    });
+    const conflicts = sandbox.getPriorityListConflicts();
+    expect(conflicts.count).toBe(1);
+    expect(conflicts.staleEntries).toEqual(stale);
   });
 });
 
