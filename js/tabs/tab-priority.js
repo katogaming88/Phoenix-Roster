@@ -1750,6 +1750,22 @@ function _prioBestWishlistStatus(itemId, playerId) {
   return best;
 }
 
+// Which difficulty the main Priority List sub-tab currently shows -- each
+// item used to render both Heroic and Mythic ranked lists stacked together
+// under one header, which made scrolling the full 90+ item list to check on
+// one difficulty a lot of noise from the other. Defaults to 'heroic', same
+// default the Priority Edit modal's own diff toggle uses.
+var _priorityListDiff = 'heroic';
+
+function switchPriorityListDiff(diff) {
+  _priorityListDiff = diff;
+  var heroBtn = document.getElementById('prioListDiffHeroic');
+  var mythBtn = document.getElementById('prioListDiffMythic');
+  if (heroBtn) heroBtn.classList.toggle('active', diff === 'heroic');
+  if (mythBtn) mythBtn.classList.toggle('active', diff === 'mythic');
+  buildPriorityTab();
+}
+
 function buildPriorityTab() {
   var el = document.getElementById('priorityContent');
   // Wishlist status per ranked row (below) needs the same team-wide
@@ -1797,7 +1813,11 @@ function buildPriorityTab() {
     .filter(function (i) {
       if (tierResolvedItemNames[i]) return false;
       if ((itemSlots[i] || '').toLowerCase() === 'slot') return false;
-      if (!_hasAnyPriority(prioOrder[i])) return false;
+      // Scoped to whichever difficulty the Heroic/Mythic toggle currently
+      // shows -- an item untouched on this difficulty (no key at all, not
+      // just an empty ranked list) has nothing to render here and would
+      // otherwise leave a phantom, item-less slot/group header behind.
+      if (!prioOrder[i] || !(_priorityListDiff in prioOrder[i])) return false;
       if (prioSearchTerm && normalise(i).indexOf(prioSearchTerm) === -1) return false;
       if (bossFilter && (itemBosses[i] || '').toLowerCase() !== bossFilter) return false;
       if (!isItemInSeasonScope(i)) return false;
@@ -1834,7 +1854,7 @@ function buildPriorityTab() {
     var itemEnc = encodeURIComponent(item).replace(/'/g, '%27');
     var itemId = itemIds[item];
     var out = '';
-    var DIFFS = ['heroic', 'mythic'];
+    var DIFFS = [_priorityListDiff];
     for (var d = 0; d < DIFFS.length; d++) {
       var diff = DIFFS[d];
       var ranked = entry[diff];

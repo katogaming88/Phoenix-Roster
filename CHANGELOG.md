@@ -8,6 +8,19 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.77.22] - 2026-09-01
+
+### Frontend
+
+- The Priority List sub-tab now has a Heroic/Mythic toggle (Heroic by default) instead of showing both difficulties stacked under every item -- less scrolling to check on one difficulty across 90+ managed items. Unmanaged Items and Priority List Conflicts are unaffected.
+- Officers can now dismiss a "stale-after-Heroic" Priority List conflict (a Mythic #1 who already has the Heroic version of that item), the same way same-boss conflicts were already dismissible -- previously these just kept re-flagging forever with no acknowledgment path.
+
+### Backend
+
+- New `priority_stale_dismissals` table, sibling to `priority_conflict_dismissals`, keyed by (team, player, season, item) instead of (team, player, season, boss, track) since a stale entry has no boss/track pairing of its own (#850).
+
+---
+
 ## [3.77.21] - 2026-08-31
 
 ### Frontend
