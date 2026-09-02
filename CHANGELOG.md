@@ -8,6 +8,14 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.77.23] - 2026-09-01
+
+### Frontend
+
+- The Priority List export string is now wrapped to 76-char lines instead of one unbroken run of thousands of characters -- pasting the old format into the RCLootCouncil_PriorityLoot addon's import box made the WoW client's word-wrap layout stall long enough to risk a disconnect. The addon's decoder already strips whitespace before decoding, so this is compatible with existing imports.
+
+---
+
 ## [3.77.22] - 2026-09-01
 
 ### Frontend
