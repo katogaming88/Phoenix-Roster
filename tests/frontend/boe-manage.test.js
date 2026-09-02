@@ -467,7 +467,7 @@ describe('lifecycle actions', () => {
   });
 });
 
-describe('history paging', () => {
+describe('reading History by keyset', () => {
   it('pages the read by keyset when the team has more than one page of rows', async () => {
     const items = [];
     for (let i = 1; i <= 1150; i++) {
@@ -485,9 +485,13 @@ describe('history paging', () => {
       );
     }
     const { client, captured } = makeBoeClient({ items, listings: [], rpc: managerRpc() });
-    const { els } = await build({ client });
+    const { sandbox, els } = await build({ client });
     expect(captured.gts).toContainEqual(['boe_items', 'id', 1000]);
-    expect(els.guildBoeHistory.innerHTML).toContain('Item 1150');
+    // The last row's name in History used to prove it arrived. History renders
+    // twenty rows at a time since #863, so the proof is the model and the
+    // summary strip, which count every row: 1150 x 800 guild cut.
+    expect(sandbox._boeItems.length).toBe(1150);
+    expect(els.guildBoeSummary.innerHTML).toContain('920,000');
   });
 });
 
@@ -844,5 +848,187 @@ describe('undoing a lifecycle step (#802)', () => {
     expect(loaded.spies.audit[0].teamId).toBe(4);
     expect(loaded.spies.audit[0].action).toBe('BoE Reverted');
     expect(loaded.spies.audit[0].detail).toContain('found');
+  });
+});
+
+// History renders one page at a time (#863). Open and Awaiting Payout are
+// working lists and stay whole; History grows with every settled sale and
+// already held the whole legacy import, so it pushed everything below it out
+// of reach.
+describe('History paging (#863)', () => {
+  const paidRows = (n) =>
+    Array.from({ length: n }, (_, i) =>
+      boeRow({
+        id: 100 + i,
+        item_name: 'Paid Item ' + (i + 1),
+        // No track: boeRow()'s default 'Hero' badge follows the name in the
+        // cell, which hides the 'Paid Item N<' anchors that tell Paid Item 1
+        // from Paid Item 10 to 19 below.
+        track: null,
+        status: 'paid',
+        sold_at: '2026-08-01T02:00:00Z',
+        // Newest first, so Paid Item 1 is the most recent and lands on page 1.
+        payout_paid_at: new Date(Date.UTC(2026, 7, 30, 0, 0, n - i)).toISOString(),
+        sale_price: 100000,
+        finder_payout: 20000,
+        guild_cut: 80000
+      })
+    );
+
+  // The count line is a static element on boe.html, not part of the History
+  // render: a live region recreated by innerHTML is not announced. The two
+  // buttons are rendered, so they are stubbed here only to observe focus.
+  const pagerEls = () => ({
+    guildBoeHistoryCount: makeEl(),
+    boeHistoryPrev: makeEl({
+      focused: 0,
+      focus() {
+        this.focused++;
+      }
+    }),
+    boeHistoryNext: makeEl({
+      focused: 0,
+      focus() {
+        this.focused++;
+      }
+    })
+  });
+
+  // Body rows only: _boeTable puts the header row in a <tr> too, so counting
+  // every <tr> read one high and three of these tests could never pass.
+  const rowsIn = (html) => ((html.split('<tbody>')[1] || '').match(/<tr>/g) || []).length;
+  const gold = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + 'g';
+
+  it('renders the first 20 of 21 rows, newest first, and says so', async () => {
+    const { client } = makeBoeClient({ items: paidRows(21), listings: [] });
+    const { els } = await build({ client, els: pagerEls() });
+    expect(rowsIn(els.guildBoeHistory.innerHTML)).toBe(20);
+    expect(els.guildBoeHistory.innerHTML).toContain('Paid Item 1<');
+    expect(els.guildBoeHistory.innerHTML).not.toContain('Paid Item 21<');
+    expect(els.guildBoeHistoryCount.textContent).toBe('Showing 1 to 20 of 21');
+  });
+
+  it('disables Previous on the first page and Next on the last', async () => {
+    const { client } = makeBoeClient({ items: paidRows(21), listings: [] });
+    const { sandbox, els } = await build({ client, els: pagerEls() });
+    expect(els.guildBoeHistory.innerHTML).toMatch(/id="boeHistoryPrev"[^>]*disabled/);
+    expect(els.guildBoeHistory.innerHTML).not.toMatch(/id="boeHistoryNext"[^>]*disabled/);
+    sandbox.boeHistoryPage(1);
+    expect(els.guildBoeHistory.innerHTML).not.toMatch(/id="boeHistoryPrev"[^>]*disabled/);
+    expect(els.guildBoeHistory.innerHTML).toMatch(/id="boeHistoryNext"[^>]*disabled/);
+  });
+
+  it('Next shows the 21st row alone and the count follows', async () => {
+    const { client } = makeBoeClient({ items: paidRows(21), listings: [] });
+    const { sandbox, els } = await build({ client, els: pagerEls() });
+    sandbox.boeHistoryPage(1);
+    expect(rowsIn(els.guildBoeHistory.innerHTML)).toBe(1);
+    expect(els.guildBoeHistory.innerHTML).toContain('Paid Item 21<');
+    expect(els.guildBoeHistoryCount.textContent).toBe('Showing 21 to 21 of 21');
+    sandbox.boeHistoryPage(-1);
+    expect(rowsIn(els.guildBoeHistory.innerHTML)).toBe(20);
+    expect(els.guildBoeHistoryCount.textContent).toBe('Showing 1 to 20 of 21');
+  });
+
+  it('never pages past either end', async () => {
+    const { client } = makeBoeClient({ items: paidRows(21), listings: [] });
+    const { sandbox, els } = await build({ client, els: pagerEls() });
+    sandbox.boeHistoryPage(-1);
+    expect(els.guildBoeHistoryCount.textContent).toBe('Showing 1 to 20 of 21');
+    sandbox.boeHistoryPage(1);
+    sandbox.boeHistoryPage(1);
+    sandbox.boeHistoryPage(1);
+    expect(els.guildBoeHistoryCount.textContent).toBe('Showing 21 to 21 of 21');
+  });
+
+  it('shows no controls and an empty count when everything fits on one page', async () => {
+    const { client } = makeBoeClient({ items: paidRows(20), listings: [] });
+    const { els } = await build({ client, els: pagerEls() });
+    expect(rowsIn(els.guildBoeHistory.innerHTML)).toBe(20);
+    expect(els.guildBoeHistory.innerHTML).not.toContain('boeHistoryNext');
+    expect(els.guildBoeHistory.innerHTML).not.toContain('boeHistoryPrev');
+    expect(els.guildBoeHistoryCount.textContent).toBe('');
+  });
+
+  it('renders without the count element, as the guild page sandbox never had one', async () => {
+    const { client } = makeBoeClient({ items: paidRows(21), listings: [] });
+    const { els } = await build({ client });
+    expect(rowsIn(els.guildBoeHistory.innerHTML)).toBe(20);
+  });
+
+  it('clamps the page when an undo empties the last page', async () => {
+    const { client } = makeBoeClient({
+      items: paidRows(21),
+      listings: [],
+      rpc: managerRpc({ boe_revert: () => ({ data: 'sold', error: null }) })
+    });
+    const { sandbox, els } = await build({ client, els: pagerEls() });
+    sandbox.boeHistoryPage(1);
+    expect(els.guildBoeHistoryCount.textContent).toBe('Showing 21 to 21 of 21');
+    // The 21st row is the oldest, the one alone on page 2.
+    sandbox.revertBoe(120, makeEl());
+    await flush();
+    expect(rowsIn(els.guildBoeHistory.innerHTML)).toBe(20);
+    expect(els.guildBoeHistoryCount.textContent).toBe('');
+    expect(els.guildBoeAwaiting.innerHTML).toContain('Paid Item 21<');
+  });
+
+  it('keeps the page across a re-render caused by an action elsewhere', async () => {
+    const { client } = makeBoeClient({
+      items: paidRows(41).concat([SOLD()]),
+      listings: [],
+      rpc: managerRpc({ boe_mark_paid: () => ({ data: null, error: null }) })
+    });
+    const { sandbox, els } = await build({ client, els: pagerEls() });
+    sandbox.boeHistoryPage(1);
+    expect(els.guildBoeHistoryCount.textContent).toBe('Showing 21 to 40 of 41');
+    sandbox.markBoePaid(3, makeEl());
+    await flush();
+    // One more row in History, newest first, so page 2 still starts at 21.
+    expect(els.guildBoeHistoryCount.textContent).toBe('Showing 21 to 40 of 42');
+  });
+
+  it('moves focus to the other button when the pressed one becomes disabled', async () => {
+    const { client } = makeBoeClient({ items: paidRows(21), listings: [] });
+    const { sandbox, els } = await build({ client, els: pagerEls() });
+    sandbox.boeHistoryPage(1);
+    // Next is now disabled, so focus lands on Previous rather than on body.
+    expect(els.boeHistoryPrev.focused).toBe(1);
+    expect(els.boeHistoryNext.focused).toBe(0);
+    sandbox.boeHistoryPage(-1);
+    expect(els.boeHistoryNext.focused).toBe(1);
+  });
+
+  it('keeps focus on the pressed button while it stays enabled', async () => {
+    const { client } = makeBoeClient({ items: paidRows(41), listings: [] });
+    const { sandbox, els } = await build({ client, els: pagerEls() });
+    sandbox.boeHistoryPage(1);
+    expect(els.boeHistoryNext.focused).toBe(1);
+    expect(els.boeHistoryPrev.focused).toBe(0);
+  });
+
+  it('totals every row, not the visible page', async () => {
+    const { client } = makeBoeClient({ items: paidRows(21), listings: [] });
+    const { els } = await build({ client, els: pagerEls() });
+    expect(els.guildBoeSummary.innerHTML).toContain(gold(21 * 80000));
+  });
+
+  it('leaves the Open and Awaiting lists whole', async () => {
+    const found = Array.from({ length: 25 }, (_, i) =>
+      boeRow({ id: 300 + i, item_name: 'Open Item ' + (i + 1), found_at: '2026-08-2' + (i % 10) + 'T01:00:00Z' })
+    );
+    const { client } = makeBoeClient({ items: found, listings: [] });
+    const { els } = await build({ client, els: pagerEls() });
+    expect(rowsIn(els.guildBoeOpen.innerHTML)).toBe(25);
+  });
+
+  // #863 asked the browser harness to check the two buttons carry accessible
+  // names, but History renders only signed in and the harness runs signed out
+  // (Phase A), so the check lives here: the visible text is the name.
+  it('names both buttons by their visible text', async () => {
+    const { client } = makeBoeClient({ items: paidRows(21), listings: [] });
+    const { els } = await build({ client, els: pagerEls() });
+    expect(els.guildBoeHistory.innerHTML).toMatch(/<button[^>]*id="boeHistoryPrev"[^>]*>Previous<\/button>/);
+    expect(els.guildBoeHistory.innerHTML).toMatch(/<button[^>]*id="boeHistoryNext"[^>]*>Next<\/button>/);
   });
 });

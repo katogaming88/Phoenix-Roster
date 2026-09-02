@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.78.1] - 2026-09-02
+
+### Frontend
+
+- History on the BoE Sales page shows twenty rows at a time. Previous and Next sit under the table, disabled at the ends rather than disappearing, and a line beneath them reads "Showing 1 to 20 of 47". The Open and Awaiting Payout lists stay whole, the totals still count every row, and the page you are on survives a Mark Paid or an undo (#863).
+
 ## [3.78.0] - 2026-09-02
 
 ### Frontend

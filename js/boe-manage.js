@@ -3,7 +3,8 @@
 // paged read of boe_items -- Open (found/listed), Awaiting Payout (sold),
 // History (paid/retired) -- plus a summary strip.
 //
-// Lived on the officer dashboard as a per-team tab until #774 moved it here.
+// Lived on the officer dashboard as a per-team tab until #774 moved it to the
+// guild page, and #864 moved it again onto a page of its own, boe.html.
 // The move is what the data model already said: boe_items is guild property,
 // its read policy is guild-wide, the manager grant went guild-wide in #766,
 // and #765 had already made this read ignore whichever team's dashboard it was
@@ -12,8 +13,9 @@
 // exists for: a BoE manager with no officer role could not open officer.html
 // at all, and a guild officer holding the grant was excluded by name.
 //
-// js/guild.js owns who sees this and calls buildBoeManage() only for someone
-// who may read: any team officer, a BoE manager, or a site admin. It passes
+// js/boe-page.js owns who sees this (js/guild.js did until #864) and calls
+// buildBoeManage() only for someone who may read: any team officer, a BoE
+// manager, or a site admin. It passes
 // canManage, which the action buttons render behind. The server enforces the
 // same gate regardless (is_boe_manager() or is_site_admin() inside every
 // lifecycle RPC), so this is disclosure, not security.
@@ -30,6 +32,14 @@
 var _boeItems = [];
 var _boeListings = [];
 var _boeCanManage = false;
+
+// History renders one page at a time (#863): it holds every paid and retired
+// row, 47 from the legacy import alone, and grows with every settled sale.
+// The page index lives here beside the rows so it survives the re-render every
+// action ends in; renderBoeManage() clamps it whenever the row count shrinks.
+var BOE_HISTORY_PAGE_SIZE = 20;
+var _boeHistoryPage = 0;
+var _boeHistoryPageCount = 1;
 
 function buildBoeManage(canManage) {
   var summary = document.getElementById('guildBoeSummary');
@@ -51,6 +61,7 @@ function buildBoeManage(canManage) {
   }
 
   _boeCanManage = !!canManage;
+  _boeHistoryPage = 0;
   bail('<p class="guild-empty">Loading BoE data...</p>');
 
   // Neither read filters on team since #765. BoEs are guild property and the
@@ -269,6 +280,13 @@ function renderBoeManage() {
   historyRows.sort(function (a, b) {
     return String(b.payout_paid_at || b.retired_at || '').localeCompare(String(a.payout_paid_at || a.retired_at || ''));
   });
+  // The slice comes after the sort, and would come after any future filter.
+  // The totals above read historyRows and never the page.
+  _boeHistoryPageCount = Math.max(1, Math.ceil(historyRows.length / BOE_HISTORY_PAGE_SIZE));
+  if (_boeHistoryPage > _boeHistoryPageCount - 1) _boeHistoryPage = _boeHistoryPageCount - 1;
+  if (_boeHistoryPage < 0) _boeHistoryPage = 0;
+  var historyStart = _boeHistoryPage * BOE_HISTORY_PAGE_SIZE;
+  var historyPageRows = historyRows.slice(historyStart, historyStart + BOE_HISTORY_PAGE_SIZE);
 
   var listingsByItem = {};
   _boeListings.forEach(function (l) {
@@ -418,7 +436,7 @@ function renderBoeManage() {
   // so this section grew an Actions column it never had.
   var historyHeaders = ['Item', 'Team', 'Finder', 'Status', 'Date', 'Sale', 'Finder payout', 'Guild cut'];
   if (_boeCanManage) historyHeaders.push('Actions');
-  var historyHtml = historyRows
+  var historyHtml = historyPageRows
     .map(function (item) {
       var cells =
         '<td>' +
@@ -459,7 +477,59 @@ function renderBoeManage() {
     .join('');
   history.innerHTML =
     _boeSection('History') +
-    (historyRows.length ? _boeTable(historyHeaders, historyHtml) : _boeEmpty('No paid or retired BoEs yet.'));
+    (historyRows.length ? _boeTable(historyHeaders, historyHtml) : _boeEmpty('No paid or retired BoEs yet.')) +
+    _boeHistoryPager();
+
+  // The count line is a static live region on boe.html, written by textContent
+  // because a live region recreated by innerHTML is not announced. Optional:
+  // the guild-page era never had one.
+  var countEl = document.getElementById('guildBoeHistoryCount');
+  if (countEl) {
+    countEl.textContent =
+      _boeHistoryPageCount > 1
+        ? 'Showing ' +
+          (historyStart + 1) +
+          ' to ' +
+          (historyStart + historyPageRows.length) +
+          ' of ' +
+          historyRows.length
+        : '';
+  }
+}
+
+// Previous and Next under the History table, disabled at each end rather than
+// removed so the row never shifts; nothing at all when everything fits on one
+// page. The visible text is the accessible name.
+function _boeHistoryPager() {
+  if (_boeHistoryPageCount < 2) return '';
+  var atFirst = _boeHistoryPage <= 0;
+  var atLast = _boeHistoryPage >= _boeHistoryPageCount - 1;
+  return (
+    '<div style="display:flex;gap:0.5rem;margin-top:0.75rem;">' +
+    '<button class="btn" id="boeHistoryPrev" onclick="boeHistoryPage(-1)"' +
+    (atFirst ? ' disabled' : '') +
+    '>Previous</button>' +
+    '<button class="btn" id="boeHistoryNext" onclick="boeHistoryPage(1)"' +
+    (atLast ? ' disabled' : '') +
+    '>Next</button>' +
+    '</div>'
+  );
+}
+
+// A page change is a slice of rows already in memory, so no refetch. The
+// re-render replaces both buttons, which drops keyboard focus to body, so focus
+// goes back to the pressed button, or to the other one when the pressed button
+// has just reached its end and rendered disabled. Both are decided from the
+// clamped page index rather than read off the DOM.
+function boeHistoryPage(delta) {
+  _boeHistoryPage += delta;
+  renderBoeManage();
+  var forward = delta > 0;
+  var atEnd = forward ? _boeHistoryPage >= _boeHistoryPageCount - 1 : _boeHistoryPage <= 0;
+  var pressed = forward ? 'boeHistoryNext' : 'boeHistoryPrev';
+  var other = forward ? 'boeHistoryPrev' : 'boeHistoryNext';
+  var target = document.getElementById(atEnd ? other : pressed);
+  if (target && target.focus) target.focus();
 }
 
 function toggleBoeForm(id, mode) {
