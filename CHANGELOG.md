@@ -8,6 +8,14 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.77.23] - 2026-09-02
+
+### Backend
+
+- `generate_priority_order()` no longer counts an off-spec (OS) or Mythic+ (M+) RCLC roll response as "already received this item" -- previously any imported loot row suppressed/softened a player's future priority for that item regardless of which response they'd actually selected. Loot history/reporting is unaffected; only the priority-generation exclusion/multiplier logic ignores these responses now (#856).
+
+---
+
 ## [3.77.24] - 2026-09-01
 
 ### Frontend
@@ -21,6 +29,10 @@ with each release split into `### Frontend` (drives the version number) and
 ### Frontend
 
 - The Priority List export string is now wrapped to 76-char lines instead of one unbroken run of thousands of characters -- pasting the old format into the RCLootCouncil_PriorityLoot addon's import box made the WoW client's word-wrap layout stall long enough to risk a disconnect. The addon's decoder already strips whitespace before decoding, so this is compatible with existing imports.
+
+### Backend
+
+- New `scripts/import/boe.js` generator imports the legacy BoE history (the Google Form's found events plus the per-season sold sheets) into `boe_items` as one idempotent SQL file. Sales land as paid with the finder and guild cuts the sheet recorded, unsold finds land as open, and every fuzzy name or item match is printed for review before anything is applied (#749).
 
 ---
 

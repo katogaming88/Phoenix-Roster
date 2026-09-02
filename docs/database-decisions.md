@@ -8,6 +8,18 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-02 -- generate_priority_order: exclude OS/M+ RCLC responses from counting as received loot
+
+Tracking issue: [katogaming88/WGA-Raid-Hub#856](https://github.com/katogaming88/WGA-Raid-Hub/issues/856). The `recip` CTE treated *any* `rclc_loot` row for a player/item/season as "already received this" (drives the has_myth/has_hero/has_champ exclusion and softening multipliers), regardless of the RCLC response label actually selected. An off-spec (OS) or Mythic+ (M+) roll response isn't a loot council award for that character's main spec, so it shouldn't suppress or soften future priority the way an actual MS award does.
+
+- **`recip`'s `rclc_loot` subquery now excludes rows whose `response` contains "OS" or "M+" as a standalone token**, case-insensitive word-boundary match (`response` is guild-configurable freeform text, not a fixed vocabulary -- e.g. "Top Pick"/"Need" already seen live -- so exact-match wasn't safe).
+- **Loot history/reporting is untouched.** These rows still land in `rclc_loot` and any officer report views over it; only `generate_priority_order()`'s exclusion/multiplier logic ignores them now.
+- **`self_received_requests` is unaffected** -- it has no `response` column; those are always intentional officer-approved claims, not RCLC roll responses.
+
+[Full discussion -> #856](https://github.com/katogaming88/WGA-Raid-Hub/issues/856)
+
+---
+
 ## 2026-09-01 -- priority_stale_dismissals: let officers dismiss stale-after-Heroic Priority List conflicts too
 
 Tracking issue: [katogaming88/WGA-Raid-Hub#850](https://github.com/katogaming88/WGA-Raid-Hub/issues/850). Same-boss Priority List conflicts were already dismissible (`priority_conflict_dismissals`) -- an officer who reviewed one and confirmed it's fine could acknowledge it so the banner stopped re-flagging it. The other conflict kind the same banner shows -- a Mythic #1 who already has the Heroic version of that exact item (`priority_order_stale_after_heroic`) -- had no such path.
@@ -140,6 +152,7 @@ Tracking issue: [katogaming88/WGA-Raid-Hub#745](https://github.com/katogaming88/
 - **Finder free-text fallback.** `submit_boe_found()` resolves the name to a `players` row when it can but is non-fatal otherwise (null `player_id`, raw `finder_name` kept), and resolves the item against the catalog opportunistically (`item_id` usually null, `item_name` is the identity). A found BoE is a fact, not a request, so there is no approval state.
 - **Lifecycle edges live in the RPCs, not an unconditional trigger.** `check_boe_status_transition` blocks a plain UPDATE from moving status/money/timestamps (metadata edits still pass), but the legal-edge set is enforced per-RPC with a `select ... for update` lock first, because `boe_revert`'s correction edges run backwards and an unconditional forward-edge trigger (the `restrict_bis_items_update_to_obtained` shape) would block the revert itself.
 - Implemented in `20260825225243_boe_tracker.sql`. Tests in `tests/rls/boe.test.js` cover the RLS matrix, the manager gate on every RPC, the lifecycle transitions, the split formula (vectors transcribed from the sheet), and the revert edges; the shared `write-policies` and `read-matrix` suites gained the three tables.
+- **Historical import (#749, 2026-09-01) is a one-time SQL file from `scripts/import/boe.js`, not a replay through the RPCs.** Sales land as `paid` with `payout_paid_at = sold_at` (the gold changed hands at the time), the cuts exactly as the sheet recorded them (the generator checks every row against the formula and warns on a mismatch rather than correcting it), and `payout_floor`/`payout_pivot` snapshotted at the 20,000 / 100,000 the sheet was kept under. No `boe_listings` rows exist for them, so `boe_revert` on an imported sale lands on `found`, not `listed`. Sales match Form submissions by finder and item, never by team: the earliest submissions predate the Form's team question, and the sold sheet's spelling, team and track win wherever the two disagree, because it is the payout record. Idempotency is `NOT EXISTS` on `(team_id, found_at)` with `item_name` deliberately outside the key, so a find that sells between two runs (and takes the sold sheet's spelling) never doubles; the flip side is that a sale the sheet records against an already-imported open find is skipped by a re-run and gets recorded in the app instead. The exports pair finder names with payout amounts, so they live only in the gitignored `data/boe/` directory and are never attached to the tracker.
 
 ---
 

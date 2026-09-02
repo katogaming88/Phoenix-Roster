@@ -223,6 +223,12 @@ writes one transactional SQL file per team, and the file is applied with psql. T
 inserts key on natural unique columns, so re-applying after a fresh export picks up
 only the rows added since the last run.
 
+The BoE sheets are guild-wide rather than per-team, so they have their own entry
+point (#749): the Form response export and the per-season sold exports go into the
+gitignored `data/boe/` directory, `node scripts/import/boe.js` writes
+`data/sql/import-boe.sql` covering every team in one run, and re-applying inserts
+only finds that are new since the last run.
+
 ## The loot feed
 
 Loot currently comes from two places: officers pasting RCLootCouncil exports into the
