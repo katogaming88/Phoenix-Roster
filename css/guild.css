@@ -24,6 +24,16 @@
   flex-wrap: wrap;
 }
 
+/* A disabled .btn has no look of its own in css/styles.css (no background is
+   set, so the browser's greyed default carries it) and keeps the pointer
+   cursor. The History pager on boe.html disables Previous and Next at the ends
+   (#863), so the state gets a face here, scoped like everything else in this
+   file: the officer and admin pages' disabled buttons are #435's. */
+.guild-page .btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
 .guild-body {
   flex: 1;
   width: 100%;
