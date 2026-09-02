@@ -10,6 +10,9 @@
 //
 //   psql "<local or service= connection>" -f data/sql/import-<team>.sql
 //
+// The BoE sheets are guild-wide and do not fit the per-team shape here; they
+// have their own entry point, scripts/import/boe.js (#749).
+//
 // --- Roster refresh (#208) ---
 // To refresh only the roster after sheet-side edits, point --data at a
 // directory holding just a fresh Roster.csv:
