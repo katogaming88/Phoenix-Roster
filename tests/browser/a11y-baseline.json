@@ -97,5 +97,14 @@
       "color-contrast": 3
     },
     "reflow480": "ok"
+  },
+  "boe": {
+    "axe": {
+      "link-in-text-block": 1
+    },
+    "axeIncomplete": {
+      "color-contrast": 2
+    },
+    "reflow480": "ok"
   }
 }

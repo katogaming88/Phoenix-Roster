@@ -19,7 +19,20 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
-const PAGES = ['index.html', 'officer.html', 'admin.html', 'guild.html'];
+const PAGES = ['index.html', 'officer.html', 'admin.html', 'guild.html', 'boe.html'];
+
+// The pages born under the #777 bar, where every control carries a label.
+// Widening this to PAGES is #436's job, once index.html, officer.html and
+// admin.html get an accessible name for every control.
+const LABELLED_PAGES = ['guild.html', 'boe.html'];
+
+// Pages with no team of their own, and the scripts that boot them. A cold
+// landing on index.html redirects to guild.html (#779), so a link from either
+// page to a bare index.html is an infinite bounce rather than a cosmetic slip.
+const TEAM_FREE = [
+  { page: 'guild.html', script: 'js/guild.js' },
+  { page: 'boe.html', script: 'js/boe-page.js' }
+];
 
 function read(page) {
   return readFileSync(join(ROOT, page), 'utf8');
@@ -127,38 +140,68 @@ describe.each(PAGES)('%s references resolve (#437)', (page) => {
   });
 });
 
-describe('guild.html specifics (#777)', () => {
-  const html = read('guild.html');
+describe.each(LABELLED_PAGES)('%s controls (#777)', (page) => {
+  const html = read(page);
 
-  // Scoped to guild.html until #436 gives the other three pages an accessible
-  // name for every control. Widen this to PAGES in that issue's PR.
   it('every form control has a label', () => {
     const labelled = new Set(labelTargets(html));
     expect(controls(html).filter((id) => !labelled.has(id))).toEqual([]);
   });
+});
 
-  // js/guild.js reveals this item only for someone who may open the section it
+describe.each(TEAM_FREE)('$page never links to a bare index.html (#779)', ({ page, script }) => {
+  it('in its markup', () => {
+    expect(indexLinks(read(page)).filter((href) => !href.includes('team='))).toEqual([]);
+  });
+
+  it('and neither does its script', () => {
+    // js/guild.js builds team links and must carry the param on every one;
+    // js/boe-page.js links nowhere, and zero literals is the right answer for
+    // it, so only the bare form is asserted against.
+    const js = readFileSync(join(ROOT, script), 'utf8');
+    const literals = [...js.matchAll(/'(index\.html[^']*)'/g)].map((m) => m[1]);
+    expect(literals.filter((s) => !s.includes('team='))).toEqual([]);
+  });
+});
+
+describe('guild.html specifics (#777)', () => {
+  const html = read('guild.html');
+
+  // js/guild.js reveals this item only for someone who may open the page it
   // points at, but the markup default is what covers the gap before the three
   // RPCs resolve -- and it is the only thing covering the CDN-failure path,
-  // where bootGuildPage() returns before either render function runs. The
-  // vm-sandbox suite cannot see this: its elements are stubbed as `style: {}`,
-  // so they start with no display at all whatever the page says.
-  it('ships the officer-gated nav item hidden', () => {
+  // where bootGuildPage() returns before the reveal runs. The vm-sandbox suite
+  // cannot see this: its elements are stubbed as `style: {}`, so they start
+  // with no display at all whatever the page says.
+  it('ships the officer-gated nav item hidden, pointing at boe.html (#864)', () => {
     const item = html.match(/<a[^>]*\sid="guildNavBoeManage"[^>]*>/);
     expect(item).not.toBeNull();
     expect(item[0]).toMatch(/style="display:\s*none;?"/);
+    expect(item[0]).toMatch(/href="boe\.html"/);
   });
 
-  it('never links to a bare index.html', () => {
-    // A cold landing on index.html redirects here (#779), so an index.html
-    // link with no ?team= is an infinite bounce between the two pages.
-    expect(indexLinks(html).filter((href) => !href.includes('team='))).toEqual([]);
-  });
-
-  it('and neither does js/guild.js', () => {
+  it('js/guild.js links to index.html only with a team', () => {
     const js = readFileSync(join(ROOT, 'js', 'guild.js'), 'utf8');
     const literals = [...js.matchAll(/'(index\.html[^']*)'/g)].map((m) => m[1]);
     expect(literals.length).toBeGreaterThan(0);
-    expect(literals.filter((s) => !s.includes('team='))).toEqual([]);
+  });
+});
+
+describe('boe.html specifics (#864)', () => {
+  const html = read('boe.html');
+
+  it('carries the four lifecycle containers js/boe-manage.js writes into', () => {
+    const present = new Set(ids(html));
+    ['guildBoeSummary', 'guildBoeOpen', 'guildBoeAwaiting', 'guildBoeHistory', 'boeAccessNote'].forEach((id) =>
+      expect(present.has(id), id).toBe(true)
+    );
+  });
+
+  it('marks its own nav item as the current page', () => {
+    expect(html).toMatch(/<a[^>]*href="boe\.html"[^>]*aria-current="page"/);
+  });
+
+  it('links back to the guild page', () => {
+    expect(html).toMatch(/href="guild\.html"/);
   });
 });

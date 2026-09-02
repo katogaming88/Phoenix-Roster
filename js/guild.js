@@ -495,74 +495,36 @@ function goToBoeForm() {
 }
 
 /**
- * Who may see the BoE lifecycle section (#774), and who may act in it.
- *
- * The three RPCs are the same functions boe_items' own read policy evaluates
- * (my_team_role in officer/team_leader, or is_boe_manager(), or
- * is_site_admin()), asked here only to decide whether to render at all. The
- * server decides what the read returns and what every mutation is allowed to
- * do, so getting this wrong shows an empty section, never data.
- *
- * is_boe_manager() is grant-only and does not fold in site admins, matching
- * the RLS gate, which is why admin is asked separately rather than assumed.
- *
- * Signed out short-circuits: all three resolve false for anon, so asking is
- * three round-trips to learn nothing on the page's most common visit.
+ * Whether to reveal the BoE Sales link (#774, #864). The answer comes from
+ * fetchBoeAccess() in js/common.js, the same one boe.html gates itself on, so
+ * the link and the page cannot disagree about who may open it.
  */
 function fetchGuildBoeAccess() {
-  _guildBoeAccess = { visible: false, canManage: false };
-  if (!supabaseClient || !_guildSession) return Promise.resolve(_guildBoeAccess);
-
-  function ask(fn) {
-    return Promise.resolve(supabaseClient.rpc(fn)).then(
-      function (result) {
-        return !!(result && !result.error && result.data === true);
-      },
-      function () {
-        return false;
-      }
-    );
-  }
-
-  return _guildWithTimeout(
-    Promise.all([ask('is_boe_manager'), ask('is_site_admin'), ask('is_any_team_officer')]),
-    10000
-  )
-    .then(function (r) {
-      var canManage = r[0] || r[1];
-      _guildBoeAccess = { visible: canManage || r[2], canManage: canManage };
-      return _guildBoeAccess;
-    })
-    .catch(function () {
-      return _guildBoeAccess;
-    });
+  return fetchBoeAccess(_guildSession).then(function (access) {
+    _guildBoeAccess = access;
+    return access;
+  });
 }
 
 /**
- * Renders the lifecycle section, or leaves it hidden. Hidden covers three
+ * Reveals the BoE Sales nav item, or leaves it hidden. Hidden covers three
  * different people and says nothing to any of them: a signed-out visitor, a
  * raider, and an officer on a guild that has BoE turned off everywhere.
  *
- * The feature check is guild-wide rather than per-team, unlike the officer tab
- * this replaced. There is no "this team" here, and a manager's read spans every
- * team, so the question is whether any team runs BoE at all -- the same
- * question the finder card above already asks.
+ * The surface itself is boe.html since #864; this page only carries the way
+ * there. The feature check is guild-wide rather than per-team, the same
+ * question the finder card above already asks: there is no "this team" here,
+ * and a manager's read spans every team.
  *
- * The nav item is driven by this same boolean rather than deciding for itself,
- * so the two cannot disagree. That matters more here than for the finder card:
- * this page is public, so an item naming a surface the visitor cannot open
- * would advertise it to exactly the people the section hides itself from. It
- * is also the only route to the section, which sits below the finder card with
- * nothing else pointing at it.
+ * This page is public, so an item naming a surface the visitor cannot open
+ * would advertise it to exactly the people the page hides itself from.
  */
 function renderGuildBoeManage() {
-  var section = document.getElementById('boe-manage');
   var navItem = document.getElementById('guildNavBoeManage');
+  if (!navItem) return;
   var show = _guildBoeAccess.visible && boeEnabledTeamSlugs().length > 0;
-  if (section) section.style.display = show ? '' : 'none';
-  if (navItem) navItem.style.display = show ? '' : 'none';
-  if (!show) return;
-  buildBoeManage(_guildBoeAccess.canManage);
+  navItem.href = 'boe.html';
+  navItem.style.display = show ? '' : 'none';
 }
 
 /**

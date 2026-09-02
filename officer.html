@@ -1383,6 +1383,7 @@ function _grantOfficerAccessViaDiscord(session) {
   sessionStorage.setItem(_SESSION_KEY, '1');
   sessionStorage.setItem(_SESSION_TS_KEY, String(Date.now()));
   hideOfficerPrompt();
+  revealBoeSalesNav(session);
   document.getElementById('loadingMsg').style.display = '';
   loadData(
     function() {

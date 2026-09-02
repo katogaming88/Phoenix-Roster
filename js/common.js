@@ -115,6 +115,18 @@ var SITE_NAV_ITEMS = [
     tooltip: 'The guild above the teams: streams, news, and how to join',
     href: 'guild.html'
   },
+  // The second cross-page item (#864). officerOnly keeps it off index.html,
+  // where raiders have the Found a BoE card and nothing to manage; hidden
+  // ships it display:none so it cannot flash for an officer before the access
+  // RPCs answer, and js/officer.js reveals it from fetchBoeAccess().
+  {
+    id: 'navBoeManage',
+    label: 'BoE Sales',
+    tooltip: 'Found-BoE auctions: listings, sales, payouts',
+    href: 'boe.html',
+    officerOnly: true,
+    hidden: true
+  },
   { id: 'navHome', label: 'Home', tooltip: 'Back to the roster overview', view: 'landing', hash: null },
   { id: 'navRoster', label: 'Roster', tooltip: "See who's currently on the roster", view: 'roster', hash: 'roster' },
   {
@@ -184,9 +196,11 @@ function renderSiteNav(mode) {
     })[0] || {}
   ).id;
   SITE_NAV_ITEMS.forEach(function (item) {
+    if (item.officerOnly && mode !== 'officer') return;
     if (item.href) {
       // Same markup in both modes: a link to another page needs no team param
-      // (guild.html has no team) and no showView() (that view is not here).
+      // (guild.html and boe.html have no team) and no showView() (that view is
+      // not here). `hidden` items ship display:none for the page to reveal.
       html +=
         '<a href="' +
         item.href +
@@ -194,7 +208,9 @@ function renderSiteNav(mode) {
         item.id +
         '" data-tooltip="' +
         item.tooltip +
-        '">' +
+        '"' +
+        (item.hidden ? ' style="display:none;"' : '') +
+        '>' +
         item.label +
         '</a>';
     } else if (mode === 'officer') {
@@ -243,6 +259,85 @@ function toggleHelp(id) {
 var SUPABASE_URL = 'https://kxgjqnpwfklbgrxdgmmv.supabase.co';
 var SUPABASE_ANON_KEY = 'sb_publishable_OdTUOR0Do1ThdKUPBh5inA_OWq78POC';
 var supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+/**
+ * Races a promise against a timer. Resolves or rejects with the promise when
+ * it settles first, rejects with a 'Timed out' error otherwise.
+ *
+ * js/discord.js has withTimeout() and js/guild.js a private copy of it; neither
+ * is loaded on every page that needs one, and this file is. Existing inline
+ * Promise.race sites above are left as they are.
+ *
+ * @template T
+ * @param {Promise<T>} promise
+ * @param {number} ms
+ * @returns {Promise<T>}
+ */
+function withTimeoutMs(promise, ms) {
+  return new Promise(function (resolve, reject) {
+    var timer = setTimeout(function () {
+      reject(new Error('Timed out'));
+    }, ms);
+    promise.then(
+      function (value) {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      function (err) {
+        clearTimeout(timer);
+        reject(err);
+      }
+    );
+  });
+}
+
+/**
+ * Who may open the BoE Sales surface (boe.html, #864), and who may act in it.
+ *
+ * The three RPCs are the same functions boe_items' own read policy evaluates
+ * (my_team_role in officer/team_leader, or is_boe_manager(), or
+ * is_site_admin()), asked here only to decide whether to render or reveal at
+ * all. The server decides what the read returns and what every mutation is
+ * allowed to do, so getting this wrong shows an empty page, never data.
+ *
+ * is_boe_manager() is grant-only and does not fold in site admins, matching
+ * the RLS gate, which is why admin is asked separately rather than assumed.
+ *
+ * Signed out short-circuits: all three resolve false for anon, so asking is
+ * three round-trips to learn nothing on the most common visit. `session` is
+ * whatever the caller holds as proof of being signed in; only its truthiness
+ * is read, the RPCs use the client's own auth. Three pages share this answer
+ * (#774 first resolved it in js/guild.js): guild.html and officer.html reveal
+ * the link on it, boe.html gates itself on it.
+ *
+ * @param {unknown} session
+ * @returns {Promise<{ visible: boolean, canManage: boolean }>}
+ */
+function fetchBoeAccess(session) {
+  var none = { visible: false, canManage: false };
+  if (!supabaseClient || !session) return Promise.resolve(none);
+
+  /** @param {'is_boe_manager' | 'is_site_admin' | 'is_any_team_officer'} fn */
+  function ask(fn) {
+    return Promise.resolve(supabaseClient.rpc(fn)).then(
+      function (result) {
+        return !!(result && !result.error && result.data === true);
+      },
+      function () {
+        return false;
+      }
+    );
+  }
+
+  return withTimeoutMs(Promise.all([ask('is_boe_manager'), ask('is_site_admin'), ask('is_any_team_officer')]), 10000)
+    .then(function (r) {
+      var canManage = r[0] || r[1];
+      return { visible: canManage || r[2], canManage: canManage };
+    })
+    .catch(function () {
+      return none;
+    });
+}
 
 // Two-statement pattern for officer writes: the caller performs its own
 // insert/update against a table RLS already permits, then calls this to log

@@ -16,6 +16,10 @@ Carries the team cards (badged with your own team, plus a signup link for any te
 
 It replaced the cold-landing team-picker modal on `index.html`, so a visitor with no `?team=` in the URL now lands here instead of on a three-button prompt. A signed-in raider with exactly one claimed team still goes straight to that team's roster, so nobody's daily path got longer. `index.html` keeps its URL and stays the team page; whether the guild page should become the site's front door is tracked in [#794](https://github.com/katogaming88/WGA-Raid-Hub/issues/794).
 
+### BoE Sales (`boe.html`)
+
+The found-BoE auction lifecycle on a page of its own ([#864](https://github.com/katogaming88/WGA-Raid-Hub/issues/864)): record listings and sales (payout split computed from the guild-wide policy), mark payouts paid, retire dead items, undo any of those; a summary strip of guild income, outstanding payouts, and finds per team. Guild-wide, not per-team: BoEs are guild property, so a BoE manager or site admin sees every team's finds in one list with the finding team named per row, and a plain officer sees the teams they staff, read-only. Reached from the **BoE Sales** link in the guild page's nav or the officer dashboard's site nav, both of which appear only for someone who can open the page. Signed-out visitors get a sign-in prompt.
+
 ### Landing page (public, `index.html`)
 
 - Character selector dropdown -- choose your character to open your profile (officers get the full roster; a claimed-but-unclaimed-dropdown raider gets a one-click "View My Profile" instead)
@@ -61,7 +65,7 @@ Discord-authenticated, session lasts 2 hours. A global season selector filters l
 | **Signups** | Signups / Pending Roster / History | Signups: open/close the public form; review/approve/deny submissions. Pending Roster: approved applicants awaiting a roster add, with Trial/Backup Tank/Backup Healer toggles at promotion time. History: past signup activity. |
 | **M+ Exclusions** | -- | Review/approve/reject raider-submitted M+ exclusion requests; toggle exclusion per player manually; open/close the request window. |
 | **Received Item Requests** | -- | Approve or reject raider self-mark requests; writes straight to loot history on approval. |
-| **BoE Sales** | -- | Found-BoE auction lifecycle: record listings and sales (payout split computed from the guild-wide policy), mark payouts paid, retire dead items; summary strip of guild income, outstanding payouts, and finds per team. BoEs are guild property, so a manager sees every team's finds in one list with the finding team named per row; a read-only officer sees the teams they staff. Read-only without the site-admin-assigned BoE manager grant. |
+| **BoE Sales** | -- | Not a tab any more: a **BoE Sales** link in this page's site nav, shown to officers, BoE managers and site admins, opens `boe.html` (see above). An old `?tab=boe` bookmark redirects there. |
 | **Season Settings** | Settings / Raid Progression / History | Settings: season name/start/end, season code prefix, target tank/heal roster counts, trial thresholds, WCL guild link. Raid Progression: boss kill dates shown publicly. History: past seasons, Archive Season (snapshots the roster and pushes to history), Unarchive. |
 | **Officer Bios** | -- | Team officer bio cards shown on the public About tab; also edits Guild Officer Bios (guild-wide, site-admin write access). |
 | **Audit Log** | -- | Searchable, append-only log of every officer/admin action -- actor, action, target, detail, timestamp. |
@@ -95,9 +99,9 @@ A separate, site-wide (not per-team) page gated to `site_admins`:
 ## Architecture
 
 1. **Supabase Postgres** is the single source of truth -- schema and RLS policies live in `supabase/migrations/`, applied in order.
-2. `index.html`, `officer.html`, `admin.html`, and `guild.html` are plain static pages (no build step, no bundler) that call Supabase directly from the browser via `supabase-js`, using a public anon key restricted by RLS.
+2. `index.html`, `officer.html`, `admin.html`, `guild.html`, and `boe.html` are plain static pages (no build step, no bundler) that call Supabase directly from the browser via `supabase-js`, using a public anon key restricted by RLS.
 3. **Feature flags** (`team_settings.config.features`) let a team hide tabs/sub-tabs it doesn't use, editable per-team from the Admin tab or site-wide from `admin.html`.
-4. Every page is hosted on **GitHub Pages** at the repo root; the `TEAMS` object in `js/common.js` maps each team slug to its Supabase team ID, switched via `?team=`. `guild.html` is the exception: it is guild-wide, carries no team, and links down into the team pages.
+4. Every page is hosted on **GitHub Pages** at the repo root; the `TEAMS` object in `js/common.js` maps each team slug to its Supabase team ID, switched via `?team=`. `guild.html` and `boe.html` are the exceptions: both are guild-wide and carry no team; the guild page links down into the team pages, and the BoE Sales page shows every team's finds.
 5. Google Sheets/Apps Script was the original backend but has been **fully retired** (the migration's last phase closed 2026-07-21) -- the `gs/*.gs` files remain in the repo only as historical record; nothing reads or writes through them anymore.
 
 For the full file-by-file breakdown, local dev setup (Docker + Supabase CLI), migration workflow, and PR requirements, see [`CONTRIBUTING.md`](CONTRIBUTING.md) -- that's the maintained source of truth for project structure so it doesn't drift out of sync with this file the way it previously did.

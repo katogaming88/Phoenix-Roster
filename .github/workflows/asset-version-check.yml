@@ -11,6 +11,7 @@ on:
       - 'officer.html'
       - 'admin.html'
       - 'guild.html'
+      - 'boe.html'
       - 'js/common.js'
       - 'tests/ci/asset-version-check.test.js'
       # The check reads its page registry and asset pattern from the stamper

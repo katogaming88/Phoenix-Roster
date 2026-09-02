@@ -20,7 +20,6 @@ const COMMON_JS = readFileSync(path.join(HERE, '../../js/common.js'), 'utf8');
 const GUILD_JS = readFileSync(path.join(HERE, '../../js/guild.js'), 'utf8');
 const STREAMERS_JS = readFileSync(path.join(HERE, '../../js/streamers.js'), 'utf8');
 const NEWS_JS = readFileSync(path.join(HERE, '../../js/news.js'), 'utf8');
-const BOE_MANAGE_JS = readFileSync(path.join(HERE, '../../js/boe-manage.js'), 'utf8');
 
 const PAGE_ELS = [
   'main-content',
@@ -36,16 +35,12 @@ const PAGE_ELS = [
   'guildBoeTeam',
   'guildBoeGo',
   'boe',
-  'boe-manage',
-  // The two nav items that hide with their sections. getElementById returns
-  // null for anything absent here, and both call sites guard, so leaving them
-  // out would make every assertion below throw rather than fail.
+  // The two nav items that hide with what they point at. getElementById
+  // returns null for anything absent here, and both call sites guard, so
+  // leaving them out would make every assertion below throw rather than fail.
+  // guildNavBoeManage now points at boe.html rather than a section here (#864).
   'guildNavBoe',
   'guildNavBoeManage',
-  'guildBoeSummary',
-  'guildBoeOpen',
-  'guildBoeAwaiting',
-  'guildBoeHistory',
   'guildWhoAmI',
   'guildAuthBtn',
   'guildVersion'
@@ -209,7 +204,6 @@ function makeSandbox({
   // Same order guild.html loads them in.
   vm.runInContext(STREAMERS_JS, sandbox, { filename: 'streamers.js' });
   vm.runInContext(NEWS_JS, sandbox, { filename: 'news.js' });
-  vm.runInContext(BOE_MANAGE_JS, sandbox, { filename: 'boe-manage.js' });
   vm.runInContext(GUILD_JS, sandbox, { filename: 'guild.js' });
   sandbox.supabaseClient = client;
   return { sandbox, els, calls, el };
@@ -1169,69 +1163,47 @@ describe('boot with no supabase client', () => {
   });
 });
 
-// Who sees the lifecycle surface, and who can act in it. js/boe-manage.js
-// takes canManage as a parameter and asks nothing about identity, so this is
-// the only place the three grants are resolved.
-describe('BoE lifecycle access (#774)', () => {
-  // Reads the nav item as well as the section, and asserts they agree, so
-  // every case below covers both. A test that read only the section would
-  // pass while the nav advertised a surface the visitor cannot open, which is
-  // a disclosure on a public page rather than a cosmetic slip.
-  const shown = (els) => {
-    expect(els.guildNavBoeManage.style.display).toBe(els['boe-manage'].style.display);
-    return els['boe-manage'].style.display !== 'none';
-  };
-
+// Who gets the BoE Sales link. The lifecycle surface itself lives on boe.html
+// since #864; this page only reveals the way there, on the same access answer
+// (fetchBoeAccess() in js/common.js) that page gates itself on.
+describe('BoE Sales link (#774, #864)', () => {
   it('is hidden for a signed-out visitor, and asks nothing about them', async () => {
     const { sandbox, els, calls } = makeSandbox();
     await sandbox.bootGuildPage();
-    expect(shown(els)).toBe(false);
+    expect(els.guildNavBoeManage.style.display).toBe('none');
     expect(calls.filter((c) => c.kind === 'rpc')).toEqual([]);
   });
 
   it('is hidden for a signed-in raider who holds none of the three grants', async () => {
     const { sandbox, els } = makeSandbox({ session: SESSION });
     await sandbox.bootGuildPage();
-    expect(shown(els)).toBe(false);
+    expect(els.guildNavBoeManage.style.display).toBe('none');
   });
 
-  it('shows read-only for a plain team officer', async () => {
-    const { sandbox, els } = makeSandbox({
-      session: SESSION,
-      boeRpc: { is_any_team_officer: true }
-    });
+  it('is revealed for a plain team officer, who gets the read-only page', async () => {
+    const { sandbox, els } = makeSandbox({ session: SESSION, boeRpc: { is_any_team_officer: true } });
     await sandbox.bootGuildPage();
-    for (let i = 0; i < 8; i++) await flush();
-    expect(shown(els)).toBe(true);
-    expect(els.guildBoeSummary.innerHTML).toContain('assigned by a site admin');
-    expect(els.guildBoeOpen.innerHTML).not.toContain('<button');
+    // The revealed value, not just "not none": the stubs start with no display
+    // at all, so a not.toBe('none') here would pass without the code existing.
+    expect(els.guildNavBoeManage.style.display).toBe('');
   });
 
-  it('shows with actions for a BoE manager holding no officer role anywhere', async () => {
-    // The person #774 was filed for: #766 decoupled the grant from
-    // team_members precisely so the guild bank can be run by someone who
-    // staffs no raid team.
-    const { sandbox, els } = makeSandbox({
-      session: SESSION,
-      boeRpc: { is_boe_manager: true },
-      boeItems: [{ id: 1, team_id: 4, item_name: 'Wrathless Find', status: 'found', found_at: '2026-08-20T01:00:00Z' }]
-    });
+  it('is revealed for a BoE manager holding no officer role anywhere', async () => {
+    const { sandbox, els } = makeSandbox({ session: SESSION, boeRpc: { is_boe_manager: true } });
     await sandbox.bootGuildPage();
-    for (let i = 0; i < 8; i++) await flush();
-    expect(shown(els)).toBe(true);
-    expect(els.guildBoeOpen.innerHTML).toContain('Record Listing');
+    expect(els.guildNavBoeManage.style.display).toBe('');
   });
 
-  it('shows with actions for a site admin, whom is_boe_manager does not cover', async () => {
-    const { sandbox, els } = makeSandbox({
-      session: SESSION,
-      boeRpc: { is_site_admin: true },
-      boeItems: [{ id: 1, team_id: 1, item_name: 'Phoenix Find', status: 'found', found_at: '2026-08-20T01:00:00Z' }]
-    });
+  it('is revealed for a site admin, whom is_boe_manager does not cover', async () => {
+    const { sandbox, els } = makeSandbox({ session: SESSION, boeRpc: { is_site_admin: true } });
     await sandbox.bootGuildPage();
-    for (let i = 0; i < 8; i++) await flush();
-    expect(shown(els)).toBe(true);
-    expect(els.guildBoeOpen.innerHTML).toContain('Record Listing');
+    expect(els.guildNavBoeManage.style.display).toBe('');
+  });
+
+  it('points at boe.html, never at a section of this page', async () => {
+    const { sandbox, els } = makeSandbox({ session: SESSION, boeRpc: { is_boe_manager: true } });
+    await sandbox.bootGuildPage();
+    expect(els.guildNavBoeManage.href).toBe('boe.html');
   });
 
   it('stays hidden when no team runs BoE, even for a manager', async () => {
@@ -1241,24 +1213,25 @@ describe('BoE lifecycle access (#774)', () => {
       teamSettings: [1, 2, 3, 4].map((id) => ({ team_id: id, config: { features: { boe: false } } }))
     });
     await sandbox.bootGuildPage();
-    expect(shown(els)).toBe(false);
+    expect(els.guildNavBoeManage.style.display).toBe('none');
   });
 
-  // Named on its own rather than only through shown(), because the nav item is
-  // the whole route to this section: it has no other entry point in the nav.
-  it('puts a BoE Sales item in the nav for someone who may open it', async () => {
-    const { sandbox, els } = makeSandbox({
+  it('renders no lifecycle rows on this page any more', async () => {
+    // The containers left with the section. If js/guild.js still called
+    // buildBoeManage() it would throw on the missing elements, and the catch
+    // would take About down with it, which the next test also guards.
+    const { sandbox, calls } = makeSandbox({
       session: SESSION,
-      boeRpc: { is_boe_manager: true }
+      boeRpc: { is_boe_manager: true },
+      boeItems: [{ id: 1, team_id: 4, item_name: 'Wrathless Find', status: 'found', found_at: '2026-08-20T01:00:00Z' }]
     });
     await sandbox.bootGuildPage();
-    // The revealed value, not just "not none": the stubs start with no display
-    // at all, so a not.toBe('none') here would pass without the code existing.
-    expect(els.guildNavBoeManage.style.display).toBe('');
+    for (let i = 0; i < 8; i++) await flush();
+    expect(calls.filter((c) => c.kind === 'from' && c.table === 'boe_items')).toEqual([]);
   });
 
-  // The whole point of moving off officer.html. Every section after BoE has
-  // to still render, which is what the swallowed-error shape broke last time.
+  // Every section after the link's reveal has to still render, which is what
+  // the swallowed-error shape broke last time.
   it('does not stop the sections after it', async () => {
     const { sandbox, els } = makeSandbox({
       session: SESSION,

@@ -14,6 +14,7 @@ on:
       - 'officer.html'
       - 'admin.html'
       - 'guild.html'
+      - 'boe.html'
       - 'css/**'
       - 'js/**'
       - 'tests/browser/**'
