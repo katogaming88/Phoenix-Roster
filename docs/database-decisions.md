@@ -8,6 +8,18 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-02 -- generate_priority_order: exclude OS/M+ RCLC responses from counting as received loot
+
+Tracking issue: [katogaming88/WGA-Raid-Hub#856](https://github.com/katogaming88/WGA-Raid-Hub/issues/856). The `recip` CTE treated *any* `rclc_loot` row for a player/item/season as "already received this" (drives the has_myth/has_hero/has_champ exclusion and softening multipliers), regardless of the RCLC response label actually selected. An off-spec (OS) or Mythic+ (M+) roll response isn't a loot council award for that character's main spec, so it shouldn't suppress or soften future priority the way an actual MS award does.
+
+- **`recip`'s `rclc_loot` subquery now excludes rows whose `response` contains "OS" or "M+" as a standalone token**, case-insensitive word-boundary match (`response` is guild-configurable freeform text, not a fixed vocabulary -- e.g. "Top Pick"/"Need" already seen live -- so exact-match wasn't safe).
+- **Loot history/reporting is untouched.** These rows still land in `rclc_loot` and any officer report views over it; only `generate_priority_order()`'s exclusion/multiplier logic ignores them now.
+- **`self_received_requests` is unaffected** -- it has no `response` column; those are always intentional officer-approved claims, not RCLC roll responses.
+
+[Full discussion -> #856](https://github.com/katogaming88/WGA-Raid-Hub/issues/856)
+
+---
+
 ## 2026-09-01 -- priority_stale_dismissals: let officers dismiss stale-after-Heroic Priority List conflicts too
 
 Tracking issue: [katogaming88/WGA-Raid-Hub#850](https://github.com/katogaming88/WGA-Raid-Hub/issues/850). Same-boss Priority List conflicts were already dismissible (`priority_conflict_dismissals`) -- an officer who reviewed one and confirmed it's fine could acknowledge it so the banner stopped re-flagging it. The other conflict kind the same banner shows -- a Mythic #1 who already has the Heroic version of that exact item (`priority_order_stale_after_heroic`) -- had no such path.
