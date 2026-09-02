@@ -14,6 +14,10 @@ with each release split into `### Frontend` (drives the version number) and
 
 - The Priority List export string is now wrapped to 76-char lines instead of one unbroken run of thousands of characters -- pasting the old format into the RCLootCouncil_PriorityLoot addon's import box made the WoW client's word-wrap layout stall long enough to risk a disconnect. The addon's decoder already strips whitespace before decoding, so this is compatible with existing imports.
 
+### Backend
+
+- New `scripts/import/boe.js` generator imports the legacy BoE history (the Google Form's found events plus the per-season sold sheets) into `boe_items` as one idempotent SQL file. Sales land as paid with the finder and guild cuts the sheet recorded, unsold finds land as open, and every fuzzy name or item match is printed for review before anything is applied (#749).
+
 ---
 
 ## [3.77.22] - 2026-09-01
