@@ -142,9 +142,9 @@ describe('build_rclc_export excludes already-awarded recipients (#480)', () => {
 describe('build_rclc_export', () => {
   it('rejects a track that is not Hero or Myth', async () => {
     await withRole('authenticated', OFFICER_T1, async (q) => {
-      await expect(
-        q('select public.build_rclc_export(1, $1, $2)', ['export-test', 'Champion'])
-      ).rejects.toThrow('Invalid track');
+      await expect(q('select public.build_rclc_export(1, $1, $2)', ['export-test', 'Champion'])).rejects.toThrow(
+        'Invalid track'
+      );
     });
   });
 
