@@ -67,7 +67,22 @@ function soldRows(extra = []) {
       'Finder Cut=Floor x (Sale/Pivot)',
       ''
     ],
-    ['3/24/2026', 'Barename-MalGanis', 'Ashrend', 'Belt of Examples', 'Champ', 'TRUE', '3/25/26', '95,000', '20,000', '75,000', '', '', 'Current Floor', '20000'],
+    [
+      '3/24/2026',
+      'Barename-MalGanis',
+      'Ashrend',
+      'Belt of Examples',
+      'Champ',
+      'TRUE',
+      '3/25/26',
+      '95,000',
+      '20,000',
+      '75,000',
+      '',
+      '',
+      'Current Floor',
+      '20000'
+    ],
     ...extra,
     ['', '', '', '', '', 'FALSE', '', '', '', '0', '', '', '', ''],
     ['', '', '', '', '', 'FALSE', '', 'Total', '', '', '', '', '', ''],
@@ -157,8 +172,18 @@ describe('normItem', () => {
 
 describe('finderKey', () => {
   it('splits first name and realm, folding case, spacing, punctuation and diacritics', () => {
-    expect(finderKey('Testfinder-Thrall')).toEqual({ full: 'testfinderthrall', first: 'testfinder', hasRealm: true, sqlKey: 'testfinderthrall' });
-    expect(finderKey('Another - Dalaran')).toEqual({ full: 'anotherdalaran', first: 'another', hasRealm: true, sqlKey: 'anotherdalaran' });
+    expect(finderKey('Testfinder-Thrall')).toEqual({
+      full: 'testfinderthrall',
+      first: 'testfinder',
+      hasRealm: true,
+      sqlKey: 'testfinderthrall'
+    });
+    expect(finderKey('Another - Dalaran')).toEqual({
+      full: 'anotherdalaran',
+      first: 'another',
+      hasRealm: true,
+      sqlKey: 'anotherdalaran'
+    });
     expect(finderKey("Zartunie-Mal'Ganis").full).toBe('zartuniemalganis');
     expect(finderKey('Corvaan-Argent Dawn').full).toBe('corvaanargentdawn');
   });
@@ -229,13 +254,19 @@ describe('parseFound', () => {
     expect(warnings[0]).toContain(SKIP_FORM_TIMESTAMPS[ts]);
   });
   it('skips a row whose item cell is only a track word, with a warning', () => {
-    const { entries, warnings } = parseFound(foundRows([['4/13/2026 22:12:00', 'Someone', 'Phoenix', 'Hero', '']]), 'Form');
+    const { entries, warnings } = parseFound(
+      foundRows([['4/13/2026 22:12:00', 'Someone', 'Phoenix', 'Hero', '']]),
+      'Form'
+    );
     expect(entries).toHaveLength(3);
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toMatch(/row 5.*no item name/i);
   });
   it('warns on an unknown team but keeps the row with teamId null', () => {
-    const { entries, warnings } = parseFound(foundRows([['4/14/2026 20:00:00', 'Someone-Realm', 'Team Nobody', 'Hero Belt of Examples', '']]), 'Form');
+    const { entries, warnings } = parseFound(
+      foundRows([['4/14/2026 20:00:00', 'Someone-Realm', 'Team Nobody', 'Hero Belt of Examples', '']]),
+      'Form'
+    );
     expect(entries).toHaveLength(4);
     expect(entries[3].teamId).toBeNull();
     expect(warnings.join('\n')).toMatch(/Team Nobody/);
@@ -266,7 +297,13 @@ describe('parseSold', () => {
       guildCut: 494014,
       notes: 'Gold traded on 3/23/26'
     });
-    expect(entries[1]).toMatchObject({ teamId: 2, track: 'Champion', salePrice: 95000, finderCut: 20000, guildCut: 75000 });
+    expect(entries[1]).toMatchObject({
+      teamId: 2,
+      track: 'Champion',
+      salePrice: 95000,
+      finderCut: 20000,
+      guildCut: 75000
+    });
   });
   it('skips the trailer, Total and sidebar rows silently', () => {
     const { entries, warnings } = parseSold(soldRows(), 'S1');
@@ -274,32 +311,134 @@ describe('parseSold', () => {
     expect(warnings).toHaveLength(0);
   });
   it('accepts a four-digit sale year (the S2 export shape)', () => {
-    const extra = [['8/20/2026', 'Someone-Realm', 'Immolation', 'Widget of Testing', 'Champ', 'TRUE', '8/25/2026', '74,000', '20,000', '54,000', '', '', '', '']];
+    const extra = [
+      [
+        '8/20/2026',
+        'Someone-Realm',
+        'Immolation',
+        'Widget of Testing',
+        'Champ',
+        'TRUE',
+        '8/25/2026',
+        '74,000',
+        '20,000',
+        '54,000',
+        '',
+        '',
+        '',
+        ''
+      ]
+    ];
     const { entries } = parseSold(soldRows(extra), 'S2');
     expect(entries[2]).toMatchObject({ teamId: 3, saleDate: '8/25/2026', salePrice: 74000 });
   });
   it('warns and skips a data row that is not marked sold', () => {
-    const extra = [['8/20/2026', 'Someone-Realm', 'Immolation', 'Widget of Testing', 'Champ', 'FALSE', '', '', '', '0', '', '', '', '']];
+    const extra = [
+      [
+        '8/20/2026',
+        'Someone-Realm',
+        'Immolation',
+        'Widget of Testing',
+        'Champ',
+        'FALSE',
+        '',
+        '',
+        '',
+        '0',
+        '',
+        '',
+        '',
+        ''
+      ]
+    ];
     const { entries, warnings } = parseSold(soldRows(extra), 'S2');
     expect(entries).toHaveLength(2);
     expect(warnings.join('\n')).toMatch(/row 4.*not marked sold/i);
   });
   it('warns and skips a sold row missing its sale date or price', () => {
-    const noDate = [['8/20/2026', 'Someone-Realm', 'Immolation', 'Widget of Testing', 'Champ', 'TRUE', '', '74,000', '20,000', '54,000', '', '', '', '']];
-    const noPrice = [['8/20/2026', 'Someone-Realm', 'Immolation', 'Widget of Testing', 'Champ', 'TRUE', '8/25/2026', '', '', '', '', '', '', '']];
+    const noDate = [
+      [
+        '8/20/2026',
+        'Someone-Realm',
+        'Immolation',
+        'Widget of Testing',
+        'Champ',
+        'TRUE',
+        '',
+        '74,000',
+        '20,000',
+        '54,000',
+        '',
+        '',
+        '',
+        ''
+      ]
+    ];
+    const noPrice = [
+      [
+        '8/20/2026',
+        'Someone-Realm',
+        'Immolation',
+        'Widget of Testing',
+        'Champ',
+        'TRUE',
+        '8/25/2026',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        ''
+      ]
+    ];
     expect(parseSold(soldRows(noDate), 'S2').entries).toHaveLength(2);
     expect(parseSold(soldRows(noDate), 'S2').warnings.join('\n')).toMatch(/sale date/i);
     expect(parseSold(soldRows(noPrice), 'S2').entries).toHaveLength(2);
     expect(parseSold(soldRows(noPrice), 'S2').warnings.join('\n')).toMatch(/sale price/i);
   });
   it('warns on an unknown Quality and imports the row with a null track', () => {
-    const extra = [['8/20/2026', 'Someone-Realm', 'Immolation', 'Widget of Testing', 'Legendary', 'TRUE', '8/25/2026', '74,000', '20,000', '54,000', '', '', '', '']];
+    const extra = [
+      [
+        '8/20/2026',
+        'Someone-Realm',
+        'Immolation',
+        'Widget of Testing',
+        'Legendary',
+        'TRUE',
+        '8/25/2026',
+        '74,000',
+        '20,000',
+        '54,000',
+        '',
+        '',
+        '',
+        ''
+      ]
+    ];
     const { entries, warnings } = parseSold(soldRows(extra), 'S2');
     expect(entries[2].track).toBeNull();
     expect(warnings.join('\n')).toMatch(/Legendary/);
   });
   it('warns and skips a row whose team is unknown, since team_id is required', () => {
-    const extra = [['8/20/2026', 'Someone-Realm', 'Team Nobody', 'Widget of Testing', 'Champ', 'TRUE', '8/25/2026', '74,000', '20,000', '54,000', '', '', '', '']];
+    const extra = [
+      [
+        '8/20/2026',
+        'Someone-Realm',
+        'Team Nobody',
+        'Widget of Testing',
+        'Champ',
+        'TRUE',
+        '8/25/2026',
+        '74,000',
+        '20,000',
+        '54,000',
+        '',
+        '',
+        '',
+        ''
+      ]
+    ];
     const { entries, warnings } = parseSold(soldRows(extra), 'S2');
     expect(entries).toHaveLength(2);
     expect(warnings.join('\n')).toMatch(/Team Nobody/);
@@ -332,18 +471,47 @@ describe('matchSales', () => {
       guildCut: 494014,
       note: 'Gold traded on 3/23/26'
     });
-    expect(open[0]).toMatchObject({ teamId: 1, finderName: 'Another-Dalaran', itemName: 'Widget of Testing', foundAt: '4/13/2026 22:10:23', note: 'rolled crit' });
+    expect(open[0]).toMatchObject({
+      teamId: 1,
+      finderName: 'Another-Dalaran',
+      itemName: 'Widget of Testing',
+      foundAt: '4/13/2026 22:10:23',
+      note: 'rolled crit'
+    });
   });
   it('matches a bare form name against a Name-Realm sold name and takes the sold spelling for finder and item', () => {
     const { rows, warnings } = run();
     const belt = rows.find((r) => r.salePrice === 95000);
     expect(warnings).toHaveLength(0);
-    expect(belt).toMatchObject({ teamId: 2, finderName: 'Barename-MalGanis', itemName: 'Belt of Examples', track: 'Champion', status: 'paid' });
+    expect(belt).toMatchObject({
+      teamId: 2,
+      finderName: 'Barename-MalGanis',
+      itemName: 'Belt of Examples',
+      track: 'Champion',
+      status: 'paid'
+    });
   });
   it('accepts a one-edit typo on the item with a warning naming both spellings', () => {
     const { rows, warnings } = run(
       [['4/14/2026 22:48:37', 'Typist - Thrall', 'Ashrend', 'Hero power stance breaches', '']],
-      [['4/14/2026', 'Typist-Thrall', 'Ashrend', 'Power Stance Breeches', 'Hero', 'TRUE', '4/17/26', '137,785', '27,557', '110,228', '', '', '', '']]
+      [
+        [
+          '4/14/2026',
+          'Typist-Thrall',
+          'Ashrend',
+          'Power Stance Breeches',
+          'Hero',
+          'TRUE',
+          '4/17/26',
+          '137,785',
+          '27,557',
+          '110,228',
+          '',
+          '',
+          '',
+          ''
+        ]
+      ]
     );
     const row = rows.find((r) => r.salePrice === 137785);
     expect(row).toMatchObject({ status: 'paid', itemName: 'Power Stance Breeches', foundAt: '4/14/2026 22:48:37' });
@@ -352,7 +520,24 @@ describe('matchSales', () => {
   it('accepts a one-edit difference on the finder with a warning', () => {
     const { rows, warnings } = run(
       [['4/8/2026 0:16:46', 'Thorncroftt', 'Immolation', 'Hero Belt of Examples', '']],
-      [['4/8/2026', 'Thorncrofft-Illidan', 'Immolation', 'Belt of Examples', 'Hero', 'TRUE', '4/10/26', '66,500', '20,000', '46,500', '', '', '', '']]
+      [
+        [
+          '4/8/2026',
+          'Thorncrofft-Illidan',
+          'Immolation',
+          'Belt of Examples',
+          'Hero',
+          'TRUE',
+          '4/10/26',
+          '66,500',
+          '20,000',
+          '46,500',
+          '',
+          '',
+          '',
+          ''
+        ]
+      ]
     );
     expect(rows.find((r) => r.salePrice === 66500)).toMatchObject({ status: 'paid', foundAt: '4/8/2026 0:16:46' });
     expect(warnings.join('\n')).toMatch(/Thorncroftt.*Thorncrofft/);
@@ -360,7 +545,24 @@ describe('matchSales', () => {
   it('matches through diacritics and case differences without a warning', () => {
     const { rows, warnings } = run(
       [['4/9/2026 23:31:53', 'püffd-thrall', 'Ashrend', 'hero belt of examples', '']],
-      [['4/9/2026', 'Puffd-Thrall', 'Ashrend', 'Belt of Examples', 'Hero', 'TRUE', '4/10/26', '161,500', '32,300', '129,200', '', '', '', '']]
+      [
+        [
+          '4/9/2026',
+          'Puffd-Thrall',
+          'Ashrend',
+          'Belt of Examples',
+          'Hero',
+          'TRUE',
+          '4/10/26',
+          '161,500',
+          '32,300',
+          '129,200',
+          '',
+          '',
+          '',
+          ''
+        ]
+      ]
     );
     expect(rows.find((r) => r.salePrice === 161500)).toMatchObject({ status: 'paid', finderName: 'Puffd-Thrall' });
     expect(warnings).toHaveLength(0);
@@ -371,7 +573,24 @@ describe('matchSales', () => {
         ['4/23/2026 21:30:39', 'Nuggs - Tichondrius', 'Ashrend', '(Myth) Belt of Examples', ''],
         ['4/24/2026 11:14:22', 'Nuggs', 'Ashrend', 'Belt of Exampels Myth', '']
       ],
-      [['4/23/2026', 'Nuggs-Tichondrius', 'Ashrend', 'Belt of Examples', 'Myth', 'TRUE', '4/25/26', '1,187,535', '237,507', '950,028', '', '', '', '']]
+      [
+        [
+          '4/23/2026',
+          'Nuggs-Tichondrius',
+          'Ashrend',
+          'Belt of Examples',
+          'Myth',
+          'TRUE',
+          '4/25/26',
+          '1,187,535',
+          '237,507',
+          '950,028',
+          '',
+          '',
+          '',
+          ''
+        ]
+      ]
     );
     const paid = rows.find((r) => r.salePrice === 1187535);
     expect(paid.foundAt).toBe('4/23/2026 21:30:39');
@@ -384,7 +603,24 @@ describe('matchSales', () => {
         ['5/1/2026 20:00:00', 'Twice-Realm', 'Phoenix', 'Hero Belt of Examples', ''],
         ['5/2/2026 20:00:00', 'Twice-Realm', 'Phoenix', 'Hero Belt of Examples', '']
       ],
-      [['5/1/2026', 'Twice-Realm', 'Phoenix', 'Belt of Examples', 'Hero', 'TRUE', '5/3/26', '50,000', '20,000', '30,000', '', '', '', '']]
+      [
+        [
+          '5/1/2026',
+          'Twice-Realm',
+          'Phoenix',
+          'Belt of Examples',
+          'Hero',
+          'TRUE',
+          '5/3/26',
+          '50,000',
+          '20,000',
+          '30,000',
+          '',
+          '',
+          '',
+          ''
+        ]
+      ]
     );
     expect(rows.find((r) => r.salePrice === 50000).foundAt).toBe('5/1/2026 20:00:00');
     expect(rows.find((r) => r.foundAt === '5/2/2026 20:00:00').status).toBe('found');
@@ -395,7 +631,24 @@ describe('matchSales', () => {
         ['5/1/2026 20:00:00', 'Twice-Realm', 'Phoenix', 'Hero Belt of Examples', ''],
         ['5/1/2026 20:00:00', 'Twice-Realm', 'Phoenix', 'Hero Belt of Examples', '']
       ],
-      [['5/1/2026', 'Twice-Realm', 'Phoenix', 'Belt of Examples', 'Hero', 'TRUE', '5/3/26', '50,000', '20,000', '30,000', '', '', '', '']]
+      [
+        [
+          '5/1/2026',
+          'Twice-Realm',
+          'Phoenix',
+          'Belt of Examples',
+          'Hero',
+          'TRUE',
+          '5/3/26',
+          '50,000',
+          '20,000',
+          '30,000',
+          '',
+          '',
+          '',
+          ''
+        ]
+      ]
     );
     expect(rows.filter((r) => r.salePrice === 50000)).toHaveLength(1);
     expect(rows.find((r) => r.salePrice === 50000).standalone).toBe(true);
@@ -403,9 +656,36 @@ describe('matchSales', () => {
     expect(warnings.join('\n')).toMatch(/ambiguous/i);
   });
   it('turns an unmatched sold row into a standalone paid row dated by Date Submitted, with a warning', () => {
-    const { rows, warnings } = run([], [['5/12/2026', 'Lonely-Realm', 'Immolation', 'Belt of Examples', 'Hero', 'TRUE', '5/16/26', '35,000', '20,000', '15,000', 'Gold donated to guild', '', '', '']]);
+    const { rows, warnings } = run(
+      [],
+      [
+        [
+          '5/12/2026',
+          'Lonely-Realm',
+          'Immolation',
+          'Belt of Examples',
+          'Hero',
+          'TRUE',
+          '5/16/26',
+          '35,000',
+          '20,000',
+          '15,000',
+          'Gold donated to guild',
+          '',
+          '',
+          ''
+        ]
+      ]
+    );
     const row = rows.find((r) => r.salePrice === 35000);
-    expect(row).toMatchObject({ status: 'paid', standalone: true, teamId: 3, foundAt: '5/12/2026', soldAt: '5/16/26', note: 'Gold donated to guild' });
+    expect(row).toMatchObject({
+      status: 'paid',
+      standalone: true,
+      teamId: 3,
+      foundAt: '5/12/2026',
+      soldAt: '5/16/26',
+      note: 'Gold donated to guild'
+    });
     expect(warnings.join('\n')).toMatch(/no form submission/i);
   });
   it('fills a null found track from the sold row silently, but warns when both are set and differ', () => {
@@ -415,11 +695,45 @@ describe('matchSales', () => {
         ['5/4/2026 22:38:14', 'Clash-Realm', 'Wrathless', 'Myth Widget of Testing', '']
       ],
       [
-        ['5/3/2026', 'Fill-Realm', 'Wrathless', 'Belt of Examples (Socket)', 'Hero', 'TRUE', '5/5/26', '57,000', '20,000', '37,000', '', '', '', ''],
-        ['5/4/2026', 'Clash-Realm', 'Wrathless', 'Widget of Testing', 'Hero', 'TRUE', '5/6/26', '57,000', '20,000', '37,000', '', '', '', '']
+        [
+          '5/3/2026',
+          'Fill-Realm',
+          'Wrathless',
+          'Belt of Examples (Socket)',
+          'Hero',
+          'TRUE',
+          '5/5/26',
+          '57,000',
+          '20,000',
+          '37,000',
+          '',
+          '',
+          '',
+          ''
+        ],
+        [
+          '5/4/2026',
+          'Clash-Realm',
+          'Wrathless',
+          'Widget of Testing',
+          'Hero',
+          'TRUE',
+          '5/6/26',
+          '57,000',
+          '20,000',
+          '37,000',
+          '',
+          '',
+          '',
+          ''
+        ]
       ]
     );
-    expect(rows.find((r) => r.finderName === 'Fill-Realm')).toMatchObject({ status: 'paid', track: 'Hero', itemName: 'Belt of Examples (Socket)' });
+    expect(rows.find((r) => r.finderName === 'Fill-Realm')).toMatchObject({
+      status: 'paid',
+      track: 'Hero',
+      itemName: 'Belt of Examples (Socket)'
+    });
     expect(rows.find((r) => r.finderName === 'Clash-Realm')).toMatchObject({ status: 'paid', track: 'Hero' });
     expect(warnings.filter((w) => /track/i.test(w))).toHaveLength(1);
     expect(warnings.join('\n')).toMatch(/Clash-Realm/);
@@ -427,7 +741,24 @@ describe('matchSales', () => {
   it('warns when the form and sold teams disagree and keeps the sold team', () => {
     const { rows, warnings } = run(
       [['5/3/2026 22:38:14', 'Moved-Realm', 'Phoenix', 'Hero Belt of Examples', '']],
-      [['5/3/2026', 'Moved-Realm', 'Wrathless', 'Belt of Examples', 'Hero', 'TRUE', '5/5/26', '57,000', '20,000', '37,000', '', '', '', '']]
+      [
+        [
+          '5/3/2026',
+          'Moved-Realm',
+          'Wrathless',
+          'Belt of Examples',
+          'Hero',
+          'TRUE',
+          '5/5/26',
+          '57,000',
+          '20,000',
+          '37,000',
+          '',
+          '',
+          '',
+          ''
+        ]
+      ]
     );
     expect(rows.find((r) => r.finderName === 'Moved-Realm').teamId).toBe(4);
     expect(warnings.join('\n')).toMatch(/team/i);
@@ -435,7 +766,24 @@ describe('matchSales', () => {
   it('joins the form note and the sold notes', () => {
     const { rows } = run(
       [['5/3/2026 22:38:14', 'Noted-Realm', 'Phoenix', 'Hero Belt of Examples', 'Donate']],
-      [['5/3/2026', 'Noted-Realm', 'Phoenix', 'Belt of Examples', 'Hero', 'TRUE', '5/5/26', '57,000', '20,000', '37,000', 'Gold donated to guild', '', '', '']]
+      [
+        [
+          '5/3/2026',
+          'Noted-Realm',
+          'Phoenix',
+          'Belt of Examples',
+          'Hero',
+          'TRUE',
+          '5/5/26',
+          '57,000',
+          '20,000',
+          '37,000',
+          'Gold donated to guild',
+          '',
+          '',
+          ''
+        ]
+      ]
     );
     expect(rows.find((r) => r.finderName === 'Noted-Realm').note).toBe('Donate | Gold donated to guild');
   });
@@ -484,9 +832,19 @@ describe('boeSql', () => {
   it('emits one idempotent insert keyed on team and found_at, with paid rows carrying complete money columns', () => {
     const { sql, counts, warnings } = boeSql(rowsFor(), OPTS);
     expect(warnings).toHaveLength(0);
-    expect(counts).toMatchObject({ open: 1, paid: 2, total: 3, salePrice: 712518, finderPayout: 143504, guildCut: 569014, byTeam: { 1: 2, 2: 1 } });
+    expect(counts).toMatchObject({
+      open: 1,
+      paid: 2,
+      total: 3,
+      salePrice: 712518,
+      finderPayout: 143504,
+      guildCut: 569014,
+      byTeam: { 1: 2, 2: 1 }
+    });
     expect(sql).toContain('insert into boe_items (');
-    expect(sql).toContain('team_id, player_id, finder_name, item_id, item_name, track, season, note, status, found_at, sold_at, payout_paid_at, sale_price, finder_payout, guild_cut, payout_floor, payout_pivot');
+    expect(sql).toContain(
+      'team_id, player_id, finder_name, item_id, item_name, track, season, note, status, found_at, sold_at, payout_paid_at, sale_price, finder_payout, guild_cut, payout_floor, payout_pivot'
+    );
     expect(sql).toContain('where not exists');
     expect(sql).toContain('t.team_id = v.team_id and t.found_at = v.found_at');
     expect(sql).not.toContain('t.item_name');
@@ -503,20 +861,27 @@ describe('boeSql', () => {
   it('emits typed nulls on open rows so an all-null column still types correctly', () => {
     const { sql } = boeSql(rowsFor(), OPTS);
     const openLine = sql.split('\n').find((l) => l.includes("'found'"));
-    expect(openLine).toContain('null::timestamptz, null::timestamptz, null::bigint, null::bigint, null::bigint, null::bigint, null::bigint');
+    expect(openLine).toContain(
+      'null::timestamptz, null::timestamptz, null::bigint, null::bigint, null::bigint, null::bigint, null::bigint'
+    );
   });
   it('links the finder by a normalized name-realm subselect, and emits a typed null for bare names', () => {
     const { sql, counts } = boeSql(
       rowsFor([['6/1/2026 20:00:00', 'Barename', 'Phoenix', 'Hero Belt of Examples', '']]),
       OPTS
     );
-    expect(sql).toContain("(select p.id from players p where p.team_id = 1 and lower(regexp_replace(p.name_realm, '[^A-Za-z0-9]', '', 'g')) = 'testfinderthrall' order by p.archived_at nulls first limit 1)");
+    expect(sql).toContain(
+      "(select p.id from players p where p.team_id = 1 and lower(regexp_replace(p.name_realm, '[^A-Za-z0-9]', '', 'g')) = 'testfinderthrall' order by p.archived_at nulls first limit 1)"
+    );
     const bareLine = sql.split('\n').find((l) => l.includes('6/1/2026') || l.includes('2026-06-01 20:00:00'));
     expect(bareLine).toContain('1, null::integer,');
     expect(counts.playerLinks).toBe(3);
   });
   it('resolves the item by the case-insensitive items key and derives the season from the ranges', () => {
-    const { sql } = boeSql(rowsFor([['8/20/2026 21:27:01', 'Later-Realm', 'Immolation', '(Champ) Widget of Testing ', '']]), OPTS);
+    const { sql } = boeSql(
+      rowsFor([['8/20/2026 21:27:01', 'Later-Realm', 'Immolation', '(Champ) Widget of Testing ', '']]),
+      OPTS
+    );
     expect(sql).toContain("(select id from items where lower(name) = lower('Widget of Testing'))");
     expect(sql).toContain("'Midnight Season 1'");
     expect(sql).toContain("'Midnight Season 2'");
@@ -534,12 +899,32 @@ describe('boeSql', () => {
     expect(() => boeSql(rows, OPTS)).toThrow(/duplicate.*2026-06-01 20:00:00/i);
   });
   it('carries cut-check warnings through', () => {
-    const rows = rowsFor([], [['5/12/2026', 'Lonely-Realm', 'Immolation', 'Belt of Examples', 'Hero', 'TRUE', '5/16/26', '35,000', '25,000', '10,000', '', '', '', '']]);
+    const rows = rowsFor(
+      [],
+      [
+        [
+          '5/12/2026',
+          'Lonely-Realm',
+          'Immolation',
+          'Belt of Examples',
+          'Hero',
+          'TRUE',
+          '5/16/26',
+          '35,000',
+          '25,000',
+          '10,000',
+          '',
+          '',
+          '',
+          ''
+        ]
+      ]
+    );
     const { warnings } = boeSql(rows, OPTS);
     expect(warnings.join('\n')).toMatch(/20000/);
   });
   it('escapes quotes in names and notes through the shared literal builder', () => {
-    const rows = rowsFor([["6/1/2026 20:00:00", "O'Quote-Realm", 'Phoenix', "Hero Nullstrider's Boots", "it's fine"]]);
+    const rows = rowsFor([['6/1/2026 20:00:00', "O'Quote-Realm", 'Phoenix', "Hero Nullstrider's Boots", "it's fine"]]);
     const { sql } = boeSql(rows, OPTS);
     expect(sql).toContain("'O''Quote-Realm'");
     expect(sql).toContain("'Nullstrider''s Boots'");
@@ -550,7 +935,12 @@ describe('boeSql', () => {
 describe('classifyInputs', () => {
   it('picks the Form Responses export as the found sheet and every other CSV as a sold sheet', () => {
     expect(
-      classifyInputs(['BOE Tracking - Midnight S1.csv', 'BOE Tracking - Form Responses 1.csv', 'BOE Tracking - Midnight S2.csv', 'notes.txt'])
+      classifyInputs([
+        'BOE Tracking - Midnight S1.csv',
+        'BOE Tracking - Form Responses 1.csv',
+        'BOE Tracking - Midnight S2.csv',
+        'notes.txt'
+      ])
     ).toEqual({
       found: 'BOE Tracking - Form Responses 1.csv',
       sold: ['BOE Tracking - Midnight S1.csv', 'BOE Tracking - Midnight S2.csv']
