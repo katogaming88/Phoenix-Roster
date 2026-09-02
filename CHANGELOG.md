@@ -8,6 +8,14 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.77.23] - 2026-09-02
+
+### Backend
+
+- `generate_priority_order()` no longer counts an off-spec (OS) or Mythic+ (M+) RCLC roll response as "already received this item" -- previously any imported loot row suppressed/softened a player's future priority for that item regardless of which response they'd actually selected. Loot history/reporting is unaffected; only the priority-generation exclusion/multiplier logic ignores these responses now (#856).
+
+---
+
 ## [3.77.23] - 2026-09-01
 
 ### Frontend
