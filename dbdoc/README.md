@@ -68,7 +68,6 @@
 | public.import_rclc_loot | jsonb | p_team_id integer, p_season text, p_rows jsonb | FUNCTION |
 | public.resolve_discord_display_name | text | p_actor_id uuid, p_team_id integer | FUNCTION |
 | public.save_priority_order | int4 | p_team_id integer, p_season text, p_item_id integer, p_track text, p_player_ids jsonb | FUNCTION |
-| public.build_rclc_export | jsonb | p_team_id integer, p_season text | FUNCTION |
 | public.danger_clear_bis_requests | int4 | p_team_id integer | FUNCTION |
 | public.danger_clear_season_signups | int4 | p_team_id integer | FUNCTION |
 | public.danger_clear_pending_roster | int4 | p_team_id integer | FUNCTION |
@@ -125,6 +124,7 @@
 | public.is_team_leader_anywhere | bool |  | FUNCTION |
 | public.remove_player_priority_order | int4 | p_team_id integer, p_season text, p_player_id integer | FUNCTION |
 | public.set_team_officer_bios | jsonb | p_team_id integer, p_bios jsonb | FUNCTION |
+| public.build_rclc_export | jsonb | p_team_id integer, p_season text, p_track text | FUNCTION |
 
 ## Enums
 

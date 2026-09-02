@@ -209,9 +209,19 @@ function _qaSetStatus(msg, color) {
 // Editor (#391/#393) and priority generator (#220) migrated to Supabase, so
 // this button and the Priority tab could disagree on which raiders were
 // actually prioritized for what (#408).
+//
+// One button per track since #859: build_rclc_export() now requires
+// p_track and returns half the data -- a combined export measured at ~91k
+// base64 chars, large enough to stall the WoW client for several seconds on
+// paste into the addon's import box, independent of how that box renders
+// text (see the migration's comment for the measurement). The addon merges
+// separate Hero/Myth imports into one dataset rather than one overwriting
+// the other, so both buttons need to be used, but order doesn't matter.
 
-function qaExportString() {
-  var btn = document.getElementById('oqaExportBtn');
+function qaExportString(track) {
+  var btnId = track === 'Myth' ? 'oqaExportMythicBtn' : 'oqaExportHeroicBtn';
+  var label = track === 'Myth' ? 'Copy Priority Export (Mythic)' : 'Copy Priority Export (Heroic)';
+  var btn = document.getElementById(btnId);
   if (btn) {
     btn.disabled = true;
     btn.textContent = 'Loading...';
@@ -221,7 +231,7 @@ function qaExportString() {
   if (!supabaseClient) {
     if (btn) {
       btn.disabled = false;
-      btn.textContent = 'Copy Priority Export';
+      btn.textContent = label;
     }
     _qaSetStatus('Not connected to Supabase.', 'var(--melee)');
     return;
@@ -230,11 +240,11 @@ function qaExportString() {
   var season = window.DATA && DATA.seasonName ? seasonCodeForDisplay(DATA.seasonName.trim()) : '';
 
   supabaseClient
-    .rpc('build_rclc_export', { p_team_id: _teamCfg.supabaseTeamId, p_season: season })
+    .rpc('build_rclc_export', { p_team_id: _teamCfg.supabaseTeamId, p_season: season, p_track: track })
     .then(function (result) {
       if (btn) {
         btn.disabled = false;
-        btn.textContent = 'Copy Priority Export';
+        btn.textContent = label;
       }
       var str = !result.error && result.data ? _utf8ToBase64(JSON.stringify(result.data)) : '';
       if (!str) {

@@ -30,7 +30,9 @@ function makeSandbox({ rpcResult, els = {} } = {}) {
   var defaultEls = {
     prioExportLoadBtn: makeEl(),
     prioExportBody: makeEl(),
-    prioExportStr: makeEl()
+    prioExportStr: makeEl(),
+    prioExportDiffHeroic: Object.assign(makeEl(), { classList: { toggle() {} } }),
+    prioExportDiffMythic: Object.assign(makeEl(), { classList: { toggle() {} } })
   };
   var allEls = Object.assign(defaultEls, els);
 
@@ -62,13 +64,35 @@ function makeSandbox({ rpcResult, els = {} } = {}) {
   return { sandbox, rpcCalls, els: allEls };
 }
 
-describe('fetchExportString (#335)', () => {
-  it('calls build_rclc_export with the team id and current season code', async () => {
+describe('fetchExportString (#335, split by track #859)', () => {
+  it('calls build_rclc_export with the team id, current season code, and Hero track by default', async () => {
     const { sandbox, rpcCalls } = makeSandbox({ rpcResult: { data: { players: {}, priority: {} }, error: null } });
     sandbox.fetchExportString();
     expect(rpcCalls).toHaveLength(1);
-    expect(rpcCalls[0]).toEqual({ name: 'build_rclc_export', params: { p_team_id: 1, p_season: 'S1' } });
+    expect(rpcCalls[0]).toEqual({
+      name: 'build_rclc_export',
+      params: { p_team_id: 1, p_season: 'S1', p_track: 'Hero' }
+    });
     await flush();
+  });
+
+  it('passes p_track: "Myth" after switching the track toggle to Mythic', async () => {
+    const { sandbox, rpcCalls } = makeSandbox({ rpcResult: { data: { players: {}, priority: {} }, error: null } });
+    sandbox.switchPrioExportTrack('mythic');
+    sandbox.fetchExportString();
+    expect(rpcCalls[0].params).toEqual({ p_team_id: 1, p_season: 'S1', p_track: 'Myth' });
+    await flush();
+  });
+
+  it('switching tracks hides the export body and resets the button to Generate', async () => {
+    const { sandbox, els } = makeSandbox({ rpcResult: { data: { players: {}, priority: {} }, error: null } });
+    sandbox.fetchExportString();
+    await flush();
+    expect(els.prioExportBody.style.display).toBe('');
+
+    sandbox.switchPrioExportTrack('mythic');
+    expect(els.prioExportBody.style.display).toBe('none');
+    expect(els.prioExportLoadBtn.textContent).toBe('Generate');
   });
 
   it('base64-encodes the JSON payload and shows it in the textarea', async () => {

@@ -4,6 +4,12 @@
 // derivation (item_preferences.slot override vs. legacy items.slot
 // fallback), placeholder-item exclusion, track-split priority ordering,
 // season scoping, and authorization.
+//
+// p_track became required (#859): a combined Hero+Myth export measured at
+// ~91k base64 chars live, large enough to stall the WoW client on paste
+// into the addon's import box. Every call below now passes an explicit
+// track, and assertions that used to check both H and M off one combined
+// payload now make two calls (one per track) instead.
 import { describe, it, expect } from 'vitest';
 import { pool, withRole, OFFICER_T1, TEAM_LEADER_T1, RAIDER_T1, OFFICER_T2 } from './helpers.js';
 
@@ -93,11 +99,11 @@ describe('build_rclc_export excludes already-awarded recipients (#480)', () => {
         `insert into public.rclc_loot (team_id, player_id, item_id, track, season) values
            (1, 1, 2, 'Myth', 'export-test')`
       );
-      const res = await q('select public.build_rclc_export(1, $1) as payload', ['export-test']);
-      const priority = res.rows[0].payload.priority['100002'];
+      const hero = await q('select public.build_rclc_export(1, $1, $2) as payload', ['export-test', 'Hero']);
+      const myth = await q('select public.build_rclc_export(1, $1, $2) as payload', ['export-test', 'Myth']);
 
-      expect(priority.H).toEqual(['Seedplayertwo-Illidan']);
-      expect(priority.M).toBeUndefined();
+      expect(hero.rows[0].payload.priority['100002'].H).toEqual(['Seedplayertwo-Illidan']);
+      expect(myth.rows[0].payload.priority['100002']).toBeUndefined();
     });
   });
 
@@ -109,11 +115,11 @@ describe('build_rclc_export excludes already-awarded recipients (#480)', () => {
         `insert into public.rclc_loot (team_id, player_id, item_id, track, season) values
            (1, 2, 2, 'Hero', 'export-test')`
       );
-      const res = await q('select public.build_rclc_export(1, $1) as payload', ['export-test']);
-      const priority = res.rows[0].payload.priority['100002'];
+      const hero = await q('select public.build_rclc_export(1, $1, $2) as payload', ['export-test', 'Hero']);
+      const myth = await q('select public.build_rclc_export(1, $1, $2) as payload', ['export-test', 'Myth']);
 
-      expect(priority.H).toEqual(['Seedraider-Illidan']);
-      expect(priority.M).toEqual(['Seedraider-Illidan']);
+      expect(hero.rows[0].payload.priority['100002'].H).toEqual(['Seedraider-Illidan']);
+      expect(myth.rows[0].payload.priority['100002'].M).toEqual(['Seedraider-Illidan']);
     });
   });
 
@@ -124,19 +130,27 @@ describe('build_rclc_export excludes already-awarded recipients (#480)', () => {
         `insert into public.rclc_loot (team_id, player_id, item_id, track, season) values
            (1, 1, 2, 'Myth', 'some-other-season')`
       );
-      const res = await q('select public.build_rclc_export(1, $1) as payload', ['export-test']);
-      const priority = res.rows[0].payload.priority['100002'];
+      const hero = await q('select public.build_rclc_export(1, $1, $2) as payload', ['export-test', 'Hero']);
+      const myth = await q('select public.build_rclc_export(1, $1, $2) as payload', ['export-test', 'Myth']);
 
-      expect(priority.H).toEqual(['Seedplayertwo-Illidan', 'Seedraider-Illidan']);
-      expect(priority.M).toEqual(['Seedraider-Illidan']);
+      expect(hero.rows[0].payload.priority['100002'].H).toEqual(['Seedplayertwo-Illidan', 'Seedraider-Illidan']);
+      expect(myth.rows[0].payload.priority['100002'].M).toEqual(['Seedraider-Illidan']);
     });
   });
 });
 
 describe('build_rclc_export', () => {
+  it('rejects a track that is not Hero or Myth', async () => {
+    await withRole('authenticated', OFFICER_T1, async (q) => {
+      await expect(q('select public.build_rclc_export(1, $1, $2)', ['export-test', 'Champion'])).rejects.toThrow(
+        'Invalid track'
+      );
+    });
+  });
+
   it('an officer gets players built from item_preferences with slot-key precedence and placeholders excluded', async () => {
     await withItemsAndBisSeeded('authenticated', OFFICER_T1, async (q) => {
-      const res = await q('select public.build_rclc_export(1, $1) as payload', ['export-test']);
+      const res = await q('select public.build_rclc_export(1, $1, $2) as payload', ['export-test', 'Hero']);
       const payload = res.rows[0].payload;
 
       expect(payload.players['Seedraider-Illidan'].trinket2.bis).toEqual([90001]);
@@ -149,18 +163,22 @@ describe('build_rclc_export', () => {
     });
   });
 
-  it('splits priority into Hero/Myth keyed by wow_item_id, ordered by rank', async () => {
+  it('scopes priority to the requested track only, keyed by wow_item_id and ordered by rank', async () => {
     await withRole('authenticated', OFFICER_T1, async (q) => {
       await seedPriority(q);
-      const res = await q('select public.build_rclc_export(1, $1) as payload', ['export-test']);
-      const priority = res.rows[0].payload.priority;
+      const hero = await q('select public.build_rclc_export(1, $1, $2) as payload', ['export-test', 'Hero']);
+      const myth = await q('select public.build_rclc_export(1, $1, $2) as payload', ['export-test', 'Myth']);
 
       // item 2 is Seed Test Robe, wow_item_id 100002 per seed.sql. No
-      // item_preferences rows seeded here, so both status maps come back
-      // empty rather than absent (#wishlist status export).
-      expect(priority['100002']).toEqual({
+      // item_preferences rows seeded here, so the status map comes back
+      // empty rather than absent (#wishlist status export). Only that
+      // track's H/H_status or M/M_status keys are present -- the other
+      // track's data isn't in this payload at all.
+      expect(hero.rows[0].payload.priority['100002']).toEqual({
         H: ['Seedplayertwo-Illidan', 'Seedraider-Illidan'],
-        H_status: {},
+        H_status: {}
+      });
+      expect(myth.rows[0].payload.priority['100002']).toEqual({
         M: ['Seedraider-Illidan'],
         M_status: {}
       });
@@ -173,11 +191,14 @@ describe('build_rclc_export', () => {
       OFFICER_T1,
       `(1, 1, 2, 'bis', 'export-test'), (1, 2, 2, 'good', 'export-test')`,
       async (q) => {
-        const res = await q('select public.build_rclc_export(1, $1) as payload', ['export-test']);
-        const priority = res.rows[0].payload.priority['100002'];
+        const hero = await q('select public.build_rclc_export(1, $1, $2) as payload', ['export-test', 'Hero']);
+        const myth = await q('select public.build_rclc_export(1, $1, $2) as payload', ['export-test', 'Myth']);
 
-        expect(priority.H_status).toEqual({ 'Seedraider-Illidan': 'bis', 'Seedplayertwo-Illidan': 'good' });
-        expect(priority.M_status).toEqual({ 'Seedraider-Illidan': 'bis' });
+        expect(hero.rows[0].payload.priority['100002'].H_status).toEqual({
+          'Seedraider-Illidan': 'bis',
+          'Seedplayertwo-Illidan': 'good'
+        });
+        expect(myth.rows[0].payload.priority['100002'].M_status).toEqual({ 'Seedraider-Illidan': 'bis' });
       }
     );
   });
@@ -188,7 +209,7 @@ describe('build_rclc_export', () => {
     // simulating a fallback-ranked player (e.g. tier-token matching) with
     // no backing wishlist tier to report.
     await withPriorityAndWishlistSeeded('authenticated', OFFICER_T1, `(1, 1, 2, 'ok', 'export-test')`, async (q) => {
-      const res = await q('select public.build_rclc_export(1, $1) as payload', ['export-test']);
+      const res = await q('select public.build_rclc_export(1, $1, $2) as payload', ['export-test', 'Hero']);
       const priority = res.rows[0].payload.priority['100002'];
 
       expect(priority.H_status).toEqual({ 'Seedraider-Illidan': 'ok' });
@@ -221,7 +242,7 @@ describe('build_rclc_export', () => {
         JSON.stringify({ sub: OFFICER_T1, role: 'authenticated' })
       ]);
       await client.query('set local role authenticated');
-      const res = await client.query('select public.build_rclc_export(1, $1) as payload', ['export-test']);
+      const res = await client.query('select public.build_rclc_export(1, $1, $2) as payload', ['export-test', 'Hero']);
       const priority = res.rows[0].payload.priority['100002'];
 
       expect(priority.H).toEqual(['Seedplayertwo-Illidan', 'Seedraider-Illidan']);
@@ -238,7 +259,7 @@ describe('build_rclc_export', () => {
       OFFICER_T1,
       `(1, 1, 2, 'pass', 'export-test'), (1, 2, 2, 'catalyst', 'export-test')`,
       async (q) => {
-        const res = await q('select public.build_rclc_export(1, $1) as payload', ['export-test']);
+        const res = await q('select public.build_rclc_export(1, $1, $2) as payload', ['export-test', 'Hero']);
         const priority = res.rows[0].payload.priority['100002'];
 
         expect(priority.H_status).toEqual({});
@@ -248,7 +269,7 @@ describe('build_rclc_export', () => {
 
   it("attaches the site's default wishlist tier labels when the team has no overrides", async () => {
     await withRole('authenticated', OFFICER_T1, async (q) => {
-      const res = await q('select public.build_rclc_export(1, $1) as payload', ['export-test']);
+      const res = await q('select public.build_rclc_export(1, $1, $2) as payload', ['export-test', 'Hero']);
       expect(res.rows[0].payload.statusLabels).toEqual({ bis: 'BiS', good: '2nd Choice', ok: 'Sidegrade' });
     });
   });
@@ -264,7 +285,7 @@ describe('build_rclc_export', () => {
         JSON.stringify({ sub: OFFICER_T1, role: 'authenticated' })
       ]);
       await client.query('set local role authenticated');
-      const res = await client.query('select public.build_rclc_export(1, $1) as payload', ['export-test']);
+      const res = await client.query('select public.build_rclc_export(1, $1, $2) as payload', ['export-test', 'Hero']);
       // 'bis' was never overridden -- falls back to the site default,
       // merged alongside the two explicit overrides.
       expect(res.rows[0].payload.statusLabels).toEqual({
@@ -281,7 +302,7 @@ describe('build_rclc_export', () => {
   it('scopes priority to the given season, not other seasons for the same team', async () => {
     await withRole('authenticated', OFFICER_T1, async (q) => {
       await seedPriority(q);
-      const res = await q('select public.build_rclc_export(1, $1) as payload', ['some-other-season']);
+      const res = await q('select public.build_rclc_export(1, $1, $2) as payload', ['some-other-season', 'Hero']);
       expect(res.rows[0].payload.priority).toEqual({});
     });
   });
@@ -289,13 +310,15 @@ describe('build_rclc_export', () => {
   it("an officer with no role on team 2 cannot request team 2's export", async () => {
     await withItemsAndBisSeeded('authenticated', OFFICER_T1, async (q) => {
       await seedPriority(q);
-      await expect(q('select public.build_rclc_export(2, $1)', ['export-test'])).rejects.toThrow('Not authorized');
+      await expect(q('select public.build_rclc_export(2, $1, $2)', ['export-test', 'Hero'])).rejects.toThrow(
+        'Not authorized'
+      );
     });
   });
 
   it('a team leader is also authorized', async () => {
     await withRole('authenticated', TEAM_LEADER_T1, async (q) => {
-      const res = await q('select public.build_rclc_export(1, $1) as payload', ['export-test']);
+      const res = await q('select public.build_rclc_export(1, $1, $2) as payload', ['export-test', 'Hero']);
       // seed.sql has no item_preferences rows, so players comes back empty
       // here -- this test only asserts authorization succeeds and
       // season-scoped priority stays empty.
@@ -305,13 +328,17 @@ describe('build_rclc_export', () => {
 
   it('a raider is not authorized', async () => {
     await withRole('authenticated', RAIDER_T1, async (q) => {
-      await expect(q('select public.build_rclc_export(1, $1)', ['export-test'])).rejects.toThrow('Not authorized');
+      await expect(q('select public.build_rclc_export(1, $1, $2)', ['export-test', 'Hero'])).rejects.toThrow(
+        'Not authorized'
+      );
     });
   });
 
   it('an officer on another team is not authorized for team 1', async () => {
     await withRole('authenticated', OFFICER_T2, async (q) => {
-      await expect(q('select public.build_rclc_export(1, $1)', ['export-test'])).rejects.toThrow('Not authorized');
+      await expect(q('select public.build_rclc_export(1, $1, $2)', ['export-test', 'Hero'])).rejects.toThrow(
+        'Not authorized'
+      );
     });
   });
 });

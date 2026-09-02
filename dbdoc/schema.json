@@ -5908,12 +5908,6 @@
       "type": "FUNCTION"
     },
     {
-      "name": "public.build_rclc_export",
-      "return_type": "jsonb",
-      "arguments": "p_team_id integer, p_season text",
-      "type": "FUNCTION"
-    },
-    {
       "name": "public.danger_clear_bis_requests",
       "return_type": "int4",
       "arguments": "p_team_id integer",
@@ -6247,6 +6241,12 @@
       "name": "public.set_team_officer_bios",
       "return_type": "jsonb",
       "arguments": "p_team_id integer, p_bios jsonb",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.build_rclc_export",
+      "return_type": "jsonb",
+      "arguments": "p_team_id integer, p_season text, p_track text",
       "type": "FUNCTION"
     }
   ],

@@ -8,6 +8,18 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.77.25] - 2026-09-02
+
+### Frontend
+
+- The Priority List export string is now split into separate Heroic and Mythic exports instead of one combined string -- the combined string measured ~91k base64 characters live, large enough to stall the WoW client for several seconds on paste into the RCLootCouncil_PriorityLoot addon's import box, independent of how that box renders text (76-char line wrapping and a single-line box were both tried and didn't fix it -- the string itself was just too large). The Priority tab's export card has a Heroic/Mythic toggle (matching the Priority List sub-tab's own toggle); Quick Actions has two "Copy Priority Export" buttons instead of one. Import both halves in the addon -- each import now adds to what's already there instead of replacing it, so order doesn't matter (#859).
+
+### Backend
+
+- `build_rclc_export()` now takes a required `p_track` ('Hero' or 'Myth') and returns only that track's ranked lists -- the old 2-arg combined-track signature is gone, not kept as a fallback (#859).
+
+---
+
 ## [3.77.23] - 2026-09-02
 
 ### Backend

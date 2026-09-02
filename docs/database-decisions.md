@@ -8,6 +8,20 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-02 -- build_rclc_export: split Hero/Myth into separate export strings
+
+Tracking issue: [katogaming88/WGA-Raid-Hub#859](https://github.com/katogaming88/WGA-Raid-Hub/issues/859). The combined Hero+Myth export string measured ~68.5k raw JSON chars / ~91k base64 chars live against team 1's full roster/season -- pasting that into the RCLootCouncil_PriorityLoot addon's import box stalled the WoW client for several seconds, close to a disconnect. Confirmed independent of the addon's EditBox rendering: switching it from multiline (word-wrapped) to single-line (#853, [addon PR #53](https://github.com/katogaming88/RCLootCouncil_PriorityLoot/pull/53)) didn't fix it -- the addon's Lua has no paste handler left to blame either, so the stall is inside WoW's native paste-into-EditBox handling itself. The string is just too large, full stop.
+
+- **`build_rclc_export(p_team_id, p_season, p_track)`** -- `p_track` (`'Hero'`/`'Myth'`) is now required, scoping the `priority` half of the payload to one track (roughly halving it). `players` (BiS data) and `statusLabels` aren't track-specific and stay whole in both halves -- they're small (one entry per player's BiS picks, not per-item ranked lists across 100+ items).
+- **Old 2-arg signature dropped outright**, not kept as an overload -- both known callers (Priority tab, Quick Actions) are updated in the same change; a stray caller silently getting a half-empty export would be worse than a clean break.
+- **Rejected chunked multi-part paste** (splitting into fixed-size pieces the addon concatenates before decoding) as the primary fix -- more robust in theory against arbitrary future growth, but Kat's call was to keep it simple and match the ~50/50 size split, reusing the Heroic/Mythic toggle idiom the Priority List tab already has (#851).
+- **Frontend:** Priority tab's export card gets a Heroic/Mythic toggle (`switchPrioExportTrack`, same shape as `switchPriorityListDiff`); Quick Actions gets two buttons instead of one.
+- **Addon-side counterpart** (separate repo): `RCPL_Data_SaveImportedData()` no longer wipes `RCPL_DB.priority`/`players` on every import -- it merges per-item track keys instead, so importing Hero then Myth (either order, or re-importing just one track later) accumulates into one complete dataset. `/rcpl reset` is the explicit "start fresh" action for officers who want a clean slate.
+
+[Full discussion -> #859](https://github.com/katogaming88/WGA-Raid-Hub/issues/859)
+
+---
+
 ## 2026-09-02 -- generate_priority_order: exclude OS/M+ RCLC responses from counting as received loot
 
 Tracking issue: [katogaming88/WGA-Raid-Hub#856](https://github.com/katogaming88/WGA-Raid-Hub/issues/856). The `recip` CTE treated *any* `rclc_loot` row for a player/item/season as "already received this" (drives the has_myth/has_hero/has_champ exclusion and softening multipliers), regardless of the RCLC response label actually selected. An off-spec (OS) or Mythic+ (M+) roll response isn't a loot council award for that character's main spec, so it shouldn't suppress or soften future priority the way an actual MS award does.

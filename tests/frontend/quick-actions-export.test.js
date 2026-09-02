@@ -35,7 +35,12 @@ function makeSandbox({ rpcResult, writeText, invokeResult, teamSlug } = {}) {
       }
     }
   };
-  var els = { oqaExportBtn: makeEl(), oqaStatus: makeEl(), oqaAttendBtn: makeEl() };
+  var els = {
+    oqaExportHeroicBtn: makeEl(),
+    oqaExportMythicBtn: makeEl(),
+    oqaStatus: makeEl(),
+    oqaAttendBtn: makeEl()
+  };
 
   var sandbox = {
     console,
@@ -66,12 +71,15 @@ function makeSandbox({ rpcResult, writeText, invokeResult, teamSlug } = {}) {
   return { sandbox, rpcCalls, invokeCalls, els };
 }
 
-describe('qaExportString (#408)', () => {
-  it('calls build_rclc_export with the team id and current season code, not the GAS getExportString action', async () => {
+describe('qaExportString (#408, split by track #859)', () => {
+  it('calls build_rclc_export with the team id, season code, and the requested track, not the GAS getExportString action', async () => {
     const { sandbox, rpcCalls } = makeSandbox({ rpcResult: { data: { players: {}, priority: {} }, error: null } });
-    sandbox.qaExportString();
+    sandbox.qaExportString('Hero');
     expect(rpcCalls).toHaveLength(1);
-    expect(rpcCalls[0]).toEqual({ name: 'build_rclc_export', params: { p_team_id: 1, p_season: 'S1' } });
+    expect(rpcCalls[0]).toEqual({
+      name: 'build_rclc_export',
+      params: { p_team_id: 1, p_season: 'S1', p_track: 'Hero' }
+    });
     await flush();
   });
 
@@ -79,7 +87,7 @@ describe('qaExportString (#408)', () => {
     const payload = { players: { 'Kato-Illidan': { chest: { bis: [100002] } } }, priority: {} };
     const writeText = vi.fn(() => Promise.resolve());
     const { sandbox, els } = makeSandbox({ rpcResult: { data: payload, error: null }, writeText });
-    sandbox.qaExportString();
+    sandbox.qaExportString('Hero');
     await flush();
     await flush();
 
@@ -87,7 +95,16 @@ describe('qaExportString (#408)', () => {
     const decoded = JSON.parse(Buffer.from(writeText.mock.calls[0][0], 'base64').toString('utf8'));
     expect(decoded).toEqual(payload);
     expect(els.oqaStatus.textContent).toBe('Copied!');
-    expect(els.oqaExportBtn.disabled).toBe(false);
+    expect(els.oqaExportHeroicBtn.disabled).toBe(false);
+  });
+
+  it('uses the Mythic button/label and passes p_track: "Myth" when called with Myth', async () => {
+    const { sandbox, rpcCalls, els } = makeSandbox({ rpcResult: { data: { players: {}, priority: {} }, error: null } });
+    sandbox.qaExportString('Myth');
+    expect(rpcCalls[0].params.p_track).toBe('Myth');
+    await flush();
+    expect(els.oqaExportMythicBtn.textContent).toBe('Copy Priority Export (Mythic)');
+    expect(els.oqaExportHeroicBtn.textContent).toBe('');
   });
 
   it('shows the RPC error message and does not touch the clipboard on failure', async () => {
@@ -96,7 +113,7 @@ describe('qaExportString (#408)', () => {
       rpcResult: { data: null, error: { message: 'Not authorized' } },
       writeText
     });
-    sandbox.qaExportString();
+    sandbox.qaExportString('Hero');
     await flush();
 
     expect(writeText).not.toHaveBeenCalled();
