@@ -14,6 +14,34 @@ var ARMOR_SLOT_ORDER = ['HEAD', 'SHOULDER', 'CHEST', 'HANDS', 'LEGS', 'BACK', 'W
 // *_item_catalog_slot_normalization.sql) -- its shape is hardcoded on the
 // decoding side by a separate repo, RCLootCouncil_PriorityLoot. Any change to
 // what that RPC returns needs a matching check against that addon.
+//
+// Split into a per-track export (p_track, required) instead of one combined
+// string as of #859: a full roster+season export measured at ~91k base64
+// chars, and pasting that into the addon's import box stalled the WoW client
+// for several seconds -- confirmed independent of the addon's EditBox being
+// single- or multi-line (#853/#857's follow-up), so the fix is shrinking the
+// string itself, not how the addon renders it. Each track's export is
+// roughly half the size. The addon merges Hero/Myth imports cumulatively
+// (RCPL_Data_SaveImportedData in RCLootCouncil_PriorityLoot) rather than one
+// overwriting the other, so importing both halves (in either order, or
+// re-importing just one later) still produces one complete dataset.
+var _prioExportTrack = 'heroic';
+
+function switchPrioExportTrack(diff) {
+  _prioExportTrack = diff;
+  var heroBtn = document.getElementById('prioExportDiffHeroic');
+  var mythBtn = document.getElementById('prioExportDiffMythic');
+  if (heroBtn) heroBtn.classList.toggle('active', diff === 'heroic');
+  if (mythBtn) mythBtn.classList.toggle('active', diff === 'mythic');
+  // Switching tracks invalidates whatever string is currently shown --
+  // force an explicit re-Generate rather than silently keeping stale text
+  // on screen that no longer matches the selected track.
+  var body = document.getElementById('prioExportBody');
+  var btn = document.getElementById('prioExportLoadBtn');
+  if (body) body.style.display = 'none';
+  if (btn) btn.textContent = 'Generate';
+}
+
 function fetchExportString() {
   var btn = document.getElementById('prioExportLoadBtn');
   var body = document.getElementById('prioExportBody');
@@ -24,9 +52,10 @@ function fetchExportString() {
   }
 
   var season = window.DATA && DATA.seasonName ? seasonCodeForDisplay(DATA.seasonName.trim()) : '';
+  var track = _prioExportTrack === 'mythic' ? 'Myth' : 'Hero';
 
   supabaseClient
-    .rpc('build_rclc_export', { p_team_id: _teamCfg.supabaseTeamId, p_season: season })
+    .rpc('build_rclc_export', { p_team_id: _teamCfg.supabaseTeamId, p_season: season, p_track: track })
     .then(function (result) {
       if (btn) {
         btn.disabled = false;

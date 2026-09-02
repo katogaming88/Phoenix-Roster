@@ -2392,7 +2392,7 @@ export type Database = {
       }
       boe_revert: { Args: { p_id: number }; Returns: string }
       build_rclc_export: {
-        Args: { p_season: string; p_team_id: number }
+        Args: { p_season: string; p_team_id: number; p_track: string }
         Returns: Json
       }
       check_priority_order_drift: {
