@@ -524,7 +524,9 @@ A summary strip and three sections:
   anything that isn't going to sell.
 - **Awaiting Payout** -- sold items, oldest first, with the split already computed.
   **Mark Paid** once the finder has their gold; the row moves to History.
-- **History** -- paid and retired items, newest first.
+- **History** -- paid and retired items, newest first, twenty to a page. Previous and Next
+  sit under the table and a line beneath them says which rows are showing; the page you are
+  on survives a Mark Paid or an undo.
 
 **The split** is guild policy and guild-wide rather than per-team, set on the site admin
 dashboard: the finder gets a percentage of the gross sale, or a flat floor below a pivot sale
