@@ -16,6 +16,14 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.77.24] - 2026-09-01
+
+### Frontend
+
+- Reverted 3.77.23's export-string line wrapping -- it didn't fix the addon-side client stall on paste, because the cost is inherent to the addon's import box laying out its full multiline text, not to the length of an individual unbroken "word". The real fix (a single-line import box) shipped in the RCLootCouncil_PriorityLoot addon instead; the export string here is back to one unbroken line.
+
+---
+
 ## [3.77.23] - 2026-09-01
 
 ### Frontend
