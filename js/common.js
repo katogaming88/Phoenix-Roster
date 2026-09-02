@@ -94,7 +94,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.77.22';
+var VERSION = '3.77.23';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -481,7 +481,14 @@ function _utf8ToBase64(str) {
   var bytes = new TextEncoder().encode(str);
   var binary = '';
   for (var i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-  return btoa(binary);
+  var b64 = btoa(binary);
+  // Insert a line break every 76 chars. The raw output is one unbroken
+  // "word" -- pasting that into the addon's multiline EditBox makes the WoW
+  // client's word-wrap layout choke on it (it's O(n) length text with no
+  // break point), stalling the client long enough to risk a disconnect.
+  // The addon's Base64Decode() already strips all whitespace before
+  // decoding, so wrapping here is purely cosmetic/perf and safe to add.
+  return b64.replace(/(.{76})/g, '$1\n');
 }
 
 var DATA = null;
