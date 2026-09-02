@@ -485,9 +485,13 @@ describe('reading History by keyset', () => {
       );
     }
     const { client, captured } = makeBoeClient({ items, listings: [], rpc: managerRpc() });
-    const { els } = await build({ client });
+    const { sandbox, els } = await build({ client });
     expect(captured.gts).toContainEqual(['boe_items', 'id', 1000]);
-    expect(els.guildBoeHistory.innerHTML).toContain('Item 1150');
+    // The last row's name in History used to prove it arrived. History renders
+    // twenty rows at a time since #863, so the proof is the model and the
+    // summary strip, which count every row: 1150 x 800 guild cut.
+    expect(sandbox._boeItems.length).toBe(1150);
+    expect(els.guildBoeSummary.innerHTML).toContain('920,000');
   });
 });
 
