@@ -10,6 +10,8 @@
   --gold:        #d6a344;
   --gold-dim:    #9e742a;
   --gold-light:  #f0c870;
+  --gold-rgb:       214,163,68;
+  --gold-light-rgb: 240,200,112;
   --text:        #e8e3d8;
   --text-muted:  #c4bdb2;
   --text-dim:    #aea9a0;
@@ -17,8 +19,217 @@
   --heal:        #3ddc84;
   --ranged:      #bf8cff;
   --melee:       #ff7c5c;
+  /* Progression/loot difficulty colors (Heroic/Mythic) -- previously
+     hardcoded, independent of the theme playground entirely (#864
+     follow-up: they visibly clashed with Gruvbox instead of picking up its
+     palette like everything else does). */
+  --heroic:      #4dd9e0;
+  --heroic-dim:  #1f8a90;
+  --heroic-rgb:  77,217,224;
+  --mythic:      #b085f0;
+  --mythic-dim:  #6a30c8;
+  --mythic-rgb:  176,133,240;
+  --font-heading: 'Cinzel', serif;
+  --font-body:    'Rajdhani', sans-serif;
 }
-body { background:var(--bg); color:var(--text); font-family:'Rajdhani',sans-serif; font-size:18px; min-height:100vh; display:flex; flex-direction:column; }
+body { background:var(--bg); color:var(--text); font-family:var(--font-body); font-size:18px; min-height:100vh; display:flex; flex-direction:column; }
+
+/* Theme playground (#864) -- temporary, for comparing palettes/fonts live via
+   #themeSwitcher/#fontSwitcher (index.html). data-theme only ever redefines
+   the --bg and --gold custom properties (--gold/--gold-dim/--gold-light stay
+   the "accent" trio even when a theme's accent isn't literally gold --
+   renaming them site-wide is a bigger refactor than this exploration needs);
+   data-font only ever
+   redefines --font-heading/--font-body, kept as a separate attribute so any
+   color palette can be tried with any font pairing instead of the two being
+   locked together. Font choices here are deliberately plain/readable --
+   an earlier Orbitron/Marcellus SC pass read as too different/harder to
+   read. Delete this block, both attributes' data-* wiring, and the switcher
+   markup once a direction is picked, or fold the winner's values into :root
+   above and delete the rest. */
+/* Crimson/Arcane/Frost/Rose/Sage/Modern/Slate/Navy all rejected or merged
+   away -- landed here: Default's own --bg/--bg-card/--bg-elevated (no color
+   shift on the background at all now, warm near-black, unchanged from
+   :root above) with a white/neutral accent trio instead of gold. */
+:root[data-theme="mono"] {
+  --gold:#e8e9ec; --gold-dim:#6b6d73; --gold-light:#ffffff;
+  --gold-rgb:232,233,236; --gold-light-rgb:255,255,255;
+  /* Heroic/Mythic desaturated too, not just the accent -- leaving these
+     cyan/purple would be the one spot of real color left in an otherwise
+     monochrome theme. Kept distinguishable by lightness alone (heroic
+     lighter, mythic darker), same true grays as everything else here. */
+  --heroic:#d0d1d4; --heroic-dim:#6e6f73; --heroic-rgb:208,209,212;
+  --mythic:#9a9ba0; --mythic-dim:#55565a; --mythic-rgb:154,155,160;
+}
+/* Well-known dev-tool/editor dark themes (#864 follow-up: "what are some
+   traditional website themes"). GitHub Dark/Nord/Dracula/Monokai/Terminal
+   Green/Solarized Dark/Material Dark all rejected, leaving just Gruvbox --
+   the one Kat actually liked. No --bg* of its own (like Mono above) -- same
+   Default background as everything else, just Gruvbox's orange/tan accent
+   and text (--text/--text-muted/--text-dim, not just the accent trio) on
+   top of it instead of a Gruvbox-authentic background. */
+:root[data-theme="gruvbox"] {
+  --gold:#fe8019; --gold-dim:#af3a03; --gold-light:#fabd2f;
+  --gold-rgb:254,128,25; --gold-light-rgb:250,189,47;
+  --text:#ebdbb2; --text-muted:#d5c4a1; --text-dim:#a89984;
+  /* Heroic/Mythic swapped for Gruvbox's own canonical blue/purple (its
+     16-color terminal palette) instead of the default cyan/violet, which
+     read as an unrelated color system next to Gruvbox's warm orange/tan. */
+  --heroic:#83a598; --heroic-dim:#4f6a60; --heroic-rgb:131,165,152;
+  --mythic:#d3869b; --mythic-dim:#8a4f5c; --mythic-rgb:211,134,155;
+}
+:root[data-font="inter"] { --font-heading:'Inter', sans-serif; --font-body:'Inter', sans-serif; }
+:root[data-font="roboto"] { --font-heading:'Roboto', sans-serif; --font-body:'Roboto', sans-serif; }
+:root[data-font="opensans"] { --font-heading:'Open Sans', sans-serif; --font-body:'Open Sans', sans-serif; }
+:root[data-font="merriweather"] { --font-heading:'Merriweather', serif; --font-body:'Source Sans 3', sans-serif; }
+:root[data-font="system"] { --font-heading:-apple-system,'Segoe UI',Roboto,sans-serif; --font-body:-apple-system,'Segoe UI',Roboto,sans-serif; }
+/* top-right, not bottom-right -- .stream-widget (the live-streams pill,
+   further down this file) already owns that corner. */
+.theme-switcher-dev { position:fixed; top:1rem; right:1rem; z-index:500; display:flex; flex-direction:column; gap:0.4rem; background:var(--bg-card); border:1px solid var(--border-mid); border-radius:6px; padding:0.5rem 0.75rem; box-shadow:0 4px 16px rgba(0,0,0,0.5); }
+.theme-switcher-dev-row { display:flex; align-items:center; gap:0.5rem; }
+.theme-switcher-dev label { font-size:0.85rem; color:var(--text-muted); letter-spacing:0.06em; text-transform:uppercase; min-width:3.2rem; }
+.theme-switcher-dev select { font-family:var(--font-body); font-size:0.95rem; background:var(--bg-elevated); color:var(--text); border:1px solid var(--border-mid); border-radius:4px; padding:0.3rem 0.5rem; }
+
+/* "Flat & minimal" look (#864 follow-up) -- applied directly to index.html
+   via <body class="flat-look">, not a switcher toggle: this touches so many
+   rules (text-transform/letter-spacing alone is on 80+ selectors across the
+   whole stylesheet) that plumbing it as a live-comparable toggle everywhere
+   would be a much bigger job than trying the direction out first. Scoped by
+   the body class rather than editing the base rules in place, so
+   officer.html/guild.html/admin.html (sharing this same stylesheet) are
+   completely unaffected until this direction is confirmed -- at which point
+   the winning values replace the base rules and this whole block goes away,
+   the same lifecycle the theme/font playground above has.
+   The three moves: (1) uppercase+letter-spaced labels become plain sentence
+   case -- that treatment is what reads as "guild site," (2) colored
+   border-top accent stripes and glow/shadow effects drop out in favor of
+   plain 1px borders and flat backgrounds, (3) a bit more breathing room
+   between sections. Deliberately NOT touching layout/structure, spacing
+   within a component, or any color value -- those are separate questions
+   from this one. */
+body.flat-look .site-nav-item,
+body.flat-look .sidebar-sub,
+body.flat-look .oqa-label,
+body.flat-look .pub-stat-label,
+body.flat-look .prog-aotc,
+body.flat-look .roster-sub-tab,
+body.flat-look .about-sub-tab,
+body.flat-look .pub-loot-title,
+body.flat-look .pub-loot-diff,
+body.flat-look .mini-cal-header,
+body.flat-look .mini-cal-weekday,
+body.flat-look .selector-label,
+body.flat-look .team-switcher,
+body.flat-look .modal-title,
+body.flat-look .roster-summary-title,
+body.flat-look .roster-summary-role-label,
+body.flat-look .roster-summary-total-label,
+body.flat-look .roster-summary-section-label,
+body.flat-look .btn,
+body.flat-look .badge,
+body.flat-look .discord-nav-dropdown button,
+body.flat-look .theme-switcher-dev label,
+body.flat-look .calendar-legend-item {
+  text-transform: none;
+  letter-spacing: normal;
+}
+body.flat-look .header-emblem,
+body.flat-look .sidebar-emblem { filter: none; }
+body.flat-look .header h1,
+body.flat-look .sidebar-team-name { text-shadow: none; }
+body.flat-look .header::before { display: none; }
+body.flat-look .theme-switcher-dev,
+body.flat-look .discord-nav-dropdown,
+body.flat-look .notif-dropdown,
+body.flat-look .modal-box,
+body.flat-look .stream-widget-panel,
+body.flat-look .stream-widget-pill { box-shadow: none; }
+body.flat-look .stream-live-dot,
+body.flat-look .stream-widget-dot { box-shadow: none; }
+body.flat-look .modal-box,
+body.flat-look .stream-widget-panel { border-radius: 4px; }
+body.flat-look .landing-body { gap: 2.75rem; }
+body.flat-look .prog-wrap,
+body.flat-look .roster-layout { gap: 1.5rem; }
+
+/* The above (labels/shadows/radius) was still every card as a card --
+   background fill, full border, drop shadow -- just with quieter decoration.
+   That's what actually reads as "same boxes." This second pass removes the
+   boxes themselves: no card background, no border, no border-radius --
+   content sits directly on the page, separated by a single hairline divider
+   (a bottom border, not a full box outline) or by whitespace alone. */
+body.flat-look .landing-card,
+body.flat-look .bio-card {
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0 0 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+body.flat-look .prog-card {
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0 0 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+body.flat-look .roster-summary {
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0 0 0 1.5rem;
+  border-left: 1px solid var(--border);
+}
+/* Recent Loot/roster table rows already read as a plain list, not boxes --
+   left alone. Calendar grid cells are the one place a "box" is the content
+   itself (a day cell), not decoration around it, so those keep their
+   borders too. */
+
+/* Drastic pass (#864): a genuinely different layout, not just de-boxed --
+   the stat row as one oversized hero number line instead of small tiles.
+   (Left-aligned was tried here first and rejected -- stays centered, like
+   the rest of the page.) Meant to be looked at with the Mono theme
+   selected -- there's no color left to lean on once the boxes/shadows are
+   gone, so this leans on scale/whitespace contrast instead. */
+body.flat-look #landingView .landing-body { align-items: stretch; max-width: 1100px; margin: 0 auto; }
+/* Stat tiles: bordered boxes, all 4 the same exact width/height via an
+   actual grid instead of a flex row -- flex + wrapping text is what let the
+   "7/8 H" progress tile grow taller than its siblings in the first place.
+   Equal 1fr columns + stretch means a longer label (a raid name) just wraps
+   inside its own cell without changing any other cell's size. */
+body.flat-look .landing-hero-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; max-width: none; width: 100%; margin-bottom: 0.5rem; }
+body.flat-look .pub-stat {
+  background: var(--bg-card);
+  border: 1px solid var(--border-mid);
+  border-radius: 6px;
+  padding: 1.25rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+/* Small enough, with room either side, that "7/8 H" never needs to wrap. */
+body.flat-look .pub-stat-num { font-size: 2.1rem; line-height: 1.15; font-weight: 700; white-space: nowrap; }
+/* Two-column dashboard (#864): a narrower personal rail (lookup + calendar)
+   beside a wider team column (progression + loot), instead of one stacked
+   center column -- the actual layout-composition change, not decoration. */
+body.flat-look .landing-dashboard { display: grid; grid-template-columns: 320px 1fr; gap: 2.5rem; align-items: start; width: 100%; }
+body.flat-look .landing-rail { display: flex; flex-direction: column; gap: 2.5rem; }
+body.flat-look .landing-main { display: flex; flex-direction: column; gap: 2.5rem; min-width: 0; }
+@media (max-width: 800px) { body.flat-look .landing-dashboard { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { body.flat-look .landing-hero-stats { grid-template-columns: repeat(2, 1fr); } }
+body.flat-look .pub-stat-label { margin-top: 0.4rem; }
+/* .landing-main is narrower than the old single centered column was (it's
+   sharing the 1100px dashboard with a 320px rail now) -- 2 raid cards side
+   by side left no room for an 8-boss card's 2 sub-columns, truncating names
+   again. One raid card per row here instead. */
+body.flat-look .landing-main .prog-wrap { grid-template-columns: 1fr; }
+/* Recent Loot is its own full-width section below the 2-column split (not
+   inside either column -- see index.html's comment on #landingLoot for why),
+   so it gets the same 1100px width as the dashboard above it instead of
+   .pub-loot's normal 760px reading-width cap. */
+body.flat-look #landingLoot.pub-loot { max-width: none; }
 
 /* Accessibility utilities (#777). Guild-only when they landed; every page uses
    them since #437 gave the other three a skip link. The focus-visible baseline
@@ -52,9 +263,9 @@ body { background:var(--bg); color:var(--text); font-family:'Rajdhani',sans-seri
 
 /* Header */
 .header { position:relative; padding:2.5rem 2rem 2rem; text-align:center; border-bottom:1px solid var(--border); overflow:hidden; }
-.header::before { content:''; position:absolute; inset:0; background:radial-gradient(ellipse 60% 140% at 50% 0%, rgba(214,163,68,0.07) 0%, transparent 70%); pointer-events:none; }
-.header-emblem { font-size:2rem; display:block; margin-bottom:0.4rem; filter:drop-shadow(0 0 10px rgba(214,163,68,0.35)); }
-.header h1 { font-family:'Cinzel',serif; font-size:1.7rem; font-weight:700; letter-spacing:0.12em; color:var(--gold-light); text-shadow:0 0 24px rgba(214,163,68,0.25); }
+.header::before { content:''; position:absolute; inset:0; background:radial-gradient(ellipse 60% 140% at 50% 0%, rgba(var(--gold-rgb),0.07) 0%, transparent 70%); pointer-events:none; }
+.header-emblem { font-size:2rem; display:block; margin-bottom:0.4rem; filter:drop-shadow(0 0 10px rgba(var(--gold-rgb),0.35)); }
+.header h1 { font-family:var(--font-heading); font-size:1.7rem; font-weight:700; letter-spacing:0.12em; color:var(--gold-light); text-shadow:0 0 24px rgba(var(--gold-rgb),0.25); }
 .header-sub { font-size:1rem; color:var(--text); letter-spacing:0.18em; text-transform:uppercase; margin-top:0.3rem; }
 .header-divider { width:100px; height:1px; background:linear-gradient(90deg,transparent,var(--gold-dim),transparent); margin:1rem auto 0; }
 .header-link { display:inline-block; text-decoration:none; color:inherit; transition:opacity 0.15s; }
@@ -65,7 +276,7 @@ body { background:var(--bg); color:var(--text); font-family:'Rajdhani',sans-seri
 .header-links { position:absolute; top:1rem; right:1.5rem; display:flex; align-items:center; gap:0.5rem; padding:0.4rem 0.6rem; background:var(--bg-card); border:1px solid var(--border); border-radius:4px; }
 .header-links-label { font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--text-muted); font-weight:600; }
 .header-link-icon { display:inline-flex; align-items:center; justify-content:center; width:2.6rem; height:2.6rem; border-radius:4px; background:rgba(255,255,255,0.04); text-decoration:none; opacity:0.8; transition:opacity 0.15s, background 0.15s; }
-.header-link-icon:hover { opacity:1; background:rgba(214,163,68,0.14); }
+.header-link-icon:hover { opacity:1; background:rgba(var(--gold-rgb),0.14); }
 .header-link-icon img { width:30px; height:30px; border-radius:4px; display:block; }
 @media (max-width:640px) {
   .header-links { position:static; margin:0.9rem auto 0; width:fit-content; }
@@ -74,7 +285,7 @@ body { background:var(--bg); color:var(--text); font-family:'Rajdhani',sans-seri
 /* Site nav */
 .site-nav { display:flex; align-items:stretch; background:var(--bg-card); border-bottom:1px solid var(--border); padding:0 1rem; }
 .site-nav-right { margin-left:auto; display:flex; align-items:stretch; }
-.site-nav-item { font-family:'Rajdhani',sans-serif; font-size:0.95rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; padding:0.65rem 1rem; background:transparent; border:none; border-bottom:2px solid transparent; color:var(--text-muted); cursor:pointer; transition:color 0.15s,border-color 0.15s; text-decoration:none; display:inline-flex; align-items:center; }
+.site-nav-item { font-family:var(--font-body); font-size:0.95rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; padding:0.65rem 1rem; background:transparent; border:none; border-bottom:2px solid transparent; color:var(--text-muted); cursor:pointer; transition:color 0.15s,border-color 0.15s; text-decoration:none; display:inline-flex; align-items:center; }
 .site-nav-item:hover { color:var(--text); }
 .site-nav-item.active { color:var(--gold-light); border-bottom-color:var(--gold); }
 .site-nav-discord { color:var(--text-muted); }
@@ -82,7 +293,7 @@ body { background:var(--bg); color:var(--text); font-family:'Rajdhani',sans-seri
 .site-nav-discord.discord-logged-in { color:var(--gold-light); }
 .site-nav-discord.discord-logged-in:hover { color:var(--gold); }
 .discord-nav-dropdown { position:absolute; top:100%; right:0; background:var(--bg-elevated); border:1px solid var(--border-mid); border-radius:4px; min-width:120px; z-index:300; box-shadow:0 4px 12px rgba(0,0,0,0.5); }
-.discord-nav-dropdown button { display:block; width:100%; text-align:left; background:transparent; border:none; color:var(--text-muted); font-family:'Rajdhani',sans-serif; font-size:0.95rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; padding:0.55rem 1rem; cursor:pointer; }
+.discord-nav-dropdown button { display:block; width:100%; text-align:left; background:transparent; border:none; color:var(--text-muted); font-family:var(--font-body); font-size:0.95rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; padding:0.55rem 1rem; cursor:pointer; }
 .discord-nav-dropdown button:hover { color:var(--text); background:rgba(255,255,255,0.04); }
 /* In-app notification bell (#151) */
 .nav-bell-wrap { position:relative; display:flex; align-items:stretch; }
@@ -94,22 +305,22 @@ body { background:var(--bg); color:var(--text); font-family:'Rajdhani',sans-seri
 .notif-clear-btn:hover { color:var(--gold); text-decoration:underline; }
 .notif-row { padding:0.6rem 1rem; border-bottom:1px solid var(--border); }
 .notif-row:last-child { border-bottom:none; }
-.notif-row.notif-unread { background:rgba(214,163,68,0.07); }
+.notif-row.notif-unread { background:rgba(var(--gold-rgb),0.07); }
 .notif-message { font-size:0.94rem; color:var(--text); line-height:1.4; }
 .notif-time { font-size:0.79rem; color:var(--text-dim); margin-top:0.2rem; }
 /* Officer quick-actions bar */
 .officer-quick-bar { background:var(--bg-elevated); border-bottom:1px solid var(--border); padding:0.45rem 1rem 0.6rem; display:flex; flex-direction:column; gap:0; }
 .oqa-row { display:flex; align-items:center; gap:1rem; flex-wrap:wrap; }
-.oqa-label { font-family:'Cinzel',serif; font-size:0.87rem; color:var(--gold-dim); letter-spacing:0.15em; text-transform:uppercase; white-space:nowrap; flex-shrink:0; }
+.oqa-label { font-family:var(--font-heading); font-size:0.87rem; color:var(--gold-dim); letter-spacing:0.15em; text-transform:uppercase; white-space:nowrap; flex-shrink:0; }
 .oqa-actions { display:flex; gap:0.4rem; flex-wrap:wrap; }
 .oqa-btn { font-size:0.91rem !important; padding:0.25rem 0.7rem !important; }
 .oqa-status { font-size:0.95rem; color:var(--text-muted); flex:1; min-width:0; }
 .oqa-loot-panel { padding-top:0.25rem; }
-.team-switcher { font-family:'Rajdhani',sans-serif; font-size:0.95rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; padding:0.4rem 0.6rem; background:var(--bg-elevated); border:1px solid var(--border-mid); border-radius:3px; color:var(--gold-light); cursor:pointer; align-self:center; margin-right:0.5rem; }
+.team-switcher { font-family:var(--font-body); font-size:0.95rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; padding:0.4rem 0.6rem; background:var(--bg-elevated); border:1px solid var(--border-mid); border-radius:3px; color:var(--gold-light); cursor:pointer; align-self:center; margin-right:0.5rem; }
 /* Discord claiming modal */
 .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.72); z-index:200; display:flex; align-items:center; justify-content:center; }
 .modal-box { background:var(--bg-card); border:1px solid var(--border-mid); border-radius:6px; padding:2rem; width:100%; max-width:400px; display:flex; flex-direction:column; gap:1rem; }
-.modal-title { font-family:'Cinzel',serif; font-size:1rem; color:var(--gold-light); letter-spacing:0.1em; margin:0; }
+.modal-title { font-family:var(--font-heading); font-size:1rem; color:var(--gold-light); letter-spacing:0.1em; margin:0; }
 .modal-body { font-size:1.07rem; color:var(--text-muted); margin:0; }
 .modal-actions { display:flex; gap:0.5rem; }
 /* #512: Confirm/Cancel default to content-width, left-packed with dead space
@@ -125,10 +336,56 @@ body { background:var(--bg); color:var(--text); font-family:'Rajdhani',sans-seri
 .claim-modal-team-switch { display:flex; align-items:center; gap:0.6rem; font-size:1rem; color:var(--text-muted); }
 .site-nav-item[data-tooltip] { position:relative; }
 .site-nav-item[data-tooltip]::after { content:attr(data-tooltip); position:absolute; top:calc(100% + 6px); left:50%; transform:translateX(-50%); background:var(--bg-elevated); border:1px solid var(--border-mid); color:var(--text-muted); font-size:1.07rem; font-weight:400; letter-spacing:0.04em; text-transform:none; white-space:nowrap; padding:0.3rem 0.6rem; border-radius:3px; pointer-events:none; opacity:0; transition:opacity 0s; z-index:200; }
-.site-nav-item[data-tooltip]:hover::after { opacity:1; }
+.site-nav-item[data-tooltip]:hover::after, .site-nav-item[data-tooltip]:focus-visible::after { opacity:1; }
 #navHome::after, #navSignup::after { left:0; transform:none; }
 #navDiscord::after, #navOfficer::after { left:auto; right:0; transform:none; }
 @media (max-width:480px) { .site-nav { padding:0 0.25rem; } .site-nav-item { padding:0.6rem 0.6rem; font-size:0.89rem; } }
+
+/* Sidebar shell (index.html/officer.html only -- guild.html keeps the plain
+   top .site-nav above, since it has no team to anchor a sidebar to). Reuses
+   .site-nav-item for the actual nav buttons/links (renderSiteNav() in
+   common.js emits that class) so JS and the guild.html top-bar styling above
+   stay untouched; everything here is scoped under .sidebar-nav /
+   .sidebar-footer so it only overrides the look inside the sidebar. */
+.app-shell { flex:1; display:flex; align-items:flex-start; min-height:0; }
+.app-content { flex:1; min-width:0; display:flex; flex-direction:column; }
+/* overflow-y:hidden, not auto -- .sidebar-nav below already scrolls
+   internally (flex:1 + its own overflow-y:auto) when the nav list is long,
+   which is the only part of the sidebar that should ever need to scroll.
+   auto here too meant the *whole* sidebar (logo, team switcher, footer and
+   all) scrolled as one block the moment total content was even a pixel
+   taller than the viewport, showing a scrollbar that had no business being
+   there. */
+.sidebar { width:240px; flex-shrink:0; background:var(--bg-card); border-right:1px solid var(--border); display:flex; flex-direction:column; position:sticky; top:0; height:100vh; overflow-y:hidden; overflow-x:hidden; z-index:220; }
+.sidebar-brand { display:flex; align-items:center; gap:0.7rem; padding:1.5rem 1.25rem 1.1rem; text-decoration:none; color:inherit; border-bottom:1px solid var(--border); transition:opacity 0.15s; }
+.sidebar-brand:hover { opacity:0.82; }
+.sidebar-emblem { font-size:1.7rem; line-height:1; filter:drop-shadow(0 0 10px rgba(var(--gold-rgb),0.35)); }
+.sidebar-brand-text { display:flex; flex-direction:column; min-width:0; }
+.sidebar-team-name { font-family:var(--font-heading); font-weight:700; font-size:1.05rem; letter-spacing:0.08em; color:var(--gold-light); text-shadow:0 0 18px rgba(var(--gold-rgb),0.2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sidebar-sub { font-size:0.7rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--text-dim); margin-top:0.15rem; }
+.sidebar-switch-row { padding:0.85rem 1.1rem; border-bottom:1px solid var(--border); }
+.sidebar-switch-row .team-switcher { width:100%; margin:0; text-align:center; }
+.sidebar-nav { flex:1; display:flex; flex-direction:column; padding:0.6rem; gap:2px; overflow-y:auto; overflow-x:hidden; }
+.sidebar-nav .site-nav-item { width:100%; justify-content:flex-start; text-align:left; padding:0.6rem 0.85rem; border-radius:4px; border-bottom:none; border-left:2px solid transparent; font-size:0.92rem; }
+.sidebar-nav .site-nav-item:hover { background:var(--bg-elevated); }
+.sidebar-nav .site-nav-item.active { background:rgba(var(--gold-rgb),0.1); border-left-color:var(--gold); border-bottom-color:transparent; }
+.sidebar-nav .site-nav-item[data-tooltip]::after { top:50%; left:100%; bottom:auto; transform:translateY(-50%); margin-left:8px; }
+.sidebar-external-links { display:flex; gap:0.5rem; padding:0.75rem 1.1rem; border-top:1px solid var(--border); }
+.sidebar-external-links .header-link-icon { width:2.3rem; height:2.3rem; }
+.sidebar-external-links .header-link-icon img { width:26px; height:26px; }
+.sidebar-footer { border-top:1px solid var(--border); padding:0.6rem; display:flex; flex-direction:column; gap:2px; }
+.sidebar-footer .site-nav-item, .sidebar-footer .nav-bell-wrap .site-nav-item { width:100%; justify-content:flex-start; text-align:left; padding:0.6rem 0.85rem; border-radius:4px; border-bottom:none; border-left:2px solid transparent; }
+.sidebar-footer .site-nav-item:hover { background:var(--bg-elevated); }
+.sidebar-footer .nav-bell-wrap { width:100%; }
+.sidebar-footer .notif-dropdown { left:100%; right:auto; top:0; margin-left:6px; }
+.sidebar-toggle { display:none; align-items:center; justify-content:center; width:2.5rem; height:2.5rem; margin:0.85rem 0 0 0.85rem; background:var(--bg-card); border:1px solid var(--border-mid); border-radius:4px; color:var(--gold-light); font-size:1.25rem; cursor:pointer; }
+.sidebar-scrim { display:none; }
+@media (max-width:900px) {
+  .sidebar-toggle { display:inline-flex; }
+  .sidebar { position:fixed; left:0; top:0; transform:translateX(-100%); transition:transform 0.2s ease; box-shadow:2px 0 16px rgba(0,0,0,0.5); }
+  .sidebar.open { transform:translateX(0); }
+  .sidebar-scrim.open { display:block; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:210; }
+}
 
 /* States */
 .state-msg { text-align:center; padding:3rem 2rem; color:var(--text); font-size:1rem; letter-spacing:0.05em; }
@@ -160,28 +417,52 @@ main.app-main { flex:1; display:flex; flex-direction:column; }
 
 /* Landing */
 .landing-body { flex:1; display:flex; flex-direction:column; align-items:center; padding:3rem 2rem 2rem; gap:2rem; }
-.landing-card { background:var(--bg-card); border:1px solid var(--border-mid); border-top:2px solid rgba(214,163,68,0.4); border-radius:6px; padding:2.5rem 2rem; width:100%; max-width:500px; display:flex; flex-direction:column; align-items:center; gap:0.75rem; }
-.claim-prompt h2 { font-family:'Cinzel',serif; font-size:1rem; color:var(--gold-light); letter-spacing:0.1em; }
+.landing-card { background:var(--bg-card); border:1px solid var(--border-mid); border-top:2px solid rgba(var(--gold-rgb),0.4); border-radius:6px; padding:2.5rem 2rem; width:100%; max-width:500px; display:flex; flex-direction:column; align-items:center; gap:0.75rem; }
+.claim-prompt h2 { font-family:var(--font-heading); font-size:1rem; color:var(--gold-light); letter-spacing:0.1em; }
 .claim-prompt p { color:var(--text-muted); font-size:1.07rem; text-align:center; line-height:1.5; }
+
+/* Home tab (#landingView): centered like every other .landing-body view
+   (#864 follow-up -- left-aligning it read worse than centered). The stat
+   row now carries 4 tiles (Raiders/Items/Avg Item Level/current progress)
+   instead of 2, so the top of the page has real content of its own instead
+   of two small numbers floating above a full-width roster. */
+.landing-top-row { display:flex; flex-direction:column; align-items:center; gap:1.25rem; width:100%; max-width:560px; }
+.pub-stats { flex-wrap:wrap; }
 
 /* Public stats */
 .pub-stats { display:flex; gap:0.75rem; width:100%; max-width:500px; }
 .pub-stat { flex:1; background:var(--bg-card); border:1px solid var(--border); border-radius:4px; padding:0.75rem 1rem; text-align:center; }
-.pub-stat-num { display:block; font-size:1.6rem; font-weight:700; color:var(--gold); font-family:'Cinzel',serif; }
+.pub-stat-num { display:block; font-size:1.6rem; font-weight:700; color:var(--gold); font-family:var(--font-heading); }
 .pub-stat-label { display:block; font-size:0.87rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--text-muted); margin-top:0.2rem; }
 
-/* Raid progression */
-.prog-wrap { display:grid; grid-template-columns:repeat(2,1fr); gap:1rem; width:100%; max-width:760px; }
-@media (max-width:560px) { .prog-wrap { grid-template-columns:1fr; } }
-.prog-card { background:var(--bg-card); border:1px solid var(--border-mid); border-top:2px solid rgba(130,60,220,0.45); border-radius:6px; padding:1rem 1.1rem; }
+/* Raid progression: always a 2-up grid, side by side, both cards the same
+   width regardless of boss count -- a raid needing the 2-column boss list
+   (_renderProgBosses(), js/roster.js) stays in its normal half-width card
+   rather than spanning full width, since spanning left whatever sat next to
+   it stranded on its own row. The boss-list-specific rules below (under
+   .prog-bosses-grid) exist to keep that still-readable at half width. */
+.prog-wrap { display:grid; grid-template-columns:repeat(2,1fr); gap:1rem; width:100%; max-width:1040px; }
+@media (max-width:560px) { .prog-wrap { grid-template-columns:1fr; } .prog-bosses-grid { grid-template-columns:1fr; } }
+.prog-card { background:var(--bg-card); border:1px solid var(--border-mid); border-top:2px solid rgba(var(--mythic-rgb),0.45); border-radius:6px; padding:1rem 1.1rem; }
 .prog-header { display:flex; flex-direction:column; align-items:center; gap:0.15rem; margin-bottom:0.6rem; text-align:center; }
-.prog-raid-name { font-family:'Cinzel',serif; font-size:1.07rem; font-weight:600; color:var(--text); letter-spacing:0.02em; }
-.prog-score { font-size:0.97rem; font-weight:700; color:#b085f0; letter-spacing:0.06em; white-space:nowrap; }
+.prog-raid-name { font-family:var(--font-heading); font-size:1.07rem; font-weight:600; color:var(--text); letter-spacing:0.02em; }
+.prog-score { font-size:0.97rem; font-weight:700; color:var(--mythic); letter-spacing:0.06em; white-space:nowrap; }
 .prog-score-combo { display:flex; align-items:center; gap:0.5rem; }
-.prog-score-heroic { color:#4dd9e0; }
+.prog-score-heroic { color:var(--heroic); }
 .prog-bar-wrap { height:4px; background:rgba(255,255,255,0.08); border-radius:2px; margin-bottom:0.75rem; overflow:hidden; }
-.prog-bar { height:100%; background:linear-gradient(90deg,#6a30c8,#b085f0); border-radius:2px; transition:width 0.4s; }
-.prog-bar-heroic { background:linear-gradient(90deg,#1f8a90,#4dd9e0); }
+.prog-bar { height:100%; background:linear-gradient(90deg,var(--mythic-dim),var(--mythic)); border-radius:2px; transition:width 0.4s; }
+.prog-bar-heroic { background:linear-gradient(90deg,var(--heroic-dim),var(--heroic)); }
+/* 5+ boss raids (_renderProgBosses(), js/roster.js) split their boss list
+   into 2 columns instead of one long scroll -- each column only gets
+   roughly a quarter of .prog-wrap's width (a half-width card, split again),
+   so the name truncates with an ellipsis (full name's still in the title
+   attribute) and the date/pulls text wraps under it instead of forcing the
+   row wider than its column. */
+.prog-bosses-grid { display:grid; grid-template-columns:1fr 1fr; gap:0 1rem; }
+.prog-bosses-grid .prog-boss { flex-wrap:wrap; row-gap:1px; }
+.prog-bosses-grid .prog-boss-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:0.93rem; }
+.prog-bosses-grid .prog-boss-date, .prog-bosses-grid .prog-boss-pulls { font-size:0.79rem; margin-left:1.55rem; }
+.prog-bosses-grid .prog-boss-heroic { font-size:0.76rem; padding-left:1.55rem; flex-wrap:wrap; }
 .prog-bosses { display:flex; flex-direction:column; gap:0.3rem; }
 .prog-boss-item { border-bottom:1px solid rgba(255,255,255,0.05); }
 .prog-boss-item:last-child { border-bottom:none; }
@@ -196,12 +477,12 @@ main.app-main { flex:1; display:flex; flex-direction:column; }
 a.prog-boss-pulls { text-decoration:none; }
 a.prog-boss-pulls:hover { color:var(--gold); text-decoration:underline; }
 .prog-boss-heroic { display:flex; align-items:center; gap:0.4rem; padding:0 0 0.3rem 1.55rem; font-size:0.82rem; color:var(--text-dim); }
-.prog-boss-heroic-label { font-weight:700; letter-spacing:0.04em; color:#4dd9e0; }
-.prog-boss-heroic-date { white-space:nowrap; color:#4dd9e0; }
+.prog-boss-heroic-label { font-weight:700; letter-spacing:0.04em; color:var(--heroic); }
+.prog-boss-heroic-date { white-space:nowrap; color:var(--heroic); }
 .prog-boss-heroic-pulls { white-space:nowrap; }
 a.prog-boss-heroic-pulls { text-decoration:none; color:var(--text-dim); }
 a.prog-boss-heroic-pulls:hover { color:var(--gold); text-decoration:underline; }
-.prog-aotc { display:inline-flex; align-items:center; gap:0.4rem; margin-top:0.65rem; font-size:0.89rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--gold); background:rgba(214,163,68,0.1); border:1px solid rgba(214,163,68,0.3); border-radius:4px; padding:0.2rem 0.6rem; }
+.prog-aotc { display:inline-flex; align-items:center; gap:0.4rem; margin-top:0.65rem; font-size:0.89rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--gold); background:rgba(var(--gold-rgb),0.1); border:1px solid rgba(var(--gold-rgb),0.3); border-radius:4px; padding:0.2rem 0.6rem; }
 .prog-aotc-date { font-weight:400; color:var(--text-muted); letter-spacing:0; text-transform:none; }
 
 /* Progression history (#477) -- plain-text season-by-season recap, newest first. */
@@ -209,18 +490,18 @@ a.prog-boss-heroic-pulls:hover { color:var(--gold); text-decoration:underline; }
 .recap-list { display:flex; flex-direction:column; gap:1rem; width:100%; max-width:600px; }
 .recap-season-block { padding-bottom:1rem; border-bottom:1px solid rgba(255,255,255,0.05); }
 .recap-season-block:last-child { border-bottom:none; padding-bottom:0; }
-.recap-season-name { font-family:'Cinzel',serif; font-size:1.07rem; font-weight:600; color:var(--gold-light); letter-spacing:0.02em; margin-bottom:0.25rem; }
+.recap-season-name { font-family:var(--font-heading); font-size:1.07rem; font-weight:600; color:var(--gold-light); letter-spacing:0.02em; margin-bottom:0.25rem; }
 .recap-season-score { font-size:1rem; color:var(--text-muted); }
 .recap-season-progress { font-size:0.93rem; color:var(--text-dim); margin-top:0.15rem; }
 
 /* Team officer bios (#477, second slice) -- officer-authored bio cards. */
 .bio-wrap { display:grid; grid-template-columns:repeat(2,1fr); gap:1rem; width:100%; max-width:760px; }
 @media (max-width:560px) { .bio-wrap { grid-template-columns:1fr; } }
-.bio-card { background:var(--bg-card); border:1px solid var(--border-mid); border-top:2px solid rgba(214,163,68,0.4); border-radius:6px; padding:1.25rem 1.1rem; display:flex; flex-direction:column; align-items:center; text-align:center; gap:0.2rem; }
+.bio-card { background:var(--bg-card); border:1px solid var(--border-mid); border-top:2px solid rgba(var(--gold-rgb),0.4); border-radius:6px; padding:1.25rem 1.1rem; display:flex; flex-direction:column; align-items:center; text-align:center; gap:0.2rem; }
 .bio-photo { width:96px; height:96px; border-radius:8px; object-fit:cover; margin-bottom:0.6rem; }
-.bio-photo-fallback { display:flex; align-items:center; justify-content:center; background:rgba(214,163,68,0.12); color:var(--gold-light); border:1px solid rgba(214,163,68,0.3); font-family:'Cinzel',serif; font-size:1.8rem; font-weight:600; }
-.bio-name { font-family:'Cinzel',serif; font-size:1.15rem; font-weight:600; color:var(--text); letter-spacing:0.02em; }
-.bio-pronouns { font-family:'Rajdhani',sans-serif; font-size:0.93rem; font-weight:500; color:var(--text-dim); letter-spacing:0; }
+.bio-photo-fallback { display:flex; align-items:center; justify-content:center; background:rgba(var(--gold-rgb),0.12); color:var(--gold-light); border:1px solid rgba(var(--gold-rgb),0.3); font-family:var(--font-heading); font-size:1.8rem; font-weight:600; }
+.bio-name { font-family:var(--font-heading); font-size:1.15rem; font-weight:600; color:var(--text); letter-spacing:0.02em; }
+.bio-pronouns { font-family:var(--font-body); font-size:0.93rem; font-weight:500; color:var(--text-dim); letter-spacing:0; }
 .bio-charname { font-size:0.95rem; color:var(--text-dim); }
 .bio-title { font-size:0.93rem; color:var(--text-muted); margin-top:0.15rem; }
 .bio-text { font-size:1rem; color:var(--text-muted); white-space:pre-wrap; margin-top:0.6rem; text-align:left; }
@@ -228,12 +509,12 @@ a.prog-boss-heroic-pulls:hover { color:var(--gold); text-decoration:underline; }
 /* Public recent loot */
 .pub-loot { width:100%; max-width:760px; }
 .roster-sub-nav { display:flex; gap:1.25rem; margin-bottom:1rem; border-bottom:1px solid var(--border); }
-.roster-sub-tab { font-family:'Rajdhani',sans-serif; font-size:0.95rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; padding:0.5rem 0; background:transparent; border:none; border-bottom:2px solid transparent; color:var(--text-muted); cursor:pointer; }
+.roster-sub-tab { font-family:var(--font-body); font-size:0.95rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; padding:0.5rem 0; background:transparent; border:none; border-bottom:2px solid transparent; color:var(--text-muted); cursor:pointer; }
 .roster-sub-tab:hover { color:var(--text); }
 .roster-sub-tab.active { color:var(--gold-light); border-bottom-color:var(--gold); }
 
 .about-sub-nav { display:flex; gap:1.25rem; margin-bottom:1rem; border-bottom:1px solid var(--border); }
-.about-sub-tab { font-family:'Rajdhani',sans-serif; font-size:0.95rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; padding:0.5rem 0; background:transparent; border:none; border-bottom:2px solid transparent; color:var(--text-muted); cursor:pointer; }
+.about-sub-tab { font-family:var(--font-body); font-size:0.95rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; padding:0.5rem 0; background:transparent; border:none; border-bottom:2px solid transparent; color:var(--text-muted); cursor:pointer; }
 .about-sub-tab:hover { color:var(--text); }
 .about-sub-tab.active { color:var(--gold-light); border-bottom-color:var(--gold); }
 .pub-loot-title { font-size:0.91rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--text-muted); font-weight:600; margin-bottom:0.5rem; padding-bottom:0.4rem; border-bottom:1px solid var(--border-mid); }
@@ -243,13 +524,36 @@ a.prog-boss-heroic-pulls:hover { color:var(--gold); text-decoration:underline; }
 .pub-loot-player { color:var(--gold); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .pub-loot-item { color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .pub-loot-diff { font-size:0.85rem; letter-spacing:0.06em; text-transform:uppercase; padding:0.15rem 0.45rem; border-radius:3px; font-weight:600; white-space:nowrap; }
-.diff-heroic { background:rgba(0,180,200,0.12); color:#4dd9e0; }
-.diff-mythic { background:rgba(130,60,220,0.15); color:#b085f0; }
+.diff-heroic { background:rgba(var(--heroic-rgb),0.12); color:var(--heroic); }
+.diff-mythic { background:rgba(var(--mythic-rgb),0.15); color:var(--mythic); }
 .diff-other  { background:rgba(255,255,255,0.06); color:var(--text-muted); }
 .pub-loot-date { color:var(--text-dim); font-size:0.93rem; white-space:nowrap; }
 
+/* Calendar preview (#864) -- mock only, see buildCalendarPreview() in
+   js/roster.js. A real month grid (like an actual calendar) rather than a
+   row of night cards -- each raid day carries one status dot, the viewer's
+   own reply, not the whole roster's. */
+.mini-cal-header { font-family:var(--font-heading); font-size:1rem; font-weight:700; color:var(--gold-light); letter-spacing:0.06em; text-align:center; margin-bottom:0.6rem; }
+.mini-cal-weekdays { display:grid; grid-template-columns:repeat(7,1fr); margin-bottom:0.3rem; }
+.mini-cal-weekday { text-align:center; font-size:0.79rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-dim); }
+.mini-cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; }
+.mini-cal-day { min-height:58px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; background:var(--bg-card); border:1px solid var(--border); border-radius:4px; }
+.mini-cal-day-pad { background:transparent; border-color:transparent; }
+.mini-cal-daynum { font-size:0.87rem; color:var(--text-muted); }
+.mini-cal-day-raid { border-color:var(--border-mid); }
+.mini-cal-day-raid .mini-cal-daynum { color:var(--text); font-weight:600; }
+.mini-cal-daycount { font-size:0.85rem; font-weight:600; color:var(--text-muted); white-space:nowrap; }
+.mini-cal-day-today { border-color:var(--gold); box-shadow:0 0 0 1px var(--gold) inset; }
+.calendar-status { width:8px; height:8px; border-radius:50%; display:inline-block; cursor:default; }
+.calendar-status-present { background:var(--heal); }
+.calendar-status-absent { background:#e0c23d; }
+.calendar-status-tentative { background:var(--border-mid); }
+.calendar-legend { display:flex; flex-wrap:wrap; gap:1rem; margin-top:0.75rem; }
+.calendar-legend-item { display:flex; align-items:center; gap:0.4rem; font-size:0.87rem; color:var(--text-muted); }
+@media (max-width:480px) { .mini-cal-day { min-height:48px; } .mini-cal-daynum { font-size:0.76rem; } .mini-cal-daycount { font-size:0.72rem; } }
+
 /* Streamers */
-.stream-live-topbar { width:100%; text-align:center; background:rgba(214,163,68,0.1); border-bottom:1px solid rgba(214,163,68,0.35); padding:0.45rem 1rem; font-size:1.04rem; font-weight:600; color:var(--gold-light); }
+.stream-live-topbar { width:100%; text-align:center; background:rgba(var(--gold-rgb),0.1); border-bottom:1px solid rgba(var(--gold-rgb),0.35); padding:0.45rem 1rem; font-size:1.04rem; font-weight:600; color:var(--gold-light); }
 .stream-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:0.85rem; }
 .stream-grid-big { grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); }
 .stream-card { background:var(--bg-card); border:1px solid var(--border-mid); border-radius:6px; overflow:hidden; display:flex; flex-direction:column; }
@@ -259,18 +563,18 @@ a.prog-boss-heroic-pulls:hover { color:var(--gold); text-decoration:underline; }
 .stream-card-header { display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; }
 .stream-name { font-weight:600; color:var(--text); }
 .stream-live-dot { width:8px; height:8px; border-radius:50%; background:#ff4d4d; box-shadow:0 0 6px rgba(255,77,77,0.6); flex-shrink:0; }
-.stream-twitch-link { margin-left:auto; font-size:0.95rem; color:var(--gold); text-decoration:none; border-bottom:1px solid rgba(214,163,68,0.3); }
+.stream-twitch-link { margin-left:auto; font-size:0.95rem; color:var(--gold); text-decoration:none; border-bottom:1px solid rgba(var(--gold-rgb),0.3); }
 .stream-twitch-link:hover { color:var(--gold-light); border-color:var(--gold); }
 .stream-note { font-size:1rem; color:var(--text-muted); margin:0; }
 .stream-card-footer { margin-top:0.15rem; }
-.stream-profile-link { font-size:0.97rem; color:var(--gold); text-decoration:none; border-bottom:1px solid rgba(214,163,68,0.3); }
+.stream-profile-link { font-size:0.97rem; color:var(--gold); text-decoration:none; border-bottom:1px solid rgba(var(--gold-rgb),0.3); }
 .stream-profile-link:hover { color:var(--gold-light); border-color:var(--gold); }
 
 /* Floating live-streams widget */
 .stream-widget { position:fixed; right:1.25rem; bottom:1.25rem; z-index:300; display:flex; flex-direction:column; align-items:flex-end; gap:0.6rem; }
 .stream-widget.stream-widget-hidden { display:none !important; }
-.stream-widget-pill { display:flex; align-items:center; gap:0.4rem; background:var(--bg-elevated); border:1px solid rgba(214,163,68,0.4); color:var(--gold-light); font-family:'Rajdhani',sans-serif; font-size:0.97rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; padding:0.5rem 0.9rem; border-radius:999px; cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,0.35); }
-.stream-widget-pill:hover { background:rgba(214,163,68,0.15); }
+.stream-widget-pill { display:flex; align-items:center; gap:0.4rem; background:var(--bg-elevated); border:1px solid rgba(var(--gold-rgb),0.4); color:var(--gold-light); font-family:var(--font-body); font-size:0.97rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; padding:0.5rem 0.9rem; border-radius:999px; cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,0.35); }
+.stream-widget-pill:hover { background:rgba(var(--gold-rgb),0.15); }
 .stream-widget-dot { width:8px; height:8px; border-radius:50%; background:#ff4d4d; box-shadow:0 0 6px rgba(255,77,77,0.6); }
 .stream-widget-panel { width:min(340px,calc(100vw - 2.5rem)); max-height:min(70vh,600px); overflow-y:auto; background:var(--bg-card); border:1px solid var(--border-mid); border-radius:8px; box-shadow:0 8px 28px rgba(0,0,0,0.45); padding:0.75rem; }
 .stream-widget-banner { font-size:1rem; font-weight:600; color:var(--gold-light); margin-bottom:0.6rem; }
@@ -279,22 +583,22 @@ a.prog-boss-heroic-pulls:hover { color:var(--gold); text-decoration:underline; }
 .selector-label { font-size:1.07rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--text-muted); font-weight:600; }
 .selector-outer { position:relative; width:100%; max-width:460px; }
 .selector-outer::after { content:'▾'; position:absolute; right:14px; top:50%; transform:translateY(-50%); color:var(--gold-dim); pointer-events:none; font-size:1.02rem; }
-select#playerSelect { width:100%; appearance:none; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); font-family:'Rajdhani',sans-serif; font-size:1rem; font-weight:500; padding:0.65rem 2.2rem 0.65rem 1rem; border-radius:3px; cursor:pointer; transition:border-color 0.15s; outline:none; }
+select#playerSelect { width:100%; appearance:none; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); font-family:var(--font-body); font-size:1rem; font-weight:500; padding:0.65rem 2.2rem 0.65rem 1rem; border-radius:3px; cursor:pointer; transition:border-color 0.15s; outline:none; }
 select#playerSelect:hover { border-color:var(--gold-dim); }
-select#playerSelect:focus { border-color:var(--gold); box-shadow:0 0 0 2px rgba(214,163,68,0.12); }
+select#playerSelect:focus { border-color:var(--gold); box-shadow:0 0 0 2px rgba(var(--gold-rgb),0.12); }
 select#playerSelect option { background:#1a1d27; }
 
 /* Officer password prompt */
 .officer-prompt { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:100; align-items:center; justify-content:center; }
 .officer-prompt.active { display:flex; }
 .officer-prompt-box { background:var(--bg-card); border:1px solid var(--border-mid); border-radius:6px; padding:2rem; width:100%; max-width:320px; display:flex; flex-direction:column; gap:1rem; }
-.officer-prompt-box h2 { font-family:'Cinzel',serif; font-size:1rem; color:var(--gold-light); letter-spacing:0.1em; }
-.officer-prompt-box input { width:100%; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); font-family:'Rajdhani',sans-serif; font-size:1rem; padding:0.6rem 1rem; border-radius:3px; outline:none; }
+.officer-prompt-box h2 { font-family:var(--font-heading); font-size:1rem; color:var(--gold-light); letter-spacing:0.1em; }
+.officer-prompt-box input { width:100%; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); font-family:var(--font-body); font-size:1rem; padding:0.6rem 1rem; border-radius:3px; outline:none; }
 .officer-prompt-box input:focus { border-color:var(--gold); }
 .prompt-buttons { display:flex; gap:0.5rem; }
-.btn { font-family:'Rajdhani',sans-serif; font-size:1rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; padding:0.55rem 1.25rem; border-radius:3px; cursor:pointer; border:none; }
-.btn-gold { background:rgba(214,163,68,0.12); border:1px solid var(--gold-dim); color:var(--gold-light); }
-.btn-gold:hover { background:rgba(214,163,68,0.2); }
+.btn { font-family:var(--font-body); font-size:1rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; padding:0.55rem 1.25rem; border-radius:3px; cursor:pointer; border:none; }
+.btn-gold { background:rgba(var(--gold-rgb),0.12); border:1px solid var(--gold-dim); color:var(--gold-light); }
+.btn-gold:hover { background:rgba(var(--gold-rgb),0.2); }
 .btn-muted { background:transparent; border:1px solid rgba(255,255,255,0.35); color:var(--text); }
 .btn-muted:hover { background:var(--bg-elevated); border-color:rgba(255,255,255,0.6); }
 .btn.site-nav-discord { background:rgba(88,101,242,0.15); border:1px solid rgba(88,101,242,0.4); color:#c9cdff; }
@@ -310,27 +614,27 @@ select#playerSelect option { background:#1a1d27; }
 .role-bar-Ranged { background:var(--ranged); }
 .role-bar-Melee  { background:var(--melee); }
 .profile-header { position:relative; display:flex; align-items:center; gap:1rem; padding:1.25rem 1.25rem 1rem; border-bottom:1px solid var(--border); }
-.profile-avatar { width:52px; height:52px; border-radius:4px; display:flex; align-items:center; justify-content:center; font-family:'Cinzel',serif; font-size:1.15rem; font-weight:600; flex-shrink:0; }
+.profile-avatar { width:52px; height:52px; border-radius:4px; display:flex; align-items:center; justify-content:center; font-family:var(--font-heading); font-size:1.15rem; font-weight:600; flex-shrink:0; }
 .avatar-Tank   { background:rgba(74,158,255,0.12);  color:var(--tank);   border:1px solid rgba(74,158,255,0.25); }
 .avatar-Heal   { background:rgba(61,220,132,0.12);  color:var(--heal);   border:1px solid rgba(61,220,132,0.25); }
 .avatar-Ranged { background:rgba(191,140,255,0.12); color:var(--ranged); border:1px solid rgba(191,140,255,0.25); }
 .avatar-Melee  { background:rgba(255,124,92,0.12);  color:var(--melee);  border:1px solid rgba(255,124,92,0.25); }
 .profile-identity { flex:1; min-width:0; }
-.profile-name { font-family:'Cinzel',serif; font-size:1.2rem; font-weight:700; color:var(--text); line-height:1.2; }
+.profile-name { font-family:var(--font-heading); font-size:1.2rem; font-weight:700; color:var(--text); line-height:1.2; }
 .profile-realm { font-size:1rem; color:var(--text-dim); letter-spacing:0.04em; margin-top:2px; }
 .profile-badges { display:flex; gap:0.4rem; margin-top:0.5rem; flex-wrap:wrap; align-items:center; }
 /* Per-character Armory/Raider.IO/WCL profile links (#289) -- top-right of the
    card, same corner as the guild-wide header links box (#288). */
 .profile-links { position:absolute; top:1.25rem; right:1.25rem; display:flex; gap:0.4rem; }
 .profile-link-icon { display:inline-flex; align-items:center; justify-content:center; width:2.2rem; height:2.2rem; border-radius:4px; background:rgba(255,255,255,0.04); text-decoration:none; opacity:0.8; transition:opacity 0.15s, background 0.15s; }
-.profile-link-icon:hover { opacity:1; background:rgba(214,163,68,0.14); }
+.profile-link-icon:hover { opacity:1; background:rgba(var(--gold-rgb),0.14); }
 .profile-link-icon img { width:24px; height:24px; border-radius:4px; display:block; }
 .badge { font-size:1rem; font-weight:600; letter-spacing:0.09em; text-transform:uppercase; padding:2px 8px; border-radius:2px; }
 .badge-Tank   { background:rgba(74,158,255,0.12);  color:var(--tank);   border:1px solid rgba(74,158,255,0.2); }
 .badge-Heal   { background:rgba(61,220,132,0.12);  color:var(--heal);   border:1px solid rgba(61,220,132,0.2); }
 .badge-Ranged { background:rgba(191,140,255,0.12); color:var(--ranged); border:1px solid rgba(191,140,255,0.2); }
 .badge-Melee  { background:rgba(255,124,92,0.12);  color:var(--melee);  border:1px solid rgba(255,124,92,0.2); }
-.badge-trial  { background:rgba(240,200,112,0.1);  color:#f0c870;       border:1px solid rgba(240,200,112,0.2); }
+.badge-trial  { background:rgba(var(--gold-light-rgb),0.1);  color:#f0c870;       border:1px solid rgba(var(--gold-light-rgb),0.2); }
 .badge-backup-tank   { background:rgba(74,158,255,0.1);  color:var(--tank); border:1px solid rgba(74,158,255,0.2); }
 .badge-backup-healer { background:rgba(61,220,132,0.1);  color:var(--heal); border:1px solid rgba(61,220,132,0.2); }
 .badge-class  { border:1px solid transparent; }
@@ -341,17 +645,17 @@ select#playerSelect option { background:#1a1d27; }
 .bis-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
 .bis-dot.yes { background:#3ddc84; box-shadow:0 0 6px rgba(61,220,132,0.35); }
 .bis-dot.no  { background:var(--text-dim); }
-.bis-link { font-size:1rem; font-weight:500; color:var(--gold); text-decoration:none; border-bottom:1px solid rgba(214,163,68,0.3); transition:color 0.15s,border-color 0.15s; word-break:break-all; }
+.bis-link { font-size:1rem; font-weight:500; color:var(--gold); text-decoration:none; border-bottom:1px solid rgba(var(--gold-rgb),0.3); transition:color 0.15s,border-color 0.15s; word-break:break-all; }
 .bis-link:hover { color:var(--gold-light); border-color:var(--gold); }
 .bis-none { font-size:1rem; color:var(--text); }
 .priority-list { display:flex; flex-direction:column; gap:0.5rem; }
 .priority-row { display:grid; grid-template-columns:auto auto 1fr; align-items:center; gap:0.75rem; background:var(--bg-elevated); border:1px solid var(--border); border-radius:3px; padding:0.6rem 0.8rem; }
 .priority-row.bis-received { background:rgba(61,220,132,0.05); border-color:rgba(61,220,132,0.2); }
-.priority-row.bis-received.bis-received-heroic { background:rgba(214,163,68,0.06); border-color:rgba(214,163,68,0.25); }
+.priority-row.bis-received.bis-received-heroic { background:rgba(var(--gold-rgb),0.06); border-color:rgba(var(--gold-rgb),0.25); }
 .bis-received-badge { font-size:1.02rem; font-weight:600; letter-spacing:0.05em; padding:2px 7px; border-radius:2px; background:rgba(61,220,132,0.1); color:var(--heal); border:1px solid rgba(61,220,132,0.25); white-space:nowrap; }
 .priority-item-name { font-size:1.2rem; font-weight:500; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .priority-item-slot { font-size:1rem; color:var(--text); text-transform:uppercase; letter-spacing:0.07em; white-space:nowrap; }
-.rank-pill { font-family:'Cinzel',serif; font-size:1rem; font-weight:600; padding:3px 10px; border-radius:2px; min-width:40px; text-align:center; white-space:nowrap; }
+.rank-pill { font-family:var(--font-heading); font-size:1rem; font-weight:600; padding:3px 10px; border-radius:2px; min-width:40px; text-align:center; white-space:nowrap; }
 .no-items-msg { font-size:1rem; color:var(--text); font-style:italic; }
 .attend-row { display:flex; align-items:center; gap:0.75rem; }
 .attend-bar-wrap { flex:1; height:6px; background:var(--bg-elevated); border-radius:3px; overflow:hidden; border:1px solid var(--border); }
@@ -361,7 +665,7 @@ select#playerSelect option { background:#1a1d27; }
 /* Officer dashboard */
 #officerView { padding:1.5rem 2rem 3rem; max-width:1600px; width:100%; margin:0 auto; }
 .officer-toolbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem; flex-wrap:wrap; gap:0.75rem; }
-.officer-toolbar h2 { font-family:'Cinzel',serif; font-size:1rem; color:var(--gold-light); letter-spacing:0.1em; }
+.officer-toolbar h2 { font-family:var(--font-heading); font-size:1rem; color:var(--gold-light); letter-spacing:0.1em; }
 .data-timestamp { font-size:1rem; color:var(--text-dim); letter-spacing:0.06em; display:block; margin-top:0.2rem; }
 .season-selector-wrap { display:flex; align-items:center; gap:0.5rem; }
 .season-selector-label { font-size:1.04rem; color:var(--text-muted); white-space:nowrap; }
@@ -370,16 +674,16 @@ select#playerSelect option { background:#1a1d27; }
 /* Stats bar */
 .officer-stats { display:grid; grid-template-columns:repeat(5,1fr); gap:0.75rem; margin-bottom:1.5rem; }
 .stat-card { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; padding:0.85rem 1rem; text-align:center; }
-.stat-value { font-family:'Rajdhani',sans-serif; font-size:1.8rem; font-weight:700; color:var(--gold-light); line-height:1; }
+.stat-value { font-family:var(--font-body); font-size:1.8rem; font-weight:700; color:var(--gold-light); line-height:1; }
 .stat-label { font-size:0.93rem; text-transform:uppercase; letter-spacing:0.12em; color:var(--text); margin-top:0.3rem; }
 
 /* Sidebar + main layout */
 .officer-body { display:flex; gap:1.5rem; align-items:flex-start; }
 .officer-sidebar { width:152px; flex-shrink:0; display:flex; flex-direction:column; gap:2px; position:sticky; top:1.5rem; }
 .officer-main { flex:1; min-width:0; }
-.nav-item { display:block; position:relative; width:100%; text-align:left; font-family:'Rajdhani',sans-serif; font-size:0.95rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; padding:0.6rem 0.85rem; background:transparent; border:none; border-left:2px solid transparent; border-radius:0 3px 3px 0; color:var(--text-muted); cursor:pointer; transition:all 0.15s; }
+.nav-item { display:block; position:relative; width:100%; text-align:left; font-family:var(--font-body); font-size:0.95rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; padding:0.6rem 0.85rem; background:transparent; border:none; border-left:2px solid transparent; border-radius:0 3px 3px 0; color:var(--text-muted); cursor:pointer; transition:all 0.15s; }
 .nav-item:hover { background:var(--bg-elevated); color:var(--text); border-left-color:var(--border-mid); }
-.nav-item.active { background:rgba(214,163,68,0.08); color:var(--gold-light); border-left-color:var(--gold); }
+.nav-item.active { background:rgba(var(--gold-rgb),0.08); color:var(--gold-light); border-left-color:var(--gold); }
 .nav-notif { display:inline-flex; align-items:center; justify-content:center; background:#c0392b; color:#fff; font-size:0.82rem; font-weight:700; min-width:16px; height:16px; border-radius:8px; padding:0 4px; line-height:1; vertical-align:middle; margin-left:4px; }
 .nav-notif-gold { background:var(--gold); color:#1a1410; }
 .nav-notif-abs { position:absolute; top:5px; right:6px; margin:0; }
@@ -389,9 +693,9 @@ select#playerSelect option { background:#1a1d27; }
 .news-list { display:flex; flex-direction:column; gap:2px; margin-top:1rem; width:100%; max-width:760px; }
 .news-entry { border:1px solid var(--border-mid); border-radius:4px; overflow:hidden; }
 .news-entry-pinned { border-color:var(--gold); }
-.news-entry-pinned .news-entry-header { background:rgba(214,163,68,0.1); }
+.news-entry-pinned .news-entry-header { background:rgba(var(--gold-rgb),0.1); }
 .news-pin-icon { flex-shrink:0; font-size:0.9rem; }
-.news-entry-header { display:flex; align-items:center; gap:0.75rem; width:100%; text-align:left; background:var(--bg-elevated); border:none; padding:0.65rem 0.9rem; cursor:pointer; color:var(--text); font-family:'Rajdhani',sans-serif; }
+.news-entry-header { display:flex; align-items:center; gap:0.75rem; width:100%; text-align:left; background:var(--bg-elevated); border:none; padding:0.65rem 0.9rem; cursor:pointer; color:var(--text); font-family:var(--font-body); }
 .news-entry-header:hover { background:rgba(255,255,255,0.06); }
 .news-entry-header:hover .news-entry-title { color:var(--gold-light); }
 .news-entry-date { font-size:0.92rem; color:var(--text-muted); flex-shrink:0; min-width:82px; }
@@ -407,6 +711,31 @@ select#playerSelect option { background:#1a1d27; }
 .tab-panel { display:none; }
 .tab-panel.active { display:block; }
 
+/* Roster page (#864) -- full-width, unlike .landing-body's centered narrow
+   column: a two-column layout (grouped roster table + summary rail) similar
+   to Viserio's Group Hub roster, dropped straight into the content area
+   rather than boxed to a fixed reading width. */
+.roster-page { flex:1; display:flex; flex-direction:column; padding:2rem; gap:1rem; }
+.roster-layout { display:flex; align-items:flex-start; gap:1.5rem; }
+.roster-main { flex:1; min-width:0; max-width:none; }
+.roster-summary { width:260px; flex-shrink:0; background:var(--bg-card); border:1px solid var(--border-mid); border-top:2px solid rgba(var(--gold-rgb),0.4); border-radius:6px; padding:1.1rem 1.2rem; position:sticky; top:1rem; }
+.roster-summary-title { font-family:var(--font-heading); font-size:0.87rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold-light); margin-bottom:0.3rem; }
+.roster-summary-total { font-size:1.9rem; font-weight:700; color:var(--text); font-family:var(--font-heading); margin-bottom:0.85rem; }
+.roster-summary-total-label { font-size:0.85rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); }
+.roster-summary-section { display:flex; flex-direction:column; gap:0.4rem; padding-bottom:0.85rem; margin-bottom:0.85rem; border-bottom:1px solid var(--border); }
+.roster-summary-section:last-child { border-bottom:none; margin-bottom:0; padding-bottom:0; }
+.roster-summary-section-label { font-size:0.78rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--text-dim); margin-bottom:0.4rem; }
+.roster-summary-row { display:flex; align-items:center; gap:0.5rem; font-size:0.95rem; }
+.roster-summary-role-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+.roster-summary-role-label { color:var(--text-muted); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.roster-summary-role-count { color:var(--text); font-weight:600; }
+.roster-ilvl { color:var(--gold-light); font-weight:700; }
+@media (max-width:900px) {
+  .roster-page { padding:1rem; }
+  .roster-layout { flex-direction:column; }
+  .roster-summary { width:100%; position:static; }
+}
+
 /* Roster table */
 .roster-table { width:100%; border-collapse:collapse; }
 .roster-table th { font-size:1.07rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--text); font-weight:600; padding:0.6rem 0.75rem; border-bottom:1px solid var(--border); text-align:left; cursor:pointer; user-select:none; }
@@ -418,51 +747,51 @@ select#playerSelect option { background:#1a1d27; }
 .audit-table td:last-child { text-align:center; word-break:break-word; }
 .roster-table tr.player-row { cursor:pointer; transition:background 0.1s; }
 .roster-table tr.player-row:hover { background:var(--bg-elevated); }
-.roster-table tr.player-row.selected { background:rgba(214,163,68,0.06); }
+.roster-table tr.player-row.selected { background:rgba(var(--gold-rgb),0.06); }
 .player-name-cell { display:flex; align-items:center; gap:0.5rem; }
-.mini-avatar { width:30px; height:30px; border-radius:3px; display:flex; align-items:center; justify-content:center; font-family:'Cinzel',serif; font-size:1rem; font-weight:600; flex-shrink:0; }
+.mini-avatar { width:30px; height:30px; border-radius:3px; display:flex; align-items:center; justify-content:center; font-family:var(--font-heading); font-size:1rem; font-weight:600; flex-shrink:0; }
 .attend-mini-cell { display:flex; flex-direction:column; align-items:center; gap:3px; }
 .attend-mini { font-size:1rem; font-weight:700; }
 .attend-mini-bar-wrap { width:36px; height:3px; background:var(--bg-elevated); border-radius:2px; overflow:hidden; }
 .attend-mini-bar { height:100%; border-radius:2px; }
 .tag { font-size:1rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; padding:1px 6px; border-radius:2px; }
-.tag-trial { background:rgba(240,200,112,0.1); color:#f0c870; border:1px solid rgba(240,200,112,0.2); }
+.tag-trial { background:rgba(var(--gold-light-rgb),0.1); color:#f0c870; border:1px solid rgba(var(--gold-light-rgb),0.2); }
 .tag-bench { background:rgba(255,255,255,0.04); color:var(--text); border:1px solid var(--border); }
-.tag-bonus-roll { background:rgba(214,163,68,0.1); color:var(--gold); border:1px solid rgba(214,163,68,0.3); }
+.tag-bonus-roll { background:rgba(var(--gold-rgb),0.1); color:var(--gold); border:1px solid rgba(var(--gold-rgb),0.3); }
 .tag-backup-tank { background:rgba(74,158,255,0.1); color:var(--tank); border:1px solid rgba(74,158,255,0.2); }
 .tag-backup-healer { background:rgba(61,220,132,0.1); color:var(--heal); border:1px solid rgba(61,220,132,0.2); }
 #officerProfile { margin-top:1.5rem; }
 
 /* Roster filters */
 .filter-bar { display:flex; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap; align-items:center; }
-.filter-chip { font-family:'Rajdhani',sans-serif; font-size:0.95rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; padding:0.3rem 0.8rem; border-radius:3px; cursor:pointer; border:1px solid rgba(255,255,255,0.35); background:transparent; color:var(--text); transition:all 0.15s; }
-.filter-chip.active { background:rgba(214,163,68,0.12); border-color:var(--gold-dim); color:var(--gold-light); }
+.filter-chip { font-family:var(--font-body); font-size:0.95rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; padding:0.3rem 0.8rem; border-radius:3px; cursor:pointer; border:1px solid rgba(255,255,255,0.35); background:transparent; color:var(--text); transition:all 0.15s; }
+.filter-chip.active { background:rgba(var(--gold-rgb),0.12); border-color:var(--gold-dim); color:var(--gold-light); }
 .filter-chip:hover { border-color:rgba(255,255,255,0.6); }
 
 /* Roster search */
 .roster-search-row { display:flex; gap:0.5rem; margin-bottom:0.75rem; flex-wrap:wrap; align-items:flex-start; }
-.roster-search-input { font-family:'Rajdhani',sans-serif; font-size:1.02rem; font-weight:500; padding:0.3rem 0.75rem; border-radius:3px; border:1px solid var(--border); background:var(--bg-input); color:var(--text); outline:none; transition:border-color 0.15s; flex:1; min-width:140px; width:100%; }
+.roster-search-input { font-family:var(--font-body); font-size:1.02rem; font-weight:500; padding:0.3rem 0.75rem; border-radius:3px; border:1px solid var(--border); background:var(--bg-input); color:var(--text); outline:none; transition:border-color 0.15s; flex:1; min-width:140px; width:100%; }
 .roster-search-input::placeholder { color:var(--text-muted); }
 .roster-search-input:focus { border-color:var(--gold-dim); }
 .bis-search-wrap { position:relative; flex:1; min-width:140px; display:flex; flex-direction:column; gap:0.25rem; }
 .bis-item-count { font-size:1rem; font-weight:600; letter-spacing:0.08em; color:var(--gold); padding-left:0.25rem; min-height:1em; }
 
 /* Trial promotion alert */
-.trial-promo-card { background:rgba(240,200,112,0.04); border:1px solid rgba(240,200,112,0.2); border-left:3px solid var(--gold-dim); border-radius:4px; padding:0.85rem 1.1rem; margin-bottom:1rem; }
+.trial-promo-card { background:rgba(var(--gold-light-rgb),0.04); border:1px solid rgba(var(--gold-light-rgb),0.2); border-left:3px solid var(--gold-dim); border-radius:4px; padding:0.85rem 1.1rem; margin-bottom:1rem; }
 .trial-promo-header { display:flex; align-items:center; gap:0.75rem; margin-bottom:0.6rem; flex-wrap:wrap; }
 .trial-promo-title { font-size:1rem; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold-light); }
-.trial-promo-count { font-size:1.02rem; font-weight:600; padding:2px 8px; border-radius:2px; background:rgba(240,200,112,0.1); color:var(--gold); border:1px solid rgba(240,200,112,0.25); }
+.trial-promo-count { font-size:1.02rem; font-weight:600; padding:2px 8px; border-radius:2px; background:rgba(var(--gold-light-rgb),0.1); color:var(--gold); border:1px solid rgba(var(--gold-light-rgb),0.25); }
 .trial-promo-thresholds { display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap; margin-bottom:0.7rem; }
 .trial-promo-thresh-label { font-size:0.97rem; color:var(--text-muted); }
-.trial-promo-input { width:42px; font-family:'Rajdhani',sans-serif; font-size:1.02rem; font-weight:600; text-align:center; padding:0.2rem 0.3rem; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); border-radius:3px; outline:none; }
+.trial-promo-input { width:42px; font-family:var(--font-body); font-size:1.02rem; font-weight:600; text-align:center; padding:0.2rem 0.3rem; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); border-radius:3px; outline:none; }
 .trial-promo-input:focus { border-color:var(--gold-dim); }
 .trial-promo-table { width:100%; border-collapse:collapse; }
-.trial-promo-table th { font-size:0.95rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); font-weight:600; padding:0.3rem 0.6rem; border-bottom:1px solid rgba(240,200,112,0.15); text-align:left; }
+.trial-promo-table th { font-size:0.95rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); font-weight:600; padding:0.3rem 0.6rem; border-bottom:1px solid rgba(var(--gold-light-rgb),0.15); text-align:left; }
 .trial-promo-table th:not(:first-child) { text-align:center; }
 .trial-promo-table td { padding:0.4rem 0.6rem; border-bottom:1px solid var(--border); font-size:1rem; vertical-align:middle; }
 .trial-promo-table td:not(:first-child) { text-align:center; }
 .trial-promo-row { cursor:pointer; transition:background 0.1s; }
-.trial-promo-row:hover { background:rgba(214,163,68,0.05); }
+.trial-promo-row:hover { background:rgba(var(--gold-rgb),0.05); }
 .trial-promo-row:last-child td { border-bottom:none; }
 
 /* Onboarding checklist (#478) */
@@ -485,11 +814,11 @@ select#playerSelect option { background:#1a1d27; }
 .conflict-item-toggle { display:flex; align-items:center; gap:0.75rem; width:100%; background:none; border:none; padding:1rem 1.25rem; cursor:pointer; text-align:left; font-family:inherit; }
 .conflict-item-toggle:hover { background:var(--bg-elevated); }
 .conflict-item-name { font-size:1.1rem; font-weight:600; color:var(--text); display:flex; align-items:center; gap:0.75rem; flex:1; min-width:0; }
-.conflict-count { font-size:1rem; font-weight:600; padding:2px 8px; border-radius:2px; background:rgba(214,163,68,0.12); color:var(--gold); border:1px solid rgba(214,163,68,0.25); flex-shrink:0; }
+.conflict-count { font-size:1rem; font-weight:600; padding:2px 8px; border-radius:2px; background:rgba(var(--gold-rgb),0.12); color:var(--gold); border:1px solid rgba(var(--gold-rgb),0.25); flex-shrink:0; }
 .conflict-item-chevron { color:var(--text-dim); font-size:0.9rem; flex-shrink:0; }
 .conflict-players { display:flex; flex-wrap:wrap; gap:0.4rem; padding:0 1.25rem 1rem; }
 .conflict-player-tag { font-size:1.02rem; padding:2px 8px; border-radius:2px; background:var(--bg-elevated); border:1px solid var(--border); color:var(--text); display:inline-flex; align-items:center; gap:0.35rem; }
-.conflict-player-tag.ranked { border-color:rgba(214,163,68,0.3); color:var(--gold-light); }
+.conflict-player-tag.ranked { border-color:rgba(var(--gold-rgb),0.3); color:var(--gold-light); }
 .conflict-player-tag.received { opacity:0.5; text-decoration:line-through; }
 .received-badge { font-size:1rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; padding:1px 5px; border-radius:2px; background:rgba(61,220,132,0.12); color:var(--heal); border:1px solid rgba(61,220,132,0.25); text-decoration:none; display:inline-block; }
 /* Collapsible section header shared by the Priority List sub-tab's
@@ -505,7 +834,7 @@ select#playerSelect option { background:#1a1d27; }
 .prio-overalloc-name { font-size:1rem; font-weight:600; color:var(--text); min-width:80px; }
 .prio-overalloc-item { font-size:0.93rem; padding:1px 6px; border-radius:2px; background:rgba(214,90,60,0.1); color:#e05a3a; border:1px solid rgba(214,90,60,0.22); }
 /* Drift banner (saved priority order vs. current scoring, its own section) */
-.prio-drift-banner { background:rgba(214,163,68,0.07); border:1px solid rgba(214,163,68,0.28); border-radius:4px; padding:0.85rem 1.1rem; margin-bottom:1rem; }
+.prio-drift-banner { background:rgba(var(--gold-rgb),0.07); border:1px solid rgba(var(--gold-rgb),0.28); border-radius:4px; padding:0.85rem 1.1rem; margin-bottom:1rem; }
 .prio-drift-title { font-size:1rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:var(--gold); margin-bottom:0.55rem; }
 .prio-drift-explainer { font-size:0.87rem; color:var(--text-muted); margin:0.55rem 0 0.6rem; max-width:60em; }
 /* Priority List sub-tab's #1-priorities-held summary table */
@@ -515,7 +844,7 @@ select#playerSelect option { background:#1a1d27; }
 .prio-firstprio-row { display:flex; flex-wrap:wrap; align-items:center; gap:0.5rem; padding:0.2rem 0; border-bottom:1px solid var(--border); }
 .prio-firstprio-row:last-child { border-bottom:none; }
 .prio-firstprio-name { font-size:1rem; font-weight:600; color:var(--text); min-width:140px; }
-.prio-firstprio-count { font-size:0.93rem; font-weight:700; padding:1px 7px; border-radius:2px; background:rgba(214,163,68,0.12); color:var(--gold); border:1px solid rgba(214,163,68,0.25); }
+.prio-firstprio-count { font-size:0.93rem; font-weight:700; padding:1px 7px; border-radius:2px; background:rgba(var(--gold-rgb),0.12); color:var(--gold); border:1px solid rgba(var(--gold-rgb),0.25); }
 .prio-firstprio-count-flagged { background:rgba(214,90,60,0.1); color:#e05a3a; border-color:rgba(214,90,60,0.22); }
 .prio-firstprio-sameboss { font-size:0.87rem; padding:1px 6px; border-radius:2px; background:rgba(214,90,60,0.1); color:#e05a3a; border:1px solid rgba(214,90,60,0.22); }
 .prio-overalloc-diff { text-transform:uppercase; font-size:0.87rem; opacity:0.75; margin-left:2px; }
@@ -551,8 +880,8 @@ select#playerSelect option { background:#1a1d27; }
 /* Attendance manage panel */
 .attend-manage-panel { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; padding:1.25rem; margin-bottom:1.25rem; }
 .attend-manage-header { display:flex; align-items:center; justify-content:space-between; gap:0.75rem; flex-wrap:wrap; margin-bottom:1rem; }
-.attend-confirm-banner { background:rgba(214,163,68,0.07); border:1px solid var(--gold-dim); border-radius:3px; padding:0.65rem 1rem; font-size:1rem; color:var(--text); margin-bottom:0.75rem; display:flex; align-items:center; flex-wrap:wrap; gap:0.5rem; }
-.attend-night-select { appearance:none; -webkit-appearance:none; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); font-family:'Rajdhani',sans-serif; font-size:1rem; font-weight:500; padding:0.5rem 1rem 0.5rem 0.75rem; border-radius:3px; cursor:pointer; outline:none; min-width:240px; max-width:100%; }
+.attend-confirm-banner { background:rgba(var(--gold-rgb),0.07); border:1px solid var(--gold-dim); border-radius:3px; padding:0.65rem 1rem; font-size:1rem; color:var(--text); margin-bottom:0.75rem; display:flex; align-items:center; flex-wrap:wrap; gap:0.5rem; }
+.attend-night-select { appearance:none; -webkit-appearance:none; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); font-family:var(--font-body); font-size:1rem; font-weight:500; padding:0.5rem 1rem 0.5rem 0.75rem; border-radius:3px; cursor:pointer; outline:none; min-width:240px; max-width:100%; }
 .attend-night-select:focus { border-color:var(--gold); }
 .attend-grid-info { font-size:1.04rem; color:var(--text-muted); margin-bottom:0.6rem; }
 .attend-grid-rows { display:flex; flex-direction:column; gap:0.3rem; }
@@ -561,7 +890,7 @@ select#playerSelect option { background:#1a1d27; }
 .attend-grid-source { font-size:1rem; color:var(--text-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .attend-status-wrap { position:relative; }
 .attend-status-wrap::after { content:'▾'; position:absolute; right:0.5rem; top:50%; transform:translateY(-50%); color:var(--gold-dim); pointer-events:none; font-size:0.97rem; }
-.attend-status-select { appearance:none; -webkit-appearance:none; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); font-family:'Rajdhani',sans-serif; font-size:1.07rem; padding:0.28rem 1.4rem 0.28rem 0.55rem; border-radius:3px; cursor:pointer; outline:none; width:100%; }
+.attend-status-select { appearance:none; -webkit-appearance:none; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); font-family:var(--font-body); font-size:1.07rem; padding:0.28rem 1.4rem 0.28rem 0.55rem; border-radius:3px; cursor:pointer; outline:none; width:100%; }
 .attend-status-select:focus { border-color:var(--gold); }
 .attend-status-select:disabled { opacity:0.6; cursor:default; }
 .attend-save-ind { font-size:0.97rem; font-weight:600; text-align:right; white-space:nowrap; }
@@ -586,7 +915,7 @@ select#playerSelect option { background:#1a1d27; }
 .item-detail-line { font-size:0.9rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); margin-top:0.15rem; }
 .item-detail-sep { margin:0 0.4rem; opacity:0.5; }
 .stat-pill { font-size:0.9rem; font-weight:600; letter-spacing:0.03em; text-transform:none; padding:2px 7px; line-height:1.2; display:inline-block; border-radius:2px; background:rgba(255,255,255,0.05); border:1px solid var(--border); margin-right:0.3rem; }
-.tier-pill { font-size:0.9rem; font-weight:700; letter-spacing:0.03em; text-transform:none; padding:2px 7px; line-height:1.2; display:inline-block; border-radius:2px; background:rgba(214,163,68,0.15); border:1px solid rgba(214,163,68,0.4); color:var(--gold); }
+.tier-pill { font-size:0.9rem; font-weight:700; letter-spacing:0.03em; text-transform:none; padding:2px 7px; line-height:1.2; display:inline-block; border-radius:2px; background:rgba(var(--gold-rgb),0.15); border:1px solid rgba(var(--gold-rgb),0.4); color:var(--gold); }
 .prio-item-count { font-size:1rem; font-weight:600; padding:2px 8px; border-radius:2px; background:rgba(255,255,255,0.05); color:var(--text-muted); border:1px solid var(--border); }
 .prio-ranked-list { display:flex; flex-direction:column; gap:0.2rem; }
 .prio-rank-row { display:flex; align-items:center; gap:0.6rem; padding:0.25rem 0; border-bottom:1px solid var(--border); }
@@ -612,7 +941,7 @@ select#playerSelect option { background:#1a1d27; }
 /* Priority Edit Modal */
 .prio-edit-box { max-width:900px; width:95vw; max-height:90vh; min-height:0; overflow:hidden; }
 .prio-edit-header { display:flex; align-items:center; gap:0.75rem; flex-shrink:0; }
-.prio-edit-title { font-family:'Cinzel',serif; font-size:1rem; color:var(--gold-light); letter-spacing:0.1em; flex:1; min-width:0; word-break:break-word; }
+.prio-edit-title { font-family:var(--font-heading); font-size:1rem; color:var(--gold-light); letter-spacing:0.1em; flex:1; min-width:0; word-break:break-word; }
 .prio-edit-body { display:flex; gap:1.5rem; min-height:260px; margin-top:0.25rem; flex:1; overflow-y:auto; }
 .prio-edit-ranked { flex:1; min-width:0; display:flex; flex-direction:column; }
 .prio-edit-pool-col { width:280px; flex-shrink:0; display:flex; flex-direction:column; }
@@ -661,11 +990,11 @@ select#playerSelect option { background:#1a1d27; }
 #signupView { padding:2rem 2rem 3rem; max-width:560px; width:100%; margin:0 auto; }
 .signup-wrap { flex:1; }
 .signup-step-label { font-size:1.02rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--text-muted); font-weight:600; margin-bottom:0.75rem; }
-.signup-step-title { font-family:'Cinzel',serif; font-size:1.3rem; font-weight:700; color:var(--gold-light); margin-bottom:0.75rem; letter-spacing:0.06em; }
+.signup-step-title { font-family:var(--font-heading); font-size:1.3rem; font-weight:700; color:var(--gold-light); margin-bottom:0.75rem; letter-spacing:0.06em; }
 .signup-step-desc { font-size:1.04rem; color:var(--text-muted); line-height:1.55; margin-bottom:1.5rem; }
-.signup-input { width:100%; font-family:'Rajdhani',sans-serif; font-size:1rem; font-weight:500; padding:0.6rem 0.9rem; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); border-radius:3px; outline:none; transition:border-color 0.15s; margin-bottom:1rem; }
+.signup-input { width:100%; font-family:var(--font-body); font-size:1rem; font-weight:500; padding:0.6rem 0.9rem; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); border-radius:3px; outline:none; transition:border-color 0.15s; margin-bottom:1rem; }
 .signup-input:focus { border-color:var(--gold); }
-.signup-textarea { width:100%; font-family:'Rajdhani',sans-serif; font-size:1rem; font-weight:500; padding:0.6rem 0.9rem; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); border-radius:3px; outline:none; resize:vertical; min-height:90px; transition:border-color 0.15s; }
+.signup-textarea { width:100%; font-family:var(--font-body); font-size:1rem; font-weight:500; padding:0.6rem 0.9rem; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); border-radius:3px; outline:none; resize:vertical; min-height:90px; transition:border-color 0.15s; }
 .signup-textarea:focus { border-color:var(--gold); }
 .signup-field { margin-bottom:1.25rem; }
 .signup-label { display:block; font-size:1.04rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.5rem; }
@@ -674,29 +1003,29 @@ select#playerSelect option { background:#1a1d27; }
 .signup-radio-label { display:flex; align-items:center; gap:0.4rem; font-size:1rem; font-weight:500; padding:0.35rem 0.85rem; background:var(--bg-elevated); border:1px solid var(--border); border-radius:3px; cursor:pointer; transition:all 0.12s; user-select:none; }
 .signup-radio-label:hover { border-color:var(--border-mid); }
 .signup-radio-label input { display:none; }
-.signup-radio-label:has(input:checked) { background:rgba(214,163,68,0.1); border-color:var(--gold-dim); color:var(--gold-light); }
+.signup-radio-label:has(input:checked) { background:rgba(var(--gold-rgb),0.1); border-color:var(--gold-dim); color:var(--gold-light); }
 .signup-checkbox-group { display:flex; flex-wrap:wrap; gap:0.4rem; }
 .signup-checkbox-label { display:flex; align-items:center; gap:0.4rem; font-size:1rem; font-weight:500; padding:0.35rem 0.85rem; background:var(--bg-elevated); border:1px solid var(--border); border-radius:3px; cursor:pointer; transition:all 0.12s; user-select:none; }
 .signup-checkbox-label:hover { border-color:var(--border-mid); }
 .signup-checkbox-label input { display:none; }
-.signup-checkbox-label:has(input:checked) { background:rgba(214,163,68,0.1); border-color:var(--gold-dim); color:var(--gold-light); }
+.signup-checkbox-label:has(input:checked) { background:rgba(var(--gold-rgb),0.1); border-color:var(--gold-dim); color:var(--gold-light); }
 .realm-combobox { position:relative; }
 .realm-input { margin-bottom:0; }
 .realm-dropdown { display:none; position:absolute; top:100%; left:0; right:0; background:var(--bg-card); border:1px solid var(--border-mid); border-top:none; border-radius:0 0 3px 3px; max-height:220px; overflow-y:auto; z-index:50; }
-.realm-option { padding:0.5rem 0.9rem; font-size:1.07rem; font-family:'Rajdhani',sans-serif; font-weight:500; cursor:pointer; color:var(--text); transition:background 0.1s; }
+.realm-option { padding:0.5rem 0.9rem; font-size:1.07rem; font-family:var(--font-body); font-weight:500; cursor:pointer; color:var(--text); transition:background 0.1s; }
 .realm-option:hover { background:var(--bg-elevated); color:var(--gold-light); }
 .signup-class-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:0.5rem; margin-bottom:1.5rem; }
-.signup-class-btn { font-family:'Rajdhani',sans-serif; font-size:1rem; font-weight:600; letter-spacing:0.06em; padding:0.65rem 0.5rem; background:var(--bg-elevated); border:1px solid var(--border); border-radius:3px; color:var(--cls-color,var(--text)); cursor:pointer; transition:all 0.12s; text-align:center; }
+.signup-class-btn { font-family:var(--font-body); font-size:1rem; font-weight:600; letter-spacing:0.06em; padding:0.65rem 0.5rem; background:var(--bg-elevated); border:1px solid var(--border); border-radius:3px; color:var(--cls-color,var(--text)); cursor:pointer; transition:all 0.12s; text-align:center; }
 .signup-class-btn:hover { border-color:var(--cls-color,var(--border-mid)); background:var(--bg-card); }
 .signup-class-btn-selected { border-color:var(--cls-color,var(--gold-dim)) !important; background:var(--bg-card); box-shadow:0 0 0 1px var(--cls-color,var(--gold-dim)); }
 .signup-actions { display:flex; gap:0.75rem; justify-content:flex-end; margin-top:1.5rem; }
 .signup-error { font-size:1rem; color:var(--melee); margin-bottom:0.75rem; min-height:1.2em; }
 .signup-role-info { font-size:0.95rem; color:var(--text-muted); background:var(--bg-elevated); border:1px solid var(--border); border-radius:3px; padding:0.5rem 0.75rem; margin:0.75rem 0 1rem; }
-.signup-role-info-warn { color:var(--gold-light); border-color:var(--gold-dim); background:rgba(214,163,68,0.08); }
+.signup-role-info-warn { color:var(--gold-light); border-color:var(--gold-dim); background:rgba(var(--gold-rgb),0.08); }
 .signup-confirm { text-align:center; padding:2rem 0; }
 .signup-confirm-check { width:56px; height:56px; border-radius:50%; background:rgba(61,220,132,0.12); border:2px solid rgba(61,220,132,0.3); color:var(--heal); font-size:1.6rem; display:flex; align-items:center; justify-content:center; margin:0 auto 1.25rem; }
 .signup-confirm .signup-step-desc { color:var(--text); }
-.signup-cta { margin-top:1.25rem; font-size:1rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--gold); cursor:pointer; border-bottom:1px solid rgba(214,163,68,0.3); transition:color 0.15s,border-color 0.15s; }
+.signup-cta { margin-top:1.25rem; font-size:1rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--gold); cursor:pointer; border-bottom:1px solid rgba(var(--gold-rgb),0.3); transition:color 0.15s,border-color 0.15s; }
 .signup-cta:hover { color:var(--gold-light); border-color:var(--gold); }
 .signup-officer-panel { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; padding:1.25rem; max-width:400px; }
 .signup-status-row { display:flex; align-items:center; justify-content:space-between; }
@@ -707,7 +1036,7 @@ select#playerSelect option { background:#1a1d27; }
 .signup-officer-note { font-size:1.07rem; color:var(--text-muted); margin-top:1rem; line-height:1.5; }
 .signup-response-card { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; padding:1rem 1.25rem; margin-bottom:0.75rem; }
 .signup-response-header { display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
-.signup-response-name { font-family:'Cinzel',serif; font-size:1.07rem; font-weight:700; color:var(--text); }
+.signup-response-name { font-family:var(--font-heading); font-size:1.07rem; font-weight:700; color:var(--text); }
 .signup-response-time { font-size:1rem; color:var(--text-muted); letter-spacing:0.04em; white-space:nowrap; }
 .signup-delete-btn { background:none; border:1px solid var(--border); border-radius:3px; color:var(--text-muted); font-size:1rem; line-height:1; padding:0.2rem 0.45rem; cursor:pointer; transition:border-color 0.15s,color 0.15s; }
 .signup-delete-btn:hover { border-color:var(--melee); color:var(--melee); }
@@ -719,14 +1048,14 @@ select#playerSelect option { background:#1a1d27; }
 .bis-self-received-badge { font-size:1.07rem; background:rgba(199,155,60,0.12); color:var(--gold); border:1px solid rgba(199,155,60,0.25); border-radius:3px; padding:0.1rem 0.4rem; white-space:nowrap; }
 .self-received-form { padding:0.5rem 0.75rem 0.5rem 2.5rem; background:rgba(255,255,255,0.02); border-left:2px solid var(--border); margin-bottom:0.25rem; }
 .self-received-form-inner { display:flex; flex-direction:column; gap:0.4rem; }
-.self-received-source { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; color:var(--text); font-family:'Rajdhani',sans-serif; font-size:1rem; padding:0.35rem 0.5rem; width:100%; max-width:260px; }
-.self-received-notes { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; color:var(--text); font-family:'Rajdhani',sans-serif; font-size:1rem; padding:0.35rem 0.5rem; width:100%; max-width:400px; resize:vertical; }
+.self-received-source { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; color:var(--text); font-family:var(--font-body); font-size:1rem; padding:0.35rem 0.5rem; width:100%; max-width:260px; }
+.self-received-notes { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; color:var(--text); font-family:var(--font-body); font-size:1rem; padding:0.35rem 0.5rem; width:100%; max-width:400px; resize:vertical; }
 .self-received-note { font-size:1.02rem; color:var(--text-muted); margin:0.25rem 0 0; line-height:1.4; }
 
 /* Pending requests (officer) */
 .request-card { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; padding:1rem 1.25rem; margin-bottom:0.75rem; }
 .request-card-header { display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:0.35rem; }
-.request-player { font-family:'Cinzel',serif; font-size:1.07rem; font-weight:700; color:var(--text); }
+.request-player { font-family:var(--font-heading); font-size:1.07rem; font-weight:700; color:var(--text); }
 .request-item { font-size:1.04rem; font-weight:600; color:var(--text); }
 .request-approve-btn { background:rgba(100,210,120,0.12); border:1px solid rgba(100,210,120,0.3); color:#64d278; font-size:1.04rem; padding:0.25rem 0.75rem; cursor:pointer; border-radius:3px; }
 .request-approve-btn:hover { background:rgba(100,210,120,0.2); }
@@ -737,7 +1066,7 @@ select#playerSelect option { background:#1a1d27; }
 
 /* Add/Remove player */
 .add-player-label { display:block; font-size:0.97rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.2rem; }
-.add-player-input { width:100%; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); font-family:'Rajdhani',sans-serif; font-size:1rem; padding:0.45rem 0.75rem; border-radius:3px; outline:none; }
+.add-player-input { width:100%; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); font-family:var(--font-body); font-size:1rem; padding:0.45rem 0.75rem; border-radius:3px; outline:none; }
 .add-player-input:focus { border-color:var(--gold); }
 .add-player-input option { background:#1a1d27; }
 .btn-danger { background:rgba(255,124,92,0.1); border:1px solid rgba(255,124,92,0.35); color:var(--melee); }
@@ -759,7 +1088,7 @@ select#playerSelect option { background:#1a1d27; }
 
 /* Admin danger zone */
 .admin-danger-card { background:var(--bg-card); border:1px solid rgba(255,124,92,0.25); border-radius:4px; padding:1rem 1.25rem; margin-bottom:0.75rem; }
-.admin-danger-label { font-family:'Cinzel',serif; font-size:1.04rem; font-weight:700; color:var(--melee); margin-bottom:0.3rem; }
+.admin-danger-label { font-family:var(--font-heading); font-size:1.04rem; font-weight:700; color:var(--melee); margin-bottom:0.3rem; }
 .admin-danger-desc { font-size:1rem; color:var(--text-muted); margin:0 0 0.75rem; line-height:1.4; }
 
 /* ── Inline help tips (shared by index.html and officer.html) ──────────────── */

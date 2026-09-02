@@ -231,6 +231,42 @@ function renderSiteNav(mode) {
   mount.innerHTML = html;
 }
 
+// Mobile off-canvas sidebar (index.html/officer.html). Also closes on any
+// nav click inside the sidebar so picking a tab doesn't leave the drawer
+// covering the page it just navigated to.
+function toggleSidebar(force) {
+  var sb = document.getElementById('sidebar');
+  var scrim = document.getElementById('sidebarScrim');
+  var btn = document.getElementById('sidebarToggle');
+  if (!sb) return;
+  var open = typeof force === 'boolean' ? force : !sb.classList.contains('open');
+  sb.classList.toggle('open', open);
+  if (scrim) scrim.classList.toggle('open', open);
+  if (btn) btn.setAttribute('aria-expanded', String(open));
+}
+document.addEventListener('click', function (e) {
+  var sb = document.getElementById('sidebar');
+  if (!sb || !sb.classList.contains('open')) return;
+  if (
+    window.matchMedia('(max-width:900px)').matches &&
+    (e.target.closest('.sidebar-nav') || e.target.closest('.sidebar-footer'))
+  ) {
+    toggleSidebar(false);
+  }
+});
+// Escape closes the mobile drawer and returns focus to the toggle button
+// that opened it -- without this, a keyboard user who opens the drawer has
+// no way back out except tabbing through every nav item to the close click
+// target (there isn't one; the scrim isn't focusable).
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Escape') return;
+  var sb = document.getElementById('sidebar');
+  if (!sb || !sb.classList.contains('open')) return;
+  toggleSidebar(false);
+  var btn = document.getElementById('sidebarToggle');
+  if (btn) btn.focus();
+});
+
 // Shared by the officer.html Help tab and index.html's raider Help tab/tips.
 function toggleHelp(id) {
   var el = document.getElementById(id);

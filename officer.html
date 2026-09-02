@@ -27,14 +27,25 @@
 
   <a class="skip-link" href="#main-content">Skip to main content</a>
 
-  <header class="header">
-    <a href="index.html" class="header-link">
-      <span class="header-emblem">🔥</span>
-      <h1 id="headerTeamName">Phoenix</h1>
-      <p class="header-sub">Raid Hub</p>
+  <div class="app-shell">
+  <div class="sidebar-scrim" id="sidebarScrim" onclick="toggleSidebar(false)"></div>
+  <aside class="sidebar" id="sidebar">
+    <a href="index.html" class="sidebar-brand">
+      <span class="sidebar-emblem">🔥</span>
+      <span class="sidebar-brand-text">
+        <span class="sidebar-team-name" id="headerTeamName">Phoenix</span>
+        <span class="sidebar-sub">Raid Hub</span>
+      </span>
     </a>
-    <div class="header-links" id="headerLinks">
-      <span class="header-links-label">Links</span>
+    <div class="sidebar-switch-row">
+      <select id="teamSwitcherSelect" class="team-switcher" title="Switch team"></select>
+    </div>
+
+    <nav class="sidebar-nav" id="siteNav" aria-label="Site">
+      <div id="siteNavItems"></div>
+    </nav>
+
+    <div class="sidebar-external-links" id="headerLinks">
       <a id="headerWclLink" class="header-link-icon" href="#" target="_blank" rel="noopener" title="WarcraftLogs" aria-label="WarcraftLogs" style="display:none">
         <img src="https://www.google.com/s2/favicons?sz=64&domain=warcraftlogs.com" alt="" width="30" height="30" loading="lazy">
       </a>
@@ -45,23 +56,22 @@
         <img src="https://www.google.com/s2/favicons?sz=64&domain=worldofwarcraft.com" alt="" width="30" height="30" loading="lazy">
       </a>
     </div>
-    <div class="header-divider"></div>
-  </header>
 
-  <nav class="site-nav" id="siteNav" aria-label="Site">
-    <div id="siteNavItems" style="display:contents;"></div>
-    <div class="site-nav-right">
-      <select id="teamSwitcherSelect" class="team-switcher" title="Switch team"></select>
+    <div class="sidebar-footer">
       <div class="nav-bell-wrap">
         <button class="site-nav-item nav-bell" id="navBell" onclick="toggleNotifDropdown(event)" style="display:none" data-tooltip="Notifications" title="Notifications">
-          &#128276;<span id="navBellBadge" class="nav-notif nav-notif-abs" style="display:none"></span>
+          &#128276; Notifications<span id="navBellBadge" class="nav-notif nav-notif-abs" style="display:none"></span>
         </button>
         <div id="notifDropdown" class="notif-dropdown" style="display:none"></div>
       </div>
       <button class="site-nav-item site-nav-discord" id="navDiscord" onclick="loginWithDiscord()" data-tooltip="Sign in with Discord -- officers with a claimed character bypass the password prompt">Login with Discord</button>
       <button class="site-nav-item active" id="navOfficer" aria-current="page" data-tooltip="Officer dashboard -- manage roster, loot, and signups">Officer Access</button>
     </div>
-  </nav>
+  </aside>
+
+  <div class="app-content">
+
+  <button type="button" class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()" aria-label="Toggle menu" aria-expanded="false" aria-controls="sidebar">&#9776;</button>
 
   <div id="maintenanceBanner" class="state-msg" style="display:none;">
     <h2 style="margin-bottom:0.5rem;">Down for Maintenance</h2>
@@ -1125,6 +1135,9 @@
   <footer class="footer">We Go Again &middot; <span class="team-name">Phoenix</span> &middot; v<span id="versionNum"></span> &middot; <a
       class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank"
       rel="noopener">Changelog</a></footer>
+
+  </div>
+  </div>
 
   <!-- Priority Edit modal -->
   <div id="prioEditModal" class="officer-prompt">

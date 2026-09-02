@@ -25,60 +25,31 @@ function _renderOfficerNavLink() {
   link.style.display = s && (s.isOfficer || s.isAdmin) ? '' : 'none';
 }
 
-// ── Player selector gating ────────────────────────────────────────────────────
-// No session                          -> hide card entirely
-// Logged in, unclaimed, no officer/admin access -> hide (claim prompt owns this state)
-// Logged in, unclaimed, officer/admin  -> dropdown only, no "View My Profile" (nothing to view)
-// Logged in, claimed, non-officer      -> "View My Profile" button only
-// Logged in, claimed, officer/admin    -> full dropdown + "View My Profile" link
-
-function _renderPlayerSelector() {
-  var card = document.getElementById('playerSelectorCard');
-  var label = document.getElementById('playerSelectorLabel');
-  var dropOuter = document.getElementById('playerDropdownOuter');
-  var profileOuter = document.getElementById('myProfileOuter');
-  var profileBtn = document.getElementById('myProfileBtn');
-  if (!card) return;
-
+// ── "You" nav link ────────────────────────────────────────────────────────
+// Replaces the old Home-page "Look Up a Raider" card (#864): raider lookup
+// now happens by clicking a row in the Roster tab's table instead of a
+// dropdown, so the only thing that card did that Roster can't is jump
+// straight to *your own* profile once you're claimed -- this sidebar link
+// covers that. Hidden with no claimed character, same as before.
+function _renderYouNavLink() {
+  var link = document.getElementById('navYou');
+  if (!link) return;
   var session = typeof getDiscordSession === 'function' && getDiscordSession();
-  var canLookUp = !!(session && (session.isOfficer || session.isAdmin));
-
-  // A site admin (or officer) has no reason to have personally claimed a
-  // character on every team -- they were previously locked out of this
-  // card entirely on any team they hadn't, with no way to open another
-  // raider's profile there at all (the claim-prompt card took over instead).
-  // Gate on lookup access OR an actual claim, not just the claim.
-  if (!session || !(session.nameRealm || canLookUp)) {
-    card.style.display = 'none';
+  var firstName = session && session.nameRealm ? session.nameRealm.split('-')[0] : null;
+  if (!firstName) {
+    link.style.display = 'none';
     return;
   }
-
-  card.style.display = '';
-  var firstName = session.nameRealm ? session.nameRealm.split('-')[0] : null;
-
-  if (profileBtn && firstName) {
-    profileBtn.onclick = function () {
-      if (typeof showView === 'function') showView('profile');
-      if (typeof renderProfile === 'function') renderProfile(firstName, 'landing');
-      var sel = document.getElementById('playerSelect');
-      if (sel) sel.value = firstName;
-    };
-  }
-
-  if (canLookUp) {
-    if (label) label.textContent = 'Look Up a Raider';
-    if (dropOuter) dropOuter.style.display = '';
-    if (profileOuter) profileOuter.style.display = firstName ? '' : 'none';
-  } else {
-    if (label) label.textContent = 'Your Profile';
-    if (dropOuter) dropOuter.style.display = 'none';
-    if (profileOuter) profileOuter.style.display = '';
-  }
+  link.style.display = '';
+  link.onclick = function () {
+    if (typeof showView === 'function') showView('profile');
+    if (typeof renderProfile === 'function') renderProfile(firstName, 'landing');
+  };
 }
 
 // Persistent "claim your character" prompt on the landing view, shown only when
 // logged in with no claimed character -- the same session state where
-// _renderPlayerSelector hides the profile card. display:none keeps it out of the
+// _renderYouNavLink hides the "You" nav link. display:none keeps it out of the
 // accessibility tree. The box's dialog/focus a11y and the modal it opens are
 // tracked in the Accessibility milestone; this is just the entry point.
 function _renderClaimPrompt() {
@@ -162,7 +133,7 @@ function _renderClaimPromptLoading() {
 // to the Discord session; refresh them together on every transition.
 function _qaRefresh() {
   _qaRender();
-  _renderPlayerSelector();
+  _renderYouNavLink();
   _renderClaimPrompt();
   _renderOfficerNavLink();
 }

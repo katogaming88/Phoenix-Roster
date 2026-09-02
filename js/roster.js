@@ -125,43 +125,100 @@ function populateDropdown() {
   }
 }
 
-function buildPublicRosterTab() {
-  var container = document.getElementById('rosterView');
+var ROSTER_ROLE_ORDER = ['Tank', 'Heal', 'Melee', 'Ranged'];
+var ROSTER_ROLE_LABELS = { Tank: 'Tanks', Heal: 'Healers', Melee: 'Melee', Ranged: 'Ranged' };
+
+function roleColorVar(role) {
+  return role === 'Tank'
+    ? 'var(--tank)'
+    : role === 'Heal'
+      ? 'var(--heal)'
+      : role === 'Ranged'
+        ? 'var(--ranged)'
+        : 'var(--melee)';
+}
+
+// Averages the 16 real gear slots (EQUIPMENT_SLOT_LABELS, js/common.js) out
+// of whatever player_equipped_gear has synced for this player (#845's sync
+// doesn't guarantee all 16 -- an empty/partial slot just isn't in the map).
+// Deliberately NOT every key in the map: blizzard-gear-sync/index.ts writes
+// a row for every item Blizzard's equipment endpoint returns, including
+// SHIRT/TABARD -- averaging those in against the 16 real slots dragged the
+// result well below a raider's actual equipped item level. Null (not 0) when
+// nothing has synced yet, so callers can tell "no data" apart from a real
+// average.
+function averageItemLevel(playerId) {
+  var gear = (window.DATA && DATA.equippedGearByPlayerId && DATA.equippedGearByPlayerId[playerId]) || null;
+  if (!gear) return null;
+  var total = 0;
+  var count = 0;
+  EQUIPMENT_SLOT_LABELS.forEach(function (pair) {
+    var slot = pair[0];
+    var lvl = gear[slot] && gear[slot].itemLevel;
+    if (typeof lvl !== 'number' || lvl <= 0) return;
+    total += lvl;
+    count++;
+    // A two-handed weapon leaves OFF_HAND empty (nothing equipped there, so
+    // it's simply absent from the map) -- Blizzard's own average item level
+    // still counts the 2H weapon twice rather than averaging over 15 slots,
+    // so this matches the character panel/Armory number instead of running
+    // low for anyone dual-wielding a big stick.
+    if (slot === 'MAIN_HAND' && !(gear.OFF_HAND && typeof gear.OFF_HAND.itemLevel === 'number')) {
+      total += lvl;
+      count++;
+    }
+  });
+  return count ? Math.round(total / count) : null;
+}
+
+// Roster rows are now the raider-lookup UI (#864) -- the Home page's
+// separate "Look up a raider" dropdown card is gone, replaced by clicking a
+// row here. #playerSelect stays in the DOM (hidden) purely as the existing
+// selected-player state store this also keeps in sync.
+function openRosterProfile(firstName) {
+  var sel = document.getElementById('playerSelect');
+  if (sel) sel.value = firstName;
+  showView('profile');
+  renderProfile(firstName, 'landing');
+}
+
+// targetId/summaryId default to the Roster tab's #rosterView/#rosterSummary
+// -- kept as parameters (rather than hardcoded ids) so this can be mounted
+// elsewhere without duplicating the function, as it briefly was on Home (#864).
+function buildPublicRosterTab(targetId, summaryId) {
+  var container = document.getElementById(targetId || 'rosterView');
   if (!container || !window.DATA || !DATA.roster) return;
 
-  var order = ['Tank', 'Heal', 'Melee', 'Ranged'];
-  var labels = { Tank: 'Tanks', Heal: 'Healers', Melee: 'Melee', Ranged: 'Ranged' };
   var groups = { Tank: [], Heal: [], Melee: [], Ranged: [] };
-
   for (var i = 0; i < DATA.roster.length; i++) {
     var p = DATA.roster[i];
     if (groups[p.role]) groups[p.role].push(p);
   }
 
-  var html = '<table class="roster-table"><thead><tr><th>Player</th><th>Class / Spec</th></tr></thead><tbody>';
+  var html =
+    '<table class="roster-table"><thead><tr><th>Player</th><th>Class / Spec</th><th>Item Level</th></tr></thead><tbody>';
 
-  for (var r = 0; r < order.length; r++) {
-    var role = order[r];
+  for (var r = 0; r < ROSTER_ROLE_ORDER.length; r++) {
+    var role = ROSTER_ROLE_ORDER[r];
     var players = groups[role];
     if (!players.length) continue;
     players.sort(function (a, b) {
       return (a.nick || a.firstName).localeCompare(b.nick || b.firstName);
     });
-    html += '<tr class="group-header"><td colspan="2">' + labels[role] + '</td></tr>';
+    html +=
+      '<tr class="group-header"><td colspan="3">' + ROSTER_ROLE_LABELS[role] + ' (' + players.length + ')</td></tr>';
 
     for (var j = 0; j < players.length; j++) {
       var player = players[j];
-      var roleColor =
-        player.role === 'Tank'
-          ? 'var(--tank)'
-          : player.role === 'Heal'
-            ? 'var(--heal)'
-            : player.role === 'Ranged'
-              ? 'var(--ranged)'
-              : 'var(--melee)';
+      var roleColor = roleColorVar(player.role);
       var dispName = player.nick || player.firstName;
+      var ilvl = averageItemLevel(player.id);
       html +=
-        '<tr>' +
+        '<tr class="player-row" tabindex="0" role="button" onclick="openRosterProfile(\'' +
+        _esc(player.firstName) +
+        "')\" onkeydown=\"if(event.key==='Enter'||event.key===' '){event.preventDefault();openRosterProfile('" +
+        _esc(player.firstName) +
+        '\');}">' +
         '<td><div class="player-name-cell">' +
         '<div class="mini-avatar" style="background:rgba(0,0,0,0.25);color:' +
         roleColor +
@@ -186,12 +243,108 @@ function buildPublicRosterTab() {
             '</span>'
           : '<span style="color:var(--text-dim);">-</span>') +
         '</td>' +
+        '<td>' +
+        (ilvl != null
+          ? '<span class="roster-ilvl">' + ilvl + '</span>'
+          : '<span style="color:var(--text-dim);">-</span>') +
+        '</td>' +
         '</tr>';
     }
   }
 
   html += '</tbody></table>';
   container.innerHTML = html;
+  buildRosterSummaryPanel(DATA.roster, summaryId);
+}
+
+// Right-rail composition summary (#864, inspired by Viserio's Group Hub
+// roster panel) -- role counts, class breakdown and average/lowest item
+// level across the current roster. Only rendered from the "Current Roster"
+// sub-tab (buildPublicRosterTab); the Incoming/tentative list is a much
+// smaller, still-forming group where a composition summary isn't useful.
+function buildRosterSummaryPanel(players, summaryId) {
+  var el = document.getElementById(summaryId || 'rosterSummary');
+  if (!el) return;
+  players = players || [];
+
+  var roleCounts = { Tank: 0, Heal: 0, Melee: 0, Ranged: 0 };
+  var classCounts = {};
+  var ilvls = [];
+  players.forEach(function (p) {
+    if (roleCounts[p.role] != null) roleCounts[p.role]++;
+    if (p.class) classCounts[p.class] = (classCounts[p.class] || 0) + 1;
+    var lvl = averageItemLevel(p.id);
+    if (lvl != null) ilvls.push(lvl);
+  });
+
+  var roleRows = ROSTER_ROLE_ORDER.map(function (role) {
+    return (
+      '<div class="roster-summary-row">' +
+      '<span class="roster-summary-role-dot" style="background:' +
+      roleColorVar(role) +
+      ';"></span>' +
+      '<span class="roster-summary-role-label">' +
+      ROSTER_ROLE_LABELS[role] +
+      '</span>' +
+      '<span class="roster-summary-role-count">' +
+      roleCounts[role] +
+      '</span>' +
+      '</div>'
+    );
+  }).join('');
+
+  var classRows = Object.keys(classCounts)
+    .sort(function (a, b) {
+      return classCounts[b] - classCounts[a];
+    })
+    .map(function (cls) {
+      return (
+        '<div class="roster-summary-row">' +
+        '<span class="roster-summary-role-dot" style="background:' +
+        classColor(cls) +
+        ';"></span>' +
+        '<span class="roster-summary-role-label">' +
+        cls +
+        '</span>' +
+        '<span class="roster-summary-role-count">' +
+        classCounts[cls] +
+        '</span>' +
+        '</div>'
+      );
+    })
+    .join('');
+
+  var avgIlvl = ilvls.length
+    ? Math.round(
+        ilvls.reduce(function (a, b) {
+          return a + b;
+        }, 0) / ilvls.length
+      )
+    : null;
+  var lowIlvl = ilvls.length ? Math.min.apply(null, ilvls) : null;
+
+  el.innerHTML =
+    '<div class="roster-summary-title">Roster Summary</div>' +
+    '<div class="roster-summary-total">' +
+    players.length +
+    ' <span class="roster-summary-total-label">Raiders</span></div>' +
+    '<div class="roster-summary-section">' +
+    roleRows +
+    '</div>' +
+    (avgIlvl != null
+      ? '<div class="roster-summary-section roster-summary-ilvl">' +
+        '<div class="roster-summary-row"><span class="roster-summary-role-label">Average Item Level</span><span class="roster-summary-role-count roster-ilvl">' +
+        avgIlvl +
+        '</span></div>' +
+        '<div class="roster-summary-row"><span class="roster-summary-role-label">Lowest</span><span class="roster-summary-role-count">' +
+        lowIlvl +
+        '</span></div>' +
+        '</div>'
+      : '') +
+    '<div class="roster-summary-section-label">Classes</div>' +
+    '<div class="roster-summary-section">' +
+    classRows +
+    '</div>';
 }
 
 // Raider-facing preview of approved-but-unpromoted signups for the current
@@ -386,6 +539,35 @@ document.getElementById('playerSelect').addEventListener('change', function (e) 
   }
 });
 
+// Compact "N/M H" (or "M" once AOTC'd) summary of the first/current raid in
+// DATA.raidProgression, for the Home stat row (#864) -- same
+// heroic-vs-mythic-focus rule as buildProgression()'s per-raid header, just
+// condensed to one tile instead of the full boss-by-boss card. Available
+// from the core payload (no equipped-gear/heavy-batch wait), unlike the Avg
+// Item Level tile next to it.
+function _currentProgressSummary() {
+  var raids = (DATA && DATA.raidProgression) || [];
+  if (!raids.length) return null;
+  var raid = raids[0];
+  var bosses = raid.bosses || [];
+  var total = bosses.length;
+  if (!total) return null;
+
+  var heroicKilled = 0;
+  var mythicKilled = 0;
+  var lastProgress = null;
+  for (var h = 0; h < bosses.length; h++) {
+    var p = _raidProgressFor(raid, bosses[h]);
+    if (p && p.heroicDate) heroicKilled++;
+    if (bosses[h].mythicDate) mythicKilled++;
+    if (h === bosses.length - 1) lastProgress = p;
+  }
+  var aotcDate = (lastProgress && lastProgress.heroicDate) || raid.aotcDate;
+  var showHeroic = !raid.isMiniRaid && !aotcDate;
+  var barKilled = showHeroic ? heroicKilled : mythicKilled;
+  return { value: barKilled + '/' + total + (showHeroic ? ' H' : ' M'), label: _esc(raid.name || 'Progress') };
+}
+
 function buildPublicStats() {
   // DATA.lootCounts carries every season for the team (see buildRecentLoot()
   // below) -- "Items This Tier" needs the same per-item season filter, not
@@ -404,13 +586,45 @@ function buildPublicStats() {
 
   var el = document.getElementById('landingStats');
   if (!el) return;
-  el.innerHTML =
+
+  var ilvls = (DATA.roster || [])
+    .map(function (p) {
+      return averageItemLevel(p.id);
+    })
+    .filter(function (v) {
+      return v != null;
+    });
+  var avgIlvl = ilvls.length
+    ? Math.round(
+        ilvls.reduce(function (a, b) {
+          return a + b;
+        }, 0) / ilvls.length
+      )
+    : null;
+  var progress = _currentProgressSummary();
+
+  var html =
     '<div class="pub-stat"><span class="pub-stat-num">' +
     (DATA.roster || []).length +
     '</span><span class="pub-stat-label">Raiders</span></div>' +
     '<div class="pub-stat"><span class="pub-stat-num">' +
     totalItems +
     '</span><span class="pub-stat-label">Items This Tier</span></div>';
+  if (avgIlvl != null) {
+    html +=
+      '<div class="pub-stat"><span class="pub-stat-num">' +
+      avgIlvl +
+      '</span><span class="pub-stat-label">Avg Item Level</span></div>';
+  }
+  if (progress) {
+    html +=
+      '<div class="pub-stat"><span class="pub-stat-num">' +
+      progress.value +
+      '</span><span class="pub-stat-label">' +
+      progress.label +
+      '</span></div>';
+  }
+  el.innerHTML = html;
 }
 
 // Flat, current-season loot log backing buildRecentLoot()/renderLootFeed() (#279).
@@ -517,6 +731,183 @@ function renderLootFeed() {
   rowsEl.innerHTML = html;
 }
 
+// Placeholder-only (#864): visual test of a calendar/attendance-status
+// widget on Home, above raid progression. There is no calendar module or
+// real attendance-by-night data source behind this yet -- raid nights are
+// hardcoded (this team's usual Tue/Thu/Sun) and each one's status is a
+// deterministic (not random, so it doesn't reshuffle on every re-render)
+// fake value standing in for the signed-in viewer's own reply -- one status
+// per raid night, not the whole roster's, since that's what a real "your
+// attendance" calendar would show. A real calendar would obviously be far
+// more detailed than this (multi-month, everyone's status, editable RSVPs,
+// clicking a date opens that day's detail, etc.) -- this is only sized for
+// a Home-page glance. Delete this and its #landingCalendar mount once a
+// real calendar exists, or wire it up to that instead.
+var _MOCK_RAID_WEEKDAYS = [2, 4, 0]; // Tue, Thu, Sun (Date#getDay(): Sun=0)
+var _MOCK_STATUS_LABELS = { present: 'Present', absent: 'Absent', tentative: 'No Response' };
+var _MOCK_WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function _mockStatusFor(seed) {
+  var m = seed % 9;
+  if (m === 0 || m === 4) return 'absent';
+  if (m === 7) return 'tentative';
+  return 'present';
+}
+
+function buildCalendarPreview() {
+  var el = document.getElementById('landingCalendar');
+  if (!el) return;
+
+  var today = new Date();
+  var year = today.getFullYear();
+  var month = today.getMonth();
+  var monthLabel = today.toLocaleString('en-US', { month: 'long' }) + ' ' + year;
+  var daysInMonth = new Date(year, month + 1, 0).getDate();
+  var firstWeekday = new Date(year, month, 1).getDay();
+
+  var weekdayHtml = _MOCK_WEEKDAY_LABELS
+    .map(function (d) {
+      return '<span class="mini-cal-weekday">' + d + '</span>';
+    })
+    .join('');
+
+  var cellsHtml = '';
+  for (var pad = 0; pad < firstWeekday; pad++) {
+    cellsHtml += '<div class="mini-cal-day mini-cal-day-pad"></div>';
+  }
+  var rosterCount = (window.DATA && DATA.roster && DATA.roster.length) || 0;
+  for (var day = 1; day <= daysInMonth; day++) {
+    var weekday = new Date(year, month, day).getDay();
+    var isRaidDay = _MOCK_RAID_WEEKDAYS.indexOf(weekday) !== -1;
+    var isToday = day === today.getDate();
+    var statusHtml = '';
+    var countHtml = '';
+    if (isRaidDay) {
+      var status = _mockStatusFor(day);
+      // aria-label (not just title): status is conveyed by color alone
+      // otherwise, and title's hover-only reveal doesn't reach keyboard or
+      // touch users. role="img" so it's announced as one thing with that
+      // name instead of being skipped as an empty, presentational span.
+      statusHtml =
+        '<span class="calendar-status calendar-status-' +
+        status +
+        '" role="img" aria-label="' +
+        _MOCK_STATUS_LABELS[status] +
+        '" title="' +
+        _MOCK_STATUS_LABELS[status] +
+        '"></span>';
+      // Attending/rostered, like the "30/30" a real calendar shows per raid
+      // night -- rosterCount is real (DATA.roster.length), the attending
+      // side is still mocked (deterministic, not random) same as status.
+      if (rosterCount) {
+        var attending = Math.max(0, rosterCount - (day % 4));
+        countHtml = '<span class="mini-cal-daycount">' + attending + '/' + rosterCount + '</span>';
+      }
+    }
+    cellsHtml +=
+      '<div class="mini-cal-day' +
+      (isRaidDay ? ' mini-cal-day-raid' : '') +
+      (isToday ? ' mini-cal-day-today' : '') +
+      '"><span class="mini-cal-daynum">' +
+      day +
+      '</span>' +
+      countHtml +
+      statusHtml +
+      '</div>';
+  }
+
+  var legendHtml = Object.keys(_MOCK_STATUS_LABELS)
+    .map(function (status) {
+      return (
+        '<span class="calendar-legend-item"><span class="calendar-status calendar-status-' +
+        status +
+        '" aria-hidden="true"></span>' +
+        _MOCK_STATUS_LABELS[status] +
+        '</span>'
+      );
+    })
+    .join('');
+
+  el.innerHTML =
+    '<div class="pub-loot-title">Calendar <span style="color:var(--text-dim);font-weight:400;text-transform:none;letter-spacing:0;">(mock -- no calendar data yet)</span></div>' +
+    '<div class="mini-cal">' +
+    '<div class="mini-cal-header">' +
+    monthLabel +
+    '</div>' +
+    '<div class="mini-cal-weekdays">' +
+    weekdayHtml +
+    '</div>' +
+    '<div class="mini-cal-grid">' +
+    cellsHtml +
+    '</div>' +
+    '</div>' +
+    '<div class="calendar-legend">' +
+    legendHtml +
+    '</div>';
+}
+
+function _renderProgBossRow(raid, boss, num) {
+  var killed_ = !!boss.mythicDate;
+  var progress = _raidProgressFor(raid, boss);
+  var html = '<div class="prog-boss-item">';
+  html += '<div class="prog-boss' + (killed_ ? ' prog-boss-killed' : '') + '">';
+  html += '<span class="prog-boss-num">' + num + '</span>';
+  // title: the 2-column boss-list layout (_renderProgBosses()) truncates a
+  // long name with an ellipsis at half-card width -- this is how the full
+  // name stays reachable there without widening the column.
+  html +=
+    '<span class="prog-boss-name" title="' +
+    _esc(boss.name || 'Unknown') +
+    '">' +
+    _esc(boss.name || 'Unknown') +
+    '</span>';
+  if (killed_) html += '<span class="prog-boss-date">' + boss.mythicDate + '</span>';
+  html += _renderPullsBadge(progress, killed_);
+  html += '</div>';
+  html += _renderHeroicRow(progress);
+  html += '</div>';
+  return html;
+}
+
+// 4 (or 5+ bosses/tier) short-tier raid, one column. Once a raid is bigger
+// than that it splits into 2 columns -- 4 bosses each up to 8 total, 5 each
+// beyond that -- filled top-to-bottom left column first (1-4/1-5), then the
+// right column (5-8/6-10+), rather than zigzagging left/right in kill order.
+function _renderProgBosses(raid, bosses) {
+  var colSize = bosses.length > 8 ? 5 : 4;
+  if (bosses.length <= 4) {
+    var rows = bosses
+      .map(function (boss, j) {
+        return _renderProgBossRow(raid, boss, j + 1);
+      })
+      .join('');
+    return '<div class="prog-bosses">' + rows + '</div>';
+  }
+
+  var col1 = bosses.slice(0, colSize);
+  var col2 = bosses.slice(colSize);
+  var col1Html = col1
+    .map(function (boss, j) {
+      return _renderProgBossRow(raid, boss, j + 1);
+    })
+    .join('');
+  var col2Html = col2
+    .map(function (boss, j) {
+      return _renderProgBossRow(raid, boss, colSize + j + 1);
+    })
+    .join('');
+  return (
+    '<div class="prog-bosses-grid">' +
+    '<div class="prog-bosses">' +
+    col1Html +
+    '</div>' +
+    '<div class="prog-bosses">' +
+    col2Html +
+    '</div>' +
+    '</div>'
+  );
+}
+
 function buildProgression() {
   var raids = (DATA && DATA.raidProgression) || [];
   var el = document.getElementById('landingProgression');
@@ -586,22 +977,7 @@ function buildProgression() {
         '%"></div></div>';
     }
     if (bosses.length) {
-      html += '<div class="prog-bosses">';
-      for (var j = 0; j < bosses.length; j++) {
-        var boss = bosses[j];
-        var killed_ = !!boss.mythicDate;
-        var progress = _raidProgressFor(raid, boss);
-        html += '<div class="prog-boss-item">';
-        html += '<div class="prog-boss' + (killed_ ? ' prog-boss-killed' : '') + '">';
-        html += '<span class="prog-boss-num">' + (j + 1) + '</span>';
-        html += '<span class="prog-boss-name">' + _esc(boss.name || 'Unknown') + '</span>';
-        if (killed_) html += '<span class="prog-boss-date">' + boss.mythicDate + '</span>';
-        html += _renderPullsBadge(progress, killed_);
-        html += '</div>';
-        html += _renderHeroicRow(progress);
-        html += '</div>';
-      }
-      html += '</div>';
+      html += _renderProgBosses(raid, bosses);
     }
     if (!raid.isMiniRaid && aotcDate) {
       html += '<div class="prog-aotc">AOTC <span class="prog-aotc-date">' + aotcDate + '</span></div>';
@@ -984,6 +1360,7 @@ function bootRosterApp() {
         ACTIVE_SEASON = (DATA && DATA.seasonName) || null;
         populateDropdown();
         buildPublicStats();
+        buildCalendarPreview();
         buildProgression();
         buildStreamWidget();
         renderExternalWclLink();
@@ -1033,6 +1410,12 @@ function bootRosterApp() {
         }
         var rosterWrap = document.getElementById('rosterViewWrap');
         if (rosterWrap && rosterWrap.classList.contains('active')) {
+          // Re-render (not just re-show): equippedGearPromise -- the item
+          // levels in the roster table/summary panel -- only resolves in
+          // this heavy batch, so a raider already sitting on the Roster tab
+          // when it lands needs the table rebuilt, not just its sub-tab
+          // visibility re-applied.
+          buildPublicRosterTab();
           buildIncomingRosterSection();
           showRosterSubTab(_rosterSubTab);
         }

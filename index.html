@@ -5,24 +5,57 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>WGA Raid Hub -- Phoenix</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
+<!-- Theme playground (#864) -- applies a saved data-theme/data-font before
+     first paint so a reload doesn't flash the default first. Delete
+     alongside #themeSwitcher/#fontSwitcher and the matching CSS once a
+     direction is picked. -->
+<script>(function(){try{var t=localStorage.getItem('wga_theme_playground');if(t)document.documentElement.setAttribute('data-theme',t);var f=localStorage.getItem('wga_font_playground');if(f)document.documentElement.setAttribute('data-font',f);}catch(e){}})();</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=3.77.25">
+<!-- Inter/Roboto/Open+Sans/Merriweather/Source+Sans+3 are only for the
+     #fontSwitcher playground (#864) -- drop them from this query string
+     along with the switcher once a direction is picked. -->
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=Open+Sans:wght@400;600;700&family=Merriweather:wght@600;700&family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css?v=3.77.25-theme29">
 <script>var whTooltips = {colorLinks: true, iconizeLinks: true, iconSize: 'small'};</script>
 <script src="https://wow.zamimg.com/widgets/power.js"></script>
 </head>
-<body>
+<!-- flat-look (#864): applied directly to index.html only, scoped via this
+     body class rather than a switcher toggle -- see the "Flat & minimal"
+     block in css/styles.css. officer.html/guild.html/admin.html are
+     untouched until this direction is confirmed. -->
+<body class="flat-look">
 
 <a class="skip-link" href="#main-content">Skip to main content</a>
 
-<header class="header">
-  <a href="index.html" class="header-link">
-    <span class="header-emblem">🔥</span>
-    <h1 id="headerTeamName">Phoenix</h1>
-    <p class="header-sub">Raid Hub</p>
+<div class="app-shell">
+<div class="sidebar-scrim" id="sidebarScrim" onclick="toggleSidebar(false)"></div>
+<aside class="sidebar" id="sidebar">
+  <a href="index.html" class="sidebar-brand">
+    <span class="sidebar-emblem">🔥</span>
+    <span class="sidebar-brand-text">
+      <span class="sidebar-team-name" id="headerTeamName">Phoenix</span>
+      <span class="sidebar-sub">Raid Hub</span>
+    </span>
   </a>
-  <div class="header-links" id="headerLinks">
-    <span class="header-links-label">Links</span>
+  <div class="sidebar-switch-row">
+    <select id="teamSwitcherSelect" class="team-switcher" title="Switch team"></select>
+  </div>
+
+  <nav class="sidebar-nav" id="siteNav" aria-label="Site">
+    <!-- Kept out of SITE_NAV_ITEMS/renderSiteNav() (js/common.js) rather than
+         added there -- that list is shared with officer.html's cross-page
+         links, which build a static index.html#hash href per item, and
+         "You" has no such hash (its target, the claimed player's own
+         profile, is only known at runtime). Placed here instead, ahead of
+         the real nav list, so it still reads as one of Home/Roster/etc.
+         rather than a footer utility link like Officer Access/Discord
+         login. Shown only once claimed, wired up by _renderYouNavLink() in
+         js/officer-quick-actions.js. -->
+    <button type="button" class="site-nav-item" id="navYou" style="display:none" data-tooltip="Your raider profile -- priority standing, BiS, attendance">You</button>
+    <div id="siteNavItems"></div>
+  </nav>
+
+  <div class="sidebar-external-links" id="headerLinks">
     <a id="headerWclLink" class="header-link-icon" href="#" target="_blank" rel="noopener" title="WarcraftLogs" aria-label="WarcraftLogs" style="display:none">
       <img src="https://www.google.com/s2/favicons?sz=64&domain=warcraftlogs.com" alt="" width="30" height="30" loading="lazy">
     </a>
@@ -33,23 +66,22 @@
       <img src="https://www.google.com/s2/favicons?sz=64&domain=worldofwarcraft.com" alt="" width="30" height="30" loading="lazy">
     </a>
   </div>
-  <div class="header-divider"></div>
-</header>
 
-<nav class="site-nav" id="siteNav" aria-label="Site">
-  <div id="siteNavItems" style="display:contents;"></div>
-  <div class="site-nav-right">
-    <select id="teamSwitcherSelect" class="team-switcher" title="Switch team"></select>
+  <div class="sidebar-footer">
     <div class="nav-bell-wrap">
       <button class="site-nav-item nav-bell" id="navBell" onclick="toggleNotifDropdown(event)" style="display:none" data-tooltip="Notifications" title="Notifications">
-        &#128276;<span id="navBellBadge" class="nav-notif nav-notif-abs" style="display:none"></span>
+        &#128276; Notifications<span id="navBellBadge" class="nav-notif nav-notif-abs" style="display:none"></span>
       </button>
       <div id="notifDropdown" class="notif-dropdown" style="display:none"></div>
     </div>
     <button class="site-nav-item site-nav-discord" id="navDiscord" onclick="loginWithDiscord()" data-tooltip="Sign in with Discord to view your priority standing and mark loot received">Login with Discord</button>
     <a href="officer.html" class="site-nav-item" id="navOfficer" style="display:none" data-tooltip="Officer dashboard -- manage roster, loot, and signups">Officer Access</a>
   </div>
-</nav>
+</aside>
+
+<div class="app-content">
+
+<button type="button" class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()" aria-label="Toggle menu" aria-expanded="false" aria-controls="sidebar">&#9776;</button>
 
 <!-- Officer quick-actions bar (visible only to Discord-authenticated officers) -->
 <div id="officerQuickActions" class="officer-quick-bar" style="display:none">
@@ -100,31 +132,56 @@
       <p id="claimPromptElsewhereDesc" style="display:none">Welcome, <strong id="claimPromptElsewhereWho"></strong>! You've already claimed <strong id="claimPromptElsewhereChar"></strong> on <strong id="claimPromptElsewhereTeam"></strong>. Switch teams to view your profile.</p>
       <button type="button" class="btn btn-gold" id="claimPromptBtn" aria-describedby="claimPromptDesc">Claim your character</button>
     </section>
-    <div id="landingStats" class="pub-stats"></div>
-    <div class="landing-card" id="playerSelectorCard">
-      <span class="selector-label" id="playerSelectorLabel">Your Profile</span>
-      <div class="selector-outer" id="playerDropdownOuter">
-        <select id="playerSelect">
+    <!-- Two-column dashboard (#864): hero stat strip full width, then a
+         narrower personal rail (lookup + calendar) beside a wider team
+         column (progression + loot) instead of one stacked column. -->
+    <div id="landingStats" class="pub-stats landing-hero-stats"></div>
+    <div class="landing-dashboard">
+      <div class="landing-rail">
+        <!-- #playerSelect (#864): the visible "Look up a raider" card is
+             gone -- lookup now happens by clicking a row in the Roster
+             table, and jumping to your own profile is the sidebar's "You"
+             link (officer-quick-actions.js's _renderYouNavLink()) instead.
+             This select stays in the DOM, hidden, purely as the existing
+             selected-player state store several call sites already read/set
+             defensively (discord.js's claim flow, common.js's profile close
+             button, roster.js's deep-link handlers) -- removing it outright
+             would mean auditing and rewriting all of those instead of just
+             the one card that actually showed it. -->
+        <select id="playerSelect" style="display:none" aria-hidden="true" tabindex="-1">
           <option value="">-- Select your character --</option>
         </select>
+        <!-- Mock calendar (#864) -- no real calendar module/data source
+             exists yet, this is placeholder markup (fake nights,
+             roster-shaped but made-up attendance status) purely to test the
+             visual design. -->
+        <div id="landingCalendar" class="pub-loot"></div>
       </div>
-      <div id="myProfileOuter" style="display:none">
-        <button class="btn btn-gold" id="myProfileBtn">View My Profile</button>
+      <div class="landing-main">
+        <div id="landingProgression"></div>
       </div>
     </div>
-    <div id="landingProgression"></div>
+    <!-- Recent Loot lives outside the 2-column split entirely now (#864
+         follow-up): shuffling it between the rail and main column just
+         moved which side looked bare -- rail (calendar) and main
+         (progression) are naturally different heights, and forcing them to
+         match by relocating content was the wrong fix. Full width below
+         both instead. -->
     <div id="landingLoot" class="pub-loot"></div>
   </div>
 </div>
 
 <!-- Roster -->
 <div id="rosterViewWrap" class="view">
-  <div class="landing-body">
+  <div class="roster-page">
     <div id="rosterSubNav" class="roster-sub-nav" style="display:none">
       <button class="roster-sub-tab active" id="rosterSubTabCurrent" onclick="showRosterSubTab('current')">Current Roster</button>
       <button class="roster-sub-tab" id="rosterSubTabIncoming" onclick="showRosterSubTab('incoming')" style="display:none">Next Season Roster (Tentative)</button>
     </div>
-    <div id="rosterView" class="pub-loot"></div>
+    <div class="roster-layout">
+      <div id="rosterView" class="pub-loot roster-main"></div>
+      <aside id="rosterSummary" class="roster-summary"></aside>
+    </div>
     <div id="incomingRosterSection" class="pub-loot" style="display:none"></div>
   </div>
 </div>
@@ -325,6 +382,9 @@
 
 <footer class="footer">We Go Again &middot; <span class="team-name">Phoenix</span> &middot; v<span id="versionNum"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a> &middot; <a class="footer-link footer-icon-link" href="https://patreon.com/Katorri" target="_blank" rel="noopener" aria-label="Support on Patreon" title="Support on Patreon"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M0 .48v23.04h4.22V.48zm15.385 0c-4.764 0-8.641 3.88-8.641 8.65 0 4.755 3.877 8.623 8.641 8.623 4.75 0 8.615-3.868 8.615-8.623C24 4.36 20.136.48 15.385.48z"/></svg></a></footer>
 
+</div>
+</div>
+
 <!-- Discord claiming modal -->
 <div id="discordClaimModal" class="modal-overlay" style="display:none">
   <div class="modal-box discord-claim-box">
@@ -351,6 +411,31 @@
 <div id="streamWidget" class="stream-widget" style="display:none">
   <div class="stream-widget-panel" id="streamWidgetPanel"></div>
   <button class="stream-widget-pill" id="streamWidgetPill" onclick="toggleStreamWidget()"></button>
+</div>
+
+<!-- Theme playground (#864) -- temporary, for comparing palettes/fonts live.
+     Persists per-browser via localStorage while testing; delete this along
+     with the matching CSS/font-link additions once a direction is picked. -->
+<div class="theme-switcher-dev">
+  <div class="theme-switcher-dev-row">
+    <label for="themeSwitcher">Theme</label>
+    <select id="themeSwitcher" onchange="setThemePlayground(this.value)">
+      <option value="">Default (Ember)</option>
+      <option value="mono">Mono</option>
+      <option value="gruvbox">Gruvbox Dark</option>
+    </select>
+  </div>
+  <div class="theme-switcher-dev-row">
+    <label for="fontSwitcher">Font</label>
+    <select id="fontSwitcher" onchange="setFontPlayground(this.value)">
+      <option value="">Default (Cinzel/Rajdhani)</option>
+      <option value="inter">Inter</option>
+      <option value="roboto">Roboto</option>
+      <option value="opensans">Open Sans</option>
+      <option value="merriweather">Merriweather/Source Sans</option>
+      <option value="system">System UI</option>
+    </select>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -380,6 +465,28 @@ initTeamUI();
 // Set after initTeamUI() (which expects the older TEAM -- SUFFIX order) so
 // this has the final say.
 document.title = 'WGA Raid Hub -- ' + TEAM_NAME;
+
+// Theme/font playground (#864) -- see the head's early-apply script and
+// css/styles.css's :root[data-theme="..."]/:root[data-font="..."] blocks.
+// Two independent attributes (and localStorage keys) so any color palette
+// can be tried with any font pairing. Delete alongside those and
+// #themeSwitcher/#fontSwitcher once a direction is picked.
+function setThemePlayground(value) {
+  if (value) document.documentElement.setAttribute('data-theme', value);
+  else document.documentElement.removeAttribute('data-theme');
+  try {
+    localStorage.setItem('wga_theme_playground', value);
+  } catch (e) {}
+}
+function setFontPlayground(value) {
+  if (value) document.documentElement.setAttribute('data-font', value);
+  else document.documentElement.removeAttribute('data-font');
+  try {
+    localStorage.setItem('wga_font_playground', value);
+  } catch (e) {}
+}
+document.getElementById('themeSwitcher').value = document.documentElement.getAttribute('data-theme') || '';
+document.getElementById('fontSwitcher').value = document.documentElement.getAttribute('data-font') || '';
 </script>
 </body>
 </html>
