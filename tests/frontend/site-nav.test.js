@@ -67,11 +67,24 @@ describe('SITE_NAV_ITEMS', () => {
     expect(sandbox.SITE_NAV_ITEMS[0].id).toBe('navGuild');
   });
 
-  it('gives exactly one item an href', () => {
+  it('gives exactly two items an href, and both are cross-page links', () => {
     // The active-default rule below depends on knowing which items are
-    // cross-page links, so a second one arriving unnoticed should fail here.
+    // cross-page links, so a third one arriving unnoticed should fail here.
     const { sandbox } = makeSandbox();
-    expect(sandbox.SITE_NAV_ITEMS.filter((i) => i.href).length).toBe(1);
+    expect(sandbox.SITE_NAV_ITEMS.filter((i) => i.href).map((i) => i.id)).toEqual(['navGuild', 'navBoeManage']);
+  });
+
+  it('carries a BoE Sales entry for officer.html only, shipped hidden (#864)', () => {
+    // boe.html is for officers and BoE managers, so the link belongs on the
+    // officer dashboard's nav and not on the public page, and it stays hidden
+    // until the access answer reveals it, the same way index.html's
+    // #navOfficer does.
+    const { sandbox } = makeSandbox();
+    const item = sandbox.SITE_NAV_ITEMS.find((i) => i.id === 'navBoeManage');
+    expect(item).toBeDefined();
+    expect(item.href).toBe('boe.html');
+    expect(item.officerOnly).toBe(true);
+    expect(item.hidden).toBe(true);
   });
 });
 
@@ -89,7 +102,7 @@ describe('renderSiteNav, public mode', () => {
     const { sandbox, mount } = makeSandbox();
     sandbox.renderSiteNav('public');
     const rendered = items(mount.innerHTML);
-    expect(rendered.length).toBe(sandbox.SITE_NAV_ITEMS.length);
+    expect(rendered.length).toBe(sandbox.SITE_NAV_ITEMS.filter((i) => !i.officerOnly).length);
     rendered
       .filter((i) => i.id !== 'navGuild')
       .forEach((i) => {
@@ -114,6 +127,14 @@ describe('renderSiteNav, public mode', () => {
     sandbox.renderSiteNav('public');
     expect(mount.innerHTML).toContain('id="navNewsDot"');
   });
+
+  it('leaves the officer-only item out entirely (#864)', () => {
+    const { sandbox, mount } = makeSandbox();
+    sandbox.renderSiteNav('public');
+    const rendered = items(mount.innerHTML);
+    expect(rendered.find((i) => i.id === 'navBoeManage')).toBeUndefined();
+    expect(rendered.length).toBe(sandbox.SITE_NAV_ITEMS.filter((i) => !i.officerOnly).length);
+  });
 });
 
 describe('renderSiteNav, officer mode', () => {
@@ -137,5 +158,26 @@ describe('renderSiteNav, officer mode', () => {
     const { sandbox, mount } = makeSandbox({ search: '?team=hellfire' });
     sandbox.renderSiteNav('officer');
     expect(items(mount.innerHTML).filter((i) => i.active)).toEqual([]);
+  });
+
+  it('renders the BoE Sales link hidden, pointing at boe.html with no team param (#864)', () => {
+    // Hidden in the markup, not just unrevealed: the href branch used to emit
+    // no style at all, so the item would have flashed for every officer before
+    // the access RPCs answered. js/officer.js reveals it from fetchBoeAccess().
+    const { sandbox, mount } = makeSandbox({ search: '?team=hellfire' });
+    sandbox.renderSiteNav('officer');
+    const boe = items(mount.innerHTML).find((i) => i.id === 'navBoeManage');
+    expect(boe).toBeDefined();
+    expect(boe.tag).toBe('a');
+    expect(boe.href).toBe('boe.html');
+    expect(boe.attrs).toMatch(/style="display:\s*none;?"/);
+  });
+
+  it('leaves every other item unhidden', () => {
+    const { sandbox, mount } = makeSandbox({ search: '?team=hellfire' });
+    sandbox.renderSiteNav('officer');
+    items(mount.innerHTML)
+      .filter((i) => i.id !== 'navBoeManage')
+      .forEach((i) => expect(i.attrs).not.toContain('display:none'));
   });
 });

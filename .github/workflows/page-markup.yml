@@ -12,8 +12,10 @@ on:
       - 'officer.html'
       - 'admin.html'
       - 'guild.html'
-      # The guild-page rules also read js/guild.js.
+      - 'boe.html'
+      # The team-free page rules also read the scripts that boot them.
       - 'js/guild.js'
+      - 'js/boe-page.js'
       - 'tests/ci/page-markup.test.js'
       - 'package.json'
       - 'package-lock.json'

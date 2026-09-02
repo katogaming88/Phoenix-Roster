@@ -486,28 +486,31 @@ the tab at all. In practice this is usually one or two people per team. Five sub
 
 ---
 
-## BoE Sales (on the guild page, not this dashboard)
+## BoE Sales (its own page, `boe.html`)
 
-Reached from the **Guild** link in the top nav, then **BoE Sales** in the guild page's own
-nav. That item appears only for someone who can open the section, so if it isn't there, the
-access rules below are the reason. It lived
-on this dashboard as a tab until #774 moved it: BoEs are guild property and the read spans
-every team, so a per-team page was the wrong home, and a BoE manager who runs the guild
-bank without staffing a raid team could not open this dashboard at all. An old
-`?tab=boe` bookmark redirects there.
+Reached from the **BoE Sales** link in this dashboard's site nav, or from the same link in
+the guild page's nav. Both appear only for someone who can open the page, so if the link
+isn't there, the access rules below are the reason. It lived on this dashboard as a tab
+until #774 moved it to the guild page: BoEs are guild property and the read spans every
+team, so a per-team page was the wrong home, and a BoE manager who runs the guild bank
+without staffing a raid team could not open this dashboard at all. #864 then gave it a page
+of its own, because it was by far the longest thing on the guild page once history loaded,
+it is officer-facing where everything around it there is raider-facing, and it had to hide
+itself until three access checks answered. An old `?tab=boe` bookmark redirects to the
+page. Signed out, the page offers Discord sign-in and comes back to itself afterwards.
 
 Runs the auction lifecycle for BoEs the guild sells -- **found -> listed -> sold -> paid**, plus
 **retire** for anything that never moves. Raiders report a find from the public **BoE** tab
 (#746) or the guild page card; everything after the report happens here.
 
-- **The tab is guild-wide, not per-team** (#765). It shows every find you're allowed to see
+- **The page is guild-wide, not per-team** (#765). It shows every find you're allowed to see
   rather than only the team whose page you're on, because BoEs are guild property. A BoE manager
   or site admin sees all four teams, Wrathless included; a plain officer sees the teams they
   staff. Every row names the finding team, History included -- that's credit, not a
   disambiguator.
 - **Actions need the BoE manager grant** (#766), assigned by a site admin on the site admin
   dashboard. Without it it is read-only: totals and rows, no buttons. Officers on any team
-  see it read-only; everyone else does not see the section at all. The grant is
+  see it read-only; everyone else is told whom the page is for. The grant is
   guild-wide, so a manager is authorized on every team's finds rather than one team's.
 
 A summary strip and three sections:

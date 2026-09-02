@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>We Go Again -- BoE Sales</title>
+<meta name="description" content="We Go Again: found-BoE auctions, from the report to the finder being paid.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css?v=3.78.0">
+<!-- Shares guild.html's layout: the guild-page body class carries the
+     wrapping nav and the keyboard and motion baselines, and the guild-*
+     classes below are the same section grammar. Nothing here is styled on
+     its own. -->
+<link rel="stylesheet" href="css/guild.css?v=3.78.0">
+</head>
+<body class="guild-page">
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
+<header class="header">
+  <a href="guild.html" class="header-link">
+    <span class="header-emblem" aria-hidden="true">&#128293;</span>
+    <h1>We Go Again</h1>
+    <p class="header-sub">BoE Sales</p>
+  </a>
+  <div class="header-divider"></div>
+</header>
+
+<nav class="site-nav" aria-label="Site">
+  <a class="site-nav-item" href="guild.html">Guild</a>
+  <a class="site-nav-item active" href="boe.html" aria-current="page">BoE Sales</a>
+  <div class="site-nav-right">
+    <span class="site-nav-item" id="boeWhoAmI"></span>
+    <button type="button" class="site-nav-item site-nav-discord" id="boeAuthBtn">Sign in with Discord</button>
+  </div>
+</nav>
+
+<div id="maintenanceBanner" class="state-msg" style="display:none;">
+  <p><strong>Down for maintenance</strong></p>
+  <p id="maintenanceBannerMessage"></p>
+</div>
+
+<div id="boeLoading" class="state-msg">
+  <div class="spinner"></div>
+  <p>Loading...</p>
+</div>
+
+<main id="main-content" class="guild-body" tabindex="-1">
+
+  <!-- The BoE lifecycle, for officers, BoE managers and site admins. It lived
+       on the officer dashboard as a tab (#747), then on guild.html as a section
+       (#774), and is a page of its own since #864. js/boe-page.js decides what
+       to show from the three access RPCs; js/boe-manage.js writes into the four
+       containers. -->
+  <section class="guild-section" id="boe-manage" aria-labelledby="boeManageHeading">
+    <h2 id="boeManageHeading">BoE Sales</h2>
+    <p class="guild-section-intro">Every find across the guild, from reported through to the finder being paid. Recording a listing, a sale, a payout or a retirement needs the BoE manager grant; other officers see this read-only.</p>
+    <div id="boeAccessNote"></div>
+    <div id="guildBoeSummary"></div>
+    <div id="guildBoeOpen"></div>
+    <div id="guildBoeAwaiting"></div>
+    <div id="guildBoeHistory"></div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  We Go Again &middot; v<span id="boeVersion"></span> &middot;
+  <a class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a> &middot;
+  <a class="footer-link footer-icon-link" href="https://patreon.com/Katorri" target="_blank" rel="noopener" aria-label="Support on Patreon" title="Support on Patreon"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M0 .48v23.04h4.22V.48zm15.385 0c-4.764 0-8.641 3.88-8.641 8.65 0 4.755 3.877 8.623 8.641 8.623 4.75 0 8.615-3.868 8.615-8.623C24 4.36 20.136.48 15.385.48z"/></svg></a>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/common.js?v=3.78.0"></script>
+<script src="js/boe-manage.js?v=3.78.0"></script>
+<script src="js/boe-page.js?v=3.78.0"></script>
+<script>
+document.getElementById('boeVersion').textContent = VERSION;
+</script>
+</body>
+</html>

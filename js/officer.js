@@ -391,13 +391,14 @@ function buildOfficerDashboard() {
   // already showing, or every such refresh would redundantly re-click and
   // rebuild the tab the officer is already sitting on.
   var tabParam = (location.search.match(/[?&]tab=([^&]+)/) || [])[1];
-  // The BoE tab moved to the guild page in #774. openTab() would find no
-  // button and silently no-op, leaving an old bookmark on Roster with no
-  // explanation, so send it where the surface actually lives. Only a real
-  // deep link can carry this now: switchTab() can no longer sync '?tab=boe'
-  // back into the URL, because there is no BoE button to make active.
+  // The BoE tab moved to the guild page in #774 and to its own page in #864.
+  // openTab() would find no button and silently no-op, leaving an old
+  // bookmark on Roster with no explanation, so send it where the surface
+  // actually lives. Only a real deep link can carry this now: switchTab() can
+  // no longer sync '?tab=boe' back into the URL, because there is no BoE
+  // button to make active.
   if (tabParam === 'boe') {
-    window.location.href = 'guild.html#boe-manage';
+    window.location.href = 'boe.html';
     return;
   }
   if (tabParam) {
@@ -414,6 +415,22 @@ function buildOfficerDashboard() {
 // visible without a reload. loot and fairness both live partly inside the
 // Loot tab (Loot Fairness is a fairness sub-tab, not a loot one, #231's own
 // split) -- the Loot nav-item itself only disappears if both are off.
+// Reveals the site nav's BoE Sales link (boe.html, #864) for someone who may
+// open that page: an officer on any team, a BoE manager, or a site admin. The
+// item ships hidden from renderSiteNav() so it cannot flash before this
+// answers. Guild-wide, so it ignores this team's boe flag on purpose; the
+// page it points at shows every team's finds. Called once the Discord session
+// is established (officer.html's _grantOfficerAccessViaDiscord); a password
+// session has no auth user behind it, so the RPCs answer false and the link
+// stays hidden, which is right, since the page cannot read anything for it.
+function revealBoeSalesNav(session) {
+  var el = document.getElementById('navBoeManage');
+  if (!el) return;
+  fetchBoeAccess(session).then(function (access) {
+    el.style.display = access.visible ? '' : 'none';
+  });
+}
+
 function applyFeatureFlagVisibility() {
   function setVisible(id, visible) {
     var el = document.getElementById(id);
@@ -441,10 +458,10 @@ function applyFeatureFlagVisibility() {
   setVisible('navTab-requests', requestsOn);
   setVisible('navTab-loot', lootOn || fairnessOn);
   // The site nav's BoE link points back at index.html's submit card (#746);
-  // hide it alongside the card when the team's boe flag is off. The officer
-  // BoE Sales tab (#747) rides the same flag.
+  // hide it alongside the card when the team's boe flag is off. The BoE Sales
+  // link beside it is guild-wide and rides the access answer instead
+  // (revealBoeSalesNav()), not this team's flag.
   setVisible('navBoE', boeOn);
-  setVisible('navTab-boe', boeOn);
 
   setVisible('loot-subtab-btn-import', lootOn);
   setVisible('loot-subtab-btn-history', lootOn);

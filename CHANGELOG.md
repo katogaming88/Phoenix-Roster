@@ -8,6 +8,12 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.78.0] - 2026-09-02
+
+### Frontend
+
+- BoE Sales is its own page, `boe.html`, instead of a section at the bottom of the guild page. It was the longest thing on that page once history loaded and officer-facing where everything around it was for raiders. The **BoE Sales** link in the guild page's nav now opens the page, and the officer dashboard's site nav gained the same link; both show only for officers, BoE managers and site admins, whose access the page checks again for itself. Signed out, the page offers Discord sign-in and returns to itself afterwards; signed in without access, it says whom it is for. An old `officer.html?tab=boe` bookmark redirects to the new page. Nobody's permissions changed (#864).
+
 ## [3.77.25] - 2026-09-02
 
 ### Frontend
