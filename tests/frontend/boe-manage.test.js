@@ -467,7 +467,7 @@ describe('lifecycle actions', () => {
   });
 });
 
-describe('history paging', () => {
+describe('reading History by keyset', () => {
   it('pages the read by keyset when the team has more than one page of rows', async () => {
     const items = [];
     for (let i = 1; i <= 1150; i++) {
@@ -857,6 +857,10 @@ describe('History paging (#863)', () => {
       boeRow({
         id: 100 + i,
         item_name: 'Paid Item ' + (i + 1),
+        // No track: boeRow()'s default 'Hero' badge follows the name in the
+        // cell, which hides the 'Paid Item N<' anchors that tell Paid Item 1
+        // from Paid Item 10 to 19 below.
+        track: null,
         status: 'paid',
         sold_at: '2026-08-01T02:00:00Z',
         // Newest first, so Paid Item 1 is the most recent and lands on page 1.
@@ -886,7 +890,9 @@ describe('History paging (#863)', () => {
     })
   });
 
-  const rowsIn = (html) => (html.match(/<tr>/g) || []).length;
+  // Body rows only: _boeTable puts the header row in a <tr> too, so counting
+  // every <tr> read one high and three of these tests could never pass.
+  const rowsIn = (html) => ((html.split('<tbody>')[1] || '').match(/<tr>/g) || []).length;
   const gold = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + 'g';
 
   it('renders the first 20 of 21 rows, newest first, and says so', async () => {
@@ -1010,5 +1016,15 @@ describe('History paging (#863)', () => {
     const { client } = makeBoeClient({ items: found, listings: [] });
     const { els } = await build({ client, els: pagerEls() });
     expect(rowsIn(els.guildBoeOpen.innerHTML)).toBe(25);
+  });
+
+  // #863 asked the browser harness to check the two buttons carry accessible
+  // names, but History renders only signed in and the harness runs signed out
+  // (Phase A), so the check lives here: the visible text is the name.
+  it('names both buttons by their visible text', async () => {
+    const { client } = makeBoeClient({ items: paidRows(21), listings: [] });
+    const { els } = await build({ client, els: pagerEls() });
+    expect(els.guildBoeHistory.innerHTML).toMatch(/<button[^>]*id="boeHistoryPrev"[^>]*>Previous<\/button>/);
+    expect(els.guildBoeHistory.innerHTML).toMatch(/<button[^>]*id="boeHistoryNext"[^>]*>Next<\/button>/);
   });
 });
