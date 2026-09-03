@@ -11,8 +11,8 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css?v=3.85.0">
-  <link rel="stylesheet" href="css/officer.css?v=3.85.0">
+  <link rel="stylesheet" href="css/styles.css?v=3.86.1">
+  <link rel="stylesheet" href="css/officer.css?v=3.86.1">
   <!-- Hover tooltips for Buff Coverage's spell links (#491) and item links
        (Priority tab/BiS grid, itemNameBlockHtml(), #567). Auto-attaches to
        any <a class="wowhead">. whTooltips must be set before power.js loads
@@ -113,6 +113,7 @@
           <button class="nav-item" id="navTab-requests" onclick="switchTab('requests')">Received Item Requests<span
               class="nav-notif nav-notif-abs" id="requestsNavBadge" style="display:none;"></span></button>
           <div class="nav-admin-divider"></div>
+          <button class="nav-item" id="navTab-schedule" onclick="switchTab('schedule')">Raid Schedule</button>
           <button class="nav-item" id="navTab-season" onclick="switchTab('season')">Season Settings</button>
           <button class="nav-item" onclick="switchTab('bios')">Officer Bios</button>
           <button class="nav-item" onclick="switchTab('audit')">Audit Log</button>
@@ -1115,6 +1116,50 @@
             <div id="mplusContainer"></div>
           </div>
 
+          <!-- Raid Schedule tab (#894, part of #640, Phase 3) -->
+          <div id="tab-schedule" class="tab-panel">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
+              <span class="section-label" style="margin-bottom:0;">Weekly Raid Nights<button class="help-btn" onclick="toggleHelp('help-schedule')" title="Show help">?</button></span>
+              <button class="btn btn-gold" id="scheduleRuleAddBtn" onclick="addScheduleRule()">+ Add Weekly Night</button>
+            </div>
+            <div id="help-schedule" class="help-tip" style="margin-top:0;margin-bottom:0.75rem;">
+              These recurring nights drive the raid calendar raiders see (Home widget and the Calendar page) -- add one row per weekly raid night, edit and click <strong>Save</strong> per row. Raiders are auto-marked Present unless benched; an <strong>Optional</strong> night has no automatic Present and everyone must respond instead (#895).<br>
+              Use <strong>One-Off Changes</strong> below to cancel a single occurrence of a weekly night, or add an extra night that isn't part of the regular schedule.<br>
+              Cancelling or removing a night does not touch any RSVPs raiders already submitted for it -- those rows are left in place but become harmless.
+            </div>
+            <div id="scheduleRulesWrap"></div>
+            <div id="scheduleRuleStatus" style="font-size:0.93rem;color:var(--melee);margin-top:0.5rem;"></div>
+
+            <div style="margin-top:1.75rem;">
+              <span class="section-label">One-Off Changes</span>
+              <div style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:flex-end;margin:0.5rem 0 0.85rem;">
+                <div>
+                  <div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:2px;">Date</div>
+                  <input type="date" id="schedExcDateInput" class="add-player-input" style="font-size:0.97rem;padding:0.3rem 0.5rem;">
+                </div>
+                <div>
+                  <div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:2px;">Start Time (added only)</div>
+                  <input type="time" id="schedExcStartInput" class="add-player-input" style="font-size:0.97rem;padding:0.3rem 0.5rem;">
+                </div>
+                <div>
+                  <div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:2px;">Duration (added only)</div>
+                  <input type="number" min="15" step="15" id="schedExcDurationInput" class="add-player-input" style="width:80px;font-size:0.97rem;padding:0.3rem 0.5rem;">
+                </div>
+                <label style="display:flex;align-items:center;gap:5px;font-size:0.93rem;color:var(--text-muted);cursor:pointer;padding-bottom:0.4rem;">
+                  <input type="checkbox" id="schedExcOptionalInput"> Optional (added only)
+                </label>
+                <div style="flex:1;min-width:160px;">
+                  <div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:2px;">Note</div>
+                  <input type="text" id="schedExcNoteInput" class="add-player-input" placeholder="Optional note" style="width:100%;font-size:0.97rem;padding:0.3rem 0.5rem;">
+                </div>
+                <button class="btn btn-danger" onclick="addScheduleException('cancelled')">Cancel a Night</button>
+                <button class="btn btn-gold" onclick="addScheduleException('added')">Add an Extra Night</button>
+              </div>
+              <div id="scheduleExceptionStatus" style="font-size:0.93rem;color:var(--melee);margin-bottom:0.5rem;"></div>
+              <div id="scheduleExceptionsWrap"></div>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
@@ -1238,27 +1283,28 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/common.js?v=3.85.0"></script>
-  <script src="js/discord.js?v=3.85.0"></script>
-  <script src="js/officer.js?v=3.85.0"></script>
-  <script src="js/tabs/tab-roster.js?v=3.85.0"></script>
-  <script src="js/tabs/tab-conflicts.js?v=3.85.0"></script>
-  <script src="js/tabs/tab-fairness.js?v=3.85.0"></script>
-  <script src="js/tabs/tab-attendance.js?v=3.85.0"></script>
-  <script src="js/tabs/tab-bench-fairness.js?v=3.85.0"></script>
-  <script src="js/tabs/tab-signups.js?v=3.85.0"></script>
-  <script src="js/tabs/tab-requests.js?v=3.85.0"></script>
-  <script src="js/tabs/tab-bis.js?v=3.85.0"></script>
-  <script src="js/tabs/tab-pending-roster.js?v=3.85.0"></script>
-  <script src="js/tabs/tab-mplus.js?v=3.85.0"></script>
-  <script src="js/tabs/tab-priority.js?v=3.85.0"></script>
-  <script src="js/tabs/tab-audit.js?v=3.85.0"></script>
-  <script src="js/tabs/tab-reports.js?v=3.85.0"></script>
-  <script src="js/tabs/tab-season.js?v=3.85.0"></script>
-  <script src="js/tabs/tab-bios.js?v=3.85.0"></script>
-  <script src="js/tabs/tab-loot-import.js?v=3.85.0"></script>
-  <script src="js/tabs/tab-scoring.js?v=3.85.0"></script>
-  <script src="js/tabs/tab-admin.js?v=3.85.0"></script>
+  <script src="js/common.js?v=3.86.1"></script>
+  <script src="js/discord.js?v=3.86.1"></script>
+  <script src="js/officer.js?v=3.86.1"></script>
+  <script src="js/tabs/tab-roster.js?v=3.86.1"></script>
+  <script src="js/tabs/tab-conflicts.js?v=3.86.1"></script>
+  <script src="js/tabs/tab-fairness.js?v=3.86.1"></script>
+  <script src="js/tabs/tab-attendance.js?v=3.86.1"></script>
+  <script src="js/tabs/tab-bench-fairness.js?v=3.86.1"></script>
+  <script src="js/tabs/tab-signups.js?v=3.86.1"></script>
+  <script src="js/tabs/tab-requests.js?v=3.86.1"></script>
+  <script src="js/tabs/tab-bis.js?v=3.86.1"></script>
+  <script src="js/tabs/tab-pending-roster.js?v=3.86.1"></script>
+  <script src="js/tabs/tab-mplus.js?v=3.86.1"></script>
+  <script src="js/tabs/tab-priority.js?v=3.86.1"></script>
+  <script src="js/tabs/tab-audit.js?v=3.86.1"></script>
+  <script src="js/tabs/tab-reports.js?v=3.86.1"></script>
+  <script src="js/tabs/tab-season.js?v=3.86.1"></script>
+  <script src="js/tabs/tab-schedule.js?v=3.86.1"></script>
+  <script src="js/tabs/tab-bios.js?v=3.86.1"></script>
+  <script src="js/tabs/tab-loot-import.js?v=3.86.1"></script>
+  <script src="js/tabs/tab-scoring.js?v=3.86.1"></script>
+  <script src="js/tabs/tab-admin.js?v=3.86.1"></script>
   <script>
 renderSiteNav('officer');
 document.getElementById('versionNum').textContent = VERSION;
