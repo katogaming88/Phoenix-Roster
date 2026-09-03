@@ -44,7 +44,7 @@
 | [public.guild_officers](public.guild_officers.md) | 3 |  | BASE TABLE |
 | [public.tier_token_map](public.tier_token_map.md) | 5 |  | BASE TABLE |
 | [public.no_character_dismissals](public.no_character_dismissals.md) | 3 |  | BASE TABLE |
-| [public.boe_items](public.boe_items.md) | 23 |  | BASE TABLE |
+| [public.boe_items](public.boe_items.md) | 24 |  | BASE TABLE |
 | [public.boe_listings](public.boe_listings.md) | 8 |  | BASE TABLE |
 | [public.boe_managers](public.boe_managers.md) | 4 |  | BASE TABLE |
 | [public.priority_conflict_dismissals](public.priority_conflict_dismissals.md) | 8 | Officer-acknowledged Priority List same-boss conflicts (a player holding #1 on 2+ items behind one boss+track kill), so buildPriorityConflictsBannerHtml() (js/tabs/tab-priority.js) stops re-flagging a reviewed one. | BASE TABLE |
@@ -109,7 +109,6 @@
 | public.check_team_id_matches_boe_item | trigger |  | FUNCTION |
 | public.check_boe_status_transition | trigger |  | FUNCTION |
 | public.boe_record_listing | void | p_id integer, p_price bigint, p_listed_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_note text DEFAULT NULL::text | FUNCTION |
-| public.boe_record_sale | record | p_id integer, p_sale_price bigint, p_sold_at timestamp with time zone DEFAULT NULL::timestamp with time zone | FUNCTION |
 | public.boe_retire | void | p_id integer, p_note text DEFAULT NULL::text | FUNCTION |
 | public.boe_revert | text | p_id integer | FUNCTION |
 | public.set_boe_payout_settings | void | p_floor bigint, p_pivot bigint | FUNCTION |
@@ -125,6 +124,7 @@
 | public.build_rclc_export | jsonb | p_team_id integer, p_season text, p_track text | FUNCTION |
 | public.boe_mark_paid | void | p_id integer, p_paid_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_donated boolean DEFAULT false | FUNCTION |
 | public.submit_boe_found | int4 | p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_donate boolean DEFAULT false, p_upgrade_rank text DEFAULT NULL::text | FUNCTION |
+| public.boe_record_sale | record | p_id integer, p_sale_price bigint, p_sold_at timestamp with time zone DEFAULT NULL::timestamp with time zone | FUNCTION |
 
 ## Enums
 
@@ -635,6 +635,7 @@ erDiagram
   timestamp_with_time_zone created_at
   boolean payout_donated
   text upgrade_rank
+  bigint ah_fee
 }
 "public.boe_listings" {
   integer id

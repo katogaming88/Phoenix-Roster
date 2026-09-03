@@ -4181,6 +4181,12 @@
           "type": "text",
           "nullable": true,
           "comment": "Upgrade rank as the tooltip shows it (\"2/6\"); with the track it is the identity of the item in the queue (#865). Null on rows imported from the sheets."
+        },
+        {
+          "name": "ah_fee",
+          "type": "bigint",
+          "nullable": true,
+          "comment": "The auction house fee the game kept on the sale, whole gold: round(sale_price * 5 / 100), half away from zero (#861). Present iff sold/paid; finder_payout + guild_cut + ah_fee = sale_price by constraint."
         }
       ],
       "indexes": [
@@ -4194,6 +4200,16 @@
         }
       ],
       "constraints": [
+        {
+          "name": "boe_items_ah_fee_nonneg",
+          "type": "CHECK",
+          "def": "CHECK ((ah_fee \u003e= 0))",
+          "table": "public.boe_items",
+          "referenced_table": "",
+          "columns": [
+            "ah_fee"
+          ]
+        },
         {
           "name": "boe_items_finder_payout_nonneg",
           "type": "CHECK",
@@ -4227,7 +4243,7 @@
         {
           "name": "boe_items_money_complete_when_sold",
           "type": "CHECK",
-          "def": "CHECK (((status \u003c\u003e ALL (ARRAY['sold'::text, 'paid'::text])) OR ((sale_price IS NOT NULL) AND (finder_payout IS NOT NULL) AND (guild_cut IS NOT NULL) AND (payout_floor IS NOT NULL) AND (payout_pivot IS NOT NULL))))",
+          "def": "CHECK (((status \u003c\u003e ALL (ARRAY['sold'::text, 'paid'::text])) OR ((sale_price IS NOT NULL) AND (finder_payout IS NOT NULL) AND (guild_cut IS NOT NULL) AND (ah_fee IS NOT NULL) AND (payout_floor IS NOT NULL) AND (payout_pivot IS NOT NULL))))",
           "table": "public.boe_items",
           "referenced_table": "",
           "columns": [
@@ -4235,6 +4251,7 @@
             "sale_price",
             "finder_payout",
             "guild_cut",
+            "ah_fee",
             "payout_floor",
             "payout_pivot"
           ]
@@ -4242,7 +4259,7 @@
         {
           "name": "boe_items_money_only_when_sold",
           "type": "CHECK",
-          "def": "CHECK (((status = ANY (ARRAY['sold'::text, 'paid'::text])) OR ((sale_price IS NULL) AND (finder_payout IS NULL) AND (guild_cut IS NULL) AND (payout_floor IS NULL) AND (payout_pivot IS NULL))))",
+          "def": "CHECK (((status = ANY (ARRAY['sold'::text, 'paid'::text])) OR ((sale_price IS NULL) AND (finder_payout IS NULL) AND (guild_cut IS NULL) AND (ah_fee IS NULL) AND (payout_floor IS NULL) AND (payout_pivot IS NULL))))",
           "table": "public.boe_items",
           "referenced_table": "",
           "columns": [
@@ -4250,8 +4267,23 @@
             "sale_price",
             "finder_payout",
             "guild_cut",
+            "ah_fee",
             "payout_floor",
             "payout_pivot"
+          ]
+        },
+        {
+          "name": "boe_items_money_sums",
+          "type": "CHECK",
+          "def": "CHECK (((status \u003c\u003e ALL (ARRAY['sold'::text, 'paid'::text])) OR (((finder_payout + guild_cut) + ah_fee) = sale_price)))",
+          "table": "public.boe_items",
+          "referenced_table": "",
+          "columns": [
+            "status",
+            "finder_payout",
+            "guild_cut",
+            "ah_fee",
+            "sale_price"
           ]
         },
         {
@@ -6182,12 +6214,6 @@
       "type": "FUNCTION"
     },
     {
-      "name": "public.boe_record_sale",
-      "return_type": "record",
-      "arguments": "p_id integer, p_sale_price bigint, p_sold_at timestamp with time zone DEFAULT NULL::timestamp with time zone",
-      "type": "FUNCTION"
-    },
-    {
       "name": "public.boe_retire",
       "return_type": "void",
       "arguments": "p_id integer, p_note text DEFAULT NULL::text",
@@ -6275,6 +6301,12 @@
       "name": "public.submit_boe_found",
       "return_type": "int4",
       "arguments": "p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_donate boolean DEFAULT false, p_upgrade_rank text DEFAULT NULL::text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.boe_record_sale",
+      "return_type": "record",
+      "arguments": "p_id integer, p_sale_price bigint, p_sold_at timestamp with time zone DEFAULT NULL::timestamp with time zone",
       "type": "FUNCTION"
     }
   ],

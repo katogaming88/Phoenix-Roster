@@ -27,16 +27,19 @@
 | created_at | timestamp with time zone | now() | false |  |  |  |
 | payout_donated | boolean | false | false |  |  |  |
 | upgrade_rank | text |  | true |  |  | Upgrade rank as the tooltip shows it ("2/6"); with the track it is the identity of the item in the queue (#865). Null on rows imported from the sheets. |
+| ah_fee | bigint |  | true |  |  | The auction house fee the game kept on the sale, whole gold: round(sale_price * 5 / 100), half away from zero (#861). Present iff sold/paid; finder_payout + guild_cut + ah_fee = sale_price by constraint. |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| boe_items_ah_fee_nonneg | CHECK | CHECK ((ah_fee >= 0)) |
 | boe_items_finder_payout_nonneg | CHECK | CHECK ((finder_payout >= 0)) |
 | boe_items_floor_nonneg | CHECK | CHECK ((payout_floor >= 0)) |
 | boe_items_guild_cut_nonneg | CHECK | CHECK ((guild_cut >= 0)) |
-| boe_items_money_complete_when_sold | CHECK | CHECK (((status <> ALL (ARRAY['sold'::text, 'paid'::text])) OR ((sale_price IS NOT NULL) AND (finder_payout IS NOT NULL) AND (guild_cut IS NOT NULL) AND (payout_floor IS NOT NULL) AND (payout_pivot IS NOT NULL)))) |
-| boe_items_money_only_when_sold | CHECK | CHECK (((status = ANY (ARRAY['sold'::text, 'paid'::text])) OR ((sale_price IS NULL) AND (finder_payout IS NULL) AND (guild_cut IS NULL) AND (payout_floor IS NULL) AND (payout_pivot IS NULL)))) |
+| boe_items_money_complete_when_sold | CHECK | CHECK (((status <> ALL (ARRAY['sold'::text, 'paid'::text])) OR ((sale_price IS NOT NULL) AND (finder_payout IS NOT NULL) AND (guild_cut IS NOT NULL) AND (ah_fee IS NOT NULL) AND (payout_floor IS NOT NULL) AND (payout_pivot IS NOT NULL)))) |
+| boe_items_money_only_when_sold | CHECK | CHECK (((status = ANY (ARRAY['sold'::text, 'paid'::text])) OR ((sale_price IS NULL) AND (finder_payout IS NULL) AND (guild_cut IS NULL) AND (ah_fee IS NULL) AND (payout_floor IS NULL) AND (payout_pivot IS NULL)))) |
+| boe_items_money_sums | CHECK | CHECK (((status <> ALL (ARRAY['sold'::text, 'paid'::text])) OR (((finder_payout + guild_cut) + ah_fee) = sale_price))) |
 | boe_items_paid_at_iff_paid | CHECK | CHECK (((status = 'paid'::text) = (payout_paid_at IS NOT NULL))) |
 | boe_items_payout_lte_sale | CHECK | CHECK ((finder_payout <= sale_price)) |
 | boe_items_pivot_positive | CHECK | CHECK ((payout_pivot > 0)) |
@@ -99,6 +102,7 @@ erDiagram
   timestamp_with_time_zone created_at
   boolean payout_donated
   text upgrade_rank
+  bigint ah_fee
 }
 "public.boe_listings" {
   integer id

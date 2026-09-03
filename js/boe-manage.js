@@ -81,7 +81,7 @@ function buildBoeManage(canManage) {
       var q = supabaseClient
         .from('boe_items')
         .select(
-          'id, team_id, player_id, finder_name, item_id, item_name, track, upgrade_rank, note, status, found_at, sold_at, payout_paid_at, retired_at, sale_price, finder_payout, guild_cut, payout_donated',
+          'id, team_id, player_id, finder_name, item_id, item_name, track, upgrade_rank, note, status, found_at, sold_at, payout_paid_at, retired_at, sale_price, finder_payout, guild_cut, ah_fee, payout_donated',
           afterId === null ? { count: 'exact' } : undefined
         )
         .order('id', { ascending: true })
@@ -195,8 +195,9 @@ function _boeStatusCell(item) {
 }
 
 // What a settled row actually paid out (#862 follow-up, Russell 2026-09-02):
-// a donated payout pays the finder nothing and the guild everything, so
-// History and every total read that way. The stored split stays the policy
+// a donated payout pays the finder nothing and the guild everything net of
+// the auction house fee (#861; the game kept that either way), so History
+// and every total read that way. The stored split stays the policy
 // record, which is what Undo Payout puts back, so this is a display rule
 // and not a rewrite of the row.
 function _boeFinderPaid(item) {
@@ -523,8 +524,20 @@ function renderBoeManage() {
       ? _boeTable(openHeaders, openHtml)
       : _boeEmpty('No open BoEs. Found items land here from the raider form.'));
 
-  // Awaiting Payout: sold items with the stored split.
-  var awaitingHeaders = ['Item', 'Team', 'Finder', 'Sold', 'Sale', 'Finder payout', 'Guild cut', 'Status'];
+  // Awaiting Payout: sold items with the stored split. The fee (#861) sits
+  // between the sale and the finder's cut in both money sections, and the
+  // guild cut says net because it is what the bank receives.
+  var awaitingHeaders = [
+    'Item',
+    'Team',
+    'Finder',
+    'Sold',
+    'Sale',
+    'AH fee',
+    'Finder payout',
+    'Guild cut (net)',
+    'Status'
+  ];
   if (_boeCanManage) awaitingHeaders.push('Actions');
   var awaitingHtml = awaitingRows
     .map(function (item) {
@@ -541,6 +554,9 @@ function renderBoeManage() {
         '</td>' +
         '<td>' +
         _boeMoney(item.sale_price) +
+        '</td>' +
+        '<td>' +
+        _boeMoney(item.ah_fee) +
         '</td>' +
         '<td>' +
         _boeMoney(item.finder_payout) +
@@ -578,7 +594,17 @@ function renderBoeManage() {
 
   // History: paid and retired, newest first. Both are undoable since #802,
   // so this section grew an Actions column it never had.
-  var historyHeaders = ['Item', 'Team', 'Finder', 'Status', 'Date', 'Sale', 'Finder payout', 'Guild cut'];
+  var historyHeaders = [
+    'Item',
+    'Team',
+    'Finder',
+    'Status',
+    'Date',
+    'Sale',
+    'AH fee',
+    'Finder payout',
+    'Guild cut (net)'
+  ];
   if (_boeCanManage) historyHeaders.push('Actions');
   var historyHtml = historyPageRows
     .map(function (item) {
@@ -598,6 +624,9 @@ function renderBoeManage() {
         '</td>' +
         '<td>' +
         _boeMoney(item.sale_price) +
+        '</td>' +
+        '<td>' +
+        _boeMoney(item.ah_fee) +
         '</td>' +
         '<td>' +
         _boeMoney(_boeFinderPaid(item)) +
@@ -798,6 +827,7 @@ function confirmBoeSale(id, btnEl) {
     item.sale_price = split.sale_price;
     item.finder_payout = split.finder_payout;
     item.guild_cut = split.guild_cut;
+    item.ah_fee = split.ah_fee;
     writeAuditLog(
       'BoE Sale Recorded',
       'boe_items',
@@ -940,6 +970,7 @@ function revertBoe(id, btnEl) {
       item.sale_price = null;
       item.finder_payout = null;
       item.guild_cut = null;
+      item.ah_fee = null;
     } else if (from === 'retired') {
       item.retired_at = null;
     }

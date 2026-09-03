@@ -496,6 +496,9 @@ function adminFormatGold(n) {
 // exactly when sale > pivot (S * floor/pivot > floor <=> S > pivot, whatever
 // the values). Neither restates the round/greatest/least logic itself, so
 // there is no second copy of the money formula here to drift against the SQL.
+// The closing clause names the #861 cap: the finder never gets more than the
+// sale minus the auction house fee, which is the game's fixed 5% and a
+// constant in boe_record_sale rather than a setting, so nothing reads it here.
 //
 // It exists because the raw numbers hide what they mean: nobody reading
 // "pivot: 100000" can see that it is the sale price where the split switches
@@ -512,7 +515,7 @@ function boePayoutSummary(floorValue, pivotValue) {
     adminFormatGold(pivot) +
     'g, or a flat ' +
     adminFormatGold(floor) +
-    'g below that, never more than the sale itself.'
+    "g below that, never more than the sale minus the game's 5% auction house fee. The guild keeps the rest."
   );
 }
 

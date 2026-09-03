@@ -503,6 +503,12 @@ Runs the auction lifecycle for BoEs the guild sells -- **found -> listed -> sold
 **retire** for anything that never moves. Raiders report a find from the public **BoE** tab
 (#746) or the guild page card; everything after the report happens here.
 
+A BoE that went into the guild bank before it was reported can't be reported by its finder: the
+bank shows a deposited BoE at a base item level with no track or upgrade rank, and the form
+requires both ([#885](https://github.com/katogaming88/WGA-Raid-Hub/pull/885)). The strict rule stands on purpose: no "not sure" rank and no manager-side create form. The
+recovery is the form itself, which needs no login: withdraw the item, read the track and rank off
+its tooltip, and submit the report with the raider's character as the finder.
+
 - **The page is guild-wide, not per-team** (#765). It shows every find you're allowed to see
   rather than only the team whose page you're on, because BoEs are guild property. A BoE manager
   or site admin sees all four teams, Wrathless included; a plain officer sees the teams they
@@ -515,8 +521,8 @@ Runs the auction lifecycle for BoEs the guild sells -- **found -> listed -> sold
 
 A summary strip and three sections:
 
-- **Summary** -- **Guild income to date** (the guild's cut across sold and paid rows, plus any
-  finder's cut kept by the guild) and **Outstanding payouts** (what's still owed on
+- **Summary** -- **Guild income to date** (the guild's cut across sold and paid rows, net of the
+  auction house fee, plus any finder's cut kept by the guild) and **Outstanding payouts** (what's still owed on
   sold-but-unpaid rows, a donating row included until it is settled). **Donated by finders**
   appears once there is one. Per-team find counts and
   gold raised sit underneath, shown only once more than one team has found something.
@@ -533,8 +539,8 @@ A summary strip and three sections:
   **Mark Paid** once the finder has their gold; the row moves to History. **Donate to Guild**
   records the same settlement with the finder's cut kept by the guild
   ([#862](https://github.com/katogaming88/WGA-Raid-Hub/issues/862)): History reads Donated
-  instead of Paid with Finder payout 0g and the whole amount as guild cut, and guild income counts
-  it. The split stored on the row stays what policy said, which is what Undo Payout puts back. A row whose finder ticked the donate box shows a Donating marker in its Status cell so
+  instead of Paid with Finder payout 0g and the sale net of the fee as guild cut, and guild income
+  counts it. The split stored on the row stays what policy said, which is what Undo Payout puts back. A row whose finder ticked the donate box shows a Donating marker in its Status cell so
   you know which button to reach for; Mark Paid on it clears the marker, because the button
   decides. An undone payout keeps the marker. **Undo Sale** puts a sale recorded by mistake
   back in Open.
@@ -550,10 +556,13 @@ A summary strip and three sections:
   original words survive a rewrite. Money and status are not editable here.
 
 **The split** is guild policy and guild-wide rather than per-team, set on the site admin
-dashboard: the finder gets a percentage of the gross sale, or a flat floor below a pivot sale
-price, whichever is larger, and never more than the sale itself. The guild keeps the rest and
-absorbs the AH cut. Both constants are snapshotted onto each sold row, so editing the policy
-later never rewrites what an earlier sale paid out.
+dashboard: the game keeps its 5% auction house fee off the top
+([#861](https://github.com/katogaming88/WGA-Raid-Hub/issues/861)), the finder gets a percentage
+of the gross sale, or a flat floor below a pivot sale price, whichever is larger, and never more
+than the sale minus the fee, and the guild keeps the rest. The fee is the game's fixed rate, not
+a setting. Both constants and the fee are snapshotted onto each sold row, so editing the policy
+later never rewrites what an earlier sale paid out. Awaiting Payout and History show the fee in
+its own column, and **Guild cut (net)** is what the bank actually receives.
 
 Price fields take the formats people actually paste -- `250,000`, `250000g`, `1 000 000`.
 Anything else is refused with a message on the row rather than read as zero.
