@@ -24,6 +24,13 @@ with each release split into `### Frontend` (drives the version number) and
 - `raid_schedule`/`raid_schedule_exceptions` store each team's recurring weekly raid rule plus
   one-off cancellations/additions ([#892](https://github.com/katogaming88/WGA-Raid-Hub/issues/892)).
   Raid nights are computed on the fly from these two tables rather than stored as per-instance rows.
+- Team officers settle BoE payouts for their own team
+  ([#888](https://github.com/katogaming88/WGA-Raid-Hub/issues/888)): `boe_mark_paid` and the paid-to-sold
+  edge of `boe_revert` now admit an officer or team leader of the row's team through a new
+  `can_settle_boe(team_id)` helper, beside the BoE manager grant and site admin. Listing, sale,
+  retire, edit and delete are unchanged, and nothing is visible until the BoE page opens to every
+  signed-in raider (#890). No officer rows were added for Immolation or Wrathless; the setup guide
+  carries the hand-insert recipe for the day one asks.
 
 ---
 

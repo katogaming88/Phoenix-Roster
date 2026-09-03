@@ -6612,6 +6612,12 @@
       "return_type": "record",
       "arguments": "p_id integer, p_sale_price bigint, p_sold_at timestamp with time zone DEFAULT NULL::timestamp with time zone",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.can_settle_boe",
+      "return_type": "bool",
+      "arguments": "p_team_id integer",
+      "type": "FUNCTION"
     }
   ],
   "enums": [

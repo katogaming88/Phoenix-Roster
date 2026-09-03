@@ -8,6 +8,19 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-03 -- Team officers settle BoE payouts for their own team
+
+Tracking issue: [#888](https://github.com/katogaming88/WGA-Raid-Hub/issues/888). Every BoE lifecycle RPC gated on `is_boe_manager() or is_site_admin()`, so a team officer read their team's rows and could act on none of them, while in practice a team's officers are who hand the finder their cut, and Immolation and Wrathless raid with the guild without otherwise using the site.
+
+- **Native, by role, payout only.** `can_settle_boe(team_id)` is `is_boe_manager() or is_site_admin() or my_team_role(team_id) in ('officer', 'team_leader')`: the same authority the read policy already trusts, no new table, flag or admin surface. It gates `boe_mark_paid` and the paid-to-sold edge of `boe_revert`, so an officer marks a payout paid or donated and can undo that one step. Listing, sale, retire, edit and delete stay with managers and site admins.
+- **Two shapes rejected** (Russell, 2026-09-03). A per-team switch (`features.boeOfficers`, default off) inverts the flag convention, leaves officers looking at rows with no buttons until someone flips it, and Wrathless has no Admin tab to flip it from. A per-team grant list (`boe_managers.team_id`) reverses #766's guild-wide reshape and duplicates `team_members.role` for exactly the people who would receive it. Both put their cost on the teams with the least admin surface.
+- **No officer rows for Immolation or Wrathless in this change.** Immolation has a leader and an officer row already; Wrathless has none and its raiders report by typed name without signing in. A row assigns someone work, so it waits for an officer to ask; the setup guide's hand-insert section carries the recipe, and an admin surface for it gets an issue only on a second ask.
+- The buttons arrive with #890, which opens the BoE page to every signed-in raider; this change is the migration and its tests, with no visible effect until then.
+
+[Full discussion -> #888](https://github.com/katogaming88/WGA-Raid-Hub/issues/888)
+
+---
+
 ## 2026-09-03 -- Raid calendar RSVP intent stays fully separate from the attendance table
 
 Tracking issue: [katogaming88/WGA-Raid-Hub#640](https://github.com/katogaming88/WGA-Raid-Hub/issues/640) (phased into #892-#895).

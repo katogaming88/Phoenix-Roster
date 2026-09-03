@@ -2408,6 +2408,7 @@ export type Database = {
         Args: { p_season: string; p_team_id: number; p_track: string }
         Returns: Json
       }
+      can_settle_boe: { Args: { p_team_id: number }; Returns: boolean }
       check_priority_order_drift: {
         Args: { p_season: string; p_team_id: number }
         Returns: {
