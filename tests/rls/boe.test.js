@@ -5,7 +5,8 @@
 // team, because BoEs are guild property. Every lifecycle mutation is gated on
 // that grant (or site admin), never on plain officer role. The split formula
 // tests encode the guild policy pinned in the #745 comment (floor 20000,
-// pivot 100000, gross sale, capped at the sale). Same withTxn harness as
+// pivot 100000, gross sale) as amended by #861: the game's 5% auction house
+// fee comes off the top and the finder is capped at the net. Same withTxn harness as
 // tests/rls/item-preferences.test.js (unique savepoint name), since these
 // tests mix privileged setup with impersonated RPC calls and expected raises.
 import { describe, it, expect, afterAll } from 'vitest';
@@ -55,7 +56,7 @@ const linkPlayer1ToRaider = (q) => q('update public.players set team_member_id =
 
 // Seeded BoE fixtures (supabase/seed.sql): boe_items 1 = found, player 1,
 // team 1; boe_items 2 = sold, unresolved finder, team 1, split 150000 ->
-// 30000 / 120000; boe_listings 1 hangs off item 2; boe_managers grants
+// 30000 / 112500 with a 7500 fee (#861); boe_listings 1 hangs off item 2; boe_managers grants
 // discord-officer-1 (OFFICER_T1). The team-1 leader stays ungranted on
 // purpose. No team-2 BoE rows are seeded: the cross-team fixtures below are
 // created inside the test transaction so no other suite's counts move.
@@ -502,9 +503,10 @@ describe('lifecycle transitions', () => {
   it('a direct sale from found is legal', async () => {
     await withTxn(async ({ q, asUser }) => {
       await asUser(OFFICER_T1, 'select public.boe_record_sale(1, 100000)');
-      const row = (await q('select status, sold_at from public.boe_items where id = 1')).rows[0];
+      const row = (await q('select status, sold_at, ah_fee::int as af from public.boe_items where id = 1')).rows[0];
       expect(row.status).toBe('sold');
       expect(row.sold_at).not.toBeNull();
+      expect(row.af).toBe(5000);
     });
   });
 
@@ -557,22 +559,29 @@ describe('lifecycle transitions', () => {
   });
 });
 
-describe('the split formula (policy pinned on #745)', () => {
-  // [sale, finder, guild] -- the first five transcribed from last season's
-  // sheet (both rounding directions included); the last two exercise the
-  // cap branch the sheet never reached (its minimum sale was 27,500).
+describe('the split formula (policy pinned on #745, the auction house fee per #861)', () => {
+  // [sale, finder, guild, fee] -- the first five transcribed from last
+  // season's sheet with the game's 5% auction house fee taken off the top
+  // (both rounding directions included); the next two exercise the cap
+  // branch the sheet never reached (its minimum sale was 27,500), where the
+  // finder is capped at the net and the guild takes zero; the last two are
+  // real mails the fee was read off (#861 comment: prod rows 24 and 27, the
+  // second one settling that silver and copper are ignored and the fee
+  // rounds half away from zero).
   const SPLITS = [
-    [617518, 123504, 494014],
-    [95000, 20000, 75000],
-    [285026, 57005, 228021],
-    [27500, 20000, 7500],
-    [1187535, 237507, 950028],
-    [15000, 15000, 0],
-    [20000, 20000, 0]
+    [617518, 123504, 463138, 30876],
+    [95000, 20000, 70250, 4750],
+    [285026, 57005, 213770, 14251],
+    [27500, 20000, 6125, 1375],
+    [1187535, 237507, 890651, 59377],
+    [15000, 14250, 0, 750],
+    [20000, 19000, 0, 1000],
+    [125000, 25000, 93750, 6250],
+    [47999, 20000, 25599, 2400]
   ];
 
-  for (const [sale, finder, guild] of SPLITS) {
-    it(`splits a ${sale.toLocaleString('en-US')}g sale into ${finder.toLocaleString('en-US')} / ${guild.toLocaleString('en-US')}`, async () => {
+  for (const [sale, finder, guild, fee] of SPLITS) {
+    it(`splits a ${sale.toLocaleString('en-US')}g sale into ${finder.toLocaleString('en-US')} / ${guild.toLocaleString('en-US')} / ${fee.toLocaleString('en-US')}`, async () => {
       await withTxn(async ({ q, asUser }) => {
         const inserted = await q(
           "insert into public.boe_items (team_id, item_name) values (1, 'Split Test Blade') returning id"
@@ -580,19 +589,53 @@ describe('the split formula (policy pinned on #745)', () => {
         const id = inserted.rows[0].id;
         const res = await asUser(
           OFFICER_T1,
-          `select sale_price::int as sale_price, finder_payout::int as finder_payout, guild_cut::int as guild_cut from public.boe_record_sale(${id}, ${sale})`
+          `select sale_price::int as sale_price, finder_payout::int as finder_payout, guild_cut::int as guild_cut, ah_fee::int as ah_fee from public.boe_record_sale(${id}, ${sale})`
         );
-        expect(res.rows[0]).toEqual({ sale_price: sale, finder_payout: finder, guild_cut: guild });
+        expect(res.rows[0]).toEqual({ sale_price: sale, finder_payout: finder, guild_cut: guild, ah_fee: fee });
         const stored = (
           await q(
-            'select finder_payout::int as f, guild_cut::int as g, payout_floor::int as pf, payout_pivot::int as pp from public.boe_items where id = $1',
+            'select finder_payout::int as f, guild_cut::int as g, ah_fee::int as af, payout_floor::int as pf, payout_pivot::int as pp from public.boe_items where id = $1',
             [id]
           )
         ).rows[0];
-        expect(stored).toEqual({ f: finder, g: guild, pf: 20000, pp: 100000 });
+        expect(stored).toEqual({ f: finder, g: guild, af: fee, pf: 20000, pp: 100000 });
       });
     });
   }
+
+  it('the three cuts sum to the sale on every sold or paid row, by constraint', async () => {
+    await withTxn(async ({ q }) => {
+      const cols =
+        '(team_id, item_name, status, sold_at, sale_price, finder_payout, guild_cut, ah_fee, payout_floor, payout_pivot)';
+      // A refused insert aborts the transaction, so each one rides its own savepoint.
+      const refused = async (values, re) => {
+        await q('savepoint boe_sums');
+        await expect(q(`insert into public.boe_items ${cols} values ${values}`)).rejects.toThrow(re);
+        await q('rollback to savepoint boe_sums');
+      };
+      await refused(
+        "(1, 'Bad Sums', 'sold', now(), 100000, 20000, 80000, 5000, 20000, 100000)",
+        /boe_items_money_sums/
+      );
+      await refused(
+        "(1, 'No Fee', 'sold', now(), 100000, 20000, 80000, null, 20000, 100000)",
+        /boe_items_money_complete_when_sold/
+      );
+      const ok = await q(
+        `insert into public.boe_items ${cols} values (1, 'Good Sums', 'sold', now(), 100000, 20000, 75000, 5000, 20000, 100000) returning id`
+      );
+      expect(ok.rowCount).toBe(1);
+    });
+  });
+
+  it('a manager cannot set the fee by a direct UPDATE', async () => {
+    await withTxn(async ({ asUser }) => {
+      // The sums still hold, so it is the trigger that refuses, not the constraint.
+      await expect(
+        asUser(OFFICER_T1, 'update public.boe_items set ah_fee = 8500, guild_cut = 111500 where id = 2')
+      ).rejects.toThrow(/go through the BoE RPCs/);
+    });
+  });
 
   it('a changed floor and pivot apply to the next sale and are snapshotted', async () => {
     await withTxn(async ({ q, asUser }) => {
@@ -603,9 +646,9 @@ describe('the split formula (policy pinned on #745)', () => {
       const id = inserted.rows[0].id;
       const res = await asUser(
         OFFICER_T1,
-        `select finder_payout::int as finder_payout, guild_cut::int as guild_cut from public.boe_record_sale(${id}, 95000)`
+        `select finder_payout::int as finder_payout, guild_cut::int as guild_cut, ah_fee::int as ah_fee from public.boe_record_sale(${id}, 95000)`
       );
-      expect(res.rows[0]).toEqual({ finder_payout: 30000, guild_cut: 65000 });
+      expect(res.rows[0]).toEqual({ finder_payout: 30000, guild_cut: 60250, ah_fee: 4750 });
       const stored = (
         await q('select payout_floor::int as pf, payout_pivot::int as pp from public.boe_items where id = $1', [id])
       ).rows[0];
@@ -634,9 +677,12 @@ describe('revert walks the correction edges', () => {
       await asUser(OFFICER_T1, 'select public.boe_mark_paid(2)');
       const res = await asUser(OFFICER_T1, 'select public.boe_revert(2) as status');
       expect(res.rows[0].status).toBe('sold');
-      const row = (await q('select status, payout_paid_at, sale_price::int as sp from public.boe_items where id = 2'))
-        .rows[0];
-      expect(row).toMatchObject({ status: 'sold', payout_paid_at: null, sp: 150000 });
+      const row = (
+        await q(
+          'select status, payout_paid_at, sale_price::int as sp, ah_fee::int as af from public.boe_items where id = 2'
+        )
+      ).rows[0];
+      expect(row).toMatchObject({ status: 'sold', payout_paid_at: null, sp: 150000, af: 7500 });
     });
   });
 
@@ -646,7 +692,7 @@ describe('revert walks the correction edges', () => {
       expect(res.rows[0].status).toBe('listed');
       const row = (
         await q(
-          'select status, sold_at, sale_price, finder_payout, guild_cut, payout_floor, payout_pivot from public.boe_items where id = 2'
+          'select status, sold_at, sale_price, finder_payout, guild_cut, ah_fee, payout_floor, payout_pivot from public.boe_items where id = 2'
         )
       ).rows[0];
       expect(row).toEqual({
@@ -655,6 +701,7 @@ describe('revert walks the correction edges', () => {
         sale_price: null,
         finder_payout: null,
         guild_cut: null,
+        ah_fee: null,
         payout_floor: null,
         payout_pivot: null
       });
@@ -682,8 +729,9 @@ describe('revert walks the correction edges', () => {
       await asUser(OFFICER_T1, `select public.boe_record_sale(${id}, 100000)`);
       const res = await asUser(OFFICER_T1, `select public.boe_revert(${id}) as status`);
       expect(res.rows[0].status).toBe('found');
-      const row = (await q('select sale_price, finder_payout from public.boe_items where id = $1', [id])).rows[0];
-      expect(row).toEqual({ sale_price: null, finder_payout: null });
+      const row = (await q('select sale_price, finder_payout, ah_fee from public.boe_items where id = $1', [id]))
+        .rows[0];
+      expect(row).toEqual({ sale_price: null, finder_payout: null, ah_fee: null });
     });
   });
 
