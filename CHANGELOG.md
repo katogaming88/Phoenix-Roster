@@ -8,6 +8,18 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.79.0] - 2026-09-02
+
+### Frontend
+
+- BoE managers can correct a find from the BoE Sales page (#874). Every row in Open, Awaiting
+  Payout and History has an **Edit** button beside its other actions; it opens the item name,
+  the track and the note under the row, prefilled. Save writes the three together and puts the
+  corrected name in place without a reload; Cancel puts the fields back. A blank name is refused
+  on the row, unchanged values write nothing, and the audit log entry (BoE Find Edited) keeps the
+  old and new values, so a raider's original words survive a rewrite. Money and lifecycle stay
+  with the lifecycle buttons.
+
 ## [3.78.2] - 2026-09-02
 
 ### Frontend

@@ -523,10 +523,17 @@ A summary strip and three sections:
   each other. **Record Sale** takes the sale price and computes the split. **Retire** closes out
   anything that isn't going to sell.
 - **Awaiting Payout** -- sold items, oldest first, with the split already computed.
-  **Mark Paid** once the finder has their gold; the row moves to History.
+  **Mark Paid** once the finder has their gold; the row moves to History. **Undo Sale** puts a
+  sale recorded by mistake back in Open.
 - **History** -- paid and retired items, newest first, twenty to a page. Previous and Next
   sit under the table and a line beneath them says which rows are showing; the page you are
-  on survives a Mark Paid or an undo.
+  on survives a Mark Paid or an undo. **Undo Payout** and **Un-retire** put a row back where it
+  was, in Awaiting Payout or Open.
+- **Edit** -- on every row in all three sections. It opens the item name, the track and the
+  note under the row, prefilled; Save writes the three together and puts the corrected name in
+  place, Cancel puts the fields back. A blank name is refused on the row, unchanged values write
+  nothing, and the audit entry (BoE Find Edited) keeps the old and new values, so a raider's
+  original words survive a rewrite. Money and status are not editable here.
 
 **The split** is guild policy and guild-wide rather than per-team, set on the site admin
 dashboard: the finder gets a percentage of the gross sale, or a flat floor below a pivot sale
