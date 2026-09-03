@@ -281,6 +281,7 @@ erDiagram
   bigint payout_pivot
   timestamp_with_time_zone updated_at
   timestamp_with_time_zone created_at
+  boolean payout_donated
 }
 "public.priority_conflict_dismissals" {
   integer id

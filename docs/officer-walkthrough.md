@@ -515,16 +515,24 @@ Runs the auction lifecycle for BoEs the guild sells -- **found -> listed -> sold
 
 A summary strip and three sections:
 
-- **Summary** -- **Guild income to date** (the guild's cut across sold and paid rows) and
-  **Outstanding payouts** (what's still owed on sold-but-unpaid rows). Per-team find counts and
+- **Summary** -- **Guild income to date** (the guild's cut across sold and paid rows, plus any
+  finder's cut kept by the guild) and **Outstanding payouts** (what's still owed on
+  sold-but-unpaid rows, a donating row included until it is settled). **Donated by finders**
+  appears once there is one. Per-team find counts and
   gold raised sit underneath, shown only once more than one team has found something.
 - **Open** -- found and listed items, oldest first. **Record Listing** logs a price and an
   optional note; an item can be listed more than once, so relists accumulate rather than replace
   each other. **Record Sale** takes the sale price and computes the split. **Retire** closes out
   anything that isn't going to sell.
 - **Awaiting Payout** -- sold items, oldest first, with the split already computed.
-  **Mark Paid** once the finder has their gold; the row moves to History. **Undo Sale** puts a
-  sale recorded by mistake back in Open.
+  **Mark Paid** once the finder has their gold; the row moves to History. **Donate to Guild**
+  records the same settlement with the finder's cut kept by the guild
+  ([#862](https://github.com/katogaming88/WGA-Raid-Hub/issues/862)): History reads Donated
+  instead of Paid and guild income counts that cut, while the split on the row stays what policy
+  said. A row whose finder ticked the donate box shows a Donating marker in its Status cell so
+  you know which button to reach for; Mark Paid on it clears the marker, because the button
+  decides. An undone payout keeps the marker. **Undo Sale** puts a sale recorded by mistake
+  back in Open.
 - **History** -- paid and retired items, newest first, twenty to a page. Previous and Next
   sit under the table and a line beneath them says which rows are showing; the page you are
   on survives a Mark Paid or an undo. **Undo Payout** and **Un-retire** put a row back where it

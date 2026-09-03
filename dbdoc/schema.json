@@ -4169,6 +4169,12 @@
           "type": "timestamp with time zone",
           "nullable": false,
           "default": "now()"
+        },
+        {
+          "name": "payout_donated",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
         }
       ],
       "indexes": [
@@ -6154,12 +6160,6 @@
       "type": "FUNCTION"
     },
     {
-      "name": "public.submit_boe_found",
-      "return_type": "int4",
-      "arguments": "p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_note text DEFAULT NULL::text",
-      "type": "FUNCTION"
-    },
-    {
       "name": "public.boe_record_listing",
       "return_type": "void",
       "arguments": "p_id integer, p_price bigint, p_listed_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_note text DEFAULT NULL::text",
@@ -6169,12 +6169,6 @@
       "name": "public.boe_record_sale",
       "return_type": "record",
       "arguments": "p_id integer, p_sale_price bigint, p_sold_at timestamp with time zone DEFAULT NULL::timestamp with time zone",
-      "type": "FUNCTION"
-    },
-    {
-      "name": "public.boe_mark_paid",
-      "return_type": "void",
-      "arguments": "p_id integer, p_paid_at timestamp with time zone DEFAULT NULL::timestamp with time zone",
       "type": "FUNCTION"
     },
     {
@@ -6253,6 +6247,18 @@
       "name": "public.build_rclc_export",
       "return_type": "jsonb",
       "arguments": "p_team_id integer, p_season text, p_track text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.boe_mark_paid",
+      "return_type": "void",
+      "arguments": "p_id integer, p_paid_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_donated boolean DEFAULT false",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.submit_boe_found",
+      "return_type": "int4",
+      "arguments": "p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_donate boolean DEFAULT false",
       "type": "FUNCTION"
     }
   ],

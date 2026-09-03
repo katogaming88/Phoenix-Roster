@@ -8,6 +8,25 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.81.0] - 2026-09-02
+
+### Frontend
+
+- A finder can give their cut to the guild (#862). The found form has a checkbox, "Donate my
+  finder's cut to the guild", off by default; it records the intent, shows as a Donating marker
+  on the BoE Sales page, and rides the Discord post as its own field. On the BoE Sales page a
+  sold row now offers **Donate to Guild** beside Mark Paid: it settles the row with the cut kept
+  by the guild, History reads Donated instead of Paid, guild income counts that cut, and the
+  summary shows the donated total on its own line. Mark Paid on a flagged row clears the marker,
+  and an undone payout keeps it.
+
+### Backend
+
+- `boe_items.payout_donated` marks a finder's cut kept by the guild (#862). `boe_mark_paid`
+  takes a third argument, `p_donated`, and `submit_boe_found` a sixth, `p_donate`; the flag
+  is written only through those two. The nine prod rows whose note already said the cut was
+  donated are flagged by the migration.
+
 ## [3.80.0] - 2026-09-02
 
 ### Frontend
