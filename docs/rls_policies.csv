@@ -73,6 +73,9 @@ priority_stale_dismissals,Claude readers read priority_stale_dismissals,claude_r
 priority_stale_dismissals,Officers manage priority_stale_dismissals,public,ALL,PERMISSIVE,"((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())","((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())"
 raid_encounters,Claude readers read raid_encounters,claude_readers,SELECT,PERMISSIVE,true,
 raid_encounters,Public read raid_encounters,public,SELECT,PERMISSIVE,true,
+raid_rsvps,Claude readers read raid_rsvps,claude_readers,SELECT,PERMISSIVE,true,
+raid_rsvps,Officers read raid_rsvps,public,SELECT,PERMISSIVE,"((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_guild_officer() OR is_site_admin())",
+raid_rsvps,Own raid_rsvps read,public,SELECT,PERMISSIVE,is_own_player(player_id),
 raid_schedule,Claude readers read raid_schedule,claude_readers,SELECT,PERMISSIVE,true,
 raid_schedule,Officers write raid_schedule,public,ALL,PERMISSIVE,"((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_guild_officer() OR is_site_admin())","((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_guild_officer() OR is_site_admin())"
 raid_schedule,Public read raid_schedule,public,SELECT,PERMISSIVE,true,

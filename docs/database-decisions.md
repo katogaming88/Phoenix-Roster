@@ -8,6 +8,18 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-03 -- raid_rsvps has no public or officer write policy at all
+
+Tracking issue: [katogaming88/WGA-Raid-Hub#893](https://github.com/katogaming88/WGA-Raid-Hub/issues/893), part of #640.
+
+Every write onto `raid_rsvps` goes through `set_own_rsvp()` (SECURITY DEFINER) -- there is no INSERT/UPDATE/DELETE RLS policy, not even for officers. This follows the `self_received_requests` precedent (that table also has no direct INSERT policy for anyone) rather than the more common officer-write-policy shape (`attendance`, `raid_schedule`): a raider's own RSVP is a first-person statement, not something an officer should be able to silently rewrite in a raider's voice. If an officer ever needs a correction path, that should be its own explicitly-named function/action later, not a blanket write grant.
+
+`set_own_rsvp()` also deliberately does not take a `player_id` parameter -- it resolves the caller's own row itself, from `auth.uid()`, inside the same statement it writes with. Every other "own row" RPC in this schema (`update_own_signup()`, `claim_character()`) instead takes some identifying parameter and races a lookup against the write's own `WHERE` clause (the TOCTOU-safe idiom documented on those functions). That pattern exists because those functions are correcting/claiming an *existing* row that already has an id to look up; an RSVP has no id to be handed in the first place; the caller is only ever asserting "my status, for this date," so deriving `player_id` fresh removes the race entirely instead of just closing it.
+
+[Full discussion -> #640](https://github.com/katogaming88/WGA-Raid-Hub/issues/640)
+
+---
+
 ## 2026-09-03 -- Team officers settle BoE payouts for their own team
 
 Tracking issue: [#888](https://github.com/katogaming88/WGA-Raid-Hub/issues/888). Every BoE lifecycle RPC gated on `is_boe_manager() or is_site_admin()`, so a team officer read their team's rows and could act on none of them, while in practice a team's officers are who hand the finder their cut, and Immolation and Wrathless raid with the guild without otherwise using the site.

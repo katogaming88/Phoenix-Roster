@@ -9,20 +9,25 @@
 // as per-instance rows -- see the migration's header comment and
 // docs/database-decisions.md for why.
 //
-// There is no per-viewer RSVP yet (that's #893/Phase 2), so each raid
-// night's status dot represents the night as a whole, not "your" reply:
-// Present (mandatory night, everyone but bench is assumed attending) or
-// No Response (an optional night -- #895/Phase 4 -- where nobody has a
-// default and every non-bench raider must explicitly respond once that
-// phase ships). Once #893 lands, the compact/full widgets should start
-// reading the signed-in raider's own raid_rsvps row here instead.
+// #893 (Phase 2) adds the signed-in raider's own override: clicking a raid
+// day on the full page (calendar.html only, not the Home widget) opens a
+// status picker calling set_own_rsvp(), and the grid shows that override
+// in place of the computed default (Present, or No Response on an optional
+// night -- #895/Phase 4) once one exists. Bench raiders get no picker at
+// all (Bench is never raider-editable, enforced server-side too).
 
 var _CAL_WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 var _CAL_STATUS_LABELS = { present: 'Present', pending: 'No Response' };
+// The four raider-facing override statuses (#893). 'Attending' is a valid
+// raid_rsvps.status value for optional nights (#895) but is not offered
+// here and not accepted by set_own_rsvp() yet.
+var _CAL_RSVP_STATUSES = ['Late', 'Leaving Early', 'Tentative', 'Absent'];
 
 var _calDataCache = {};
 var _calViewYear = null;
 var _calViewMonth = null;
+var _calModalDate = null;
+var _calModalStatus = null;
 
 function _calIsoDate(d) {
   var mm = String(d.getMonth() + 1);
@@ -82,20 +87,67 @@ function fetchSupabaseRaidScheduleExceptions(rangeStart, rangeEnd) {
     );
 }
 
+// Returns every RSVP row an officer viewer can see (their own team's), not
+// just the caller's own -- buildCalendarWidget() filters to the caller's
+// own player_id since RLS widens for officers ("Officers read raid_rsvps").
+function fetchSupabaseRaidRsvps(rangeStart, rangeEnd) {
+  if (!supabaseClient) return Promise.resolve([]);
+  // team-read-guard: bounded to the one visible month below, same shape
+  // as fetchSupabaseRaidScheduleExceptions above.
+  return supabaseClient
+    .from('raid_rsvps')
+    .select('player_id, raid_date, status, note')
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .gte('raid_date', _calIsoDate(rangeStart))
+    .lte('raid_date', _calIsoDate(rangeEnd))
+    .then(
+      function (result) {
+        if (result.error) {
+          console.warn('Supabase raid_rsvps query failed.', result.error.message);
+          return [];
+        }
+        return result.data || [];
+      },
+      function (err) {
+        console.warn('Supabase raid_rsvps query failed.', err);
+        return [];
+      }
+    );
+}
+
+// The signed-in raider's own claimed roster character for this team, or
+// null if signed out / unclaimed. Mirrors js/boe.js's session.nameRealm ->
+// DATA.roster lookup -- no dedicated "who am I" resolver exists yet.
+function _calResolveMyPlayer() {
+  var session = typeof getDiscordSession === 'function' ? getDiscordSession() : null;
+  if (!session || !session.nameRealm || !window.DATA || !DATA.roster) return null;
+  for (var i = 0; i < DATA.roster.length; i++) {
+    if (DATA.roster[i].nameRealm === session.nameRealm) return DATA.roster[i];
+  }
+  return null;
+}
+
 // The recurring schedule is cached across the whole page view (rarely
-// changes mid-session); exceptions are cached per visible month, since a
-// new month means a new bounded fetch anyway.
+// changes mid-session); exceptions and RSVPs are cached per visible month,
+// since a new month means a new bounded fetch anyway.
 function _loadCalendarScheduleData(rangeStart, rangeEnd) {
   var monthKey = rangeStart.getFullYear() + '-' + rangeStart.getMonth();
   if (_calDataCache[monthKey]) return _calDataCache[monthKey];
   var schedulePromise = (_calDataCache._schedule = _calDataCache._schedule || fetchSupabaseRaidSchedule());
-  var promise = Promise.all([schedulePromise, fetchSupabaseRaidScheduleExceptions(rangeStart, rangeEnd)]).then(
-    function (results) {
-      return { scheduleRows: results[0], exceptionRows: results[1] };
-    }
-  );
+  var promise = Promise.all([
+    schedulePromise,
+    fetchSupabaseRaidScheduleExceptions(rangeStart, rangeEnd),
+    fetchSupabaseRaidRsvps(rangeStart, rangeEnd)
+  ]).then(function (results) {
+    return { scheduleRows: results[0], exceptionRows: results[1], rsvpRows: results[2] };
+  });
   _calDataCache[monthKey] = promise;
   return promise;
+}
+
+function _calInvalidateMonthCache(rangeStart) {
+  var monthKey = rangeStart.getFullYear() + '-' + rangeStart.getMonth();
+  delete _calDataCache[monthKey];
 }
 
 /**
@@ -162,14 +214,25 @@ function _calNightsByDate(nights) {
   return byDate;
 }
 
+// css class + aria label for one of the four override statuses -- Absent
+// gets its own color (red-ish, --melee), the other three share the
+// existing amber "tentative" treatment (still attending, just flagged).
+function _calOverrideClass(status) {
+  return status === 'Absent' ? 'absent' : 'tentative';
+}
+
 /**
  * Renders one month grid into containerEl. opts.compact suppresses the
  * "(mock ...)" style extras that don't fit a Home-page glance -- currently
- * just controls whether the "View full calendar" link is appended, since
- * the mock's month-nav didn't exist at all yet for either mode in Phase 1.
+ * just controls whether the "View full calendar" link is appended, and
+ * whether raid days are clickable (RSVP picking only happens on the full
+ * page, calendar.html). opts.myOverridesByDate is {dateStr: {status, note}}
+ * for the signed-in raider's own raid_rsvps rows; opts.myPlayer is their
+ * DATA.roster entry (or null if signed out / unclaimed).
  */
 function _renderCalGrid(containerEl, year, month, nights, opts) {
   opts = opts || {};
+  var myOverridesByDate = opts.myOverridesByDate || {};
   var today = new Date();
   var monthLabel = new Date(year, month, 1).toLocaleString('en-US', { month: 'long' }) + ' ' + year;
   var daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -184,6 +247,7 @@ function _renderCalGrid(containerEl, year, month, nights, opts) {
       }).length) ||
     0;
   var attending = Math.max(0, rosterCount - benchCount);
+  var canPick = !opts.compact && opts.myPlayer && !opts.myPlayer.isBench;
 
   var weekdayHtml = _CAL_WEEKDAY_LABELS
     .map(function (d) {
@@ -205,20 +269,28 @@ function _renderCalGrid(containerEl, year, month, nights, opts) {
     var statusHtml = '';
     var countHtml = '';
     if (isRaidDay) {
+      var myOverride = myOverridesByDate[dateStr];
       var anyOptional = dayNights.some(function (n) {
         return n.isOptional;
       });
-      var status = anyOptional ? 'pending' : 'present';
-      usedStatuses[status] = true;
+      var statusClass, statusLabel;
+      if (myOverride) {
+        statusClass = _calOverrideClass(myOverride.status);
+        statusLabel = myOverride.status;
+      } else {
+        statusClass = anyOptional ? 'tentative' : 'present';
+        statusLabel = anyOptional ? _CAL_STATUS_LABELS.pending : _CAL_STATUS_LABELS.present;
+      }
+      usedStatuses[statusLabel] = statusClass;
       statusHtml =
         '<span class="calendar-status calendar-status-' +
-        (status === 'pending' ? 'tentative' : 'present') +
+        statusClass +
         '" role="img" aria-label="' +
-        _CAL_STATUS_LABELS[status] +
+        statusLabel +
         '" title="' +
-        _CAL_STATUS_LABELS[status] +
+        statusLabel +
         '"></span>';
-      if (rosterCount && status === 'present') {
+      if (rosterCount && !myOverride && !anyOptional) {
         countHtml = '<span class="mini-cal-daycount">' + attending + '/' + rosterCount + '</span>';
       }
     }
@@ -226,6 +298,7 @@ function _renderCalGrid(containerEl, year, month, nights, opts) {
       '<div class="mini-cal-day' +
       (isRaidDay ? ' mini-cal-day-raid' : '') +
       (isToday ? ' mini-cal-day-today' : '') +
+      (isRaidDay && canPick ? ' mini-cal-day-clickable" onclick="_openRsvpModal(\'' + dateStr + "')" : '') +
       '"><span class="mini-cal-daynum">' +
       day +
       '</span>' +
@@ -234,16 +307,13 @@ function _renderCalGrid(containerEl, year, month, nights, opts) {
       '</div>';
   }
 
-  var legendHtml = Object.keys(_CAL_STATUS_LABELS)
-    .filter(function (status) {
-      return usedStatuses[status];
-    })
-    .map(function (status) {
+  var legendHtml = Object.keys(usedStatuses)
+    .map(function (label) {
       return (
         '<span class="calendar-legend-item"><span class="calendar-status calendar-status-' +
-        (status === 'pending' ? 'tentative' : 'present') +
+        usedStatuses[label] +
         '" aria-hidden="true"></span>' +
-        _CAL_STATUS_LABELS[status] +
+        label +
         '</span>'
       );
     })
@@ -307,9 +377,20 @@ function buildCalendarWidget(mode) {
 
   var rangeStart = new Date(year, month, 1);
   var rangeEnd = new Date(year, month + 1, 0);
+  var myPlayer = _calResolveMyPlayer();
   _loadCalendarScheduleData(rangeStart, rangeEnd).then(function (data) {
     var nights = computeRaidNights(data.scheduleRows, data.exceptionRows, rangeStart, rangeEnd);
-    _renderCalGrid(el, year, month, nights, { compact: mode !== 'full' });
+    var myOverridesByDate = {};
+    if (myPlayer) {
+      (data.rsvpRows || []).forEach(function (row) {
+        if (row.player_id === myPlayer.id) myOverridesByDate[row.raid_date] = row;
+      });
+    }
+    _renderCalGrid(el, year, month, nights, {
+      compact: mode !== 'full',
+      myPlayer: myPlayer,
+      myOverridesByDate: myOverridesByDate
+    });
   });
 }
 
@@ -323,4 +404,151 @@ function _calNavMonth(delta) {
   _calViewYear = next.getFullYear();
   _calViewMonth = next.getMonth();
   buildCalendarWidget('full');
+}
+
+// --- RSVP modal (#893) -- calendar.html only; the Home widget deep-links
+// here instead of duplicating the picker. Static markup lives in
+// calendar.html (#rsvpModal, .officer-prompt/.active convention, same as
+// officer.html's existing prompts) rather than being built as an HTML
+// string, matching every other modal in this codebase.
+
+function _openRsvpModal(dateStr) {
+  var myPlayer = _calResolveMyPlayer();
+  if (!myPlayer || myPlayer.isBench) return; // cell isn't clickable in that case anyway
+  _calModalDate = dateStr;
+  _calModalStatus = null;
+  var titleEl = document.getElementById('rsvpModalTitle');
+  if (titleEl) {
+    var d = new Date(dateStr + 'T00:00:00');
+    titleEl.textContent =
+      'Your status for ' + d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  }
+  var noteEl = document.getElementById('rsvpNote');
+  if (noteEl) noteEl.value = '';
+  var errEl = document.getElementById('rsvpError');
+  if (errEl) errEl.style.display = 'none';
+  var monthKey = new Date(dateStr + 'T00:00:00');
+  var rangeStart = new Date(monthKey.getFullYear(), monthKey.getMonth(), 1);
+  var rangeEnd = new Date(monthKey.getFullYear(), monthKey.getMonth() + 1, 0);
+  _loadCalendarScheduleData(rangeStart, rangeEnd).then(function (data) {
+    var existing = (data.rsvpRows || []).find(function (row) {
+      return row.player_id === myPlayer.id && row.raid_date === dateStr;
+    });
+    if (existing) {
+      _calModalStatus = existing.status;
+      if (noteEl) noteEl.value = existing.note || '';
+    }
+    _renderRsvpStatusOptions();
+  });
+  var modal = document.getElementById('rsvpModal');
+  if (modal) modal.classList.add('active');
+}
+
+function _closeRsvpModal() {
+  var modal = document.getElementById('rsvpModal');
+  if (modal) modal.classList.remove('active');
+  _calModalDate = null;
+  _calModalStatus = null;
+}
+
+function _renderRsvpStatusOptions() {
+  var el = document.getElementById('rsvpStatusOptions');
+  if (!el) return;
+  el.innerHTML = _CAL_RSVP_STATUSES
+    .map(function (status) {
+      return (
+        '<button type="button" class="filter-chip' +
+        (status === _calModalStatus ? ' active' : '') +
+        '" onclick="_selectRsvpStatus(\'' +
+        status +
+        '\')">' +
+        status +
+        '</button>'
+      );
+    })
+    .join('');
+}
+
+function _selectRsvpStatus(status) {
+  _calModalStatus = status;
+  _renderRsvpStatusOptions();
+}
+
+function _saveRsvpStatus() {
+  if (!_calModalDate || !_calModalStatus) return;
+  var noteEl = document.getElementById('rsvpNote');
+  var errEl = document.getElementById('rsvpError');
+  var saveBtn = document.getElementById('rsvpSaveBtn');
+  if (saveBtn) saveBtn.disabled = true;
+  supabaseClient
+    .rpc('set_own_rsvp', {
+      p_team_id: _teamCfg.supabaseTeamId,
+      p_raid_date: _calModalDate,
+      p_status: _calModalStatus,
+      p_note: (noteEl && noteEl.value.trim()) || null
+    })
+    .then(function (result) {
+      if (saveBtn) saveBtn.disabled = false;
+      if (result.error) {
+        if (errEl) {
+          errEl.textContent = result.error.message;
+          errEl.style.display = '';
+        }
+        return;
+      }
+      _notifyRsvpBot(_calModalDate, _calModalStatus, (noteEl && noteEl.value.trim()) || '');
+      var monthDate = new Date(_calModalDate + 'T00:00:00');
+      _calInvalidateMonthCache(new Date(monthDate.getFullYear(), monthDate.getMonth(), 1));
+      _closeRsvpModal();
+      buildCalendarWidget('full');
+    });
+}
+
+function _clearRsvpStatus() {
+  if (!_calModalDate) return;
+  var saveBtn = document.getElementById('rsvpSaveBtn');
+  if (saveBtn) saveBtn.disabled = true;
+  supabaseClient
+    .rpc('set_own_rsvp', {
+      p_team_id: _teamCfg.supabaseTeamId,
+      p_raid_date: _calModalDate,
+      p_status: null,
+      p_note: null
+    })
+    .then(function (result) {
+      if (saveBtn) saveBtn.disabled = false;
+      if (result.error) {
+        var errEl = document.getElementById('rsvpError');
+        if (errEl) {
+          errEl.textContent = result.error.message;
+          errEl.style.display = '';
+        }
+        return;
+      }
+      var monthDate = new Date(_calModalDate + 'T00:00:00');
+      _calInvalidateMonthCache(new Date(monthDate.getFullYear(), monthDate.getMonth(), 1));
+      _closeRsvpModal();
+      buildCalendarWidget('full');
+    });
+}
+
+// Fire-and-forget, same pattern as js/signup.js -- the Supabase write above
+// is already committed and is the record of truth; a failed/slow Discord
+// notification is not something the raider needs to see or wait on.
+function _notifyRsvpBot(raidDate, status, note) {
+  if (!supabaseClient || !window.DATA || !DATA.roster) return;
+  var myPlayer = _calResolveMyPlayer();
+  if (!myPlayer) return;
+  supabaseClient.functions
+    .invoke('discord-bot-webhook', {
+      body: {
+        action: 'rsvp',
+        team: TEAM_SLUG,
+        payload: { charName: myPlayer.nameRealm, raidDate: raidDate, status: status, note: note }
+      }
+    })
+    .then(
+      function () {},
+      function () {}
+    );
 }
