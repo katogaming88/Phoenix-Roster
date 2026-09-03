@@ -32,4 +32,13 @@ include:
 # Until then: a `tbls diff` failure that's ONLY a trigger-order swap on an
 # unrelated table (not the table your migration actually touched) is this
 # known flake, not a real doc staleness -- rerun the check.
+#
+# The other half (2026-09-02): `tbls doc` on Windows writes each table's
+# trigger rows in catalog order regardless of this setting, so a regen here
+# produced docs that failed CI's diff on five untouched tables. `npm run
+# db:docs` therefore runs scripts/ci/dbdoc-sort.js after tbls, which sorts
+# every Triggers table and schema.json triggers array by name and re-emits
+# the JSON with Go's escaping; run it alone after a by-hand `tbls doc`.
+# tests/ci/dbdoc-sort.test.js fails on any committed doc that is not in
+# that order.
 sort: true
