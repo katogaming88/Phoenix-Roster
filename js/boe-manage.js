@@ -223,6 +223,59 @@ function _boeItemCell(item) {
   return html;
 }
 
+// The edit form (#874): a manager corrects the item name, track and note of a
+// find in any section, on the same hidden-span pattern as Record Listing and
+// Record Sale. The check_boe_status_transition trigger admits exactly these
+// columns on a plain UPDATE and blocks everything else, so there is no RPC.
+// Later PRs extend the column list rather than the form: #875 adds the
+// catalog link, #865 the item level and upgrade rank.
+var BOE_TRACKS = ['Champion', 'Hero', 'Myth'];
+var BOE_EDIT_COLUMNS = [
+  ['item_name', 'item'],
+  ['track', 'track'],
+  ['note', 'note']
+];
+
+function _boeEditForm(item) {
+  var id = item.id;
+  var options = '<option value=""' + (item.track ? '' : ' selected') + '>No track</option>';
+  BOE_TRACKS.forEach(function (t) {
+    options += '<option value="' + t + '"' + (item.track === t ? ' selected' : '') + '>' + t + '</option>';
+  });
+  return (
+    ' <button class="btn" id="boe-edit-btn-' +
+    id +
+    '" onclick="toggleBoeForm(' +
+    id +
+    ", 'edit')\">Edit</button>" +
+    '<span id="boe-edit-form-' +
+    id +
+    '" style="display:none;">' +
+    '<br><input id="boe-edit-name-' +
+    id +
+    '" aria-label="Item name" value="' +
+    _esc(item.item_name || '') +
+    '" style="width:14rem;"> ' +
+    '<select id="boe-edit-track-' +
+    id +
+    '" aria-label="Track">' +
+    options +
+    '</select> ' +
+    '<textarea id="boe-edit-note-' +
+    id +
+    '" aria-label="Note" rows="2" placeholder="Note (optional)" style="width:14rem;vertical-align:top;">' +
+    _esc(item.note || '') +
+    '</textarea> ' +
+    '<button class="btn" onclick="saveBoeEdit(' +
+    id +
+    ', this)">Save</button> ' +
+    '<button class="btn" onclick="cancelBoeEdit(' +
+    id +
+    ')">Cancel</button>' +
+    '</span>'
+  );
+}
+
 function _boeTable(headers, rowsHtml) {
   return (
     '<div style="overflow-x:auto;"><table class="roster-table"><thead><tr>' +
@@ -348,6 +401,7 @@ function renderBoeManage() {
           '<button class="btn" onclick="retireBoe(' +
           item.id +
           ', this)">Retire</button>' +
+          _boeEditForm(item) +
           '<span id="boe-listing-form-' +
           item.id +
           '" style="display:none;">' +
@@ -421,6 +475,7 @@ function renderBoeManage() {
           '<button class="btn" onclick="revertBoe(' +
           item.id +
           ', this)">Undo Sale</button>' +
+          _boeEditForm(item) +
           '<span id="boe-status-' +
           item.id +
           '" role="status" style="display:block;color:var(--melee);font-size:0.95rem;"></span></td>';
@@ -468,6 +523,7 @@ function renderBoeManage() {
           ', this)">' +
           (item.status === 'paid' ? 'Undo Payout' : 'Un-retire') +
           '</button>' +
+          _boeEditForm(item) +
           '<span id="boe-status-' +
           item.id +
           '" role="status" style="display:block;color:var(--melee);font-size:0.95rem;"></span></td>';
@@ -532,11 +588,24 @@ function boeHistoryPage(delta) {
   if (target && target.focus) target.focus();
 }
 
+var BOE_FORM_MODES = ['listing', 'sale', 'edit'];
+
+// One form open per row at a time. Opening the edit form moves focus into its
+// name field; the lifecycle forms keep focus on the button that opened them.
 function toggleBoeForm(id, mode) {
   var show = document.getElementById('boe-' + mode + '-form-' + id);
-  var other = document.getElementById('boe-' + (mode === 'listing' ? 'sale' : 'listing') + '-form-' + id);
-  if (other) other.style.display = 'none';
-  if (show) show.style.display = show.style.display === 'none' ? '' : 'none';
+  BOE_FORM_MODES.forEach(function (m) {
+    if (m === mode) return;
+    var other = document.getElementById('boe-' + m + '-form-' + id);
+    if (other) other.style.display = 'none';
+  });
+  if (!show) return;
+  var opening = show.style.display === 'none';
+  show.style.display = opening ? '' : 'none';
+  if (opening && mode === 'edit') {
+    var name = document.getElementById('boe-edit-name-' + id);
+    if (name && name.focus) name.focus();
+  }
 }
 
 function _setBoeRowStatus(id, message) {
@@ -708,4 +777,131 @@ function revertBoe(id, btnEl) {
     }
     writeAuditLog('BoE Reverted', 'boe_items', id, item.item_name + ': ' + from + ' back to ' + to, item.team_id);
   });
+}
+
+// --- Edit (#874) -----------------------------------------------------------
+//
+// Reads the row's edit form back. The name is trimmed; a blank track or note
+// is null, which is what the raider form stores for "not given".
+function _boeEditValues(id) {
+  var nameEl = document.getElementById('boe-edit-name-' + id);
+  var trackEl = document.getElementById('boe-edit-track-' + id);
+  var noteEl = document.getElementById('boe-edit-note-' + id);
+  var name = nameEl ? String(nameEl.value || '').trim() : '';
+  var track = trackEl ? String(trackEl.value || '').trim() : '';
+  var note = noteEl ? String(noteEl.value || '').trim() : '';
+  return { item_name: name, track: track || null, note: note || null };
+}
+
+// Which editable columns differ between the row and the form, with both values
+// for the audit detail. Null and undefined compare equal to each other here.
+function _boeEditChanges(item, values) {
+  var changes = [];
+  BOE_EDIT_COLUMNS.forEach(function (col) {
+    var from = item[col[0]] == null ? null : item[col[0]];
+    var to = values[col[0]] == null ? null : values[col[0]];
+    if (from !== to) changes.push({ col: col[0], label: col[1], from: from, to: to });
+  });
+  return changes;
+}
+
+// The audit detail quotes the old and new value of every changed column, so a
+// raider's original words survive a rewrite of the note.
+function _boeEditDetail(changes) {
+  var quote = function (v) {
+    return v == null ? '(none)' : '"' + v + '"';
+  };
+  return changes
+    .map(function (c) {
+      return c.label === 'item'
+        ? 'item renamed from ' + quote(c.from) + ' to ' + quote(c.to)
+        : c.label + ' was ' + quote(c.from) + ', now ' + quote(c.to);
+    })
+    .join('; ');
+}
+
+function _focusBoeEditButton(id) {
+  var btn = document.getElementById('boe-edit-btn-' + id);
+  if (btn && btn.focus) btn.focus();
+}
+
+// Save is a plain UPDATE of every editable column by id, not an RPC: the
+// check_boe_status_transition trigger admits exactly these columns from an
+// authenticated caller and raises on anything else, and the update policy is
+// the manager grant. A grant revoked since the page loaded makes RLS filter
+// the row out, which returns no error and zero rows, so the returned row is
+// what turns that into a message rather than a silent no-op.
+function saveBoeEdit(id, btnEl) {
+  var item = findBoeItem(id);
+  if (!item) return;
+  var values = _boeEditValues(id);
+  if (!values.item_name) {
+    _setBoeRowStatus(id, 'Enter the item name.');
+    return;
+  }
+  var changes = _boeEditChanges(item, values);
+  if (!changes.length) {
+    cancelBoeEdit(id);
+    return;
+  }
+  var payload = {};
+  BOE_EDIT_COLUMNS.forEach(function (col) {
+    payload[col[0]] = values[col[0]];
+  });
+  var prevLabel = btnEl ? btnEl.textContent : '';
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.textContent = '...';
+  }
+  function restore() {
+    if (btnEl) {
+      btnEl.disabled = false;
+      btnEl.textContent = prevLabel;
+    }
+  }
+  return supabaseClient
+    .from('boe_items')
+    .update(payload)
+    .eq('id', id)
+    .select('id')
+    .then(function (result) {
+      restore();
+      if (result.error) {
+        _setBoeRowStatus(id, result.error.message);
+        return;
+      }
+      if (!result.data || !result.data.length) {
+        _setBoeRowStatus(id, 'Nothing was saved. Your BoE manager grant may have been revoked; reload the page.');
+        return;
+      }
+      BOE_EDIT_COLUMNS.forEach(function (col) {
+        item[col[0]] = values[col[0]];
+      });
+      writeAuditLog('BoE Find Edited', 'boe_items', id, _boeEditDetail(changes), item.team_id);
+      // The re-render recreates the row's Edit button under the same id; the
+      // row cannot change section, since status and dates are untouched.
+      renderBoeManage();
+      _focusBoeEditButton(id);
+    })
+    .catch(function (err) {
+      restore();
+      _setBoeRowStatus(id, err && err.message ? err.message : 'Something went wrong.');
+    });
+}
+
+// Cancel puts the fields back to the row's values and hides the form, with no
+// re-render, so nothing else on the page moves.
+function cancelBoeEdit(id) {
+  var item = findBoeItem(id);
+  var form = document.getElementById('boe-edit-form-' + id);
+  if (form) form.style.display = 'none';
+  if (item) {
+    var nameEl = document.getElementById('boe-edit-name-' + id);
+    var trackEl = document.getElementById('boe-edit-track-' + id);
+    var noteEl = document.getElementById('boe-edit-note-' + id);
+    if (nameEl) nameEl.value = item.item_name || '';
+    if (trackEl) trackEl.value = item.track || '';
+    if (noteEl) noteEl.value = item.note || '';
+  }
+  _focusBoeEditButton(id);
 }
