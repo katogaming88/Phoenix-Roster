@@ -8,6 +8,19 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.86.0] - 2026-09-03
+
+### Frontend
+
+- Officers get a new **Raid Schedule** tab to manage the weekly raid nights raiders see on the
+  calendar: add/edit/remove recurring weekly nights, and cancel a single occurrence or add a
+  one-off extra night ([#894](https://github.com/katogaming88/WGA-Raid-Hub/issues/894), part of
+  [#640](https://github.com/katogaming88/WGA-Raid-Hub/issues/640)). Direct writes under existing
+  RLS, no new migration needed -- Phase 1 already shipped officer-write policies on
+  `raid_schedule`/`raid_schedule_exceptions`.
+
+---
+
 ## [3.85.0] - 2026-09-03
 
 ### Frontend
@@ -398,7 +411,7 @@ with each release split into `### Frontend` (drives the version number) and
 
 - Priority Edit's "Suggest Order" re-click nudge no longer treats Heroic and
   Mythic #1 priorities as the same pool. It used to avoid stacking a #1 on
-  someone who already held rank 1 on *either* difficulty for another item,
+  someone who already held rank 1 on _either_ difficulty for another item,
   so a player's Heroic #1 could bump them out of a Mythic #1 slot (or vice
   versa) even though Heroic and Mythic are separate priority lists. Now only
   counts #1s on the difficulty currently being edited.
@@ -467,7 +480,7 @@ with each release split into `### Frontend` (drives the version number) and
   (`item_preferences` rows tagged `bis`) instead of the officer-curated BiS
   Manager grid (`bis_items`), which almost nobody keeps up to date. Reports
   > BiS Demand vs Awards was showing "No BiS demand recorded" for every team
-  as a result.
+  > as a result.
 - `bis_demand_vs_awards` also excludes placeholder items from demand now --
   they're catalog stand-ins (e.g. "any trinket"), not real drops that could
   ever show an awarded count.
@@ -526,7 +539,7 @@ with each release split into `### Frontend` (drives the version number) and
   could render before that batch resolved (e.g. a `?tab=bios` deep link at
   boot). The guild sub-tab now re-renders once the real data arrives.
 - Fixed Remove Photo on a Team or Guild Officer Bios card silently
-  deleting the photo out from under any *other* bio card that happened to
+  deleting the photo out from under any _other_ bio card that happened to
   reference the same uploaded file (e.g. one person's photo copy-pasted
   into both their Team and Guild cards). Removing a photo now only clears
   it from that one card; it no longer deletes the underlying file.
@@ -646,7 +659,7 @@ with each release split into `### Frontend` (drives the version number) and
   fix the raid-progression sync already needed for the same reason.
 - A raid night was still missing from Attendance after the pagination fix
   above -- its report title was `"Phoenix Heroic 8/27 - The Coiled Altar
-  (...)"`, and the alt-run exclusion check matched "Alt" as a plain substring,
+(...)"`, and the alt-run exclusion check matched "Alt" as a plain substring,
   so the boss name **Altar** false-flagged a real raid night as an alt run.
   Now matches "Alt" as its own word only.
 
@@ -893,8 +906,8 @@ with each release split into `### Frontend` (drives the version number) and
 
 ### Frontend
 
-- Fixed a raider's "Mark received" row going permanently back to unreceived after a duplicate submission. `selfReceivedEntryForRow()` only trusted a slot-less match when it was the *only* candidate for that item name -- a real (non-placeholder) item never carries a slot of its own, so two duplicate submissions for the same item (e.g. the first confirmation wasn't seen, so the raider tried again) left two slot-less rows that the check then refused to match either of, even though both were approved. A row with no slot of its own now matches any slot-less duplicate, since there's no numbered-slot ambiguity to guess across for a real item in the first place.
-- `submitSelfReceivedRequest()`/`submitDirectMarkReceived()` (Mark Received / Submit Request) now show a "Failed to submit. Try again." error if the request promise itself rejects (network drop, etc.) instead of leaving the form frozen on "Submitting..."/"Saving..." with no feedback -- previously only a `result.error` from a *successful* round trip was handled, so a raider with no visible confirmation had no way to tell whether their click actually went through.
+- Fixed a raider's "Mark received" row going permanently back to unreceived after a duplicate submission. `selfReceivedEntryForRow()` only trusted a slot-less match when it was the _only_ candidate for that item name -- a real (non-placeholder) item never carries a slot of its own, so two duplicate submissions for the same item (e.g. the first confirmation wasn't seen, so the raider tried again) left two slot-less rows that the check then refused to match either of, even though both were approved. A row with no slot of its own now matches any slot-less duplicate, since there's no numbered-slot ambiguity to guess across for a real item in the first place.
+- `submitSelfReceivedRequest()`/`submitDirectMarkReceived()` (Mark Received / Submit Request) now show a "Failed to submit. Try again." error if the request promise itself rejects (network drop, etc.) instead of leaving the form frozen on "Submitting..."/"Saving..." with no feedback -- previously only a `result.error` from a _successful_ round trip was handled, so a raider with no visible confirmation had no way to tell whether their click actually went through.
 
 ### Backend
 
@@ -979,7 +992,7 @@ with each release split into `### Frontend` (drives the version number) and
 
 ### Frontend
 
-- The Loot Import tab's "Recent RCLC Imports" history used to show a flat list of every individual item ever imported, capped at the last 100 rows -- confirming "did my paste go through" meant scrolling through a long item list with no sense of when an import ran or who ran it. Rebuilt into one row per *import event* (Time, Imported By, # of Items), grouped from `audit_log` by the fact that every item from one `import_rclc_loot()` call shares the exact same `created_at` (Postgres freezes `now()` for the whole transaction). Click a row to expand a per-player breakdown (name and item count only, not the items themselves). The list is season-scoped via a dropdown, defaulting to the currently active season.
+- The Loot Import tab's "Recent RCLC Imports" history used to show a flat list of every individual item ever imported, capped at the last 100 rows -- confirming "did my paste go through" meant scrolling through a long item list with no sense of when an import ran or who ran it. Rebuilt into one row per _import event_ (Time, Imported By, # of Items), grouped from `audit_log` by the fact that every item from one `import_rclc_loot()` call shares the exact same `created_at` (Postgres freezes `now()` for the whole transaction). Click a row to expand a per-player breakdown (name and item count only, not the items themselves). The list is season-scoped via a dropdown, defaulting to the currently active season.
 
 ### Backend
 
@@ -1088,7 +1101,6 @@ with each release split into `### Frontend` (drives the version number) and
 - Fixed the same truncation in the "Not on Roster" backfill that runs when a player is added mid-season. That path reads every raid night the team has before the player's join date and then writes a row for each one, so a capped read did not just display less: it wrote an incomplete attendance history that afterwards looked like real data. It also read without any ordering, which meant which nights got filled in could vary between runs.
 - Both reads, and the player's own attendance read alongside them, now page through a shared helper. Paging is keyed on row id with an exact count taken on the first page, so a result that is an exact multiple of the page size does not cost a wasted request, a short page part-way through does not end the read early, and each page gets its own timeout rather than sharing one budget across the whole read. A failed or timed-out read now returns nothing at all rather than the rows it had managed to collect, so a partial result can never be mistaken for a complete one.
 
-
 ## [3.60.18] - 2026-08-19
 
 ### Frontend
@@ -1120,7 +1132,7 @@ with each release split into `### Frontend` (drives the version number) and
 
 ### Backend
 
-- `generate_priority_order()` now factors in how much priority a candidate already holds across the *rest* of the priority order, not just whether they hold a #1 elsewhere. A new `avg_existing_rank` sort tier (each candidate's average rank across every other item/track they're placed on this season, excluding the exact item/track being generated) sits after tier-piece catch-up and before raw score: someone already well-prioritized elsewhere gets deprioritized against further stacking, and someone who's been sitting at rank 10+ everywhere (or nowhere at all) gets a real boost -- not just avoiding a #1-vs-#1 collision, the whole ranked list now spreads priority more fairly. Never overrides an actual BiS/tier need. See `docs/database-decisions.md` (2026-08-17).
+- `generate_priority_order()` now factors in how much priority a candidate already holds across the _rest_ of the priority order, not just whether they hold a #1 elsewhere. A new `avg_existing_rank` sort tier (each candidate's average rank across every other item/track they're placed on this season, excluding the exact item/track being generated) sits after tier-piece catch-up and before raw score: someone already well-prioritized elsewhere gets deprioritized against further stacking, and someone who's been sitting at rank 10+ everywhere (or nowhere at all) gets a real boost -- not just avoiding a #1-vs-#1 collision, the whole ranked list now spreads priority more fairly. Never overrides an actual BiS/tier need. See `docs/database-decisions.md` (2026-08-17).
 
 ## [3.60.14] - 2026-08-16
 
@@ -1255,7 +1267,7 @@ with each release split into `### Frontend` (drives the version number) and
 
 ### Backend
 
-- Fixed a real regression in `generate_priority_order()`: it had matched wishlist tags by `item_id` *and* `slot = null` since Wishlist ranking first shipped, which silently stopped working once Finger/Trinket disambiguation (#623) and the Weapon/Off Hand dual-wield fix (#673) started writing an explicit slot on real items. Any status tagged on one of those rows since -- including `Pass` -- was invisible to priority-order generation. Now matches by `item_id` alone and takes the most-favorable status across a player's rows for that item. See `docs/database-decisions.md` for the full writeup.
+- Fixed a real regression in `generate_priority_order()`: it had matched wishlist tags by `item_id` _and_ `slot = null` since Wishlist ranking first shipped, which silently stopped working once Finger/Trinket disambiguation (#623) and the Weapon/Off Hand dual-wield fix (#673) started writing an explicit slot on real items. Any status tagged on one of those rows since -- including `Pass` -- was invisible to priority-order generation. Now matches by `item_id` alone and takes the most-favorable status across a player's rows for that item. See `docs/database-decisions.md` for the full writeup.
 - Added a narrow officer UPDATE policy + restrict trigger on `item_preferences` so an officer can null out a raider's `note` column (and only that, and only to `NULL`) -- backs the new Clear Note button above.
 
 ## [3.59.0] - 2026-08-09

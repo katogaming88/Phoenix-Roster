@@ -66,6 +66,7 @@ function switchTab(name) {
     buildReportsTab();
   }
   if (name === 'season') buildSeasonTab();
+  if (name === 'schedule') buildScheduleTab();
   if (name === 'bios') {
     resetBiosSubTab();
   }
