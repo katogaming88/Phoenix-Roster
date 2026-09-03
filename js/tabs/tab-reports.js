@@ -164,6 +164,7 @@ function renderRnlsiTable() {
   });
 
   var html =
+    localTimeZoneNote() +
     '<table class="roster-table"><thead><tr><th>Player</th><th>Last Award</th><th>Raid Nights Since</th></tr></thead><tbody>';
   sorted.forEach(function (r) {
     var nights = r.raid_nights_since_last_item;
@@ -171,7 +172,7 @@ function renderRnlsiTable() {
       '<tr><td>' +
       r.name_realm +
       '</td><td>' +
-      (r.last_award_at ? new Date(r.last_award_at).toLocaleDateString() : 'Never') +
+      (r.last_award_at ? formatDateTime(r.last_award_at) : 'Never') +
       '</td><td style="color:' +
       rnlsiSeverityColor(nights, maxNights) +
       ';font-weight:600;">' +
@@ -568,6 +569,7 @@ function renderTierSetTable() {
   });
 
   var html =
+    localTimeZoneNote() +
     '<table class="roster-table"><thead><tr><th>Player</th><th>Class / Spec</th><th>Tier Count</th><th>Last Synced</th></tr></thead><tbody>';
   sorted.forEach(function (p) {
     var count = p.tierPiecesEquipped;
@@ -585,7 +587,7 @@ function renderTierSetTable() {
       ';font-weight:600;">' +
       (count == null ? 'Not synced' : count + '/5') +
       '</td><td>' +
-      (p.tierPiecesSyncedAt ? new Date(p.tierPiecesSyncedAt).toLocaleDateString() : 'Never') +
+      (p.tierPiecesSyncedAt ? formatDateTime(p.tierPiecesSyncedAt) : 'Never') +
       '</td></tr>';
   });
   html += '</tbody></table>';

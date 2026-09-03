@@ -318,6 +318,8 @@ a.prog-boss-heroic-pulls:hover { color:var(--gold); text-decoration:underline; }
 .stream-twitch-link { margin-left:auto; font-size:0.95rem; color:var(--gold); text-decoration:none; border-bottom:1px solid rgba(214,163,68,0.3); }
 .stream-twitch-link:hover { color:var(--gold-light); border-color:var(--gold); }
 .stream-note { font-size:1rem; color:var(--text-muted); margin:0; }
+/* #905: the line every surface showing a time carries, naming the viewer zone. */
+.tz-note { font-size:0.95rem; color:var(--text-muted); margin:0 0 0.5rem; }
 .stream-card-footer { margin-top:0.15rem; }
 .stream-profile-link { font-size:0.97rem; color:var(--gold); text-decoration:none; border-bottom:1px solid rgba(214,163,68,0.3); }
 .stream-profile-link:hover { color:var(--gold-light); border-color:var(--gold); }

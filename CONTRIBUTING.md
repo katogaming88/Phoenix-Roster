@@ -73,7 +73,12 @@ or add the `chore` label.
   `npm run test:frontend`; CI runs the suite on every `js/` change. That job
   pins `TZ=America/New_York`, the project's canonical zone: date logic reads
   the viewer's local calendar date, so a UTC runner cannot catch a
-  local-vs-UTC regression (#703)
+  local-vs-UTC regression (#703). Two rules follow from that zone (#905):
+  date logic and calendar facts (raid nights, award dates, join dates)
+  reason in Eastern, and an instant shown to a person (a `timestamptz`) is
+  rendered in the viewer's own zone with its clock through
+  `formatDateTime()` in `js/common.js`, beside a `localTimeZoneNote()` line
+  saying so; `tests/ci/date-format-check.test.js` enforces both
 - Structural checks over the HTML and the CI tooling live in `tests/ci/`
   (`npm run test:ci`): landmarks, heading order, resolvable anchors, the
   `?v=` asset tags, and the changelog classifier. These read the pages as

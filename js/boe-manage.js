@@ -157,8 +157,10 @@ function parseGoldInput(value) {
   return parseInt(cleaned, 10);
 }
 
+// Every date on the page is an instant, shown as the viewer's local date
+// and time (#905); the summary strip carries the zone note.
 function _boeDate(iso) {
-  return iso ? new Date(iso).toLocaleDateString() : '';
+  return formatDateTime(iso);
 }
 
 var _BOE_BADGE_COLORS = {
@@ -427,6 +429,7 @@ function renderBoeManage() {
   });
 
   summary.innerHTML =
+    localTimeZoneNote() +
     '<div style="display:flex;gap:2rem;flex-wrap:wrap;margin-bottom:0.5rem;">' +
     '<span>Guild income to date: <strong style="color:var(--gold);">' +
     formatGold(guildIncome) +

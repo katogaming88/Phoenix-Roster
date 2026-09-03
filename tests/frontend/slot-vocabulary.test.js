@@ -3,6 +3,12 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { loadCommonJs, quietConsole } from './helpers/common-sandbox.js';
+
+// The tab renders timestamps through formatDateTime() and the zone note
+// through localTimeZoneNote(), both js/common.js globals (#905); the real
+// ones, so the suite cannot pin a shape the shipped helpers need not have.
+const realCommon = loadCommonJs(quietConsole);
 
 // #453: items.slot used to hold a hand-typed spreadsheet vocabulary ('Boots',
 // 'Gloves', 'Ring', '1H/2H', 'OH'...) that matched neither the game, Wowhead,
@@ -32,6 +38,8 @@ function load(src, extra = {}) {
     clearTimeout,
     ...extra
   };
+  sandbox.formatDateTime = realCommon.formatDateTime;
+  sandbox.localTimeZoneNote = realCommon.localTimeZoneNote;
   vm.createContext(sandbox);
   vm.runInContext(src, sandbox, { filename: 'src.js' });
   return sandbox;

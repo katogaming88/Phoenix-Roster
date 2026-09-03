@@ -94,7 +94,7 @@ function buildMPlusTab() {
           nameRealm: (row.players && row.players.name_realm) || '',
           raiderioUrl: row.raiderio_url || '',
           notes: row.reason || '',
-          timestamp: row.submitted_at ? new Date(row.submitted_at).toLocaleString() : ''
+          timestamp: formatDateTime(row.submitted_at)
         };
       });
       renderMPlusSubmissions(submissions);
@@ -112,7 +112,7 @@ function renderActiveExclusions() {
       '<p style="color:var(--text-muted);font-size:1.07rem;margin-top:0.75rem;">No players currently excluded.</p>';
     return;
   }
-  var html = '<div style="margin-top:0.75rem;display:flex;flex-direction:column;gap:0.4rem;">';
+  var html = localTimeZoneNote() + '<div style="margin-top:0.75rem;display:flex;flex-direction:column;gap:0.4rem;">';
   active.forEach(function (p) {
     html +=
       '<div style="display:flex;align-items:baseline;gap:0.6rem;padding:0.4rem 0;border-bottom:1px solid var(--border);">' +
