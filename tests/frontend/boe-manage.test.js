@@ -36,15 +36,23 @@ function makeEl(extra) {
 // nothing would fail here instead of passing against a truncating server. A
 // table source given as a function overrides the keyset semantics entirely
 // (for error pages).
-function makeBoeClient({ items = [], listings = [], rpc = {} } = {}) {
-  const captured = { byTable: {}, gts: [], rpcCalls: [] };
+function makeBoeClient({ items = [], listings = [], rpc = {}, updates = {} } = {}) {
+  const captured = { byTable: {}, gts: [], rpcCalls: [], updates: [] };
   const tableRows = { boe_items: items, boe_listings: listings };
   function builder(table) {
-    const calls = { select: null, countRequested: false, eq: [], order: [], gt: null, limit: null };
+    const calls = { select: null, countRequested: false, eq: [], order: [], gt: null, limit: null, update: null };
     const b = {
       select(c, opts) {
         calls.select = c;
         calls.countRequested = !!(opts && opts.count);
+        return b;
+      },
+      // An update chain (#874): .update(values).eq('id', n).select('id'). The
+      // result echoes the matching rows with the values merged, or whatever
+      // updates[table] returns: zero rows for a lost grant, an error for the
+      // trigger's raise.
+      update(values) {
+        calls.update = values;
         return b;
       },
       eq(c, v) {
@@ -68,6 +76,13 @@ function makeBoeClient({ items = [], listings = [], rpc = {} } = {}) {
         return Promise.resolve()
           .then(() => {
             const src = tableRows[table];
+            if (calls.update) {
+              captured.updates.push({ table, values: calls.update, eq: calls.eq });
+              if (updates[table]) return updates[table](calls);
+              const rows = Array.isArray(src) ? src : [];
+              const hit = rows.filter((r) => calls.eq.every(([c, v]) => r[c] === v));
+              return { data: hit.map((r) => Object.assign({}, r, calls.update)), error: null };
+            }
             if (typeof src === 'function') return src(calls);
             const after = calls.gt ? calls.gt[1] : null;
             const limit = calls.limit || 1000;
@@ -289,6 +304,7 @@ describe('manager gating (#774)', () => {
     expect(els.guildBoeSummary.innerHTML).toContain('assigned by a site admin');
     expect(els.guildBoeOpen.innerHTML).not.toContain('<button');
     expect(els.guildBoeAwaiting.innerHTML).not.toContain('<button');
+    expect(els.guildBoeHistory.innerHTML).not.toContain('<button');
   });
 
   // Who the caller is belongs to js/guild.js now. This module asks nothing
@@ -1030,5 +1046,211 @@ describe('History paging (#863)', () => {
     const { els } = await build({ client, els: pagerEls() });
     expect(els.guildBoeHistory.innerHTML).toMatch(/<button[^>]*id="boeHistoryPrev"[^>]*>Previous<\/button>/);
     expect(els.guildBoeHistory.innerHTML).toMatch(/<button[^>]*id="boeHistoryNext"[^>]*>Next<\/button>/);
+  });
+});
+
+// A manager can correct the item name, track and note from the page (#874).
+// The trigger already admits exactly those columns on a plain UPDATE and the
+// update policy is the manager grant, so this is wiring: what the form
+// prefills, what one Save sends, what is refused before any write, and what
+// the two silent failure shapes (zero rows, a server error) look like on the
+// row. Elements the form reads are stubbed by id, like the price fields.
+describe('manager edit (#874)', () => {
+  const focusable = () =>
+    makeEl({
+      focused: 0,
+      focus() {
+        this.focused++;
+      }
+    });
+  // The form span starts hidden, as the markup renders it: the stub default
+  // style {} would read as open and the first toggle would close it.
+  const editEls = (id) => ({
+    ['boe-edit-form-' + id]: makeEl({ style: { display: 'none' } }),
+    ['boe-edit-btn-' + id]: focusable(),
+    ['boe-edit-name-' + id]: focusable(),
+    ['boe-edit-track-' + id]: makeEl(),
+    ['boe-edit-note-' + id]: makeEl(),
+    ['boe-status-' + id]: makeEl()
+  });
+  const typeInto = (els, id, { name, track, note }) => {
+    els['boe-edit-name-' + id].value = name;
+    els['boe-edit-track-' + id].value = track;
+    els['boe-edit-note-' + id].value = note;
+  };
+  const ZERO_ROWS = 'Nothing was saved. Your BoE manager grant may have been revoked; reload the page.';
+
+  it('renders Edit in all three sections for a manager, after the lifecycle buttons and before the forms', async () => {
+    const { client } = makeBoeClient({ items: ALL_ROWS(), listings: [], rpc: managerRpc() });
+    const { els } = await build({ client });
+    for (const id of ['guildBoeOpen', 'guildBoeAwaiting', 'guildBoeHistory']) {
+      expect(els[id].innerHTML).toContain('>Edit</button>');
+      expect(els[id].innerHTML).toContain('id="boe-edit-form-');
+    }
+    const open = els.guildBoeOpen.innerHTML;
+    expect(open.indexOf('>Retire</button>')).toBeLessThan(open.indexOf('id="boe-edit-btn-1"'));
+    expect(open.indexOf('id="boe-edit-btn-1"')).toBeLessThan(open.indexOf('id="boe-listing-form-1"'));
+    expect(open.indexOf('id="boe-edit-form-1"')).toBeLessThan(open.indexOf('id="boe-status-1"'));
+  });
+
+  it('prefills the name, the stored track and the note, escaped', async () => {
+    const rows = [
+      boeRow({ id: 1, item_name: 'Girdle "of" <Night>', track: 'Hero', note: 'from trash before boss 2' }),
+      boeRow({ id: 2, item_name: 'Sash of the Fallen Star', track: null, note: null })
+    ];
+    const { client } = makeBoeClient({ items: rows, listings: [], rpc: managerRpc() });
+    const { els } = await build({ client });
+    const open = els.guildBoeOpen.innerHTML;
+    expect(open).toContain('value="' + realEsc('Girdle "of" <Night>') + '"');
+    expect(open).not.toContain('<Night>');
+    expect(open).toContain('<option value="Hero" selected>Hero</option>');
+    expect(open).toContain('>from trash before boss 2</textarea>');
+    expect(open).toContain('<option value="" selected>');
+    expect(open).toContain('id="boe-edit-note-2" aria-label="Note"');
+  });
+
+  it('Save sends one update of the three columns for that id, re-renders the new name and returns focus to Edit', async () => {
+    const els = editEls(1);
+    const { client, captured } = makeBoeClient({ items: [FOUND()], listings: [], rpc: managerRpc() });
+    const loaded = await build({ client, els });
+    typeInto(els, 1, { name: '  Slippers of the Hissing Cult ', track: 'Myth', note: 'Donate' });
+    loaded.sandbox.saveBoeEdit(1, makeEl({ textContent: 'Save' }));
+    await flush();
+    await flush();
+    expect(captured.updates).toEqual([
+      {
+        table: 'boe_items',
+        values: { item_name: 'Slippers of the Hissing Cult', track: 'Myth', note: 'Donate' },
+        eq: [['id', 1]]
+      }
+    ]);
+    expect(els.guildBoeOpen.innerHTML).toContain('Slippers of the Hissing Cult');
+    expect(els.guildBoeOpen.innerHTML).not.toContain('Voidglass Cloak');
+    expect(els.guildBoeOpen.innerHTML).toContain('Myth');
+    // Still exactly one boe_items read: the row was patched in memory.
+    expect(captured.byTable.boe_items.filter((c) => !c.update)).toHaveLength(1);
+    expect(els['boe-edit-btn-1'].focused).toBe(1);
+  });
+
+  it('refuses an empty name on the row with no write and no audit entry', async () => {
+    const els = editEls(1);
+    const { client, captured } = makeBoeClient({ items: [FOUND()], listings: [], rpc: managerRpc() });
+    const loaded = await build({ client, els });
+    typeInto(els, 1, { name: '   ', track: 'Hero', note: '' });
+    loaded.sandbox.saveBoeEdit(1, makeEl());
+    await flush();
+    expect(els['boe-status-1'].textContent).toBe('Enter the item name.');
+    expect(captured.updates).toEqual([]);
+    expect(loaded.spies.audit).toEqual([]);
+  });
+
+  it('unchanged values write nothing, close the form and return focus to Edit', async () => {
+    const els = editEls(1);
+    els['boe-edit-form-1'].style.display = '';
+    const { client, captured } = makeBoeClient({ items: [FOUND()], listings: [], rpc: managerRpc() });
+    const loaded = await build({ client, els });
+    typeInto(els, 1, { name: 'Voidglass Cloak ', track: 'Hero', note: '  ' });
+    loaded.sandbox.saveBoeEdit(1, makeEl());
+    await flush();
+    expect(captured.updates).toEqual([]);
+    expect(loaded.spies.audit).toEqual([]);
+    expect(els['boe-edit-form-1'].style.display).toBe('none');
+    expect(els['boe-edit-btn-1'].focused).toBe(1);
+  });
+
+  it('the audit entry names the row team and keeps the old and new values', async () => {
+    const els = editEls(2);
+    const { client } = makeBoeClient({ items: [LISTED_OTHER_TEAM()], listings: [], rpc: managerRpc() });
+    const loaded = await build({ client, els });
+    typeInto(els, 2, { name: 'Slippers of the Hissing Cult', track: '', note: 'Donate' });
+    loaded.sandbox.saveBoeEdit(2, makeEl());
+    await flush();
+    await flush();
+    expect(loaded.spies.audit).toHaveLength(1);
+    expect(loaded.spies.audit[0]).toMatchObject({
+      action: 'BoE Find Edited',
+      targetType: 'boe_items',
+      targetId: 2,
+      teamId: 4
+    });
+    const detail = loaded.spies.audit[0].detail;
+    expect(detail).toContain('item renamed from "Wrathless Find" to "Slippers of the Hissing Cult"');
+    expect(detail).toContain('track was "Hero", now (none)');
+    expect(detail).toContain('note was (none), now "Donate"');
+  });
+
+  it('a zero-row result surfaces on the row, leaves the row alone and writes no audit entry', async () => {
+    const els = editEls(1);
+    const { client } = makeBoeClient({
+      items: [FOUND()],
+      listings: [],
+      rpc: managerRpc(),
+      updates: { boe_items: () => ({ data: [], error: null }) }
+    });
+    const loaded = await build({ client, els });
+    typeInto(els, 1, { name: 'Slippers of the Hissing Cult', track: 'Hero', note: '' });
+    loaded.sandbox.saveBoeEdit(1, makeEl());
+    await flush();
+    await flush();
+    expect(els['boe-status-1'].textContent).toBe(ZERO_ROWS);
+    expect(loaded.spies.audit).toEqual([]);
+    expect(els.guildBoeOpen.innerHTML).toContain('Voidglass Cloak');
+    expect(els.guildBoeOpen.innerHTML).not.toContain('Slippers of the Hissing Cult');
+  });
+
+  it('a server error surfaces verbatim, restores the button and writes no audit entry', async () => {
+    const message =
+      'Direct updates may only edit note, finder, item, track, or season; lifecycle changes go through the BoE RPCs';
+    const els = editEls(1);
+    const { client } = makeBoeClient({
+      items: [FOUND()],
+      listings: [],
+      rpc: managerRpc(),
+      updates: { boe_items: () => ({ data: null, error: { message } }) }
+    });
+    const loaded = await build({ client, els });
+    typeInto(els, 1, { name: 'Slippers of the Hissing Cult', track: 'Hero', note: '' });
+    const btn = makeEl({ textContent: 'Save' });
+    loaded.sandbox.saveBoeEdit(1, btn);
+    await flush();
+    await flush();
+    expect(els['boe-status-1'].textContent).toBe(message);
+    expect(loaded.spies.audit).toEqual([]);
+    expect(btn.disabled).toBe(false);
+    expect(btn.textContent).toBe('Save');
+  });
+
+  it('opening the form closes the other forms and moves focus into the name field', async () => {
+    const els = Object.assign(editEls(1), { 'boe-sale-form-1': makeEl({ style: { display: '' } }) });
+    const { client } = makeBoeClient({ items: [FOUND()], listings: [], rpc: managerRpc() });
+    const { sandbox } = await build({ client, els });
+    sandbox.toggleBoeForm(1, 'edit');
+    expect(els['boe-edit-form-1'].style.display).toBe('');
+    expect(els['boe-sale-form-1'].style.display).toBe('none');
+    expect(els['boe-edit-name-1'].focused).toBe(1);
+    sandbox.toggleBoeForm(1, 'edit');
+    expect(els['boe-edit-form-1'].style.display).toBe('none');
+    expect(els['boe-edit-name-1'].focused).toBe(1);
+    // And the edit form closes when a lifecycle form opens.
+    sandbox.toggleBoeForm(1, 'edit');
+    sandbox.toggleBoeForm(1, 'sale');
+    expect(els['boe-edit-form-1'].style.display).toBe('none');
+    expect(els['boe-sale-form-1'].style.display).toBe('');
+  });
+
+  it('Cancel restores the fields from the row and returns focus to Edit without a re-render', async () => {
+    const els = editEls(1);
+    els['boe-edit-form-1'].style.display = '';
+    const { client } = makeBoeClient({ items: [FOUND()], listings: [], rpc: managerRpc() });
+    const { sandbox } = await build({ client, els });
+    typeInto(els, 1, { name: 'typo', track: 'Myth', note: 'scratch' });
+    els.guildBoeOpen.innerHTML = 'untouched';
+    sandbox.cancelBoeEdit(1);
+    expect(els['boe-edit-name-1'].value).toBe('Voidglass Cloak');
+    expect(els['boe-edit-track-1'].value).toBe('Hero');
+    expect(els['boe-edit-note-1'].value).toBe('');
+    expect(els['boe-edit-form-1'].style.display).toBe('none');
+    expect(els['boe-edit-btn-1'].focused).toBe(1);
+    expect(els.guildBoeOpen.innerHTML).toBe('untouched');
   });
 });
