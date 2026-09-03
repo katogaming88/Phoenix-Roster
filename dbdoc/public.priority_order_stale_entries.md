@@ -48,7 +48,7 @@ CREATE VIEW priority_order_stale_entries AS (
 | ---- | ------- | ------- | ---- |
 | [public.priority_order](public.priority_order.md) | 8 |  | BASE TABLE |
 | [public.players](public.players.md) | 24 |  | BASE TABLE |
-| [public.items](public.items.md) | 13 |  | BASE TABLE |
+| [public.items](public.items.md) | 14 |  | BASE TABLE |
 
 ## Relations
 

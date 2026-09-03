@@ -82,6 +82,20 @@ This writes `items_insert.sql` -- a ready-to-paste `insert into items (...)` sta
 
 `items.csv` columns match the `items` table (`wow_item_id, name, slot, armor_type, sort_id, icon, wcl_zone_id`) -- `sort_id` is left blank and needs manual fill-in per issue #132's guidance. `wcl_zone_id` is filled in automatically from the `WCL_ZONE_ID` constant (#535) -- not `ZONE_ID`, which is Wowhead's own zone numbering -- it scopes the item to this tier so old-season loot stops showing up in the Priority tab, BiS grid, and Wishlist once a newer tier's items are imported. Import via the Supabase SQL Editor, not the CLI (per project convention, DB writes are manual): first `items_insert.sql` (see above), then the `item_bosses` inserts. `item_bosses_raw.csv` uses `wow_item_id` as a placeholder key -- swap it for the DB-assigned `id` after `items.csv` is imported, same as noted in the script's header comment; once `items_insert.sql` has run, `item_bosses_raw.csv` itself can be discarded (it's not tracked in git, and it's fully superseded by `item-bosses-sql.js`'s output plus any manual in-game boss verification).
 
+## BoEs: `fetch-boe-items.js` (#875)
+
+`fetch-items.js` never sees a raid's Bind-on-Equip drops: the zone page's `drops` list it parses is boss loot, and Wowhead has no trash-drop list to scrape. The BoEs are catalog rows all the same (the found form's picker offers them and `submit_boe_found` links a find to one), so they get their own small route:
+
+1. Add the raid's BoE names to a file under `scripts/boe-names/` (one file per raid, e.g. `midnight-s2.txt`): the raid's `raid_zones.wcl_zone_id` on the first data line, then one name per line as Wowhead spells it. A BoE nobody has found yet is added when it appears. `aliases.txt` beside them lists known misspellings in `boe_items` as `wrong => Catalog Name`.
+2. Run `node scripts/fetch-boe-items.js`. Each name goes through Wowhead's search-suggestion endpoint (`/search/suggestions-template?q=<name>&locale=0`), which returns the item id, icon, armor type and slot in one hit; the tooltip endpoint `fetchIcon()` uses confirms the id. A name that does not come back as exactly one item hit is reported and left out, never guessed.
+3. It writes `data/sql/boe-catalog.sql` (gitignored, like every generated SQL here): one transaction that inserts the rows into `items` with `is_boe` set (`on conflict ((lower(name))) do nothing`, so a re-run is a no-op and a name that already exists as a boss drop is reported rather than flagged), then links `boe_items` rows to them by name and by alias, keeping an aliased row's submitted spelling in its note. Apply it by hand at a checkpoint:
+
+```
+psql service=wga-admin -X -v ON_ERROR_STOP=1 -f data/sql/boe-catalog.sql
+```
+
+The rows cannot ride in a migration: `seed.sql` inserts `items` ids 1 to 3 explicitly after migrations run, so sequence-assigned rows there would break every `supabase db reset` on the primary key. `buildItemMaps()` in `js/common.js` keeps flagged rows out of every existing map, which is what keeps BoEs out of the BiS grid, the wishlist and the Priority tab.
+
 ## Fetching secondary stats, main stats, and weapon subtype (#560, #609)
 
 Once the new tier's rows exist in `items`, run `scripts/fetch-item-stats.js` to backfill `secondary_stats` (which of Crit/Haste/Mastery/Vers the item rolls, used by the Priority tab), `main_stats` (which of Strength/Agility/Intellect the item scales with, used by the Wishlist/BiS-grid Trinket/Weapon/Off Hand filter), and `weapon_subtype` (e.g. 'Sword'/'Staff'/'Shield', used by the same filter's `CLASS_WEAPON_TYPES`/`CLASS_SHIELD_USERS` class-eligibility check, #609) -- all three come from the same Blizzard/Wowhead calls, no extra fetches needed:
