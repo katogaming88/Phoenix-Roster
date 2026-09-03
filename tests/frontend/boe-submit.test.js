@@ -27,7 +27,6 @@ const CARD_ELS = [
   'boeTeamSelect',
   'boeViewWrap',
   'navBoE',
-  'boeItemOptions',
   'boeDonate'
 ];
 
@@ -238,14 +237,14 @@ describe('client-side validation', () => {
     expect(el('boeStatus').textContent).toBe('Please enter your character name.');
   });
 
-  it('blocks an empty item name with text feedback and no RPC call', async () => {
+  it('blocks an unselected item with text feedback and no RPC call', async () => {
     const { sandbox, el } = makeSandbox();
     const { calls, client } = recorderClient();
     sandbox.supabaseClient = client;
     el('boeCharName').value = 'Kae-Tichondrius';
     await sandbox.submitBoeFound();
     expect(calls).toEqual([]);
-    expect(el('boeStatus').textContent).toBe('Please enter the item name.');
+    expect(el('boeStatus').textContent).toBe('Please select an item.');
   });
 });
 
@@ -508,10 +507,9 @@ describe('boe feature flag', () => {
   });
 });
 
-// The item picker (#875): a native datalist filled from DATA.boeItems for the
-// viewed season, and a case-insensitive catalog match that submits the
-// catalog's spelling. renderBoeItemDatalist is the real common.js helper, so
-// what lands in the datalist stub is what the page would render.
+// The item picker (#875, select-only since #877): a <select> filled from
+// DATA.boeItems for the viewed season, submitted exactly as chosen -- there
+// is no free-text fallback and nothing to reconcile against the catalog.
 describe('item picker (#875)', () => {
   const S1 = { id: 10, name: 'Visage of Unseen Truths', slot: 'Head', armorType: 'Cloth', icon: null, wclZoneId: 46 };
   const S2 = { id: 11, name: 'Crushing Coiler Coif', slot: 'Head', armorType: 'Mail', icon: null, wclZoneId: 53 };
@@ -537,16 +535,19 @@ describe('item picker (#875)', () => {
       over
     );
 
-  it("offers the viewed season's BoEs plus any unscoped one, escaped, and nothing from another season", () => {
+  it("offers the viewed season's BoEs plus any unscoped one, escaped, and nothing from another season, after a placeholder option", () => {
     const { sandbox, el } = makeSandbox();
     sandbox.DATA = catalogData({
       boeItems: [S1, S2, UNSCOPED, { id: 13, name: 'Girdle "of" <Night>', slot: 'Waist', wclZoneId: 53 }]
     });
     sandbox.refreshBoeItemOptions();
-    const html = el('boeItemOptions').innerHTML;
-    expect(html).toContain('<option value="Crushing Coiler Coif">');
-    expect(html).toContain('<option value="Seed Test BoE Belt">');
-    expect(html).toContain('<option value="Girdle &quot;of&quot; &lt;Night&gt;">');
+    const html = el('boeItemName').innerHTML;
+    expect(html).toContain('<option value="">Select item</option>');
+    expect(html).toContain('<option value="Crushing Coiler Coif">Crushing Coiler Coif</option>');
+    expect(html).toContain('<option value="Seed Test BoE Belt">Seed Test BoE Belt</option>');
+    expect(html).toContain(
+      '<option value="Girdle &quot;of&quot; &lt;Night&gt;">Girdle &quot;of&quot; &lt;Night&gt;</option>'
+    );
     expect(html).not.toContain('Visage of Unseen Truths');
   });
 
@@ -554,7 +555,7 @@ describe('item picker (#875)', () => {
     const { sandbox, el } = makeSandbox();
     sandbox.DATA = catalogData({ seasonName: 'no-such-season' });
     sandbox.refreshBoeItemOptions();
-    const html = el('boeItemOptions').innerHTML;
+    const html = el('boeItemName').innerHTML;
     expect(html).toContain('Visage of Unseen Truths');
     expect(html).toContain('Crushing Coiler Coif');
     expect(html).toContain('Seed Test BoE Belt');
@@ -564,42 +565,20 @@ describe('item picker (#875)', () => {
     const { sandbox, el } = makeSandbox();
     sandbox.DATA = catalogData({ features: { boe: false } });
     sandbox.refreshBoeItemOptions();
-    expect(el('boeItemOptions').innerHTML).toBe('');
+    expect(el('boeItemName').innerHTML).toBe('');
   });
 
-  it('submits a case-insensitive catalog match with the catalog spelling, to the RPC and the webhook', async () => {
+  it('submits the exact catalog spelling chosen in the select, to the RPC and the webhook', async () => {
     const { sandbox, el } = makeSandbox();
     const { calls, client } = recorderClient();
     sandbox.supabaseClient = client;
     sandbox.DATA = catalogData();
     fillCard(el);
-    el('boeItemName').value = '  crushing coiler coif ';
+    el('boeItemName').value = 'Crushing Coiler Coif';
     await sandbox.submitBoeFound();
     expect(calls.map((c) => c.kind)).toEqual(['rpc', 'invoke']);
     expect(calls[0].params.p_item_name).toBe('Crushing Coiler Coif');
     expect(calls[1].body.item).toBe('Crushing Coiler Coif');
-  });
-
-  it("matches against the whole catalog, not only the viewed season's", async () => {
-    const { sandbox, el } = makeSandbox();
-    const { calls, client } = recorderClient();
-    sandbox.supabaseClient = client;
-    sandbox.DATA = catalogData();
-    fillCard(el);
-    el('boeItemName').value = 'VISAGE OF UNSEEN TRUTHS';
-    await sandbox.submitBoeFound();
-    expect(calls[0].params.p_item_name).toBe('Visage of Unseen Truths');
-  });
-
-  it('sends a name outside the catalog as typed', async () => {
-    const { sandbox, el } = makeSandbox();
-    const { calls, client } = recorderClient();
-    sandbox.supabaseClient = client;
-    sandbox.DATA = catalogData();
-    fillCard(el);
-    await sandbox.submitBoeFound();
-    expect(calls[0].params.p_item_name).toBe('Voidglass Cloak');
-    expect(calls[1].body.item).toBe('Voidglass Cloak');
   });
 });
 

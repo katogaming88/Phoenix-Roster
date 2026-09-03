@@ -300,7 +300,7 @@ function _boeEditForm(item) {
     options += '<option value="' + t + '"' + (item.track === t ? ' selected' : '') + '>' + t + '</option>';
   });
   return (
-    ' <button class="btn" id="boe-edit-btn-' +
+    ' <button class="btn btn-muted" style="font-size:0.85rem;padding:0.3rem 0.8rem;" id="boe-edit-btn-' +
     id +
     '" onclick="toggleBoeForm(' +
     id +
@@ -323,10 +323,10 @@ function _boeEditForm(item) {
     '" aria-label="Note" rows="2" placeholder="Note (optional)" style="width:14rem;vertical-align:top;">' +
     _esc(item.note || '') +
     '</textarea> ' +
-    '<button class="btn" onclick="saveBoeEdit(' +
+    '<button class="btn btn-gold" style="font-size:0.85rem;padding:0.3rem 0.8rem;" onclick="saveBoeEdit(' +
     id +
     ', this)">Save</button> ' +
-    '<button class="btn" onclick="cancelBoeEdit(' +
+    '<button class="btn btn-muted" style="font-size:0.85rem;padding:0.3rem 0.8rem;" onclick="cancelBoeEdit(' +
     id +
     ')">Cancel</button>' +
     '</span>'
@@ -457,16 +457,18 @@ function renderBoeManage() {
       if (_boeCanManage) {
         cells +=
           '<td style="min-width:16rem;">' +
-          '<button class="btn" onclick="toggleBoeForm(' +
+          '<div style="display:flex;gap:0.4rem;flex-wrap:wrap;">' +
+          '<button class="btn btn-gold" style="font-size:0.85rem;padding:0.3rem 0.8rem;" onclick="toggleBoeForm(' +
           item.id +
-          ", 'listing')\">Record Listing</button> " +
-          '<button class="btn" onclick="toggleBoeForm(' +
+          ", 'listing')\">Record Listing</button>" +
+          '<button class="btn btn-gold" style="font-size:0.85rem;padding:0.3rem 0.8rem;" onclick="toggleBoeForm(' +
           item.id +
-          ", 'sale')\">Record Sale</button> " +
-          '<button class="btn" onclick="retireBoe(' +
+          ", 'sale')\">Record Sale</button>" +
+          '<button class="btn btn-muted" style="font-size:0.85rem;padding:0.3rem 0.8rem;" onclick="retireBoe(' +
           item.id +
           ', this)">Retire</button>' +
           _boeEditForm(item) +
+          '</div>' +
           '<span id="boe-listing-form-' +
           item.id +
           '" style="display:none;">' +
@@ -476,7 +478,7 @@ function renderBoeManage() {
           '<input id="boe-listing-note-' +
           item.id +
           '" aria-label="Listing note" placeholder="Note (optional)" style="width:10rem;"> ' +
-          '<button class="btn" onclick="confirmBoeListing(' +
+          '<button class="btn btn-gold" style="font-size:0.85rem;padding:0.3rem 0.8rem;" onclick="confirmBoeListing(' +
           item.id +
           ', this)">Confirm Listing</button>' +
           '</span>' +
@@ -486,7 +488,7 @@ function renderBoeManage() {
           '<br><input id="boe-sale-price-' +
           item.id +
           '" aria-label="Sale price in gold" placeholder="Sale price, like 250,000" style="width:10rem;"> ' +
-          '<button class="btn" onclick="confirmBoeSale(' +
+          '<button class="btn btn-gold" style="font-size:0.85rem;padding:0.3rem 0.8rem;" onclick="confirmBoeSale(' +
           item.id +
           ', this)">Confirm Sale</button>' +
           '</span>' +
@@ -534,16 +536,18 @@ function renderBoeManage() {
         '</td>';
       if (_boeCanManage) {
         cells +=
-          '<td><button class="btn" onclick="markBoePaid(' +
+          '<td><div style="display:flex;gap:0.4rem;flex-wrap:wrap;">' +
+          '<button class="btn btn-gold" style="font-size:0.85rem;padding:0.3rem 0.8rem;" onclick="markBoePaid(' +
           item.id +
-          ', this)">Mark Paid</button> ' +
-          '<button class="btn" onclick="donateBoePayout(' +
+          ', this)">Mark Paid</button>' +
+          '<button class="btn btn-muted" style="font-size:0.85rem;padding:0.3rem 0.8rem;" onclick="donateBoePayout(' +
           item.id +
-          ', this)">Donate to Guild</button> ' +
-          '<button class="btn" onclick="revertBoe(' +
+          ', this)">Donate to Guild</button>' +
+          '<button class="btn btn-danger" style="font-size:0.85rem;padding:0.3rem 0.8rem;" onclick="revertBoe(' +
           item.id +
           ', this)">Undo Sale</button>' +
           _boeEditForm(item) +
+          '</div>' +
           '<span id="boe-status-' +
           item.id +
           '" role="status" style="display:block;color:var(--melee);font-size:0.95rem;"></span></td>';
@@ -586,12 +590,14 @@ function renderBoeManage() {
         '</td>';
       if (_boeCanManage) {
         cells +=
-          '<td><button class="btn" onclick="revertBoe(' +
+          '<td><div style="display:flex;gap:0.4rem;flex-wrap:wrap;">' +
+          '<button class="btn btn-danger" style="font-size:0.85rem;padding:0.3rem 0.8rem;" onclick="revertBoe(' +
           item.id +
           ', this)">' +
           (item.status === 'paid' ? 'Undo Payout' : 'Un-retire') +
           '</button>' +
           _boeEditForm(item) +
+          '</div>' +
           '<span id="boe-status-' +
           item.id +
           '" role="status" style="display:block;color:var(--melee);font-size:0.95rem;"></span></td>';
@@ -630,10 +636,10 @@ function _boeHistoryPager() {
   var atLast = _boeHistoryPage >= _boeHistoryPageCount - 1;
   return (
     '<div style="display:flex;gap:0.5rem;margin-top:0.75rem;">' +
-    '<button class="btn" id="boeHistoryPrev" onclick="boeHistoryPage(-1)"' +
+    '<button class="btn btn-muted" id="boeHistoryPrev" onclick="boeHistoryPage(-1)"' +
     (atFirst ? ' disabled' : '') +
     '>Previous</button>' +
-    '<button class="btn" id="boeHistoryNext" onclick="boeHistoryPage(1)"' +
+    '<button class="btn btn-muted" id="boeHistoryNext" onclick="boeHistoryPage(1)"' +
     (atLast ? ' disabled' : '') +
     '>Next</button>' +
     '</div>'
