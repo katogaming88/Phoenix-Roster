@@ -3,7 +3,10 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { realFetchAllPaged } from './helpers/common-sandbox.js';
+import { realFetchAllPaged, loadCommonJs, quietConsole } from './helpers/common-sandbox.js';
+
+// The zone note (#905) is a js/common.js helper the tab calls as a global.
+const realLocalTimeZoneNote = loadCommonJs(quietConsole).localTimeZoneNote;
 
 // js/tabs/tab-audit.js is a plain browser script (no exports), so these
 // tests load it into a vm sandbox with just enough browser globals stubbed,
@@ -107,6 +110,7 @@ function loadSandbox({ supabaseClient, els = {} } = {}) {
     Date,
     isNaN
   };
+  sandbox.localTimeZoneNote = realLocalTimeZoneNote;
   vm.createContext(sandbox);
   vm.runInContext(TAB_AUDIT_JS, sandbox, { filename: 'tab-audit.js' });
   // js/common.js owns fetchAllPaged; tab-audit.js calls it as a global.
@@ -332,5 +336,38 @@ describe('auditFormatTs', () => {
   it('returns an empty string for a falsy input', () => {
     const sandbox = loadSandbox({ supabaseClient: null });
     expect(sandbox.auditFormatTs(null)).toBe('');
+  });
+});
+
+// The audit log already shows local times; it now says so (#905).
+describe('zone note (#905)', () => {
+  it('places the note above the table', async () => {
+    const { client } = makeClient({
+      tables: {
+        audit_log: () => ({
+          data: [
+            {
+              id: 1,
+              actor_id: null,
+              action: 'Trial Status Changed',
+              target_type: null,
+              target_id: null,
+              detail: null,
+              created_at: '2026-09-04T03:30:00Z'
+            }
+          ],
+          error: null
+        })
+      }
+    });
+    const els = { auditContainer: makeEl() };
+    const sandbox = loadSandbox({ supabaseClient: client, els });
+    sandbox.buildAuditTab();
+    await flush();
+
+    const html = els.auditContainer.innerHTML;
+    expect(html).toContain('class="tz-note"');
+    expect(html).toContain(Intl.DateTimeFormat().resolvedOptions().timeZone);
+    expect(html.indexOf('tz-note')).toBeLessThan(html.indexOf('<table'));
   });
 });
