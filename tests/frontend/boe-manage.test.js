@@ -8,7 +8,12 @@ import { realFetchAllPaged, loadCommonJs, quietConsole } from './helpers/common-
 // The real _esc from js/common.js, which guild.html loads. A stand-in here
 // could escape differently from the shipped one and the suite would not
 // notice, which is the same reason realFetchAllPaged() exists.
-const realEsc = loadCommonJs(quietConsole)._esc;
+const realCommon = loadCommonJs(quietConsole);
+const realEsc = realCommon._esc;
+// The date formatter and the zone note (#905) are common.js helpers too;
+// a stand-in would pin a shape the shipped one need not have.
+const realFormatDateTime = realCommon.formatDateTime;
+const realLocalTimeZoneNote = realCommon.localTimeZoneNote;
 
 // js/boe-manage.js is a plain browser script (no exports), so these tests
 // load it into a vm sandbox with the browser globals stubbed -- the
@@ -123,6 +128,8 @@ function loadSandbox({ client, els = {}, confirmResult = true } = {}) {
     document: { getElementById: (id) => els[id] || null },
     window: {},
     _esc: realEsc,
+    formatDateTime: realFormatDateTime,
+    localTimeZoneNote: realLocalTimeZoneNote,
     // js/common.js owns this, same as fetchAllPaged below; guild.html loads
     // that bundle, so calling it is legitimate and only the harness needs the
     // stand-in. Its real behaviour is pinned separately, further down, against
@@ -1772,5 +1779,38 @@ describe('first come, first served at Record Sale (#865)', () => {
     const { confirms, sold } = await sell([OLDER(), NEWER()], 1);
     expect(confirms).toEqual([]);
     expect(sold).toHaveLength(1);
+  });
+});
+
+// Every instant on the page is the viewer's local date and time, and the page
+// says which zone (#905). The fixtures sit just past midnight UTC, so a
+// date-only render in a zone ahead of Eastern would show the next day; the
+// assertions read the process's own zone (the frontend job pins
+// TZ=America/New_York) and never a locale.
+describe('local date and time with the zone note (#905)', () => {
+  const FOUND_AT = '2026-09-04T03:30:00Z';
+  const PAID_AT = '2026-09-05T02:15:00Z';
+  // A cell holding the local day and a clock, and nothing else in it.
+  const cellWith = (iso) => {
+    const day = new Date(iso).getDate();
+    return new RegExp('<td>[^<]*\\b' + day + '\\b[^<]*\\d{1,2}:\\d{2}[^<]*</td>');
+  };
+
+  it('renders found and paid instants with their clock, not a date alone', async () => {
+    const rows = [boeRow({ id: 1, found_at: FOUND_AT }), Object.assign(PAID(), { payout_paid_at: PAID_AT })];
+    const { client } = makeBoeClient({ items: rows, rpc: managerRpc() });
+    const { els } = await build({ client });
+    expect(els.guildBoeOpen.innerHTML).not.toContain(new Date(FOUND_AT).toLocaleDateString());
+    expect(els.guildBoeOpen.innerHTML).toMatch(cellWith(FOUND_AT));
+    expect(els.guildBoeHistory.innerHTML).not.toContain(new Date(PAID_AT).toLocaleDateString());
+    expect(els.guildBoeHistory.innerHTML).toMatch(cellWith(PAID_AT));
+  });
+
+  it('places the zone note with the tables', async () => {
+    const { client } = makeBoeClient({ items: ALL_ROWS(), rpc: managerRpc() });
+    const { els } = await build({ client });
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    expect(els.guildBoeSummary.innerHTML).toContain('class="tz-note"');
+    expect(els.guildBoeSummary.innerHTML).toContain(zone);
   });
 });

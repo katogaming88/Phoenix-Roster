@@ -864,7 +864,9 @@ function renderAuditRows() {
       })
     : _adminAuditEntries;
 
-  countEl.textContent = entries.length + ' entr' + (entries.length !== 1 ? 'ies' : 'y') + ' (most recent 300)';
+  countEl.innerHTML =
+    escapeHtml(entries.length + ' entr' + (entries.length !== 1 ? 'ies' : 'y') + ' (most recent 300)') +
+    (entries.length ? localTimeZoneNote() : '');
 
   if (!entries.length) {
     tbody.innerHTML =
@@ -900,6 +902,24 @@ function renderAuditRows() {
       );
     })
     .join('');
+}
+
+// The zone note every surface showing a time carries (#905). A copy of the
+// js/common.js helper, since admin.html does not load that bundle.
+function localTimeZoneNote() {
+  var iana = '';
+  var short = '';
+  try {
+    iana = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    var parts = new Intl.DateTimeFormat(undefined, { timeZoneName: 'short' }).formatToParts(new Date());
+    for (var i = 0; i < parts.length; i++) {
+      if (parts[i].type === 'timeZoneName') short = parts[i].value;
+    }
+  } catch (e) {
+    // An engine without Intl zone support: the note still says the times are local.
+  }
+  var zone = short && iana ? short + ' (' + iana + ')' : short || iana;
+  return '<p class="tz-note">Times are shown in your time zone' + (zone ? ', ' + escapeHtml(zone) : '') + '.</p>';
 }
 
 // created_at arrives as an ISO timestamptz string; same 'yyyy-MM-dd HH:mm'

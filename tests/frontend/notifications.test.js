@@ -280,3 +280,28 @@ describe('toggleNotifDropdown', () => {
     expect(els.notifDropdown.innerHTML).toContain('&lt;img');
   });
 });
+
+// The dropdown says which zone its times are in, and each time is the
+// viewer's local date and time without seconds (#905).
+describe('notification times (#905)', () => {
+  it('renders the zone note and a local time with no seconds', async () => {
+    const rows = [
+      { id: 7, message: 'Your BiS list link was approved.', read: false, created_at: '2026-09-04T03:30:00Z' }
+    ];
+    const { client } = makeSupabase({ selectResult: { data: rows, error: null } });
+    const { sandbox, els } = loadSandbox({ supabaseClient: client });
+    els.navBell = makeEl({ style: {} });
+    els.navBellBadge = makeEl({ style: {} });
+    els.notifDropdown = makeEl({ style: { display: 'none' } });
+    sandbox.renderNotifBell({ username: 'kato', nameRealm: 'Kato-Illidan' });
+    await flush();
+    sandbox.toggleNotifDropdown();
+
+    const html = els.notifDropdown.innerHTML;
+    expect(html).toContain('class="tz-note"');
+    expect(html).toContain(Intl.DateTimeFormat().resolvedOptions().timeZone);
+    const time = (html.match(/<div class="notif-time">([^<]*)<\/div>/) || [])[1];
+    expect(time).toMatch(/\d{1,2}:\d{2}/);
+    expect(time).not.toMatch(/\d:\d{2}:\d{2}/);
+  });
+});

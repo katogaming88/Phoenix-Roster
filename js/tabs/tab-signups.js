@@ -51,7 +51,7 @@ function mapSignupRow(row) {
   return {
     id: row.id,
     nameRealm: row.signup_name_realm,
-    timestamp: row.submitted_at ? new Date(row.submitted_at).toLocaleString() : '',
+    timestamp: formatDateTime(row.submitted_at),
     className: cs.class || '',
     mainSpec: cs.spec || '',
     role: cs.role || '',
@@ -118,6 +118,7 @@ function renderSignupResponses(signups) {
   }
 
   var html =
+    localTimeZoneNote() +
     '<div style="margin-top:1.5rem;">' +
     '<div style="font-size:1.02rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);font-weight:600;margin-bottom:0.75rem;">' +
     signups.length +
@@ -253,6 +254,7 @@ function renderSignupHistory(signups) {
   });
 
   var html =
+    localTimeZoneNote() +
     '<div style="margin-top:1.5rem;">' +
     '<div style="font-size:1.02rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);' +
     'font-weight:600;margin-bottom:0.75rem;">' +

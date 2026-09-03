@@ -94,7 +94,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.86.1';
+var VERSION = '3.86.2';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -555,9 +555,11 @@ function renderNotifDropdown() {
   var hasRead = rows.some(function (n) {
     return n.read;
   });
-  var html = hasRead
-    ? '<div class="notif-header"><button class="notif-clear-btn" onclick="clearReadNotifications(event)">Clear read</button></div>'
-    : '';
+  var html =
+    localTimeZoneNote() +
+    (hasRead
+      ? '<div class="notif-header"><button class="notif-clear-btn" onclick="clearReadNotifications(event)">Clear read</button></div>'
+      : '');
   rows.forEach(function (n) {
     html +=
       '<div class="notif-row' +
@@ -565,7 +567,7 @@ function renderNotifDropdown() {
       '"><div class="notif-message">' +
       _esc(n.message) +
       '</div><div class="notif-time">' +
-      new Date(n.created_at).toLocaleString() +
+      formatDateTime(n.created_at) +
       '</div></div>';
   });
   dd.innerHTML = html;
@@ -5068,6 +5070,40 @@ function renderAttendTrend(firstName) {
   svg += '</svg>';
 
   return '<div style="overflow-x:auto;overflow-y:hidden;margin-top:0.75rem;">' + svg + '</div>';
+}
+
+// Every instant a page shows a person (a timestamptz: found, sold, paid,
+// submitted, synced) is rendered as the viewer's local date and time, with
+// the clock, so the day never shifts silently across zones (#905). Eastern
+// stays the canonical zone for date logic and calendar facts (raid nights,
+// award dates, join dates), which are formatted with an explicit zone or
+// from a date string elsewhere. The locale is left undefined on purpose:
+// the viewer's own, with dateStyle/timeStyle fixing the shape.
+function formatDateTime(iso) {
+  if (!iso) return '';
+  var d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+// The line every surface that shows a time carries (#905): the viewer's
+// zone by its short name and its IANA name, both read from the browser, so
+// a reader anywhere knows the times on the page are theirs. Visible text,
+// never a tooltip, so it reaches touch and screen-reader users too.
+function localTimeZoneNote() {
+  var iana = '';
+  var short = '';
+  try {
+    iana = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    var parts = new Intl.DateTimeFormat(undefined, { timeZoneName: 'short' }).formatToParts(new Date());
+    for (var i = 0; i < parts.length; i++) {
+      if (parts[i].type === 'timeZoneName') short = parts[i].value;
+    }
+  } catch (e) {
+    // An engine without Intl zone support: the note still says the times are local.
+  }
+  var zone = short && iana ? short + ' (' + iana + ')' : short || iana;
+  return '<p class="tz-note">Times are shown in your time zone' + (zone ? ', ' + _esc(zone) : '') + '.</p>';
 }
 
 function formatJoinDate(dateStr) {

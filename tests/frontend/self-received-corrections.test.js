@@ -3,6 +3,12 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { loadCommonJs, quietConsole } from './helpers/common-sandbox.js';
+
+// The tab renders timestamps through formatDateTime() and the zone note
+// through localTimeZoneNote(), both js/common.js globals (#905); the real
+// ones, so the suite cannot pin a shape the shipped helpers need not have.
+const realCommon = loadCommonJs(quietConsole);
 
 // Officer corrections for self-received decisions (#756): the Requests tab
 // gains a "Recent decisions" section listing approved and rejected rows with
@@ -133,6 +139,8 @@ function loadSandbox({ client, els = {}, bySelector = {}, confirmResult = true, 
     setTimeout,
     clearTimeout
   };
+  sandbox.formatDateTime = realCommon.formatDateTime;
+  sandbox.localTimeZoneNote = realCommon.localTimeZoneNote;
   vm.createContext(sandbox);
   vm.runInContext(TAB_REQUESTS_JS, sandbox, { filename: 'tab-requests.js' });
   return { sandbox, spies };

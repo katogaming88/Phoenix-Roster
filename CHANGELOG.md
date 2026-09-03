@@ -8,6 +8,19 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.86.2] - 2026-09-03
+
+### Frontend
+
+- Every timestamp on the site now shows its date and time in your own time zone, and each place
+  that shows one says so ([#905](https://github.com/katogaming88/WGA-Raid-Hub/issues/905)). The BoE
+  page and the Reports tab showed a date only, so a find or sale late on a raid night read as the
+  next day to anyone east of Eastern; the notifications panel and the BiS, M+, requests and signups
+  tabs each used the browser default with seconds. Raid nights, award dates and join dates are
+  calendar facts and stay as they were.
+
+---
+
 ## [3.86.1] - 2026-09-03
 
 ### Frontend

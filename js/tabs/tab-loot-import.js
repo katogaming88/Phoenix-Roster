@@ -383,6 +383,7 @@ function renderLootHistoryPanel(actorNames) {
     ' import' +
     (imports.length !== 1 ? 's' : '') +
     '</div>';
+  html += localTimeZoneNote();
   html +=
     '<div style="overflow-x:auto;"><table class="roster-table" style="width:100%;"><thead><tr><th></th><th>Time</th><th>Imported By</th><th># of Items</th></tr></thead><tbody>';
   imports.forEach(function (imp, idx) {

@@ -108,7 +108,7 @@ function buildBisTab() {
           nameRealm: nameRealm,
           bisLink: bisLink,
           notes: row.player_note || '',
-          timestamp: row.submitted_at ? new Date(row.submitted_at).toLocaleString() : '',
+          timestamp: formatDateTime(row.submitted_at),
           // #278: the link on file didn't change -- this is a "recheck the
           // items behind it" flag, not a new-link submission.
           sameLink: !!(rosterPlayer && rosterPlayer.bisLink && rosterPlayer.bisLink === bisLink)
@@ -127,6 +127,7 @@ function renderBisSubmissions(submissions) {
     return;
   }
   var html =
+    localTimeZoneNote() +
     '<div style="margin-top:1.5rem;">' +
     '<div style="font-size:1.02rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-muted);font-weight:600;margin-bottom:0.75rem;">' +
     submissions.length +

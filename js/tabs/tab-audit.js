@@ -237,6 +237,7 @@ function renderAuditLog() {
     ' entr' +
     (entries.length !== 1 ? 'ies' : 'y') +
     '</div>' +
+    localTimeZoneNote() +
     '<div style="overflow-x:auto;">' +
     '<table class="roster-table audit-table" style="width:100%;">' +
     '<thead><tr>' +
