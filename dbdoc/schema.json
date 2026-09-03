@@ -4175,6 +4175,12 @@
           "type": "boolean",
           "nullable": false,
           "default": "false"
+        },
+        {
+          "name": "upgrade_rank",
+          "type": "text",
+          "nullable": true,
+          "comment": "Upgrade rank as the tooltip shows it (\"2/6\"); with the track it is the identity of the item in the queue (#865). Null on rows imported from the sheets."
         }
       ],
       "indexes": [
@@ -4330,6 +4336,16 @@
           "referenced_table": "",
           "columns": [
             "track"
+          ]
+        },
+        {
+          "name": "boe_items_upgrade_rank_shape",
+          "type": "CHECK",
+          "def": "CHECK ((upgrade_rank ~ '^[0-9]{1,2}/[0-9]{1,2}$'::text))",
+          "table": "public.boe_items",
+          "referenced_table": "",
+          "columns": [
+            "upgrade_rank"
           ]
         },
         {
@@ -6258,7 +6274,7 @@
     {
       "name": "public.submit_boe_found",
       "return_type": "int4",
-      "arguments": "p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_donate boolean DEFAULT false",
+      "arguments": "p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_donate boolean DEFAULT false, p_upgrade_rank text DEFAULT NULL::text",
       "type": "FUNCTION"
     }
   ],

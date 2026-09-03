@@ -26,6 +26,7 @@
 | updated_at | timestamp with time zone |  | true |  |  |  |
 | created_at | timestamp with time zone | now() | false |  |  |  |
 | payout_donated | boolean | false | false |  |  |  |
+| upgrade_rank | text |  | true |  |  | Upgrade rank as the tooltip shows it ("2/6"); with the track it is the identity of the item in the queue (#865). Null on rows imported from the sheets. |
 
 ## Constraints
 
@@ -44,6 +45,7 @@
 | boe_items_sold_at_iff_sold | CHECK | CHECK (((status = ANY (ARRAY['sold'::text, 'paid'::text])) = (sold_at IS NOT NULL))) |
 | boe_items_status_check | CHECK | CHECK ((status = ANY (ARRAY['found'::text, 'listed'::text, 'sold'::text, 'paid'::text, 'retired'::text]))) |
 | boe_items_track_check | CHECK | CHECK ((track = ANY (ARRAY['Champion'::text, 'Hero'::text, 'Myth'::text]))) |
+| boe_items_upgrade_rank_shape | CHECK | CHECK ((upgrade_rank ~ '^[0-9]{1,2}/[0-9]{1,2}$'::text)) |
 | boe_items_item_id_fkey | FOREIGN KEY | FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL |
 | boe_items_player_id_fkey | FOREIGN KEY | FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL |
 | boe_items_team_id_fkey | FOREIGN KEY | FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE |
@@ -96,6 +98,7 @@ erDiagram
   timestamp_with_time_zone updated_at
   timestamp_with_time_zone created_at
   boolean payout_donated
+  text upgrade_rank
 }
 "public.boe_listings" {
   integer id

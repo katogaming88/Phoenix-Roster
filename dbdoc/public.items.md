@@ -158,6 +158,7 @@ erDiagram
   timestamp_with_time_zone updated_at
   timestamp_with_time_zone created_at
   boolean payout_donated
+  text upgrade_rank
 }
 "public.priority_order_confirmed_empty" {
   integer team_id FK
