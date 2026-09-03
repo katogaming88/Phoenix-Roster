@@ -252,6 +252,7 @@ export type Database = {
           item_id: number | null
           item_name: string
           note: string | null
+          payout_donated: boolean
           payout_floor: number | null
           payout_paid_at: string | null
           payout_pivot: number | null
@@ -275,6 +276,7 @@ export type Database = {
           item_id?: number | null
           item_name: string
           note?: string | null
+          payout_donated?: boolean
           payout_floor?: number | null
           payout_paid_at?: string | null
           payout_pivot?: number | null
@@ -298,6 +300,7 @@ export type Database = {
           item_id?: number | null
           item_name?: string
           note?: string | null
+          payout_donated?: boolean
           payout_floor?: number | null
           payout_paid_at?: string | null
           payout_pivot?: number | null
@@ -2369,7 +2372,7 @@ export type Database = {
         Returns: Json
       }
       boe_mark_paid: {
-        Args: { p_id: number; p_paid_at?: string }
+        Args: { p_donated?: boolean; p_id: number; p_paid_at?: string }
         Returns: undefined
       }
       boe_record_listing: {
@@ -2554,6 +2557,7 @@ export type Database = {
       }
       submit_boe_found: {
         Args: {
+          p_donate?: boolean
           p_item_name: string
           p_name_realm: string
           p_note?: string
