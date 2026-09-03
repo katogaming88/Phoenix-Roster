@@ -520,10 +520,15 @@ A summary strip and three sections:
   sold-but-unpaid rows, a donating row included until it is settled). **Donated by finders**
   appears once there is one. Per-team find counts and
   gold raised sit underneath, shown only once more than one team has found something.
-- **Open** -- found and listed items, oldest first. **Record Listing** logs a price and an
+- **Open** -- found and listed items, oldest first. The Item cell carries the track and the
+  upgrade rank in one badge ("Champion 2/6", [#865](https://github.com/katogaming88/WGA-Raid-Hub/issues/865)); that pair is
+  what tells two finds of the same item apart. **Record Listing** logs a price and an
   optional note; an item can be listed more than once, so relists accumulate rather than replace
-  each other. **Record Sale** takes the sale price and computes the split. **Retire** closes out
-  anything that isn't going to sell.
+  each other. **Record Sale** takes the sale price and computes the split. If an older find of the
+  same item on the same track and rank is still open anywhere in the guild, it asks first and
+  names that finder and date: identical items at the same rank are one queue and the first
+  reported sells first. It is a warning, not a block, since you may know exactly which one sold.
+  A different rank never asks. **Retire** closes out anything that isn't going to sell.
 - **Awaiting Payout** -- sold items, oldest first, with the split already computed.
   **Mark Paid** once the finder has their gold; the row moves to History. **Donate to Guild**
   records the same settlement with the finder's cut kept by the guild
@@ -537,9 +542,10 @@ A summary strip and three sections:
   sit under the table and a line beneath them says which rows are showing; the page you are
   on survives a Mark Paid or an undo. **Undo Payout** and **Un-retire** put a row back where it
   was, in Awaiting Payout or Open.
-- **Edit** -- on every row in all three sections. It opens the item name, the track and the
-  note under the row, prefilled; Save writes the three together and puts the corrected name in
-  place, Cancel puts the fields back. A blank name is refused on the row, unchanged values write
+- **Edit** -- on every row in all three sections. It opens the item name, the track, the
+  upgrade rank and the note under the row, prefilled; Save writes them together and puts the
+  corrected name in place, Cancel puts the fields back. Rows imported from the sheets have no rank,
+  which is what the blank option on that select is for. A blank name is refused on the row, unchanged values write
   nothing, and the audit entry (BoE Find Edited) keeps the old and new values, so a raider's
   original words survive a rewrite. Money and status are not editable here.
 

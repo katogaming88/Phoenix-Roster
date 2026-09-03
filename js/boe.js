@@ -229,6 +229,7 @@ function submitBoeFound() {
   var charEl = document.getElementById('boeCharName');
   var itemEl = document.getElementById('boeItemName');
   var trackEl = document.getElementById('boeTrack');
+  var rankEl = document.getElementById('boeUpgradeRank');
   var noteEl = document.getElementById('boeNote');
   var donateEl = document.getElementById('boeDonate');
   var btn = document.getElementById('boeSubmitBtn');
@@ -237,6 +238,7 @@ function submitBoeFound() {
   var charName = charEl ? charEl.value.trim() : '';
   var itemName = itemEl ? itemEl.value.trim() : '';
   var track = trackEl && trackEl.value ? trackEl.value : null;
+  var rank = rankEl && rankEl.value ? rankEl.value : null;
   var note = noteEl && noteEl.value.trim() ? noteEl.value.trim() : null;
   // Intent, not settlement (#862): the manager's settle button decides.
   var donate = !!(donateEl && donateEl.checked);
@@ -249,6 +251,16 @@ function submitBoeFound() {
   }
   if (!itemName) {
     if (status) status.textContent = 'Please select an item.';
+    return;
+  }
+  // Track and rank are required (#865): together they are the identity of the
+  // item in the payout queue. The RPC raises on both too, for a stale client.
+  if (!track) {
+    if (status) status.textContent = 'Please select the track.';
+    return;
+  }
+  if (!rank) {
+    if (status) status.textContent = 'Please select the upgrade rank.';
     return;
   }
 
@@ -272,7 +284,8 @@ function submitBoeFound() {
       p_item_name: itemName,
       p_track: track,
       p_note: note,
-      p_donate: donate
+      p_donate: donate,
+      p_upgrade_rank: rank
     })
     .then(function (result) {
       if (btn) {
@@ -289,11 +302,20 @@ function submitBoeFound() {
       // Not gated on its result -- the RPC insert above is the write of
       // record, same stance as js/signup.js's signup notification.
       supabaseClient.functions.invoke('boe-webhook', {
-        body: { team: teamCfg.name, finder: charName, item: itemName, track: track, note: note, donate: donate }
+        body: {
+          team: teamCfg.name,
+          finder: charName,
+          item: itemName,
+          track: track,
+          note: note,
+          donate: donate,
+          upgradeRank: rank
+        }
       });
       if (itemEl) itemEl.value = '';
       if (noteEl) noteEl.value = '';
       if (trackEl) trackEl.value = '';
+      if (rankEl) rankEl.value = '';
       if (donateEl) donateEl.checked = false;
       if (status) status.textContent = 'Submitted! Officers will take it from here.';
     })

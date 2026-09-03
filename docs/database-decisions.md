@@ -8,6 +8,21 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-03 -- A BoE find is identified by name, track and upgrade rank; no item level column
+
+Tracking issue: [katogaming88/WGA-Raid-Hub#865](https://github.com/katogaming88/WGA-Raid-Hub/issues/865). Two finds of the same item on the same track looked identical in the manager view, and a manager recording a sale had no way to tell which one sold. Raiders had been typing the rank into the item name or the note; the importer stripped it.
+
+- **`boe_items.upgrade_rank text`**, the tooltip's "2/6", under a shape check (`^[0-9]{1,2}/[0-9]{1,2}$`) rather than the six values the form offers. The 61 rows imported from the sheets carry null, the manager's edit form keeps a blank option for them, and a season whose track goes to another denominator changes three option lists (the static options in `index.html`, `BOE_RANKS` in `js/boe-manage.js`, the array in `submit_boe_found`) and no schema.
+- **No item level column**, though the issue had one. Within a season a track at a rank is one item level, and the row already snapshots the season, so the level was derivable; it had earned its place only while the rank was optional free text. The one imported row that carried "(Mythic 279)" and no rank keeps the number in its note.
+- **Track and rank are required on the raider path only.** The form refuses without them and `submit_boe_found` raises on both, so a stale cached client cannot bypass it; a direct UPDATE from the manager's edit form may still clear either, which legacy rows need.
+- **The first-come-first-served rule is a warning at Record Sale, not a block:** an older open row with the same name, track and rank (a rankless row counts as the same item) makes the page name that finder and ask; the manager may know exactly which one sold.
+- **The backfill moves a rank-only note into the column** ("2/6" as the whole note was the rank, not a note) and keys on `(team_id, found_at)` like every BoE backfill here.
+- Since [#880](https://github.com/katogaming88/WGA-Raid-Hub/pull/880) the raider form's item is a select over the season catalog with no typed fallback, superseding the "free text stays allowed" line in the #875 entry below: a BoE missing from the catalog cannot be reported until the catalog gains it.
+
+[Full discussion -> #865](https://github.com/katogaming88/WGA-Raid-Hub/issues/865)
+
+---
+
 ## 2026-09-02 -- A donated BoE payout is a flag on the settle step, not a status
 
 Tracking issue: [katogaming88/WGA-Raid-Hub#862](https://github.com/katogaming88/WGA-Raid-Hub/issues/862). Some finders give their cut to the guild. The sheet recorded that in its Notes column and the Form's note field carried the intent, so on the site a donated sale looked exactly like an unpaid one, Mark Paid claimed gold changed hands that did not, and the guild income totals left the donated cut out.

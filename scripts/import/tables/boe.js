@@ -62,6 +62,7 @@ export const SKIP_FORM_TIMESTAMPS = {
 const TRACK_GROUP_RE = /[([]\s*(heroic|hero|champion|champ|mythic|myth|normal)\b[^)\]]*[)\]]/i;
 const TRACK_WORD_RE = /\b(heroic|hero|champion|champ|mythic|myth|normal)\b/i;
 const UPGRADE_RE = /\b\d+\/\d+\b/g;
+const LEVEL_RE = /(^|[^0-9])([0-9]{3})([^0-9]|$)/;
 const BRACKET_RE = /\([^)]*\)|\[[^\]]*\]/g;
 const DUPLICATE_WINDOW_MS = 48 * 60 * 60 * 1000;
 
@@ -101,6 +102,20 @@ export function splitTrack(text) {
   }
   s = s.replace(UPGRADE_RE, ' ');
   return { track, itemName: tidy(s) };
+}
+
+// The same split, keeping what a person typed beside the name (#865): the
+// first "N/N" as the upgrade rank, and a three-digit number inside the track
+// bracket group ("(Mythic 279)") as the item level. There is no level column,
+// so parseFound() carries the level into the note rather than dropping it.
+export function splitItemCell(text) {
+  const s = String(text || '');
+  const ranks = s.match(UPGRADE_RE);
+  const upgradeRank = ranks ? ranks[0] : null;
+  const group = s.match(TRACK_GROUP_RE);
+  const level = group ? group[0].match(LEVEL_RE) : null;
+  const itemLevel = level ? Number(level[2]) : null;
+  return { ...splitTrack(s), upgradeRank, itemLevel };
 }
 
 // Item comparison key: folded, bracket groups and upgrade fragments dropped,
@@ -201,7 +216,7 @@ export function parseFound(rows, label = 'BoE Form Responses') {
       skipped++;
       continue;
     }
-    const { track, itemName } = splitTrack(itemRaw);
+    const { track, itemName, upgradeRank: cellRank, itemLevel } = splitItemCell(itemRaw);
     if (!itemName) {
       warnings.push(`${label} row ${rowNo}: no item name in ${JSON.stringify(itemRaw)}, skipped`);
       skipped++;
@@ -212,6 +227,18 @@ export function parseFound(rows, label = 'BoE Form Responses') {
     if (teamRaw && teamId === null) {
       warnings.push(`${label} row ${rowNo}: unknown team ${JSON.stringify(teamRaw)} (treated as blank)`);
     }
+    // A note that is only a rank ("2/6") is the rank, not a note (#865); a
+    // level from the item cell lands in the note, since nothing else keeps it.
+    let note = String(row[4] || '').trim();
+    let upgradeRank = cellRank;
+    const noteRanks = note.match(UPGRADE_RE);
+    if (!upgradeRank && noteRanks && noteRanks[0] === note) {
+      upgradeRank = note;
+      note = '';
+    }
+    if (itemLevel !== null) {
+      note = [note, 'ilvl ' + itemLevel].filter(Boolean).join(' | ');
+    }
     entries.push({
       label,
       rowNo,
@@ -220,9 +247,10 @@ export function parseFound(rows, label = 'BoE Form Responses') {
       teamRaw,
       teamId,
       track,
+      upgradeRank,
       itemRaw,
       itemName,
-      note: String(row[4] || '').trim()
+      note
     });
   }
   return { entries, warnings, skipped };
@@ -328,6 +356,7 @@ function paidRow(sold, found) {
     finderName: sold.finderRaw,
     itemName: sold.itemName,
     track,
+    upgradeRank: found ? found.upgradeRank : null,
     note,
     foundAt: found ? found.timestamp : sold.dateSubmitted,
     soldAt: sold.saleDate,
@@ -426,6 +455,7 @@ export function matchSales(found, sold) {
       finderName: cleanFinder(f.finderRaw),
       itemName: titleCaseIfLower(f.itemName),
       track: f.track,
+      upgradeRank: f.upgradeRank,
       note: f.note,
       foundAt: f.timestamp,
       soldAt: null,
@@ -437,13 +467,15 @@ export function matchSales(found, sold) {
     });
   }
 
-  // Suspected re-submissions: same finder, item and track inside 48 hours.
-  // Imported anyway (two real finds a minute apart exist), flagged for review.
+  // Suspected re-submissions: same finder, item, track and rank inside 48
+  // hours. Imported anyway (two real finds a minute apart exist), flagged for
+  // review. Two ranks that differ are two items (#865), not a re-submission.
   for (let i = 0; i < keyed.length; i++) {
     for (let j = i + 1; j < keyed.length; j++) {
       const a = keyed[i];
       const b = keyed[j];
       if (a.f.track !== b.f.track) continue;
+      if (a.f.upgradeRank && b.f.upgradeRank && a.f.upgradeRank !== b.f.upgradeRank) continue;
       if (finderMatch(a.fk, b.fk) === null || stringMatch(a.ik, b.ik) === null) continue;
       if (Math.abs(millis(a.ts) - millis(b.ts)) > DUPLICATE_WINDOW_MS) continue;
       warnings.push(
@@ -480,6 +512,7 @@ const COLUMNS = [
   'item_id',
   'item_name',
   'track',
+  'upgrade_rank',
   'season',
   'note',
   'status',
@@ -551,6 +584,7 @@ export function boeSql(rows, opts = {}) {
       itemIdSql(r.itemName),
       sqlString(r.itemName),
       sqlString(r.track),
+      r.upgradeRank ? sqlString(r.upgradeRank) : 'null::text',
       sqlString(season),
       sqlString(r.note),
       sqlString(r.status),

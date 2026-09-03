@@ -378,6 +378,7 @@ One row per found Bind-on-Equip, carrying the lifecycle (found -> listed -> sold
 | `item_id`        | int4        | FK -> `items.id`, opportunistic exact-name match (BoEs are mostly absent from the loot catalog) |
 | `item_name`      | text        | The identity, since `item_id` is usually null                          |
 | `track`          | text        | CHECK Champion/Hero/Myth, or null                                       |
+| `upgrade_rank`   | text        | The tooltip's "2/6", CHECK N/N shape; with the track it is the identity of the item in the payout queue (#865). Null on rows imported from the sheets |
 | `season`         | text        | `team_settings.config->>'seasonName'` snapshot at submit                |
 | `note`           | text        | Free-text note                                                          |
 | `status`         | text        | CHECK found/listed/sold/paid/retired                                    |
@@ -390,6 +391,7 @@ One row per found Bind-on-Equip, carrying the lifecycle (found -> listed -> sold
 | `guild_cut`      | int8        | `sale_price - finder_payout`, present iff sold/paid                    |
 | `payout_floor`   | int8        | Snapshot of the payout floor in force at sale                         |
 | `payout_pivot`   | int8        | Snapshot of the payout pivot in force at sale                         |
+| `payout_donated` | bool        | The finder's cut was, or is to be, kept by the guild (#862): the raider's intent at submit, the manager's decision at settle |
 | `updated_at`     | timestamptz | Auto-set on every UPDATE via trigger                                  |
 | `created_at`     | timestamptz | Row creation                                                          |
 

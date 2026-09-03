@@ -84,6 +84,8 @@ This writes `items_insert.sql` -- a ready-to-paste `insert into items (...)` sta
 
 ## BoEs: `fetch-boe-items.js` (#875)
 
+Since #880 the raider form's item field is a list of these rows and nothing typed, so a BoE that is not in the catalog cannot be reported until this has run for its raid. The names file and the data-file apply below are part of a tier's setup, not a nicety.
+
 `fetch-items.js` never sees a raid's Bind-on-Equip drops: the zone page's `drops` list it parses is boss loot, and Wowhead has no trash-drop list to scrape. The BoEs are catalog rows all the same (the found form's picker offers them and `submit_boe_found` links a find to one), so they get their own small route:
 
 1. Add the raid's BoE names to a file under `scripts/boe-names/` (one file per raid, e.g. `midnight-s2.txt`): the raid's `raid_zones.wcl_zone_id` on the first data line, then one name per line as Wowhead spells it. A BoE nobody has found yet is added when it appears. `aliases.txt` beside them lists known misspellings in `boe_items` as `wrong => Catalog Name`; it is temporary and goes with the Google Form in #750's close-out, since the picker stops misspellings arriving in bulk and a single one is a manager's Edit.
