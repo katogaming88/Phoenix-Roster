@@ -17,6 +17,13 @@ with each release split into `### Frontend` (drives the version number) and
   how to say so. Raiders had been typing "donate" into the note because nothing on the form said
   the box was there. The checkbox reads "I'd like to donate my finder's fee to the guild".
 
+### Backend
+
+- `npm run db:docs` now sorts every trigger listing in `dbdoc/` after tbls writes it
+  (`scripts/ci/dbdoc-sort.js`): on Windows `tbls doc` ignores the config's sort setting and
+  writes catalog order, which failed the schema-docs check on untouched tables twice. A CI test
+  now fails on any committed doc whose triggers are out of order.
+
 ## [3.81.2] - 2026-09-03
 
 ### Frontend

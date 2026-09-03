@@ -5,7 +5,7 @@
 // deploy can run fresh HTML against stale cached JS/CSS unless each local tag
 // carries ?v=<VERSION> (#431). VERSION is a runtime JS constant, so those query
 // strings are hardcoded into the markup rather than injected -- which means a
-// version bump is a mechanical sweep over four files and ~40 tags, and missing
+// version bump is a mechanical sweep over five files and 49 tags, and missing
 // one leaves a dead cache-bust that nothing notices until a user sees the
 // mismatch. tests/ci/asset-version-check.test.js catches it, but only after the
 // fact; this is the sweep itself.
