@@ -81,11 +81,11 @@ jobs:
       # warning fails the build.
       - name: Lint database functions
         run: supabase db lint --local --schema public --level warning --fail-on warning
+      # Installs the latest tbls release. Trigger order has been creation order
+      # on every platform since tbls 1.96.0, so a diff that is only a trigger
+      # swap means the docs were regenerated with an older tbls: match the local
+      # exe to the latest release and regenerate (see the comment in .tbls.yml).
       - uses: k1LoW/setup-tbls@v1
-      # If this fails with ONLY a trigger-order swap on a table your PR
-      # didn't touch (e.g. priority_order's two triggers), it's a known
-      # upstream tbls flake, not real doc staleness -- see the `sort: true`
-      # comment in .tbls.yml for the root cause and tracking issue. Rerun.
       - name: Fail if dbdoc/ is stale
         run: tbls diff
       # Raw policy export; regenerated here and compared against the committed

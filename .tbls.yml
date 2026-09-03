@@ -9,36 +9,23 @@ er:
   format: mermaid
 include:
   - public.*
-# Without this, a table's trigger/index/constraint listing order comes
-# straight off Postgres's catalog tables, which isn't guaranteed stable
-# across separate `supabase db reset` runs even with identical migrations
-# applied in the same order (#504).
+# Trigger order is the one listing that does not come from this setting.
+# Since tbls 1.96.0 (2026-09-03, k1LoW/tbls#851) the Postgres driver reads
+# triggers ORDER BY oid, which is creation order: stable across separate
+# `supabase db reset` runs and across platforms, because the migrations
+# create them in the same sequence every time. `tbls diff` compares the live
+# schema in that same order without sorting it, so the committed docs carry
+# triggers exactly as `tbls doc` writes them and nothing re-sorts them.
 #
-# This only fully stabilizes `npm run db:docs` (tbls doc), not
-# `npm run db:docs:check` / CI's `tbls diff` -- confirmed against tbls'
-# source: `doc` applies the sort step to the schema it renders, but `diff`
-# never sorts the freshly-introspected live schema before comparing it to
-# the committed docs, so a table with 2+ triggers can still spuriously fail
-# `tbls diff` whenever Postgres's raw catalog order for that run doesn't
-# happen to match dbdoc/'s already-sorted listing (observed repeatedly on
-# priority_order's two triggers). Root cause: a genuine tbls bug, not
-# anything fixable from this config -- its Postgres trigger query has
-# `ORDER BY tgrelid`, but tgrelid is already pinned to a single table by the
-# WHERE clause, so that ORDER BY is a no-op. Tracked upstream at
-# https://github.com/k1LoW/tbls/issues/850, fix in
-# https://github.com/k1LoW/tbls/pull/851 (open, not yet released as of
-# 2026-08-03) -- once released, bump the `k1LoW/setup-tbls@v1` pin in
-# .github/workflows/schema-docs.yml and this whole caveat can go away.
-# Until then: a `tbls diff` failure that's ONLY a trigger-order swap on an
-# unrelated table (not the table your migration actually touched) is this
-# known flake, not a real doc staleness -- rerun the check.
+# History: before 1.96.0 that query had a no-op ORDER BY (tbls#850), the
+# order rode the raw catalog state of the current reset, and `tbls diff`
+# flaked on multi-trigger tables no migration had touched. On 2026-09-02 a
+# sort step (scripts/ci/dbdoc-sort.js) put every trigger listing in name
+# order after `tbls doc` to keep the check green; the day 1.96.0 shipped that
+# name order failed the check deterministically on five tables, so the step
+# and its test were retired and the docs regenerated in tbls' own order.
 #
-# The other half (2026-09-02): `tbls doc` on Windows writes each table's
-# trigger rows in catalog order regardless of this setting, so a regen here
-# produced docs that failed CI's diff on five untouched tables. `npm run
-# db:docs` therefore runs scripts/ci/dbdoc-sort.js after tbls, which sorts
-# every Triggers table and schema.json triggers array by name and re-emits
-# the JSON with Go's escaping; run it alone after a by-hand `tbls doc`.
-# tests/ci/dbdoc-sort.test.js fails on any committed doc that is not in
-# that order.
+# A trigger-order diff in CI now means the docs were regenerated with an
+# older tbls. The schema-docs workflow installs the latest release, so match
+# the local exe to it and regenerate.
 sort: true

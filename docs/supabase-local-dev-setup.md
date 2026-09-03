@@ -143,7 +143,7 @@ Link state is written to `supabase/.temp/`, which is gitignored. Verify with
 | `supabase stop` | Stop it (data volumes are kept) |
 | `supabase status` | Show endpoints and keys |
 | `supabase db reset` | Rebuild the local database from `supabase/migrations/` + seed |
-| `npm run db:docs` | Regenerate the schema docs in `dbdoc/` and sort their trigger listings (see section 6) |
+| `npm run db:docs` | Regenerate the schema docs in `dbdoc/` (see section 6) |
 
 Docker Desktop must be running before `supabase start`.
 
@@ -163,11 +163,12 @@ Then, whenever migrations change:
 
 ```powershell
 supabase db reset   # make the local DB match the migration files
-npm run db:docs     # regenerate dbdoc/, then sort the trigger listings
-node scripts/ci/dbdoc-sort.js   # the sort step alone, after a by-hand tbls doc
+npm run db:docs     # regenerate dbdoc/
 ```
 
-Commit the `dbdoc/` changes together with the migration. `npm run db:docs:check`
+Use the latest tbls release: the schema-docs workflow installs latest, and since tbls 1.96.0
+trigger listings are in creation order on every platform, so an older local tbls can produce a
+trigger-order diff in CI that is not real staleness. Commit the `dbdoc/` changes together with the migration. `npm run db:docs:check`
 runs `tbls diff` locally, the same check CI runs. If your PR adds, alters, or
 drops an RLS policy, also update [RLS.md](RLS.md) and regenerate the raw policy
 export with `npm run db:rls` (commit `docs/rls_policies.csv`) in the same PR;
