@@ -8,6 +8,20 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.81.2] - 2026-09-03
+
+### Frontend
+
+- The BoE Sales page's lifecycle buttons (Record Listing, Retire, Edit, Mark Paid, and the rest)
+  had no color class, so they rendered as the browser's default gray button instead of the
+  site's gold/muted/danger styling; fixed, and the action cells now wrap in a flex group instead
+  of one button per line. Undo Sale, Undo Payout, and Un-retire are red (`btn-danger`) to read
+  as reversals.
+- The found form's Item field is a `<select>` now instead of a free-text input with a datalist
+  (#875 follow-up): it can no longer be typed into, only chosen from the season's BoE catalog,
+  which also gives it the same native arrow and dark-skinned option list as the Team and Track
+  pickers beside it.
+
 ## [3.81.1] - 2026-09-02
 
 ### Frontend
