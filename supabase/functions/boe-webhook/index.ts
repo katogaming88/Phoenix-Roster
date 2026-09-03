@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { team, finder, item, track, note } = await req.json();
+    const { team, finder, item, track, note, donate } = await req.json();
 
     if (!finder || !String(finder).trim()) {
       return jsonResponse({ success: false, error: 'Missing finder' });
@@ -71,6 +71,12 @@ Deno.serve(async (req) => {
     }
     if (note && String(note).trim()) {
       fields.push({ name: 'Note', value: truncate(String(note).trim(), 1024), inline: false });
+    }
+    // The raider's donate intent (#862), as its own field so the channel sees
+    // it without reading the note. Strictly true: an old cached js/boe.js
+    // sends no such key, which reads as not set.
+    if (donate === true) {
+      fields.push({ name: "Finder's cut", value: 'Donating to the guild', inline: true });
     }
 
     const response = await fetch(webhookUrl, {

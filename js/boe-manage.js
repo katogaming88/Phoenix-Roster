@@ -81,7 +81,7 @@ function buildBoeManage(canManage) {
       var q = supabaseClient
         .from('boe_items')
         .select(
-          'id, team_id, player_id, finder_name, item_id, item_name, track, note, status, found_at, sold_at, payout_paid_at, retired_at, sale_price, finder_payout, guild_cut',
+          'id, team_id, player_id, finder_name, item_id, item_name, track, note, status, found_at, sold_at, payout_paid_at, retired_at, sale_price, finder_payout, guild_cut, payout_donated',
           afterId === null ? { count: 'exact' } : undefined
         )
         .order('id', { ascending: true })
@@ -169,8 +169,8 @@ var _BOE_BADGE_COLORS = {
   retired: 'var(--melee)'
 };
 
-function _boeBadge(status) {
-  var label = status.charAt(0).toUpperCase() + status.slice(1);
+function _boeBadge(status, labelOverride) {
+  var label = labelOverride || status.charAt(0).toUpperCase() + status.slice(1);
   return (
     '<span style="font-size:0.95rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:' +
     (_BOE_BADGE_COLORS[status] || 'var(--text-muted)') +
@@ -178,6 +178,20 @@ function _boeBadge(status) {
     label +
     '</span>'
   );
+}
+
+// The Status cell (#862): the lifecycle badge, plus the donate intent a raider
+// recorded as a muted marker on found, listed and sold rows, so the manager
+// knows which settle button to reach for. A donated paid row reads Donated
+// instead of Paid; the intent means nothing on a retired row.
+function _boeStatusCell(item) {
+  if (item.status === 'paid' && item.payout_donated) return _boeBadge('paid', 'Donated');
+  var html = _boeBadge(item.status);
+  if (item.payout_donated && item.status !== 'paid' && item.status !== 'retired') {
+    html +=
+      ' <span style="font-size:0.85rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-muted);">Donating</span>';
+  }
+  return html;
 }
 
 function _boeMoney(n) {
@@ -213,6 +227,7 @@ function _boeTeamCreditLine() {
     var row = byTeam[item.team_id] || (byTeam[item.team_id] = { found: 0, gold: 0 });
     row.found++;
     if (item.status === 'sold' || item.status === 'paid') row.gold += item.guild_cut || 0;
+    if (item.status === 'paid' && item.payout_donated) row.gold += item.finder_payout || 0;
   });
 
   var teams = Object.keys(byTeam).map(function (id) {
@@ -346,11 +361,18 @@ function renderBoeManage() {
   var historyRows = [];
   var guildIncome = 0;
   var outstanding = 0;
+  var donated = 0;
   _boeItems.forEach(function (item) {
     if (item.status === 'found' || item.status === 'listed') openRows.push(item);
     else if (item.status === 'sold') awaitingRows.push(item);
     else if (item.status === 'paid' || item.status === 'retired') historyRows.push(item);
     if (item.status === 'sold' || item.status === 'paid') guildIncome += item.guild_cut || 0;
+    // A donated cut is guild income once settled (#862). A sold row that is
+    // donating stays outstanding until a manager settles it.
+    if (item.status === 'paid' && item.payout_donated) {
+      guildIncome += item.finder_payout || 0;
+      donated += item.finder_payout || 0;
+    }
     if (item.status === 'sold') outstanding += item.finder_payout || 0;
   });
   openRows.sort(function (a, b) {
@@ -383,6 +405,9 @@ function renderBoeManage() {
     '<span>Outstanding payouts: <strong style="color:var(--gold);">' +
     formatGold(outstanding) +
     'g</strong></span>' +
+    (donated > 0
+      ? '<span>Donated by finders: <strong style="color:var(--gold);">' + formatGold(donated) + 'g</strong></span>'
+      : '') +
     '</div>' +
     _boeTeamCreditLine() +
     (_boeCanManage
@@ -413,7 +438,7 @@ function renderBoeManage() {
         _esc(_boeDate(item.found_at)) +
         '</td>' +
         '<td>' +
-        _boeBadge(item.status) +
+        _boeStatusCell(item) +
         '</td>' +
         '<td>' +
         listings +
@@ -494,13 +519,16 @@ function renderBoeManage() {
         _boeMoney(item.guild_cut) +
         '</td>' +
         '<td>' +
-        _boeBadge(item.status) +
+        _boeStatusCell(item) +
         '</td>';
       if (_boeCanManage) {
         cells +=
           '<td><button class="btn" onclick="markBoePaid(' +
           item.id +
           ', this)">Mark Paid</button> ' +
+          '<button class="btn" onclick="donateBoePayout(' +
+          item.id +
+          ', this)">Donate to Guild</button> ' +
           '<button class="btn" onclick="revertBoe(' +
           item.id +
           ', this)">Undo Sale</button>' +
@@ -531,7 +559,7 @@ function renderBoeManage() {
         _esc(item.finder_name || '') +
         '</td>' +
         '<td>' +
-        _boeBadge(item.status) +
+        _boeStatusCell(item) +
         '</td>' +
         '<td>' +
         _esc(_boeDate(item.payout_paid_at || item.retired_at)) +
@@ -731,17 +759,51 @@ function confirmBoeSale(id, btnEl) {
   });
 }
 
+// Mark Paid sends p_donated false explicitly: the manager's button decides,
+// so a row the raider flagged loses the intent here, and the audit says so.
 function markBoePaid(id, btnEl) {
   var item = findBoeItem(id);
   if (!item) return;
-  return _boeAction(id, btnEl, 'boe_mark_paid', { p_id: id }, function () {
+  var hadIntent = !!item.payout_donated;
+  return _boeAction(id, btnEl, 'boe_mark_paid', { p_id: id, p_donated: false }, function () {
     item.status = 'paid';
     item.payout_paid_at = new Date().toISOString();
+    item.payout_donated = false;
     writeAuditLog(
       'BoE Payout Paid',
       'boe_items',
       id,
-      item.item_name + ': ' + formatGold(item.finder_payout || 0) + 'g to ' + (item.finder_name || 'unknown finder'),
+      item.item_name +
+        ': ' +
+        formatGold(item.finder_payout || 0) +
+        'g to ' +
+        (item.finder_name || 'unknown finder') +
+        (hadIntent ? ' (donate intent cleared)' : ''),
+      item.team_id
+    );
+  });
+}
+
+// Donate to Guild (#862): the same settlement moment as Mark Paid with the
+// finder's cut marked as kept by the guild. The money columns stay what
+// policy said; the flag is the recognition, and the summary counts it.
+function donateBoePayout(id, btnEl) {
+  var item = findBoeItem(id);
+  if (!item) return;
+  return _boeAction(id, btnEl, 'boe_mark_paid', { p_id: id, p_donated: true }, function () {
+    item.status = 'paid';
+    item.payout_paid_at = new Date().toISOString();
+    item.payout_donated = true;
+    writeAuditLog(
+      'BoE Payout Donated',
+      'boe_items',
+      id,
+      item.item_name +
+        ': ' +
+        formatGold(item.finder_payout || 0) +
+        'g finder cut from ' +
+        (item.finder_name || 'unknown finder') +
+        ' kept by the guild',
       item.team_id
     );
   });
@@ -795,6 +857,8 @@ function revertBoe(id, btnEl) {
     var to = result && result.data;
     item.status = to;
     if (from === 'paid') {
+      // The donate intent (#862) stays on the row through an undo; the next
+      // settle click sets it either way.
       item.payout_paid_at = null;
     } else if (from === 'sold') {
       item.sold_at = null;

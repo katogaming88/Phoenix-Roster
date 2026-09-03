@@ -241,6 +241,7 @@ function submitBoeFound() {
   var itemEl = document.getElementById('boeItemName');
   var trackEl = document.getElementById('boeTrack');
   var noteEl = document.getElementById('boeNote');
+  var donateEl = document.getElementById('boeDonate');
   var btn = document.getElementById('boeSubmitBtn');
   var status = document.getElementById('boeStatus');
 
@@ -248,6 +249,8 @@ function submitBoeFound() {
   var itemName = itemEl ? itemEl.value.trim() : '';
   var track = trackEl && trackEl.value ? trackEl.value : null;
   var note = noteEl && noteEl.value.trim() ? noteEl.value.trim() : null;
+  // Intent, not settlement (#862): the manager's settle button decides.
+  var donate = !!(donateEl && donateEl.checked);
 
   // Validate before any network call, text feedback only -- the status span
   // is a role="status" live region, so this announces to screen readers too.
@@ -280,7 +283,8 @@ function submitBoeFound() {
       p_name_realm: charName,
       p_item_name: itemName,
       p_track: track,
-      p_note: note
+      p_note: note,
+      p_donate: donate
     })
     .then(function (result) {
       if (btn) {
@@ -297,11 +301,12 @@ function submitBoeFound() {
       // Not gated on its result -- the RPC insert above is the write of
       // record, same stance as js/signup.js's signup notification.
       supabaseClient.functions.invoke('boe-webhook', {
-        body: { team: teamCfg.name, finder: charName, item: itemName, track: track, note: note }
+        body: { team: teamCfg.name, finder: charName, item: itemName, track: track, note: note, donate: donate }
       });
       if (itemEl) itemEl.value = '';
       if (noteEl) noteEl.value = '';
       if (trackEl) trackEl.value = '';
+      if (donateEl) donateEl.checked = false;
       if (status) status.textContent = 'Submitted! Officers will take it from here.';
     })
     .catch(function (err) {
