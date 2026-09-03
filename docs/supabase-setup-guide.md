@@ -871,7 +871,18 @@ insert into team_members (team_id, discord_id, role) values
 Do not insert `auth_user_id` in either table -- it starts as null and is filled in
 automatically when each person logs in for the first time via the auth trigger.
 
-Team IDs: Phoenix = 1, Hellfire = 2.
+Team IDs: Phoenix = 1, Hellfire = 2, Immolation = 3, Wrathless = 4.
+
+**Officers on a team without a page.** Immolation and Wrathless raid with the guild and do not
+otherwise use the site. The same insert works for any team id, hidden teams included, and it is
+the only step: a `team_members` row with `role = 'officer'` or `'team_leader'` lets that person
+settle their own team's BoE payouts on the BoE page (`can_settle_boe()`, #888) and nothing else,
+and `auth_user_id` fills itself on their first Discord sign-in. Insert the row when an officer
+asks for it, not ahead of time: a row assigns them the work.
+
+```sql
+insert into team_members (team_id, discord_id, role) values (4, 'DISCORD_ID_HERE', 'officer');  -- Wrathless officer
+```
 
 ---
 

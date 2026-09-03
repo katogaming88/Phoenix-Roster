@@ -3,7 +3,9 @@
 // read; an ungranted officer reads their own team; a raider reads their own
 // rows via is_own_player(); a boe_managers grantee reads and mutates every
 // team, because BoEs are guild property. Every lifecycle mutation is gated on
-// that grant (or site admin), never on plain officer role. The split formula
+// that grant (or site admin), never on plain officer role, except the settle
+// pair (#888): boe_mark_paid and the paid-to-sold edge of boe_revert admit a
+// team officer or leader for the row's own team via can_settle_boe(). The split formula
 // tests encode the guild policy pinned in the #745 comment (floor 20000,
 // pivot 100000, gross sale) as amended by #861: the game's 5% auction house
 // fee comes off the top and the finder is capped at the net. Same withTxn harness as
@@ -302,18 +304,20 @@ describe('submit_boe_found', () => {
   });
 });
 
-describe('the manager gate on every lifecycle RPC', () => {
-  const LIFECYCLE_CALLS = [
+// #888 carves the settle pair out of this gate for a team's own officers (the
+// block after this one); everything else stays manager-or-admin, so the
+// ungranted leader is still refused listing, sale, retire and a sold-row revert.
+describe('the manager gate on the lifecycle RPCs', () => {
+  const MANAGER_ONLY_CALLS = [
     'select public.boe_record_listing(1, 100000)',
     'select public.boe_record_sale(1, 100000)',
-    'select public.boe_mark_paid(2)',
     'select public.boe_retire(1)',
     'select public.boe_revert(2)'
   ];
 
-  it('the ungranted team leader is denied on all five', async () => {
+  it('the ungranted team leader is denied on listing, sale, retire and a sold-row revert', async () => {
     await withTxn(async ({ asUser }) => {
-      for (const sql of LIFECYCLE_CALLS) {
+      for (const sql of MANAGER_ONLY_CALLS) {
         await expect(asUser(TEAM_LEADER_T1, sql)).rejects.toThrow(/Not authorized/);
       }
     });
@@ -426,6 +430,108 @@ describe('the manager gate on every lifecycle RPC', () => {
       expect((await asUser(SITE_ADMIN, 'select id from public.boe_managers')).rows.length).toBe(1);
       expect((await asUser(RAIDER_T1, 'select id from public.boe_managers')).rows.length).toBe(0);
       expect((await asAnon('select id from public.boe_managers')).rows.length).toBe(0);
+    });
+  });
+});
+
+// Team officers settle payouts for their own team (#888): the officers who hand
+// out the gold mark it paid or donated, and can undo that one step. Listing,
+// sale, retire, edit and delete stay with managers and site admins. The seed
+// gives team 1 a leader (TEAM_LEADER_T1) and team 2 an officer (OFFICER_T2),
+// neither granted; seed row 2 is team 1's sold row.
+describe('team officers settle payouts for their own team (#888)', () => {
+  // A sold row on team 2, inserted as postgres with a complete receipt so the
+  // money constraints (#861) accept it; the transition trigger fires only for
+  // authenticated.
+  const addTeam2SoldItem = (q) =>
+    q(
+      `insert into public.boe_items
+         (team_id, item_name, finder_name, status, sold_at, sale_price, finder_payout, guild_cut, ah_fee,
+          payout_floor, payout_pivot)
+       values (2, 'Hellfire Sold Find', 'Nobody-Illidan', 'sold', now(), 100000, 20000, 75000, 5000, 20000, 100000)
+       returning id`
+    ).then((res) => res.rows[0].id);
+
+  it('the ungranted team leader marks a sold row of their own team paid', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await asUser(TEAM_LEADER_T1, 'select public.boe_mark_paid(2)');
+      const row = (await q('select status, payout_paid_at, payout_donated from public.boe_items where id = 2')).rows[0];
+      expect(row.status).toBe('paid');
+      expect(row.payout_paid_at).not.toBeNull();
+      expect(row.payout_donated).toBe(false);
+    });
+  });
+
+  it('the same leader donates one', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await asUser(TEAM_LEADER_T1, 'select public.boe_mark_paid(2, null, true)');
+      const row = (await q('select status, payout_donated from public.boe_items where id = 2')).rows[0];
+      expect(row).toEqual({ status: 'paid', payout_donated: true });
+    });
+  });
+
+  it('the same leader reverts the payout they settled, and nothing further', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await asUser(TEAM_LEADER_T1, 'select public.boe_mark_paid(2)');
+      const res = await asUser(TEAM_LEADER_T1, 'select public.boe_revert(2) as status');
+      expect(res.rows[0].status).toBe('sold');
+      const row = (await q('select status, payout_paid_at, sale_price::int as sp from public.boe_items where id = 2'))
+        .rows[0];
+      expect(row).toMatchObject({ status: 'sold', payout_paid_at: null, sp: 150000 });
+      await expect(asUser(TEAM_LEADER_T1, 'select public.boe_revert(2)')).rejects.toThrow(/Not authorized/);
+    });
+  });
+
+  it('an officer of another team is refused the row, and settles their own team', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await expect(asUser(OFFICER_T2, 'select public.boe_mark_paid(2)')).rejects.toThrow(/Not authorized/);
+      const id = await addTeam2SoldItem(q);
+      await asUser(OFFICER_T2, `select public.boe_mark_paid(${id})`);
+      expect((await q('select status from public.boe_items where id = $1', [id])).rows[0].status).toBe('paid');
+      await expect(asUser(TEAM_LEADER_T1, `select public.boe_revert(${id})`)).rejects.toThrow(/Not authorized/);
+      const res = await asUser(OFFICER_T2, `select public.boe_revert(${id}) as status`);
+      expect(res.rows[0].status).toBe('sold');
+    });
+  });
+
+  it('a raider with no grant is refused every call, own team included', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const id = await addTeam2SoldItem(q);
+      const calls = [
+        'select public.boe_mark_paid(2)',
+        'select public.boe_mark_paid(2, null, true)',
+        'select public.boe_revert(2)',
+        `select public.boe_mark_paid(${id})`,
+        'select public.boe_record_listing(1, 100000)',
+        'select public.boe_record_sale(1, 100000)',
+        'select public.boe_retire(1)'
+      ];
+      for (const sql of calls) {
+        await expect(asUser(RAIDER_T1, sql)).rejects.toThrow(/Not authorized/);
+      }
+    });
+  });
+
+  // The client logs every settle through write_audit_log(team_id, ...), whose
+  // gate already admits a team officer for that team; pinned here because the
+  // page's buttons (#890) will rely on it for people with no grant.
+  it('the leader logs the settle on their own team through write_audit_log', async () => {
+    await withTxn(async ({ asUser }) => {
+      await asUser(TEAM_LEADER_T1, 'select public.boe_mark_paid(2)');
+      const res = await asUser(
+        TEAM_LEADER_T1,
+        "select public.write_audit_log(1, 'BoE Paid', 'boe_items', 2, null) as id"
+      );
+      expect(res.rows[0].id).toBeGreaterThan(0);
+    });
+  });
+
+  it('the manager and the site admin still settle any team', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      const id = await addTeam2SoldItem(q);
+      await asUser(OFFICER_T1, `select public.boe_mark_paid(${id})`);
+      const res = await asUser(SITE_ADMIN, `select public.boe_revert(${id}) as status`);
+      expect(res.rows[0].status).toBe('sold');
     });
   });
 });
