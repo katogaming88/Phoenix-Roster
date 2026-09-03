@@ -174,7 +174,9 @@ describe('submit_boe_found', () => {
   // resolution is null even on an exact name. The belt test below is the link.
   it('anon submit with a rostered name resolves the player, and a boss drop stays unlinked', async () => {
     await withTxn(async ({ q, asAnon }) => {
-      const res = await asAnon(submit("1, 'Seedraider-Illidan', 'Seed Test Staff', 'Hero', 'from trash'"));
+      const res = await asAnon(
+        submit("1, 'Seedraider-Illidan', 'Seed Test Staff', 'Hero', 'from trash', false, '2/6'")
+      );
       const id = res.rows[0].id;
       const row = (
         await q(
@@ -197,7 +199,7 @@ describe('submit_boe_found', () => {
 
   it('a catalog BoE links case-insensitively and is stored with the catalog spelling', async () => {
     await withTxn(async ({ q, asAnon }) => {
-      const res = await asAnon(submit("1, 'Seedraider-Illidan', '  seed test boe belt ', 'Hero', null"));
+      const res = await asAnon(submit("1, 'Seedraider-Illidan', '  seed test boe belt ', 'Hero', null, false, '3/6'"));
       const row = (await q('select item_id, item_name from public.boe_items where id = $1', [res.rows[0].id])).rows[0];
       expect(row).toEqual({ item_id: 3, item_name: 'Seed Test BoE Belt' });
     });
@@ -205,7 +207,7 @@ describe('submit_boe_found', () => {
 
   it('an unrostered name keeps the raw finder_name with a null player_id', async () => {
     await withTxn(async ({ q, asAnon }) => {
-      const res = await asAnon(submit("1, 'Stranger-Proudmoore', 'Unknown Green Blade', null, null"));
+      const res = await asAnon(submit("1, 'Stranger-Proudmoore', 'Unknown Green Blade', 'Hero', null, false, '2/6'"));
       const row = (
         await q('select player_id, finder_name, item_id, status from public.boe_items where id = $1', [res.rows[0].id])
       ).rows[0];
@@ -220,7 +222,10 @@ describe('submit_boe_found', () => {
 
   it('a logged-in raider can submit too', async () => {
     await withTxn(async ({ asUser }) => {
-      const res = await asUser(RAIDER_T1, submit("1, 'Seedraider-Illidan', 'Some BoE Cloak', 'Champion', null"));
+      const res = await asUser(
+        RAIDER_T1,
+        submit("1, 'Seedraider-Illidan', 'Some BoE Cloak', 'Champion', null, false, '1/6'")
+      );
       expect(res.rows[0].id).toBeGreaterThan(0);
     });
   });
@@ -250,9 +255,48 @@ describe('submit_boe_found', () => {
   it('the submit snapshots the seasonName in force', async () => {
     await withTxn(async ({ q, asAnon }) => {
       await q(`update public.team_settings set config = config || '{"seasonName": "Test Season 3"}' where team_id = 1`);
-      const res = await asAnon(submit("1, 'Seedraider-Illidan', 'Season Snapshot Blade', null, null"));
+      const res = await asAnon(submit("1, 'Seedraider-Illidan', 'Season Snapshot Blade', 'Myth', null, false, '6/6'"));
       const row = (await q('select season from public.boe_items where id = $1', [res.rows[0].id])).rows[0];
       expect(row.season).toBe('Test Season 3');
+    });
+  });
+
+  // The upgrade rank (#865): required with the track, six values, spaces
+  // stripped. The form checks all of this first; the RPC catches a stale client.
+  it('stores the upgrade rank with its spaces stripped', async () => {
+    await withTxn(async ({ q, asAnon }) => {
+      const res = await asAnon(submit("1, 'Seedraider-Illidan', 'Some BoE Cloak', 'Hero', null, false, ' 2 / 6 '"));
+      const row = (await q('select upgrade_rank from public.boe_items where id = $1', [res.rows[0].id])).rows[0];
+      expect(row.upgrade_rank).toBe('2/6');
+    });
+  });
+
+  it('a missing track is rejected', async () => {
+    await withTxn(async ({ asAnon }) => {
+      await expect(
+        asAnon(submit("1, 'Seedraider-Illidan', 'Some BoE Cloak', null, null, false, '2/6'"))
+      ).rejects.toThrow(/Track is required/);
+    });
+  });
+
+  it('a missing rank is rejected, whether null or left off', async () => {
+    await withTxn(async ({ asAnon }) => {
+      await expect(
+        asAnon(submit("1, 'Seedraider-Illidan', 'Some BoE Cloak', 'Hero', null, false, null"))
+      ).rejects.toThrow(/Upgrade rank is required/);
+      await expect(asAnon(submit("1, 'Seedraider-Illidan', 'Some BoE Cloak', 'Hero', null"))).rejects.toThrow(
+        /Upgrade rank is required/
+      );
+    });
+  });
+
+  it('a rank outside 1/6 to 6/6 is rejected', async () => {
+    await withTxn(async ({ asAnon }) => {
+      for (const bad of ["'7/6'", "'abc'", "'2/'"]) {
+        await expect(
+          asAnon(submit("1, 'Seedraider-Illidan', 'Some BoE Cloak', 'Hero', null, false, " + bad))
+        ).rejects.toThrow(new RegExp('one of 1/6 to 6/6'));
+      }
     });
   });
 });
@@ -662,8 +706,8 @@ describe('donated payouts (#862)', () => {
 
   it('submit_boe_found stores the raider intent, false by default', async () => {
     await withTxn(async ({ q, asAnon }) => {
-      const yes = await asAnon(submit("1, 'Seedraider-Illidan', 'Seed Test BoE Belt', 'Hero', null, true"));
-      const no = await asAnon(submit("1, 'Seedraider-Illidan', 'Seed Test BoE Belt', 'Hero', null"));
+      const yes = await asAnon(submit("1, 'Seedraider-Illidan', 'Seed Test BoE Belt', 'Hero', null, true, '2/6'"));
+      const no = await asAnon(submit("1, 'Seedraider-Illidan', 'Seed Test BoE Belt', 'Hero', null, false, '2/6'"));
       const rows = (
         await q('select id, payout_donated from public.boe_items where id in ($1, $2) order by id', [
           yes.rows[0].id,
@@ -713,18 +757,28 @@ describe('plain UPDATE is metadata-only and DELETE is manager-gated', () => {
       // The #874 edit form's payload shape: name and track in one statement.
       const edit = await asUser(
         OFFICER_T1,
-        "update public.boe_items set item_name = 'Corrected Staff', track = 'Myth' where id = 1"
+        "update public.boe_items set item_name = 'Corrected Staff', track = 'Myth', upgrade_rank = '2/6' where id = 1"
       );
       expect(edit.rowCount).toBe(1);
-      const row = (await q('select note, player_id, item_name, track from public.boe_items where id = 1')).rows[0];
+      const row = (await q('select note, player_id, item_name, track, upgrade_rank from public.boe_items where id = 1'))
+        .rows[0];
       expect(row).toMatchObject({
         note: 'checked with the bank',
         player_id: 2,
         item_name: 'Corrected Staff',
-        track: 'Myth'
+        track: 'Myth',
+        upgrade_rank: '2/6'
       });
       await expect(asUser(OFFICER_T1, "update public.boe_items set status = 'paid' where id = 1")).rejects.toThrow(
         /go through the BoE RPCs/
+      );
+    });
+  });
+
+  it('a rank that is not N/N is refused by the column check, not only by the RPC (#865)', async () => {
+    await withTxn(async ({ asUser }) => {
+      await expect(asUser(OFFICER_T1, "update public.boe_items set upgrade_rank = 'abc' where id = 1")).rejects.toThrow(
+        /boe_items_upgrade_rank_shape/
       );
     });
   });

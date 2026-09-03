@@ -184,7 +184,8 @@ function boeRow(over) {
       sale_price: null,
       finder_payout: null,
       guild_cut: null,
-      payout_donated: false
+      payout_donated: false,
+      upgrade_rank: null
     },
     over
   );
@@ -1078,6 +1079,7 @@ describe('manager edit (#874)', () => {
     ['boe-edit-name-' + id]: focusable(),
     ['boe-edit-track-' + id]: makeEl(),
     ['boe-edit-note-' + id]: makeEl(),
+    ['boe-edit-rank-' + id]: makeEl(),
     ['boe-status-' + id]: makeEl()
   });
   const typeInto = (els, id, { name, track, note }) => {
@@ -1127,7 +1129,13 @@ describe('manager edit (#874)', () => {
     expect(captured.updates).toEqual([
       {
         table: 'boe_items',
-        values: { item_name: 'Slippers of the Hissing Cult', track: 'Myth', note: 'Donate', item_id: null },
+        values: {
+          item_name: 'Slippers of the Hissing Cult',
+          track: 'Myth',
+          note: 'Donate',
+          item_id: null,
+          upgrade_rank: null
+        },
         eq: [['id', 1]]
       }
     ]);
@@ -1283,6 +1291,7 @@ describe('catalog picker on the edit form (#875)', () => {
     ['boe-edit-name-' + id]: focusable(),
     ['boe-edit-track-' + id]: makeEl(),
     ['boe-edit-note-' + id]: makeEl(),
+    ['boe-edit-rank-' + id]: makeEl(),
     ['boe-status-' + id]: makeEl()
   });
   const typeInto = (els, id, { name, track, note }) => {
@@ -1322,7 +1331,7 @@ describe('catalog picker on the edit form (#875)', () => {
     expect(captured.updates).toEqual([
       {
         table: 'boe_items',
-        values: { item_name: 'Crushing Coiler Coif', track: 'Hero', note: null, item_id: 7 },
+        values: { item_name: 'Crushing Coiler Coif', track: 'Hero', note: null, item_id: 7, upgrade_rank: null },
         eq: [['id', 1]]
       }
     ]);
@@ -1569,5 +1578,157 @@ describe('donated rows in History read finder 0, guild whole (#862 follow-up)', 
     const html = loaded.els.guildBoeAwaiting.innerHTML;
     expect(html).toContain('<td>20,000g</td>');
     expect(html).toContain('<td>80,000g</td>');
+  });
+});
+
+// The upgrade rank (#865): a required six-option select on the raider form,
+// shown inside the Item cell's track badge, editable from the same six-option
+// select on the edit form, and the key the Record Sale guard reads.
+describe('upgrade rank (#865)', () => {
+  it('shows the rank inside the track badge, alone without a track, and nothing after a bare name', async () => {
+    const rows = [
+      boeRow({ id: 1, item_name: 'Slitherscale Girdle', track: 'Champion', upgrade_rank: '2/6' }),
+      boeRow({ id: 2, item_name: 'Rankless Find', track: null, upgrade_rank: '3/6', found_at: '2026-08-19T01:00:00Z' }),
+      boeRow({ id: 3, item_name: 'Plain Find', track: null, upgrade_rank: null, found_at: '2026-08-18T01:00:00Z' })
+    ];
+    const { client } = makeBoeClient({ items: rows, listings: [], rpc: managerRpc() });
+    const { els } = await build({ client });
+    const open = els.guildBoeOpen.innerHTML;
+    expect(open).toContain('Slitherscale Girdle <span class="badge" style="margin-left:0.35rem;">Champion 2/6</span>');
+    expect(open).toContain('Rankless Find <span class="badge" style="margin-left:0.35rem;">3/6</span>');
+    expect(open).toContain('Plain Find<');
+  });
+
+  it('the edit form offers the six ranks with the stored one selected, and a blank option for a row without one', async () => {
+    const rows = [
+      boeRow({ id: 1, upgrade_rank: '2/6' }),
+      boeRow({ id: 2, upgrade_rank: null, found_at: '2026-08-19T01:00:00Z' })
+    ];
+    const { client } = makeBoeClient({ items: rows, listings: [], rpc: managerRpc() });
+    const { els } = await build({ client });
+    const open = els.guildBoeOpen.innerHTML;
+    const first = open.slice(open.indexOf('id="boe-edit-rank-1"'), open.indexOf('id="boe-edit-rank-2"'));
+    expect(first).toContain('aria-label="Upgrade rank"');
+    expect(first).toContain('<option value="">No rank</option>');
+    expect(first).toContain('<option value="1/6">1/6</option>');
+    expect(first).toContain('<option value="2/6" selected>2/6</option>');
+    expect(first).toContain('<option value="6/6">6/6</option>');
+    const second = open.slice(open.indexOf('id="boe-edit-rank-2"'));
+    expect(second).toContain('<option value="" selected>No rank</option>');
+    expect(second).not.toContain('selected>2/6');
+  });
+
+  it('Save sends the selected rank with the other editable columns and audits the change', async () => {
+    const els = {
+      'boe-edit-form-1': makeEl({ style: { display: 'none' } }),
+      'boe-edit-btn-1': makeEl({ focus() {} }),
+      'boe-edit-name-1': makeEl({ focus() {} }),
+      'boe-edit-track-1': makeEl(),
+      'boe-edit-note-1': makeEl(),
+      'boe-edit-rank-1': makeEl(),
+      'boe-status-1': makeEl()
+    };
+    const { client, captured } = makeBoeClient({ items: [FOUND()], listings: [], rpc: managerRpc() });
+    const loaded = await build({ client, els });
+    els['boe-edit-name-1'].value = 'Voidglass Cloak';
+    els['boe-edit-track-1'].value = 'Hero';
+    els['boe-edit-note-1'].value = '';
+    els['boe-edit-rank-1'].value = '4/6';
+    loaded.sandbox.saveBoeEdit(1, makeEl({ textContent: 'Save' }));
+    await flush();
+    await flush();
+    expect(captured.updates).toEqual([
+      {
+        table: 'boe_items',
+        values: { item_name: 'Voidglass Cloak', track: 'Hero', note: null, item_id: null, upgrade_rank: '4/6' },
+        eq: [['id', 1]]
+      }
+    ]);
+    expect(loaded.spies.audit[0].detail).toContain('rank was (none), now "4/6"');
+  });
+});
+
+// Two finds of the same item on the same track at the same rank are one queue,
+// oldest first (#865). Record Sale on the newer one asks before recording; a
+// different rank, track or item, a sold older row, or selling the older row
+// itself never prompts. A row with no rank (the legacy import) counts as the
+// same item.
+describe('first come, first served at Record Sale (#865)', () => {
+  const OLDER = (over) =>
+    boeRow(
+      Object.assign(
+        {
+          id: 1,
+          team_id: 4,
+          finder_name: 'Firstfinder-Dalaran',
+          item_name: 'Slitherscale Girdle',
+          track: 'Champion',
+          upgrade_rank: '2/6',
+          found_at: '2026-08-20T01:00:00Z'
+        },
+        over
+      )
+    );
+  const NEWER = () =>
+    boeRow({
+      id: 2,
+      team_id: 1,
+      finder_name: 'Second-Illidan',
+      item_name: 'slitherscale girdle',
+      track: 'Champion',
+      upgrade_rank: '2/6',
+      found_at: '2026-08-21T01:00:00Z'
+    });
+  const SPLIT = {
+    boe_record_sale: () => ({ data: [{ sale_price: 100000, finder_payout: 20000, guild_cut: 80000 }], error: null })
+  };
+  async function sell(rows, id, opts = {}) {
+    const els = { ['boe-sale-price-' + id]: makeEl({ value: '100,000' }), ['boe-status-' + id]: makeEl() };
+    const { client, captured } = makeBoeClient({ items: rows, listings: [], rpc: managerRpc(SPLIT) });
+    const loaded = await build(Object.assign({ client, els }, opts));
+    loaded.sandbox.confirmBoeSale(id, makeEl({ textContent: 'Confirm' }));
+    await flush();
+    await flush();
+    return { confirms: loaded.spies.confirms, sold: captured.rpcCalls.filter((c) => c.name === 'boe_record_sale') };
+  }
+
+  it('names the older open finder at the same name, track and rank, then records on confirm', async () => {
+    const { confirms, sold } = await sell([OLDER(), NEWER()], 2);
+    expect(confirms).toHaveLength(1);
+    expect(confirms[0]).toContain('Firstfinder-Dalaran');
+    expect(confirms[0]).toContain('Slitherscale Girdle');
+    expect(confirms[0]).toContain('Champion');
+    expect(sold).toHaveLength(1);
+  });
+
+  it('records nothing when the manager cancels', async () => {
+    const { confirms, sold } = await sell([OLDER(), NEWER()], 2, { confirmResult: false });
+    expect(confirms).toHaveLength(1);
+    expect(sold).toEqual([]);
+  });
+
+  it('treats an older row with no rank as the same item', async () => {
+    const { confirms } = await sell([OLDER({ upgrade_rank: null }), NEWER()], 2);
+    expect(confirms).toHaveLength(1);
+  });
+
+  it.each([
+    ['a different rank', { upgrade_rank: '3/6' }],
+    ['a different track', { track: 'Hero' }],
+    ['a different item', { item_name: 'Voidglass Cloak' }],
+    [
+      'an older row that is already sold',
+      { status: 'sold', sold_at: '2026-08-21T02:00:00Z', sale_price: 100000, finder_payout: 20000, guild_cut: 80000 }
+    ]
+  ])('stays quiet for %s', async (_label, over) => {
+    const { confirms, sold } = await sell([OLDER(over), NEWER()], 2);
+    expect(confirms).toEqual([]);
+    expect(sold).toHaveLength(1);
+  });
+
+  it('stays quiet when the row being sold is the older one', async () => {
+    const { confirms, sold } = await sell([OLDER(), NEWER()], 1);
+    expect(confirms).toEqual([]);
+    expect(sold).toHaveLength(1);
   });
 });
