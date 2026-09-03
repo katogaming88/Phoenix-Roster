@@ -645,12 +645,23 @@ describe('revert walks the correction edges', () => {
 });
 
 describe('plain UPDATE is metadata-only and DELETE is manager-gated', () => {
-  it('a manager can edit the note and re-link the finder, but not move status', async () => {
+  it('a manager can edit the note, the finder, the item name and the track, but not move status', async () => {
     await withTxn(async ({ q, asUser }) => {
       await asUser(OFFICER_T1, "update public.boe_items set note = 'checked with the bank' where id = 1");
       await asUser(OFFICER_T1, 'update public.boe_items set player_id = 2 where id = 1');
-      const row = (await q('select note, player_id from public.boe_items where id = 1')).rows[0];
-      expect(row).toMatchObject({ note: 'checked with the bank', player_id: 2 });
+      // The #874 edit form's payload shape: name and track in one statement.
+      const edit = await asUser(
+        OFFICER_T1,
+        "update public.boe_items set item_name = 'Corrected Staff', track = 'Myth' where id = 1"
+      );
+      expect(edit.rowCount).toBe(1);
+      const row = (await q('select note, player_id, item_name, track from public.boe_items where id = 1')).rows[0];
+      expect(row).toMatchObject({
+        note: 'checked with the bank',
+        player_id: 2,
+        item_name: 'Corrected Staff',
+        track: 'Myth'
+      });
       await expect(asUser(OFFICER_T1, "update public.boe_items set status = 'paid' where id = 1")).rejects.toThrow(
         /go through the BoE RPCs/
       );
