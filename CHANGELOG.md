@@ -13,8 +13,8 @@ with each release split into `### Frontend` (drives the version number) and
 ### Frontend
 
 - A tip on the found form warns to report before depositing a BoE in the guild bank: once it's
-  banked, the item shows a base item level with no track or upgrade rank, and there's no way to
-  recover either afterward.
+  banked, it shows the depositor a base item level with no track or upgrade rank, so they can no
+  longer read either off themselves.
 
 ## [3.82.1] - 2026-09-03
 
