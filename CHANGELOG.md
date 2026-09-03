@@ -17,6 +17,14 @@ with each release split into `### Frontend` (drives the version number) and
   out the moment it set it, since it was missing from the write side of the hash-reflection map
   even though the read side already knew `#boe`.
 
+### Backend
+
+- `npm run db:docs` no longer re-sorts the trigger listings in `dbdoc/`. tbls 1.96.0 (released
+  2026-09-03) orders triggers by creation on every platform and `tbls diff` compares in that same
+  order, so the name order `scripts/ci/dbdoc-sort.js` imposed failed the schema-docs check on
+  every multi-trigger table. The five table docs and `schema.json` are regenerated in tbls' own
+  order and the sort script and its test are gone. Nothing in the schema changed.
+
 ## [3.82.2] - 2026-09-03
 
 ### Frontend

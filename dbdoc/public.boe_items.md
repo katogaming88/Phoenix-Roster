@@ -61,9 +61,9 @@
 
 | Name | Definition |
 | ---- | ---------- |
-| trg_boe_items_status_transition | CREATE TRIGGER trg_boe_items_status_transition BEFORE UPDATE ON public.boe_items FOR EACH ROW EXECUTE FUNCTION check_boe_status_transition() |
 | trg_boe_items_team_id_check | CREATE TRIGGER trg_boe_items_team_id_check BEFORE INSERT OR UPDATE ON public.boe_items FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player() |
 | trg_boe_items_updated_at | CREATE TRIGGER trg_boe_items_updated_at BEFORE UPDATE ON public.boe_items FOR EACH ROW EXECUTE FUNCTION set_updated_at() |
+| trg_boe_items_status_transition | CREATE TRIGGER trg_boe_items_status_transition BEFORE UPDATE ON public.boe_items FOR EACH ROW EXECUTE FUNCTION check_boe_status_transition() |
 
 ## Relations
 
