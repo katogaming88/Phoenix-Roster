@@ -8,6 +8,30 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.82.0] - 2026-09-03
+
+### Frontend
+
+- The found form asks for the item's upgrade rank (1/6 to 6/6, as the tooltip shows it) and
+  will not submit without it or the track (#865): together they say which item was found, since
+  two finds of the same item on the same track are only the same item at the same rank.
+- The BoE Sales page shows the rank in the Item cell's badge ("Champion 2/6"), the Edit form
+  offers the same six ranks (with a blank for rows imported from the sheets), and Record Sale
+  asks first when an older find of the same item, track and rank is still open anywhere in the
+  guild, naming that finder and date. A warning, not a block.
+- The Discord found post carries the rank on its Item line.
+
+### Backend
+
+- `boe_items.upgrade_rank` (#865) under a shape check; `submit_boe_found` gains the argument
+  and now requires a track and a rank; the metadata trigger admits the column on a direct
+  UPDATE. A backfill sets the rank on the five imported rows whose Form submission carried one
+  (moving the two rank-only notes into the column) and keeps the one "(Mythic 279)" level in
+  its row's note. No item level column: within a season a track at a rank is one level.
+- The BoE importer keeps the "N/N" rank it used to strip, treats a note that is only a rank as
+  the rank, keeps a bracketed item level in the note, and no longer flags two finds a minute
+  apart at different ranks as a suspected duplicate.
+
 ## [3.81.3] - 2026-09-03
 
 ### Frontend

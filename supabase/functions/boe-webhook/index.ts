@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { team, finder, item, track, note, donate } = await req.json();
+    const { team, finder, item, track, note, donate, upgradeRank } = await req.json();
 
     if (!finder || !String(finder).trim()) {
       return jsonResponse({ success: false, error: 'Missing finder' });
@@ -53,7 +53,10 @@ Deno.serve(async (req) => {
     const truncate = (s: string, max: number) => (s.length > max ? s.slice(0, max - 1) + '...' : s);
 
     const finderText = truncate(String(finder).trim(), 200);
-    const itemText = truncate(String(item).trim(), 200);
+    // The rank follows the name on the Item line (#865): "Voidglass Cloak 2/6".
+    // Optional here because a cached client may send none.
+    const rankChunk = upgradeRank && String(upgradeRank).trim() ? ' ' + String(upgradeRank).trim() : '';
+    const itemText = truncate(String(item).trim(), 200) + rankChunk;
     const teamText = String(team || 'Unknown');
     // The backslash keeps Discord from parsing <Track> as a mention/channel
     // token, matching the retired bot's output byte for byte. Track is

@@ -81,7 +81,7 @@ function buildBoeManage(canManage) {
       var q = supabaseClient
         .from('boe_items')
         .select(
-          'id, team_id, player_id, finder_name, item_id, item_name, track, note, status, found_at, sold_at, payout_paid_at, retired_at, sale_price, finder_payout, guild_cut, payout_donated',
+          'id, team_id, player_id, finder_name, item_id, item_name, track, upgrade_rank, note, status, found_at, sold_at, payout_paid_at, retired_at, sale_price, finder_payout, guild_cut, payout_donated',
           afterId === null ? { count: 'exact' } : undefined
         )
         .order('id', { ascending: true })
@@ -269,8 +269,11 @@ function _boeTeamCreditLine() {
 
 function _boeItemCell(item) {
   var html = _esc(item.item_name);
-  if (item.track) {
-    html += ' <span class="badge" style="margin-left:0.35rem;">' + _esc(item.track) + '</span>';
+  // The track and the rank share the badge (#865): "Champion 2/6". Either
+  // alone still gets one; a bare name gets nothing after it.
+  var badge = [item.track, item.upgrade_rank].filter(Boolean).join(' ');
+  if (badge) {
+    html += ' <span class="badge" style="margin-left:0.35rem;">' + _esc(badge) + '</span>';
   }
   // The raider's submit-form note surfaces to officers only here.
   if (item.note) {
@@ -286,11 +289,15 @@ function _boeItemCell(item) {
 // Later PRs extend the column list rather than the form: #875 adds the
 // catalog link, #865 the item level and upgrade rank.
 var BOE_TRACKS = ['Champion', 'Hero', 'Myth'];
+// The six ranks the raider form offers (#865). Three lists have to agree:
+// index.html's static options, this one, and the array in submit_boe_found.
+var BOE_RANKS = ['1/6', '2/6', '3/6', '4/6', '5/6', '6/6'];
 var BOE_EDIT_COLUMNS = [
   ['item_name', 'item'],
   ['track', 'track'],
   ['note', 'note'],
-  ['item_id', 'catalog link']
+  ['item_id', 'catalog link'],
+  ['upgrade_rank', 'rank']
 ];
 
 function _boeEditForm(item) {
@@ -298,6 +305,11 @@ function _boeEditForm(item) {
   var options = '<option value=""' + (item.track ? '' : ' selected') + '>No track</option>';
   BOE_TRACKS.forEach(function (t) {
     options += '<option value="' + t + '"' + (item.track === t ? ' selected' : '') + '>' + t + '</option>';
+  });
+  // Legacy rows (the sheet import) have no rank, so the blank option stays.
+  var ranks = '<option value=""' + (item.upgrade_rank ? '' : ' selected') + '>No rank</option>';
+  BOE_RANKS.forEach(function (r) {
+    ranks += '<option value="' + r + '"' + (item.upgrade_rank === r ? ' selected' : '') + '>' + r + '</option>';
   });
   return (
     ' <button class="btn btn-muted" style="font-size:0.85rem;padding:0.3rem 0.8rem;" id="boe-edit-btn-' +
@@ -317,6 +329,11 @@ function _boeEditForm(item) {
     id +
     '" aria-label="Track">' +
     options +
+    '</select> ' +
+    '<select id="boe-edit-rank-' +
+    id +
+    '" aria-label="Upgrade rank">' +
+    ranks +
     '</select> ' +
     '<textarea id="boe-edit-note-' +
     id +
@@ -752,6 +769,26 @@ function confirmBoeSale(id, btnEl) {
     _setBoeRowStatus(id, 'Enter a price in gold, like 250,000.');
     return;
   }
+  // First come, first served (#865): an older open find of the same item on
+  // the same track and rank is ahead in the queue. A warning, not a block:
+  // the manager may know exactly which one sold.
+  var twin = _boeOlderOpenTwin(item);
+  if (
+    twin &&
+    !confirm(
+      'An older ' +
+        twin.item_name +
+        ' on ' +
+        (twin.track || 'no track') +
+        ' is still open: ' +
+        (twin.finder_name || 'unknown finder') +
+        ', reported ' +
+        _boeDate(twin.found_at) +
+        '. Cuts go to the first finder at the same rank. Record this sale anyway?'
+    )
+  ) {
+    return;
+  }
   return _boeAction(id, btnEl, 'boe_record_sale', { p_id: id, p_sale_price: price }, function (result) {
     // The RPC computes and returns the split, so the row carries its money
     // columns into Awaiting Payout without a refetch.
@@ -774,6 +811,27 @@ function confirmBoeSale(id, btnEl) {
       item.team_id
     );
   });
+}
+
+// The oldest open row that is the same item as this one: same name (any
+// case), same track, and the same rank when both carry one. A row with no
+// rank (the sheet import) counts as the same item. Dates compare as dates,
+// not as strings, since the offset PostgREST writes is not a promise.
+function _boeOlderOpenTwin(item) {
+  var name = String(item.item_name || '').toLowerCase();
+  var when = Date.parse(item.found_at);
+  var twin = null;
+  _boeItems.forEach(function (other) {
+    if (other.id === item.id) return;
+    if (other.status !== 'found' && other.status !== 'listed') return;
+    if (String(other.item_name || '').toLowerCase() !== name) return;
+    if ((other.track || null) !== (item.track || null)) return;
+    if (other.upgrade_rank && item.upgrade_rank && other.upgrade_rank !== item.upgrade_rank) return;
+    var otherWhen = Date.parse(other.found_at);
+    if (!(otherWhen < when)) return;
+    if (!twin || otherWhen < Date.parse(twin.found_at)) twin = other;
+  });
+  return twin;
 }
 
 // Mark Paid sends p_donated false explicitly: the manager's button decides,
@@ -897,13 +955,21 @@ function _boeEditValues(id) {
   var nameEl = document.getElementById('boe-edit-name-' + id);
   var trackEl = document.getElementById('boe-edit-track-' + id);
   var noteEl = document.getElementById('boe-edit-note-' + id);
+  var rankEl = document.getElementById('boe-edit-rank-' + id);
   var name = nameEl ? String(nameEl.value || '').trim() : '';
   var track = trackEl ? String(trackEl.value || '').trim() : '';
   var note = noteEl ? String(noteEl.value || '').trim() : '';
+  var rank = rankEl ? String(rankEl.value || '').trim() : '';
   // A catalog match (#875) stores the catalog spelling and the link; anything
   // else stores the text as typed with no link.
   var hit = _boeCatalogHit(name);
-  return { item_name: hit ? hit.name : name, track: track || null, note: note || null, item_id: hit ? hit.id : null };
+  return {
+    item_name: hit ? hit.name : name,
+    track: track || null,
+    note: note || null,
+    item_id: hit ? hit.id : null,
+    upgrade_rank: rank || null
+  };
 }
 
 function _boeCatalogHit(name) {

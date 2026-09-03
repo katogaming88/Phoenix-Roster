@@ -44,7 +44,7 @@
 | [public.guild_officers](public.guild_officers.md) | 3 |  | BASE TABLE |
 | [public.tier_token_map](public.tier_token_map.md) | 5 |  | BASE TABLE |
 | [public.no_character_dismissals](public.no_character_dismissals.md) | 3 |  | BASE TABLE |
-| [public.boe_items](public.boe_items.md) | 22 |  | BASE TABLE |
+| [public.boe_items](public.boe_items.md) | 23 |  | BASE TABLE |
 | [public.boe_listings](public.boe_listings.md) | 8 |  | BASE TABLE |
 | [public.boe_managers](public.boe_managers.md) | 4 |  | BASE TABLE |
 | [public.priority_conflict_dismissals](public.priority_conflict_dismissals.md) | 8 | Officer-acknowledged Priority List same-boss conflicts (a player holding #1 on 2+ items behind one boss+track kill), so buildPriorityConflictsBannerHtml() (js/tabs/tab-priority.js) stops re-flagging a reviewed one. | BASE TABLE |
@@ -124,7 +124,7 @@
 | public.set_team_officer_bios | jsonb | p_team_id integer, p_bios jsonb | FUNCTION |
 | public.build_rclc_export | jsonb | p_team_id integer, p_season text, p_track text | FUNCTION |
 | public.boe_mark_paid | void | p_id integer, p_paid_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_donated boolean DEFAULT false | FUNCTION |
-| public.submit_boe_found | int4 | p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_donate boolean DEFAULT false | FUNCTION |
+| public.submit_boe_found | int4 | p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_donate boolean DEFAULT false, p_upgrade_rank text DEFAULT NULL::text | FUNCTION |
 
 ## Enums
 
@@ -634,6 +634,7 @@ erDiagram
   timestamp_with_time_zone updated_at
   timestamp_with_time_zone created_at
   boolean payout_donated
+  text upgrade_rank
 }
 "public.boe_listings" {
   integer id

@@ -4,6 +4,7 @@ import {
   SKIP_FORM_TIMESTAMPS,
   teamIdFor,
   splitTrack,
+  splitItemCell,
   normItem,
   finderKey,
   osaDistance,
@@ -239,6 +240,43 @@ describe('parseFound', () => {
     });
     expect(entries[1]).toMatchObject({ track: 'Champion', itemName: 'belt of examples', teamId: null });
     expect(entries[2]).toMatchObject({ teamId: 1, track: 'Hero', itemName: 'Widget of Testing', note: 'rolled crit' });
+  });
+  it('carries the upgrade rank out of the item cell, and moves a note that is only a rank into it (#865)', () => {
+    const { entries, warnings } = parseFound(
+      foundRows([
+        ['8/31/2026 21:40:34', 'Glizzy-Dalaran', 'Wrathless', 'Champ Slitherscale Girdle', '2/6'],
+        ['4/13/2026 22:10:23', 'Xy-Thrall', 'Phoenix', 'Breastplate of the Final Defense - Hero 3/6', 'rolled crit']
+      ]),
+      'Form'
+    );
+    expect(warnings).toHaveLength(0);
+    expect(entries[3]).toMatchObject({
+      track: 'Champion',
+      itemName: 'Slitherscale Girdle',
+      upgradeRank: '2/6',
+      note: ''
+    });
+    expect(entries[4]).toMatchObject({
+      track: 'Hero',
+      itemName: 'Breastplate of the Final Defense',
+      upgradeRank: '3/6',
+      note: 'rolled crit'
+    });
+    expect(entries[0].upgradeRank).toBe(null);
+  });
+  it('keeps a bracketed item level in the note rather than dropping it (#865)', () => {
+    const { entries } = parseFound(
+      foundRows([
+        ['5/1/2026 0:07:05', 'Humble-Tichondrius', 'Phoenix', '(Mythic 279) Breastplate of the Final Defense ', '']
+      ]),
+      'Form'
+    );
+    expect(entries[3]).toMatchObject({
+      track: 'Myth',
+      itemName: 'Breastplate of the Final Defense',
+      upgradeRank: null,
+      note: 'ilvl 279'
+    });
   });
   it('skips fully blank rows silently', () => {
     const { entries, warnings } = parseFound(foundRows([['', '', '', '', '']]), 'Form');
@@ -792,10 +830,19 @@ describe('matchSales', () => {
     expect(rows.find((r) => r.finderName === 'Teamless-Realm')).toBeUndefined();
     expect(warnings.join('\n')).toMatch(/Teamless-Realm.*no team/i);
   });
-  it('flags a suspected duplicate submission (same finder, item and track within 48h) but imports it', () => {
+  it('stays quiet about two same-item finds a minute apart at different ranks, which are two items (#865)', () => {
     const { rows, warnings } = run([
       ['8/31/2026 21:40:34', 'Repeat-Dalaran', 'Wrathless', 'Champ Belt of Examples', '2/6'],
       ['8/31/2026 21:41:09', 'Repeat-Dalaran', 'Wrathless', 'Champ Belt of Examples', '3/6']
+    ]);
+    const pair = rows.filter((r) => r.finderName === 'Repeat-Dalaran');
+    expect(pair.map((r) => r.upgradeRank)).toEqual(['2/6', '3/6']);
+    expect(warnings.join(' ')).not.toMatch(/possible duplicate/i);
+  });
+  it('flags a suspected duplicate submission (same finder, item, track and rank within 48h) but imports it', () => {
+    const { rows, warnings } = run([
+      ['8/31/2026 21:40:34', 'Repeat-Dalaran', 'Wrathless', 'Champ Belt of Examples', '2/6'],
+      ['8/31/2026 21:41:09', 'Repeat-Dalaran', 'Wrathless', 'Champ Belt of Examples', '2/6']
     ]);
     expect(rows.filter((r) => r.finderName === 'Repeat-Dalaran')).toHaveLength(2);
     expect(warnings.join('\n')).toMatch(/possible duplicate/i);
@@ -843,7 +890,7 @@ describe('boeSql', () => {
     });
     expect(sql).toContain('insert into boe_items (');
     expect(sql).toContain(
-      'team_id, player_id, finder_name, item_id, item_name, track, season, note, status, found_at, sold_at, payout_paid_at, sale_price, finder_payout, guild_cut, payout_floor, payout_pivot'
+      'team_id, player_id, finder_name, item_id, item_name, track, upgrade_rank, season, note, status, found_at, sold_at, payout_paid_at, sale_price, finder_payout, guild_cut, payout_floor, payout_pivot'
     );
     expect(sql).toContain('where not exists');
     expect(sql).toContain('t.team_id = v.team_id and t.found_at = v.found_at');
@@ -852,6 +899,19 @@ describe('boeSql', () => {
     expect(sql).toContain("('2026-03-21 19:09:36'::timestamp at time zone 'America/New_York')");
     expect(sql).toContain("('2026-03-23 00:00:00'::timestamp at time zone 'America/New_York')");
     expect(sql).toContain('617518, 123504, 494014, 20000, 100000');
+  });
+  it('emits the upgrade rank after the track, as text or a typed null (#865)', () => {
+    const { sql } = boeSql(
+      rowsFor([
+        ['6/1/2026 20:00:00', 'Ranked-Thrall', 'Phoenix', 'Hero 2/6 Belt of Examples', ''],
+        ['6/2/2026 20:00:00', 'Plain-Thrall', 'Phoenix', 'Hero Belt of Examples', '']
+      ]),
+      OPTS
+    );
+    const ranked = sql.split('\n').find((l) => l.includes("'Ranked-Thrall'"));
+    expect(ranked).toContain("'Hero', '2/6',");
+    const plain = sql.split('\n').find((l) => l.includes("'Plain-Thrall'"));
+    expect(plain).toContain("'Hero', null::text,");
   });
   it('uses the sale timestamp for payout_paid_at on paid rows', () => {
     const { sql } = boeSql(rowsFor(), OPTS);
@@ -949,5 +1009,35 @@ describe('classifyInputs', () => {
   it('throws when there is no found sheet or more than one', () => {
     expect(() => classifyInputs(['BOE Tracking - Midnight S1.csv'])).toThrow(/Form Responses/);
     expect(() => classifyInputs(['a - Form Responses 1.csv', 'b - Form Responses 2.csv'])).toThrow(/Form Responses/);
+  });
+});
+
+describe('splitItemCell', () => {
+  it('captures the rank and a bracketed level beside the track, and hands the rest to splitTrack', () => {
+    expect(splitItemCell('Widget of Testing - Hero 3/6')).toEqual({
+      track: 'Hero',
+      itemName: 'Widget of Testing',
+      upgradeRank: '3/6',
+      itemLevel: null
+    });
+    expect(splitItemCell('heroic 2/6 widget of testing')).toEqual({
+      track: 'Hero',
+      itemName: 'widget of testing',
+      upgradeRank: '2/6',
+      itemLevel: null
+    });
+    expect(splitItemCell('(Mythic 279) Belt of Examples ')).toEqual({
+      track: 'Myth',
+      itemName: 'Belt of Examples',
+      upgradeRank: null,
+      itemLevel: 279
+    });
+    expect(splitItemCell('Champ Belt of Examples')).toEqual({
+      track: 'Champion',
+      itemName: 'Belt of Examples',
+      upgradeRank: null,
+      itemLevel: null
+    });
+    expect(splitItemCell('')).toEqual({ track: null, itemName: '', upgradeRank: null, itemLevel: null });
   });
 });

@@ -253,6 +253,7 @@ export type Database = {
           item_name: string
           note: string | null
           payout_donated: boolean
+          upgrade_rank: string | null
           payout_floor: number | null
           payout_paid_at: string | null
           payout_pivot: number | null
@@ -277,6 +278,7 @@ export type Database = {
           item_name: string
           note?: string | null
           payout_donated?: boolean
+          upgrade_rank?: string | null
           payout_floor?: number | null
           payout_paid_at?: string | null
           payout_pivot?: number | null
@@ -301,6 +303,7 @@ export type Database = {
           item_name?: string
           note?: string | null
           payout_donated?: boolean
+          upgrade_rank?: string | null
           payout_floor?: number | null
           payout_paid_at?: string | null
           payout_pivot?: number | null
@@ -2563,6 +2566,7 @@ export type Database = {
           p_note?: string
           p_team_id: number
           p_track?: string
+          p_upgrade_rank?: string
         }
         Returns: number
       }

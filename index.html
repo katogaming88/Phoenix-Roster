@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=3.81.3">
+<link rel="stylesheet" href="css/styles.css?v=3.82.0">
 <script>var whTooltips = {colorLinks: true, iconizeLinks: true, iconSize: 'small'};</script>
 <script src="https://wow.zamimg.com/widgets/power.js"></script>
 </head>
@@ -221,17 +221,27 @@
         <label for="boeTeamSelect">Reporting for team</label>
         <select id="boeTeamSelect" class="add-player-input"></select>
         <label for="boeCharName" style="margin-top:0.5rem;">Character (Name-Realm)</label>
-        <input type="text" id="boeCharName" class="add-player-input" autocomplete="off">
+        <input type="text" id="boeCharName" class="add-player-input" autocomplete="off" aria-required="true">
         <label for="boeItemName" style="margin-top:0.5rem;">Item</label>
-        <select id="boeItemName" class="add-player-input">
+        <select id="boeItemName" class="add-player-input" aria-required="true">
           <option value="">Select item</option>
         </select>
         <label for="boeTrack" style="margin-top:0.5rem;">Track</label>
-        <select id="boeTrack" class="add-player-input">
+        <select id="boeTrack" class="add-player-input" aria-required="true">
           <option value="">Select track</option>
           <option value="Champion">Champion</option>
           <option value="Hero">Hero</option>
           <option value="Myth">Myth</option>
+        </select>
+        <label for="boeUpgradeRank" style="margin-top:0.5rem;">Upgrade rank</label>
+        <select id="boeUpgradeRank" class="add-player-input" aria-required="true">
+          <option value="">Select upgrade rank</option>
+          <option value="1/6">1/6</option>
+          <option value="2/6">2/6</option>
+          <option value="3/6">3/6</option>
+          <option value="4/6">4/6</option>
+          <option value="5/6">5/6</option>
+          <option value="6/6">6/6</option>
         </select>
         <label for="boeNote" style="margin-top:0.5rem;">Note (optional)</label>
         <textarea id="boeNote" class="add-player-input" rows="3"></textarea>
@@ -358,17 +368,17 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/common.js?v=3.81.3"></script>
-<script src="js/discord.js?v=3.81.3"></script>
-<script src="js/officer-quick-actions.js?v=3.81.3"></script>
-<script src="js/streamers.js?v=3.81.3"></script>
-<script src="js/news.js?v=3.81.3"></script>
-<script src="js/roster.js?v=3.81.3"></script>
-<script src="js/contact.js?v=3.81.3"></script>
-<script src="js/signup.js?v=3.81.3"></script>
-<script src="js/wishlist.js?v=3.81.3"></script>
-<script src="js/bonusRoll.js?v=3.81.3"></script>
-<script src="js/boe.js?v=3.81.3"></script>
+<script src="js/common.js?v=3.82.0"></script>
+<script src="js/discord.js?v=3.82.0"></script>
+<script src="js/officer-quick-actions.js?v=3.82.0"></script>
+<script src="js/streamers.js?v=3.82.0"></script>
+<script src="js/news.js?v=3.82.0"></script>
+<script src="js/roster.js?v=3.82.0"></script>
+<script src="js/contact.js?v=3.82.0"></script>
+<script src="js/signup.js?v=3.82.0"></script>
+<script src="js/wishlist.js?v=3.82.0"></script>
+<script src="js/bonusRoll.js?v=3.82.0"></script>
+<script src="js/boe.js?v=3.82.0"></script>
 <script>
 renderSiteNav('public');
 document.getElementById('versionNum').textContent = VERSION;

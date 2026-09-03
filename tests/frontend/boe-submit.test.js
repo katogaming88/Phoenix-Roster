@@ -27,7 +27,8 @@ const CARD_ELS = [
   'boeTeamSelect',
   'boeViewWrap',
   'navBoE',
-  'boeDonate'
+  'boeDonate',
+  'boeUpgradeRank'
 ];
 
 function makeSandbox({ search = '' } = {}) {
@@ -123,6 +124,7 @@ function fillCard(el) {
   el('boeCharName').value = '  Kae-Tichondrius  ';
   el('boeItemName').value = '  Voidglass Cloak  ';
   el('boeTrack').value = 'Hero';
+  el('boeUpgradeRank').value = '2/6';
   el('boeNote').value = '  from trash before boss 2  ';
 }
 
@@ -141,7 +143,8 @@ describe('submitBoeFound RPC payload', () => {
       p_item_name: 'Voidglass Cloak',
       p_track: 'Hero',
       p_note: 'from trash before boss 2',
-      p_donate: false
+      p_donate: false,
+      p_upgrade_rank: '2/6'
     });
   });
 
@@ -178,17 +181,48 @@ describe('submitBoeFound RPC payload', () => {
     expect(calls.find((c) => c.kind === 'invoke').body.team).toBe('Wrathless');
   });
 
-  it('sends null for an unselected track and an empty note', async () => {
+  it('sends null for an empty note', async () => {
+    const { sandbox, el } = makeSandbox();
+    const { calls, client } = recorderClient();
+    sandbox.supabaseClient = client;
+    fillCard(el);
+    el('boeNote').value = '   ';
+    await sandbox.submitBoeFound();
+    expect(calls.find((c) => c.kind === 'rpc').params.p_note).toBe(null);
+  });
+
+  // Track and rank are required (#865): the form refuses before any call, on
+  // the status region like the name and item checks.
+  it('refuses an unselected track before any call', async () => {
     const { sandbox, el } = makeSandbox();
     const { calls, client } = recorderClient();
     sandbox.supabaseClient = client;
     fillCard(el);
     el('boeTrack').value = '';
-    el('boeNote').value = '   ';
     await sandbox.submitBoeFound();
-    const rpc = calls.find((c) => c.kind === 'rpc');
-    expect(rpc.params.p_track).toBe(null);
-    expect(rpc.params.p_note).toBe(null);
+    expect(calls).toEqual([]);
+    expect(el('boeStatus').textContent).toBe('Please select the track.');
+  });
+
+  it('refuses an unselected upgrade rank before any call', async () => {
+    const { sandbox, el } = makeSandbox();
+    const { calls, client } = recorderClient();
+    sandbox.supabaseClient = client;
+    fillCard(el);
+    el('boeUpgradeRank').value = '';
+    await sandbox.submitBoeFound();
+    expect(calls).toEqual([]);
+    expect(el('boeStatus').textContent).toBe('Please select the upgrade rank.');
+  });
+
+  it('resets the rank select with the other fields on success', async () => {
+    const { sandbox, el } = makeSandbox();
+    const { client } = recorderClient();
+    sandbox.supabaseClient = client;
+    fillCard(el);
+    await sandbox.submitBoeFound();
+    expect(el('boeUpgradeRank').value).toBe('');
+    expect(el('boeTrack').value).toBe('');
   });
 });
 
@@ -208,7 +242,8 @@ describe('boe-webhook invoke', () => {
       item: 'Voidglass Cloak',
       track: 'Hero',
       note: 'from trash before boss 2',
-      donate: false
+      donate: false,
+      upgradeRank: '2/6'
     });
   });
 
