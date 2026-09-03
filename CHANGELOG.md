@@ -8,6 +8,29 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.78.2] - 2026-09-02
+
+### Frontend
+
+- Anything you can reach with Tab now shows a gold focus ring (#435). Ten
+  controls used to switch their outline off and signal focus with a 1px
+  border colour change instead, which is close to invisible: the player
+  picker, the officer password box, the roster search and trial-promotion
+  inputs, the attendance slider and its two selects, the signup text fields
+  and the add-player box. The guild page has had the ring since 3.67.0 (and
+  the BoE Sales page shares its styling), and the other three pages have it
+  now too. The ring answers the keyboard rather than the mouse, so clicking
+  a button or a link does not leave one behind, while clicking into a text
+  box or a select does show one.
+- Nav tooltips appear when you tab onto a nav item instead of only on hover,
+  so they are reachable without a mouse. Clicking a nav item still does not
+  pop its tooltip over the view it just opened.
+- The signup form can be filled in by keyboard. Its main-spec and role
+  radios and its off-spec checkboxes were hidden outright, which took them
+  out of the tab order and out of screen readers and left the form
+  mouse-only. Arrow keys move between specs now, Space toggles an off spec,
+  and the chip you are on shows a ring.
+
 ## [3.78.1] - 2026-09-02
 
 ### Frontend
