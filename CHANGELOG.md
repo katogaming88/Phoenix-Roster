@@ -16,6 +16,13 @@ with each release split into `### Frontend` (drives the version number) and
   banked, it shows the depositor a base item level with no track or upgrade rank, so they can no
   longer read either off themselves.
 
+### Backend
+
+- The BoE catalog script drops its alias route (`scripts/boe-names/aliases.txt`, `parseAliasesFile`
+  and the alias block in the generated SQL) now that the Google Form is closed (#750): the picker
+  sends the catalog spelling, so a misspelled row is a manager's Edit. The generated catalog file
+  links rows by name only.
+
 ## [3.82.1] - 2026-09-03
 
 ### Frontend
