@@ -42,6 +42,7 @@ const ids = (html) => [...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]);
 const labelTargets = (html) => [...html.matchAll(/<label[^>]*\sfor="([^"]+)"/g)].map((m) => m[1]);
 const controls = (html) => [...html.matchAll(/<(?:input|select|textarea)[^>]*\sid="([^"]+)"/g)].map((m) => m[1]);
 const labelledBy = (html) => [...html.matchAll(/\saria-labelledby="([^"]+)"/g)].map((m) => m[1]);
+const describedBy = (html) => [...html.matchAll(/\saria-describedby="([^"]+)"/g)].map((m) => m[1]);
 // A bare href="#" is a no-op link paired with an onclick, not a navigation
 // target. It is its own accessibility problem and #440 owns it; here it would
 // only ever read as an anchor pointing at nothing.
@@ -57,11 +58,12 @@ describe('the extractors can actually see markup', () => {
   const index = read('index.html');
   const guild = read('guild.html');
 
-  it('finds ids, labels, controls and aria-labelledby on index.html', () => {
+  it('finds ids, labels, controls, aria-labelledby and aria-describedby on index.html', () => {
     expect(ids(index).length).toBeGreaterThan(20);
     expect(labelTargets(index).length).toBeGreaterThan(0);
     expect(controls(index).length).toBeGreaterThan(0);
     expect(labelledBy(index).length).toBeGreaterThan(0);
+    expect(describedBy(index).length).toBeGreaterThan(0);
   });
 
   it('finds headings and in-page anchors on guild.html', () => {
@@ -129,6 +131,10 @@ describe.each(PAGES)('%s references resolve (#437)', (page) => {
   // and no in-page anchors, and requiring one would be inventing a rule.
   it('every aria-labelledby points at an id that exists', () => {
     expect(labelledBy(html).filter((r) => !r.split(/\s+/).every((id) => present.has(id)))).toEqual([]);
+  });
+
+  it('every aria-describedby points at an id that exists', () => {
+    expect(describedBy(html).filter((r) => !r.split(/\s+/).every((id) => present.has(id)))).toEqual([]);
   });
 
   it('every in-page anchor points at an id that exists', () => {
@@ -203,5 +209,20 @@ describe('boe.html specifics (#864)', () => {
 
   it('links back to the guild page', () => {
     expect(html).toMatch(/href="guild\.html"/);
+  });
+});
+
+describe('index.html specifics', () => {
+  const html = read('index.html');
+
+  // The donate checkbox (#862) shipped with no explanation beside it, so
+  // raiders kept typing "donate" into the note instead. The explanation is a
+  // paragraph the checkbox points at through aria-describedby, so a screen
+  // reader hears it with the control and not as stray text above it.
+  it('explains the donate option beside its checkbox, and the checkbox points at the explanation', () => {
+    expect(new Set(ids(html)).has('boeDonateHelp')).toBe(true);
+    const box = html.match(/<input[^>]*\sid="boeDonate"[^>]*>/);
+    expect(box).not.toBeNull();
+    expect(box[0]).toMatch(/aria-describedby="boeDonateHelp"/);
   });
 });

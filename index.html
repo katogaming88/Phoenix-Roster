@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=3.81.2">
+<link rel="stylesheet" href="css/styles.css?v=3.81.3">
 <script>var whTooltips = {colorLinks: true, iconizeLinks: true, iconSize: 'small'};</script>
 <script src="https://wow.zamimg.com/widgets/power.js"></script>
 </head>
@@ -235,7 +235,8 @@
         </select>
         <label for="boeNote" style="margin-top:0.5rem;">Note (optional)</label>
         <textarea id="boeNote" class="add-player-input" rows="3"></textarea>
-        <label for="boeDonate" style="margin-top:0.5rem;display:flex;align-items:center;gap:0.5rem;cursor:pointer;"><input type="checkbox" id="boeDonate"> Donate my finder's cut to the guild</label>
+        <p id="boeDonateHelp" style="margin:0.75rem 0 0;color:var(--text);font-size:0.95rem;">Some raiders have been offering to donate their finder's fee to the guild. While we appreciate the generosity, there is no obligation to do so! If you want to anyway, check this box.</p>
+        <label for="boeDonate" style="margin-top:0.35rem;display:flex;align-items:center;gap:0.5rem;cursor:pointer;"><input type="checkbox" id="boeDonate" aria-describedby="boeDonateHelp"> I'd like to donate my finder's fee to the guild</label>
         <div style="display:flex;align-items:center;gap:0.75rem;margin-top:0.75rem;">
           <button type="button" class="btn btn-gold" id="boeSubmitBtn" onclick="submitBoeFound()">Submit</button>
           <span id="boeStatus" role="status" style="font-size:0.92rem;color:var(--heal);"></span>
@@ -357,17 +358,17 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/common.js?v=3.81.2"></script>
-<script src="js/discord.js?v=3.81.2"></script>
-<script src="js/officer-quick-actions.js?v=3.81.2"></script>
-<script src="js/streamers.js?v=3.81.2"></script>
-<script src="js/news.js?v=3.81.2"></script>
-<script src="js/roster.js?v=3.81.2"></script>
-<script src="js/contact.js?v=3.81.2"></script>
-<script src="js/signup.js?v=3.81.2"></script>
-<script src="js/wishlist.js?v=3.81.2"></script>
-<script src="js/bonusRoll.js?v=3.81.2"></script>
-<script src="js/boe.js?v=3.81.2"></script>
+<script src="js/common.js?v=3.81.3"></script>
+<script src="js/discord.js?v=3.81.3"></script>
+<script src="js/officer-quick-actions.js?v=3.81.3"></script>
+<script src="js/streamers.js?v=3.81.3"></script>
+<script src="js/news.js?v=3.81.3"></script>
+<script src="js/roster.js?v=3.81.3"></script>
+<script src="js/contact.js?v=3.81.3"></script>
+<script src="js/signup.js?v=3.81.3"></script>
+<script src="js/wishlist.js?v=3.81.3"></script>
+<script src="js/bonusRoll.js?v=3.81.3"></script>
+<script src="js/boe.js?v=3.81.3"></script>
 <script>
 renderSiteNav('public');
 document.getElementById('versionNum').textContent = VERSION;
