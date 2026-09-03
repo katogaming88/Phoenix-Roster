@@ -1507,3 +1507,67 @@ describe('Donate to Guild (#862)', () => {
     expect(loaded.els.guildBoeAwaiting.innerHTML).toContain('>Donate to Guild</button>');
   });
 });
+
+// A donated payout pays the finder nothing and the guild everything, and
+// History has to read that way, not show the policy cut beside a Donated
+// badge (Russell, 2026-09-02, on the first cut of #862). The stored split
+// stays the policy record, which is what Undo Payout puts back, so this is a
+// display rule shared by the row, the summary and the per-team line.
+describe('donated rows in History read finder 0, guild whole (#862 follow-up)', () => {
+  const flagged = (row) => Object.assign(row, { payout_donated: true });
+
+  it('a donated paid row shows Finder payout 0g and the whole amount as guild cut', async () => {
+    const { client } = makeBoeClient({ items: [flagged(PAID())], listings: [], rpc: managerRpc() });
+    const { els } = await build({ client });
+    const html = els.guildBoeHistory.innerHTML;
+    expect(html).toContain('<td>0g</td>');
+    expect(html).toContain('<td>100,000g</td>');
+    expect(html).not.toContain('<td>20,000g</td>');
+    expect(html).not.toContain('<td>80,000g</td>');
+    expect(html).toContain('>Donated</span>');
+  });
+
+  it('a paid row without the flag keeps its split', async () => {
+    const { client } = makeBoeClient({ items: [PAID()], listings: [], rpc: managerRpc() });
+    const { els } = await build({ client });
+    const html = els.guildBoeHistory.innerHTML;
+    expect(html).toContain('<td>20,000g</td>');
+    expect(html).toContain('<td>80,000g</td>');
+    expect(html).not.toContain('<td>0g</td>');
+  });
+
+  it('a donating sold row in Awaiting keeps the policy split until a manager settles it', async () => {
+    const { client } = makeBoeClient({ items: [flagged(SOLD())], listings: [], rpc: managerRpc() });
+    const { els } = await build({ client });
+    const html = els.guildBoeAwaiting.innerHTML;
+    expect(html).toContain('<td>50,000g</td>');
+    expect(html).toContain('<td>200,000g</td>');
+    expect(html).not.toContain('<td>0g</td>');
+  });
+
+  it('Donate to Guild lands the row in History reading 0g and the full sale as guild cut', async () => {
+    const els = { 'boe-status-3': makeEl() };
+    const { client } = makeBoeClient({ items: [SOLD()], listings: [], rpc: managerRpc() });
+    const loaded = await build({ client, els });
+    loaded.sandbox.donateBoePayout(3, makeEl());
+    await flush();
+    const html = els.guildBoeHistory.innerHTML;
+    expect(html).toContain('<td>0g</td>');
+    expect(html).toContain('<td>250,000g</td>');
+    expect(html).not.toContain('<td>50,000g</td>');
+  });
+
+  it('Undo Payout puts the policy split back on the Awaiting row', async () => {
+    const { client } = makeBoeClient({
+      items: [flagged(PAID())],
+      listings: [],
+      rpc: { boe_revert: () => ({ data: 'sold', error: null }) }
+    });
+    const loaded = await build({ client });
+    loaded.sandbox.revertBoe(4, makeEl());
+    await flush();
+    const html = loaded.els.guildBoeAwaiting.innerHTML;
+    expect(html).toContain('<td>20,000g</td>');
+    expect(html).toContain('<td>80,000g</td>');
+  });
+});

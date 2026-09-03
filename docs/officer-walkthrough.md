@@ -528,8 +528,8 @@ A summary strip and three sections:
   **Mark Paid** once the finder has their gold; the row moves to History. **Donate to Guild**
   records the same settlement with the finder's cut kept by the guild
   ([#862](https://github.com/katogaming88/WGA-Raid-Hub/issues/862)): History reads Donated
-  instead of Paid and guild income counts that cut, while the split on the row stays what policy
-  said. A row whose finder ticked the donate box shows a Donating marker in its Status cell so
+  instead of Paid with Finder payout 0g and the whole amount as guild cut, and guild income counts
+  it. The split stored on the row stays what policy said, which is what Undo Payout puts back. A row whose finder ticked the donate box shows a Donating marker in its Status cell so
   you know which button to reach for; Mark Paid on it clears the marker, because the button
   decides. An undone payout keeps the marker. **Undo Sale** puts a sale recorded by mistake
   back in Open.

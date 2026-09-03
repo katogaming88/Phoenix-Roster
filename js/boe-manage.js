@@ -194,6 +194,20 @@ function _boeStatusCell(item) {
   return html;
 }
 
+// What a settled row actually paid out (#862 follow-up, Russell 2026-09-02):
+// a donated payout pays the finder nothing and the guild everything, so
+// History and every total read that way. The stored split stays the policy
+// record, which is what Undo Payout puts back, so this is a display rule
+// and not a rewrite of the row.
+function _boeFinderPaid(item) {
+  return item.status === 'paid' && item.payout_donated ? 0 : item.finder_payout;
+}
+
+function _boeGuildKept(item) {
+  if (item.status === 'paid' && item.payout_donated) return (item.guild_cut || 0) + (item.finder_payout || 0);
+  return item.guild_cut;
+}
+
 function _boeMoney(n) {
   return n == null ? '' : formatGold(n) + 'g';
 }
@@ -226,8 +240,7 @@ function _boeTeamCreditLine() {
   _boeItems.forEach(function (item) {
     var row = byTeam[item.team_id] || (byTeam[item.team_id] = { found: 0, gold: 0 });
     row.found++;
-    if (item.status === 'sold' || item.status === 'paid') row.gold += item.guild_cut || 0;
-    if (item.status === 'paid' && item.payout_donated) row.gold += item.finder_payout || 0;
+    if (item.status === 'sold' || item.status === 'paid') row.gold += _boeGuildKept(item) || 0;
   });
 
   var teams = Object.keys(byTeam).map(function (id) {
@@ -366,13 +379,11 @@ function renderBoeManage() {
     if (item.status === 'found' || item.status === 'listed') openRows.push(item);
     else if (item.status === 'sold') awaitingRows.push(item);
     else if (item.status === 'paid' || item.status === 'retired') historyRows.push(item);
-    if (item.status === 'sold' || item.status === 'paid') guildIncome += item.guild_cut || 0;
-    // A donated cut is guild income once settled (#862). A sold row that is
-    // donating stays outstanding until a manager settles it.
-    if (item.status === 'paid' && item.payout_donated) {
-      guildIncome += item.finder_payout || 0;
-      donated += item.finder_payout || 0;
-    }
+    // Guild income is what the guild kept, which on a donated payout is the
+    // whole amount. A sold row that is donating stays outstanding until a
+    // manager settles it.
+    if (item.status === 'sold' || item.status === 'paid') guildIncome += _boeGuildKept(item) || 0;
+    if (item.status === 'paid' && item.payout_donated) donated += item.finder_payout || 0;
     if (item.status === 'sold') outstanding += item.finder_payout || 0;
   });
   openRows.sort(function (a, b) {
@@ -568,10 +579,10 @@ function renderBoeManage() {
         _boeMoney(item.sale_price) +
         '</td>' +
         '<td>' +
-        _boeMoney(item.finder_payout) +
+        _boeMoney(_boeFinderPaid(item)) +
         '</td>' +
         '<td>' +
-        _boeMoney(item.guild_cut) +
+        _boeMoney(_boeGuildKept(item)) +
         '</td>';
       if (_boeCanManage) {
         cells +=

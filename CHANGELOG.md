@@ -8,6 +8,14 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.81.1] - 2026-09-02
+
+### Frontend
+
+- A donated payout now reads the way it happened (#862): the History row shows Finder payout 0g
+  and the whole amount as guild cut, instead of the policy split beside a Donated badge. The
+  totals already counted it that way; the row did not. Undo Payout still restores the policy split.
+
 ## [3.81.0] - 2026-09-02
 
 ### Frontend
