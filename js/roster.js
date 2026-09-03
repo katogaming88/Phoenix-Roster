@@ -87,12 +87,14 @@ function showView(name) {
   if (widget) widget.classList.toggle('stream-widget-hidden', name === 'streamers' || name === 'signup');
 
   // Reflect into the URL hash so a reload can restore the view (#517). Only
-  // these three are in scope -- 'profile' sets its own hash (with the player)
+  // these four are in scope -- 'profile' sets its own hash (with the player)
   // from renderProfile() instead, right after this runs. Every other view
   // (signup, history, about, news, help) is out of scope for now; clear the
   // hash for them so a stale '#roster'/'#profile/...' from before doesn't win
-  // on the next reload and land the wrong view.
-  var hashByView = { landing: '', roster: 'roster', streamers: 'streams' };
+  // on the next reload and land the wrong view. 'boe' has to be here too, not
+  // just on the read side below, or every visit to the tab clears its own
+  // hash right back out and a refresh loses the tab.
+  var hashByView = { landing: '', roster: 'roster', streamers: 'streams', boe: 'boe' };
   if (name !== 'profile') setViewHash(Object.prototype.hasOwnProperty.call(hashByView, name) ? hashByView[name] : '');
 }
 
