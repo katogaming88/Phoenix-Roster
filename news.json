@@ -1,5 +1,13 @@
 [
   {
+    "date": "2026-09-03",
+    "category": "Feature",
+    "version": "3.81.2",
+    "title": "Report a found BoE right from the website",
+    "body": "Found a BoE while raiding with the guild? There's a BoE tab in the nav now -- fill in your character, the item, and its track, and officers take it from there. Once it lists and sells, you get a cut of the sale (or you can donate it to the guild bank instead). Officers, BoE managers, and site admins track every find end to end -- listed, sold, paid, or retired -- on its own BoE Sales page, reachable from the Guild page's nav.",
+    "pinned": true
+  },
+  {
     "date": "2026-08-27",
     "category": "Feature",
     "version": "3.69.0",
@@ -46,8 +54,7 @@
     "category": "Feature",
     "version": "3.51.0",
     "title": "Raider.IO sync + tier-progress priority weighting",
-    "body": "Your BiS List now has a Sync from Raider.IO button that checks your equipped gear and auto-marks tagged tier pieces as obtained, and shows your tier-set progress as a Tier: N/5 badge. Priority order for tier-token drops now factors that in too -- raiders closer to their next set bonus rank higher.",
-    "pinned": true
+    "body": "Your BiS List now has a Sync from Raider.IO button that checks your equipped gear and auto-marks tagged tier pieces as obtained, and shows your tier-set progress as a Tier: N/5 badge. Priority order for tier-token drops now factors that in too -- raiders closer to their next set bonus rank higher."
   },
   {
     "date": "2026-08-03",
