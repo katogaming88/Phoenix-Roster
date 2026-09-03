@@ -1357,7 +1357,8 @@ describe('catalog picker on the edit form (#875)', () => {
       item_name: 'Feet - Heroic',
       track: 'Hero',
       note: null,
-      item_id: null
+      item_id: null,
+      upgrade_rank: null
     });
     expect(loaded.spies.audit[0].detail).toContain('catalog link was 7, now (none)');
   });
@@ -1602,7 +1603,7 @@ describe('upgrade rank (#865)', () => {
   it('the edit form offers the six ranks with the stored one selected, and a blank option for a row without one', async () => {
     const rows = [
       boeRow({ id: 1, upgrade_rank: '2/6' }),
-      boeRow({ id: 2, upgrade_rank: null, found_at: '2026-08-19T01:00:00Z' })
+      boeRow({ id: 2, upgrade_rank: null, found_at: '2026-08-22T01:00:00Z' })
     ];
     const { client } = makeBoeClient({ items: rows, listings: [], rpc: managerRpc() });
     const { els } = await build({ client });

@@ -902,13 +902,16 @@ describe('boeSql', () => {
   });
   it('emits the upgrade rank after the track, as text or a typed null (#865)', () => {
     const { sql } = boeSql(
-      rowsFor([['6/1/2026 20:00:00', 'Ranked-Thrall', 'Phoenix', 'Hero 2/6 Belt of Examples', '']]),
+      rowsFor([
+        ['6/1/2026 20:00:00', 'Ranked-Thrall', 'Phoenix', 'Hero 2/6 Belt of Examples', ''],
+        ['6/2/2026 20:00:00', 'Plain-Thrall', 'Phoenix', 'Hero Belt of Examples', '']
+      ]),
       OPTS
     );
     const ranked = sql.split('\n').find((l) => l.includes("'Ranked-Thrall'"));
     expect(ranked).toContain("'Hero', '2/6',");
-    const openLine = sql.split('\n').find((l) => l.includes("'found'") && !l.includes('Ranked-Thrall'));
-    expect(openLine).toContain('null::text,');
+    const plain = sql.split('\n').find((l) => l.includes("'Plain-Thrall'"));
+    expect(plain).toContain("'Hero', null::text,");
   });
   it('uses the sale timestamp for payout_paid_at on paid rows', () => {
     const { sql } = boeSql(rowsFor(), OPTS);
