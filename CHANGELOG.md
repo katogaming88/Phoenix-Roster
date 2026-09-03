@@ -8,6 +8,15 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.81.3] - 2026-09-03
+
+### Frontend
+
+- The found form now says what the donate checkbox is for (#862 follow-up): a short note above it
+  explains that some finders donate their cut, that there is no obligation to, and that the box is
+  how to say so. Raiders had been typing "donate" into the note because nothing on the form said
+  the box was there. The checkbox reads "I'd like to donate my finder's fee to the guild".
+
 ## [3.81.2] - 2026-09-03
 
 ### Frontend
