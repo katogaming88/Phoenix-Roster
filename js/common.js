@@ -3035,7 +3035,7 @@ function fetchSupabaseItems() {
   var query = supabaseClient
     .from('items')
     .select(
-      'id, wow_item_id, name, slot, armor_type, is_placeholder, icon, wcl_zone_id, secondary_stats, main_stats, weapon_subtype, is_ptr'
+      'id, wow_item_id, name, slot, armor_type, is_placeholder, icon, wcl_zone_id, secondary_stats, main_stats, weapon_subtype, is_ptr, is_boe'
     )
     .then(
       function (result) {
@@ -3171,9 +3171,25 @@ function buildItemMaps(rows) {
   var itemMainStats = {};
   var itemWeaponSubtypes = {};
   var itemIsPtr = {};
+  var boeItems = [];
   (rows || []).forEach(function (row) {
     var name = String(row.name || '').trim();
     if (!name) return;
+    // A BoE (#875) is catalog for the found form's picker and for nothing
+    // else: the BiS grid, the wishlist, the Priority tab, the boss filters
+    // and the equipped-gear lookup never see one, which is the point of the
+    // flag. Collected here, sorted below, handed out as DATA.boeItems.
+    if (row.is_boe) {
+      boeItems.push({
+        id: row.id,
+        name: name,
+        slot: row.slot || '',
+        armorType: row.armor_type || null,
+        icon: row.icon || null,
+        wclZoneId: row.wcl_zone_id == null ? null : row.wcl_zone_id
+      });
+      return;
+    }
     itemSlots[name] = row.is_placeholder ? '' : row.slot || '';
     if (row.armor_type) itemArmorTypes[name] = row.armor_type;
     if (row.is_placeholder) itemPlaceholders[name] = true;
@@ -3196,7 +3212,11 @@ function buildItemMaps(rows) {
     if (row.weapon_subtype) itemWeaponSubtypes[name] = row.weapon_subtype;
     if (row.is_ptr) itemIsPtr[name] = true;
   });
+  boeItems.sort(function (a, b) {
+    return a.name.localeCompare(b.name);
+  });
   return {
+    boeItems: boeItems,
     itemSlots: itemSlots,
     itemArmorTypes: itemArmorTypes,
     itemPlaceholders: itemPlaceholders,
@@ -3210,6 +3230,20 @@ function buildItemMaps(rows) {
     itemWeaponSubtypes: itemWeaponSubtypes,
     itemIsPtr: itemIsPtr
   };
+}
+
+// Writes the BoE catalog names into the <datalist> the found form (index.html)
+// and the manager's edit form (boe.html) both point at (#875). innerHTML by
+// design: the test sandboxes stub createElement without appendChild, and the
+// list is a handful of names.
+function renderBoeItemDatalist(names) {
+  var list = document.getElementById('boeItemOptions');
+  if (!list) return;
+  list.innerHTML = (names || [])
+    .map(function (n) {
+      return '<option value="' + _esc(n) + '">';
+    })
+    .join('');
 }
 
 // Short display labels for items.secondary_stats' Blizzard-enum values (#560),
@@ -3790,6 +3824,7 @@ function loadData(onCoreReady, onHeavyReady) {
       DATA.itemMainStats = itemMaps.itemMainStats;
       DATA.itemWeaponSubtypes = itemMaps.itemWeaponSubtypes;
       DATA.itemIsPtr = itemMaps.itemIsPtr;
+      DATA.boeItems = itemMaps.boeItems;
       DATA.itemBosses = mapSupabaseItemBosses(itemBossRows);
       var tierTokenMapResult = mapSupabaseTierTokenMap(tierTokenMapRows);
       DATA.tierTokenMap = tierTokenMapResult.map;

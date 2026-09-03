@@ -31,6 +31,9 @@
 
 var _boeItems = [];
 var _boeListings = [];
+// The BoE catalog (#875): items flagged is_boe, id and name, for the edit
+// form's picker and Save's link. Empty when the read fails.
+var _boeCatalog = [];
 var _boeCanManage = false;
 
 // History renders one page at a time (#863): it holds every paid and retired
@@ -78,7 +81,7 @@ function buildBoeManage(canManage) {
       var q = supabaseClient
         .from('boe_items')
         .select(
-          'id, team_id, player_id, finder_name, item_name, track, note, status, found_at, sold_at, payout_paid_at, retired_at, sale_price, finder_payout, guild_cut',
+          'id, team_id, player_id, finder_name, item_id, item_name, track, note, status, found_at, sold_at, payout_paid_at, retired_at, sale_price, finder_payout, guild_cut',
           afterId === null ? { count: 'exact' } : undefined
         )
         .order('id', { ascending: true })
@@ -100,9 +103,34 @@ function buildBoeManage(canManage) {
     { label: 'boe listings' }
   );
 
-  return Promise.all([itemsPromise, listingsPromise]).then(function (results) {
+  // The catalog for the edit form's picker (#875), a public read. Fail-open
+  // to an empty list: a failed read costs the picker and nothing else.
+  // team-read-guard: the BoE catalog, one row per BoE the guild tracks (17 today).
+  var catalogPromise = supabaseClient
+    .from('items')
+    .select('id, name')
+    .eq('is_boe', true)
+    .order('name', { ascending: true })
+    .then(
+      function (result) {
+        return result.error ? [] : result.data || [];
+      },
+      function () {
+        return [];
+      }
+    );
+
+  return Promise.all([itemsPromise, listingsPromise, catalogPromise]).then(function (results) {
     var items = results[0];
     var listings = results[1];
+    _boeCatalog = results[2] || [];
+    if (typeof renderBoeItemDatalist === 'function') {
+      renderBoeItemDatalist(
+        _boeCatalog.map(function (c) {
+          return c.name;
+        })
+      );
+    }
     // fetchAllPaged returns null on error or timeout, never partial rows;
     // no BoEs at all is [] and must stay distinguishable.
     if (items === null || listings === null) {
@@ -233,7 +261,8 @@ var BOE_TRACKS = ['Champion', 'Hero', 'Myth'];
 var BOE_EDIT_COLUMNS = [
   ['item_name', 'item'],
   ['track', 'track'],
-  ['note', 'note']
+  ['note', 'note'],
+  ['item_id', 'catalog link']
 ];
 
 function _boeEditForm(item) {
@@ -253,7 +282,7 @@ function _boeEditForm(item) {
     '" style="display:none;">' +
     '<br><input id="boe-edit-name-' +
     id +
-    '" aria-label="Item name" value="' +
+    '" list="boeItemOptions" aria-label="Item name" value="' +
     _esc(item.item_name || '') +
     '" style="width:14rem;"> ' +
     '<select id="boe-edit-track-' +
@@ -790,7 +819,21 @@ function _boeEditValues(id) {
   var name = nameEl ? String(nameEl.value || '').trim() : '';
   var track = trackEl ? String(trackEl.value || '').trim() : '';
   var note = noteEl ? String(noteEl.value || '').trim() : '';
-  return { item_name: name, track: track || null, note: note || null };
+  // A catalog match (#875) stores the catalog spelling and the link; anything
+  // else stores the text as typed with no link.
+  var hit = _boeCatalogHit(name);
+  return { item_name: hit ? hit.name : name, track: track || null, note: note || null, item_id: hit ? hit.id : null };
+}
+
+function _boeCatalogHit(name) {
+  var key = String(name || '')
+    .trim()
+    .toLowerCase();
+  if (!key) return null;
+  for (var i = 0; i < _boeCatalog.length; i++) {
+    if (String(_boeCatalog[i].name).toLowerCase() === key) return _boeCatalog[i];
+  }
+  return null;
 }
 
 // Which editable columns differ between the row and the form, with both values
@@ -809,7 +852,8 @@ function _boeEditChanges(item, values) {
 // raider's original words survive a rewrite of the note.
 function _boeEditDetail(changes) {
   var quote = function (v) {
-    return v == null ? '(none)' : '"' + v + '"';
+    if (v == null) return '(none)';
+    return typeof v === 'number' ? String(v) : '"' + v + '"';
   };
   return changes
     .map(function (c) {

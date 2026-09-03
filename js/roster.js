@@ -1026,6 +1026,9 @@ function bootRosterApp() {
         buildProgression();
         buildRecentLoot();
         buildStreamWidget();
+        // The BoE picker's catalog rides the items read (#875), which lands
+        // here rather than at core-ready where initBoeCard() ran.
+        if (typeof refreshBoeItemOptions === 'function') refreshBoeItemOptions();
         var sel = document.getElementById('playerSelect');
         var profileWrap = document.getElementById('profileViewWrap');
         if (sel && sel.value && profileWrap && profileWrap.classList.contains('active')) {

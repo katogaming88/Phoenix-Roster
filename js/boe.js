@@ -189,6 +189,53 @@ function selectedBoeTeamSlug() {
   return slug && TEAMS[slug] ? slug : TEAM_SLUG;
 }
 
+// The item picker (#875). DATA.boeItems is the season catalog common.js
+// collects out of the items read. The datalist offers the viewed season's
+// rows (by wcl zone, through the helper the season filter uses, which fails
+// open to every BoE when the season has no zones) plus any unscoped row.
+// Filled from the heavy-load callback in js/roster.js, since the items read
+// resolves after initBoeCard() has run; until then the field is the plain
+// text input it always was.
+function boeCatalogEntries() {
+  return (typeof DATA !== 'undefined' && DATA && DATA.boeItems) || [];
+}
+
+function boeSeasonCatalogEntries() {
+  var all = boeCatalogEntries();
+  if (!all.length) return [];
+  var zones = typeof currentZoneIdsForSeason === 'function' ? currentZoneIdsForSeason(resolveSeasonView()) : {};
+  var scoped = Object.keys(zones).length > 0;
+  return all.filter(function (it) {
+    return it.wclZoneId == null || !scoped || zones[it.wclZoneId] === true;
+  });
+}
+
+function refreshBoeItemOptions() {
+  if (typeof featureEnabled === 'function' && !featureEnabled('boe')) return;
+  if (typeof renderBoeItemDatalist !== 'function') return;
+  renderBoeItemDatalist(
+    boeSeasonCatalogEntries().map(function (it) {
+      return it.name;
+    })
+  );
+}
+
+// A typed name that matches the catalog case-insensitively submits with the
+// catalog's spelling. Against the whole catalog, not the viewed season's: a
+// find from last season is still a real item. Anything else goes as typed
+// and submit_boe_found links it if it can.
+function boeCatalogName(typed) {
+  var key = String(typed || '')
+    .trim()
+    .toLowerCase();
+  if (!key) return null;
+  var hit = null;
+  boeCatalogEntries().forEach(function (it) {
+    if (!hit && String(it.name).toLowerCase() === key) hit = it.name;
+  });
+  return hit;
+}
+
 function submitBoeFound() {
   var charEl = document.getElementById('boeCharName');
   var itemEl = document.getElementById('boeItemName');
@@ -212,6 +259,7 @@ function submitBoeFound() {
     if (status) status.textContent = 'Please enter the item name.';
     return;
   }
+  itemName = boeCatalogName(itemName) || itemName;
 
   // The disabled button is the double-click duplicate guard -- there is no
   // server-side dedupe (a raider genuinely can find two of the same item).

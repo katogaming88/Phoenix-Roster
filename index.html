@@ -222,8 +222,9 @@
         <select id="boeTeamSelect" class="add-player-input"></select>
         <label for="boeCharName" style="margin-top:0.5rem;">Character (Name-Realm)</label>
         <input type="text" id="boeCharName" class="add-player-input" autocomplete="off">
-        <label for="boeItemName" style="margin-top:0.5rem;">Item name</label>
-        <input type="text" id="boeItemName" class="add-player-input" autocomplete="off">
+        <label for="boeItemName" style="margin-top:0.5rem;">Item (pick from the list or type it)</label>
+        <input type="text" id="boeItemName" class="add-player-input" autocomplete="off" list="boeItemOptions">
+        <datalist id="boeItemOptions"></datalist>
         <label for="boeTrack" style="margin-top:0.5rem;">Track</label>
         <select id="boeTrack" class="add-player-input">
           <option value="">Select track</option>
