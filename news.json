@@ -4,7 +4,7 @@
     "category": "Feature",
     "version": "3.81.2",
     "title": "Report a found BoE right from the website",
-    "body": "Found a BoE while raiding with the guild? There's a BoE tab in the nav now -- fill in your character, the item, and its track, and officers take it from there. Once it lists and sells, you get a cut of the sale (or you can donate it to the guild bank instead). Officers, BoE managers, and site admins track every find end to end -- listed, sold, paid, or retired -- on its own BoE Sales page, reachable from the Guild page's nav.",
+    "body": "Found a BoE while raiding with the guild? There's a BoE tab in the nav now -- fill in your character, the item, and its track, and officers take it from there. The team field defaults to whichever team's page you're on, but change it if you're not on any team's roster or you raided with a different team that night. Once it lists and sells, you get a cut of the sale (or you can donate it to the guild bank instead). Officers, BoE managers, and site admins track every find end to end -- listed, sold, paid, or retired -- on its own BoE Sales page, reachable from the Guild page's nav.",
     "pinned": true
   },
   {
