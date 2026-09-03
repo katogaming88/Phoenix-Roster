@@ -375,6 +375,7 @@ One row per found Bind-on-Equip, carrying the lifecycle (found -> listed -> sold
 | `team_id`        | int4        | FK -> `teams.id`                                                        |
 | `player_id`      | int4        | FK -> `players.id`, null when the finder is not resolved                |
 | `finder_name`    | text        | Raw name-realm as submitted; kept even when `player_id` resolves        |
+| `finder_discord_id` | text     | Discord id of the signed-in account that submitted the find, stamped by `submit_boe_found()`; null for a signed-out submit, never client-supplied; backfilled from the player chain for the rows whose player reached a member (#889) |
 | `item_id`        | int4        | FK -> `items.id`, opportunistic exact-name match (BoEs are mostly absent from the loot catalog) |
 | `item_name`      | text        | The identity, since `item_id` is usually null                          |
 | `track`          | text        | CHECK Champion/Hero/Myth, or null                                       |

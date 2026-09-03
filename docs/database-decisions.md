@@ -8,6 +8,20 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-03 -- The finder's Discord id is stamped at submit, never client-supplied
+
+Tracking issue: [#889](https://github.com/katogaming88/WGA-Raid-Hub/issues/889), part of the BoE Tracker milestone.
+
+`submit_boe_found()` never read `auth.uid()`: the finder was the typed name, `player_id` resolved only on an exact match with an unarchived roster character on the chosen team, and the raider read policy was `is_own_player(player_id)` alone. On prod 24 of 67 rows carried a `player_id` and 16 of those reached a signed-in member; the other 43 were a typed name and nothing else, every Immolation and Wrathless row among them, since those teams have no roster. A raider who signs in should see the BoEs they reported, on every team, whatever they typed.
+
+The row now carries `finder_discord_id`, stamped inside the RPC from the caller's auth row through a new `current_discord_id()` helper (the same `raw_user_meta_data ->> 'provider_id'` claim that `claim_character()` and the admin grant trios read), null for a signed-out submit. It is never client-supplied: the RPC's arguments are unchanged and the transition trigger's plain-UPDATE list does not include the column, so only the RPC and the one-time backfill write it. The raider read on `boe_items` becomes own player or own Discord id, both sides guarded non-null so a signed-out find never matches an account with none, and `boe_listings` gains the matching read through its parent row (it had no raider read at all, which would have shown a raider's listed find with a blank Listings cell once the page opens to raiders). The 16 rows whose player reached a member were backfilled from `team_members.discord_id`, the string `link_auth_user_to_member()` equates with the provider id at first sign-in.
+
+Out of scope, per the issue: a raider claiming historical rows (asserting that a typed name was theirs is the same attribution problem the typed name already has) and a manager setting the id by hand (a hand-typed 18-digit id is a typo waiting to attach someone else to a payout). Accepted limit: a find reported signed out stays visible to the team's officers and the BoE managers only; the raiders of the teams that never sign in are in that case by design, and the page (#890) says so.
+
+[Full discussion -> #889](https://github.com/katogaming88/WGA-Raid-Hub/issues/889)
+
+---
+
 ## 2026-09-03 -- Raid Schedule admin tab writes directly under Phase 1's existing RLS, no new migration
 
 Tracking issue: [katogaming88/WGA-Raid-Hub#894](https://github.com/katogaming88/WGA-Raid-Hub/issues/894), part of #640.

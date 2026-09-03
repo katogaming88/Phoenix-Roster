@@ -285,6 +285,7 @@ erDiagram
   boolean payout_donated
   text upgrade_rank
   bigint ah_fee
+  text finder_discord_id
 }
 "public.priority_conflict_dismissals" {
   integer id

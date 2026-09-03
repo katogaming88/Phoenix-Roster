@@ -19,10 +19,13 @@ boe_items,BoE managers delete boe_items,public,DELETE,PERMISSIVE,(is_boe_manager
 boe_items,BoE managers update boe_items,public,UPDATE,PERMISSIVE,(is_boe_manager() OR is_site_admin()),(is_boe_manager() OR is_site_admin())
 boe_items,Claude readers read boe_items,claude_readers,SELECT,PERMISSIVE,true,
 boe_items,Officers read boe_items,public,SELECT,PERMISSIVE,"((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_boe_manager() OR is_site_admin())",
-boe_items,Raiders read own boe_items,public,SELECT,PERMISSIVE,is_own_player(player_id),
+boe_items,Raiders read own boe_items,public,SELECT,PERMISSIVE,(is_own_player(player_id) OR ((finder_discord_id IS NOT NULL) AND (finder_discord_id = current_discord_id()))),
 boe_listings,BoE managers delete boe_listings,public,DELETE,PERMISSIVE,(is_boe_manager() OR is_site_admin()),
 boe_listings,Claude readers read boe_listings,claude_readers,SELECT,PERMISSIVE,true,
 boe_listings,Officers read boe_listings,public,SELECT,PERMISSIVE,"((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_boe_manager() OR is_site_admin())",
+boe_listings,Raiders read own boe_listings,public,SELECT,PERMISSIVE,"(EXISTS ( SELECT 1
+   FROM boe_items b
+  WHERE ((b.id = boe_listings.boe_item_id) AND (is_own_player(b.player_id) OR ((b.finder_discord_id IS NOT NULL) AND (b.finder_discord_id = current_discord_id()))))))",
 boe_managers,Claude readers read boe_managers,claude_readers,SELECT,PERMISSIVE,true,
 boe_managers,Officers read boe_managers,public,SELECT,PERMISSIVE,(is_any_team_officer() OR is_site_admin()),
 boe_managers,Site Admins write boe_managers,public,ALL,PERMISSIVE,is_site_admin(),is_site_admin()
