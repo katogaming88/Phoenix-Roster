@@ -1,0 +1,263 @@
+// fetch-boe-items.js
+// Builds the season BoE catalog (#875): resolves each name in
+// scripts/boe-names/*.txt through Wowhead's search-suggestion endpoint and
+// writes data/sql/boe-catalog.sql, one transaction that inserts the rows into
+// `items` under is_boe and links existing boe_items rows to them by name.
+//
+// Why a data file and not a migration: supabase/seed.sql inserts items ids 1
+// to 3 explicitly after migrations run, so sequence-assigned catalog rows in
+// a migration would collide on the primary key at every `supabase db reset`.
+// The file is gitignored (data/) and applied by hand at a checkpoint, the
+// route the history import took (#749):
+//
+//   psql service=wga-admin -X -v ON_ERROR_STOP=1 -f data/sql/boe-catalog.sql
+//
+// Why the suggestion endpoint and not the zone page: the zone page's drops
+// list that fetch-items.js parses holds boss drops only, there is no trash
+// list, so the BoEs are named by hand (one file per raid, the raid's wcl zone
+// id on the first line) and resolved here. Each name must come back as
+// exactly one item hit; anything else is reported and left out, never
+// guessed. The tooltip endpoint fetch-items.js already uses confirms the id.
+//
+// Usage: node scripts/fetch-boe-items.js
+// Requires Node 18+ (native fetch). No external dependencies.
+
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { sqlBool, sqlNumber, sqlString } from './import/lib/sql.js';
+import { fetchIcon } from './fetch-items.js';
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const NAMES_DIR = path.join(HERE, 'boe-names');
+const ALIASES_FILE = path.join(NAMES_DIR, 'aliases.txt');
+const OUT_FILE = path.join(HERE, '..', 'data', 'sql', 'boe-catalog.sql');
+const SUGGEST_URL = 'https://www.wowhead.com/search/suggestions-template?locale=0&q=';
+const USER_AGENT = 'Mozilla/5.0 (compatible; wga-item-seeder/1.0)';
+// Wowhead's suggestion `type` for an item; quests, NPCs and guides carry others.
+const ITEM_TYPE = 3;
+// "Mail Armor" and the like on the footer line; accessories say "Amulet",
+// "Cloak" or "Ring" and have no armor type, matching items.armor_type's CHECK.
+const ARMOR_RE = /^(Plate|Mail|Leather|Cloth) Armor$/;
+// '... goes in the "Head" slot.' Wowhead's slot names are the ones the items
+// table already uses (Head, Shoulder, Waist, Neck, ...).
+const SLOT_RE = /goes in the "([^"]+)" slot/;
+const PAUSE_MS = 800;
+
+function dataLines(text) {
+  return String(text)
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith('#'));
+}
+
+// One file per raid: the raid's raid_zones.wcl_zone_id on the first data
+// line, then one BoE name per line. Blank lines and # comments are skipped.
+export function parseNamesFile(text) {
+  const lines = dataLines(text);
+  const wclZoneId = Number(lines[0]);
+  if (!lines.length || !Number.isInteger(wclZoneId) || wclZoneId <= 0) {
+    throw new Error("The first data line must be the raid's wcl zone id, got: " + JSON.stringify(lines[0] ?? ''));
+  }
+  return { wclZoneId, names: lines.slice(1) };
+}
+
+// Known misspellings, `wrong => Catalog Name`, matched case-insensitively on
+// boe_items.item_name. Spellings only, no prod ids, so the file is tracked.
+export function parseAliasesFile(text) {
+  return dataLines(text).map((line) => {
+    const parts = line.split('=>');
+    if (parts.length !== 2 || !parts[0].trim() || !parts[1].trim()) {
+      throw new Error('An alias line is `wrong spelling => Catalog Name`, got: ' + JSON.stringify(line));
+    }
+    return { from: parts[0].trim(), to: parts[1].trim() };
+  });
+}
+
+// Exactly one item hit under this name (case-insensitive), or null. A hit
+// under a longer name is ignored; two hits under the same name is ambiguous
+// and gets reported rather than guessed.
+export function pickSuggestion(json, name) {
+  const want = String(name).trim().toLowerCase();
+  const hits = ((json && json.results) || []).filter(
+    (r) =>
+      r &&
+      r.type === ITEM_TYPE &&
+      String(r.name || '')
+        .trim()
+        .toLowerCase() === want
+  );
+  if (hits.length !== 1) return null;
+  const hit = hits[0];
+  const armor = ARMOR_RE.exec(hit.pinFooterText || '');
+  const slot = SLOT_RE.exec(hit.pinDescription || '');
+  return {
+    wowItemId: hit.id,
+    name: String(hit.name).trim(),
+    icon: hit.icon || null,
+    armorType: armor ? armor[1] : null,
+    slot: slot ? slot[1] : null
+  };
+}
+
+// The SQL file. Assembled by joining lines, never by String.replace with
+// generated text in the replacement: the do-block's $$ delimiters halve that
+// way and the file only fails 43 statements in (lesson of 2026-08-26).
+export function catalogSql(entries, aliases, now) {
+  const known = new Set(entries.map((e) => e.name.toLowerCase()));
+  for (const alias of aliases) {
+    if (!known.has(alias.to.toLowerCase())) throw new Error('Alias target is not in the catalog: ' + alias.to);
+  }
+  const stamp = (now || new Date()).toISOString().slice(0, 10);
+  const values = entries.map(
+    (e) =>
+      '  (' +
+      [
+        sqlNumber(e.wowItemId),
+        sqlString(e.name),
+        sqlString(e.slot),
+        sqlString(e.armorType),
+        sqlString(e.icon),
+        sqlNumber(e.wclZoneId),
+        sqlBool(true)
+      ].join(', ') +
+      ')'
+  );
+  const lowerNames = entries.map((e) => 'lower(' + sqlString(e.name) + ')').join(', ');
+  const aliasBlocks = aliases.map((a) =>
+    [
+      '  update public.boe_items b',
+      '  set item_id = i.id,',
+      '      item_name = i.name,',
+      "      note = concat_ws('; ', b.note, 'submitted as \"' || b.item_name || '\"')",
+      '  from public.items i',
+      '  where i.is_boe and lower(i.name) = lower(' + sqlString(a.to) + ')',
+      '    and lower(b.item_name) = lower(' + sqlString(a.from) + ') and b.item_id is null;',
+      '  get diagnostics v_count = row_count;',
+      "  raise notice 'Linked % rows submitted as %', v_count, " + sqlString(a.from) + ';'
+    ].join('\n')
+  );
+  const lines = [
+    '-- Generated by scripts/fetch-boe-items.js on ' + stamp + '. Do not edit by hand.',
+    '-- ' + entries.length + ' catalog rows, ' + aliases.length + ' aliases. Apply with:',
+    '--   psql service=wga-admin -X -v ON_ERROR_STOP=1 -f data/sql/boe-catalog.sql',
+    '-- Idempotent: the insert skips a name already in items, and every link',
+    '-- guards on item_id is null.',
+    '',
+    'begin;',
+    '',
+    'insert into public.items (wow_item_id, name, slot, armor_type, icon, wcl_zone_id, is_boe) values',
+    values.join(',\n'),
+    'on conflict ((lower(name))) do nothing;',
+    '',
+    'do $$',
+    'declare',
+    '  v_unflagged text;',
+    '  v_count integer;',
+    'begin',
+    '  -- A listed name that already exists as a boss drop stays unflagged: a',
+    '  -- boss drop flagged is_boe would vanish from BiS. It is reported instead.',
+    "  select string_agg(i.name, ', ' order by i.name) into v_unflagged",
+    '  from public.items i',
+    '  where lower(i.name) in (' + lowerNames + ') and not i.is_boe;',
+    '  if v_unflagged is not null then',
+    "    raise notice 'Listed names that exist unflagged (left alone): %', v_unflagged;",
+    '  end if;',
+    '',
+    '  update public.boe_items b',
+    '  set item_id = i.id, item_name = i.name',
+    '  from public.items i',
+    '  where i.is_boe and lower(b.item_name) = lower(i.name) and b.item_id is null;',
+    '  get diagnostics v_count = row_count;',
+    "  raise notice 'Linked % boe_items rows by name', v_count;",
+    ''
+  ]
+    .concat(aliasBlocks.length ? [aliasBlocks.join('\n\n'), ''] : [])
+    .concat([
+      "  raise notice 'Catalog rows flagged is_boe: %', (select count(*) from public.items where is_boe);",
+      "  raise notice 'boe_items rows still unlinked: %', (select count(*) from public.boe_items where item_id is null);",
+      'end $$;',
+      '',
+      'commit;',
+      ''
+    ]);
+  return lines.join('\n');
+}
+
+async function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function resolveName(name) {
+  const res = await fetch(SUGGEST_URL + encodeURIComponent(name), { headers: { 'User-Agent': USER_AGENT } });
+  if (!res.ok) throw new Error('Suggestion HTTP ' + res.status);
+  return pickSuggestion(await res.json(), name);
+}
+
+async function main() {
+  const files = readdirSync(NAMES_DIR)
+    .filter((f) => f.endsWith('.txt') && f !== path.basename(ALIASES_FILE))
+    .sort();
+  const entries = [];
+  const problems = [];
+  for (const file of files) {
+    const { wclZoneId, names } = parseNamesFile(readFileSync(path.join(NAMES_DIR, file), 'utf8'));
+    for (const name of names) {
+      const hit = await resolveName(name);
+      await sleep(PAUSE_MS);
+      if (!hit) {
+        problems.push(file + ': no single item hit for ' + JSON.stringify(name));
+        continue;
+      }
+      if (!hit.slot) {
+        problems.push(file + ': no slot in the suggestion for ' + name);
+        continue;
+      }
+      try {
+        const confirmed = await fetchIcon(hit.wowItemId);
+        if (confirmed && confirmed !== hit.icon) {
+          problems.push(file + ': tooltip icon ' + confirmed + ' disagrees with the suggestion for ' + name);
+          continue;
+        }
+      } catch (err) {
+        console.log('[WARN] tooltip lookup failed for ' + name + ': ' + err.message + '; keeping the suggestion icon');
+      }
+      await sleep(PAUSE_MS);
+      entries.push(Object.assign({}, hit, { wclZoneId }));
+      console.log(
+        '[OK] ' +
+          name +
+          ' -> ' +
+          hit.wowItemId +
+          ' (' +
+          hit.slot +
+          (hit.armorType ? ', ' + hit.armorType : '') +
+          ', zone ' +
+          wclZoneId +
+          ')'
+      );
+    }
+  }
+  const aliases = existsSync(ALIASES_FILE) ? parseAliasesFile(readFileSync(ALIASES_FILE, 'utf8')) : [];
+  if (problems.length) {
+    console.log('\n' + problems.length + ' name(s) not written:');
+    problems.forEach((p) => console.log('  ' + p));
+  }
+  mkdirSync(path.dirname(OUT_FILE), { recursive: true });
+  writeFileSync(OUT_FILE, catalogSql(entries, aliases, new Date()));
+  console.log(
+    '\nWrote ' +
+      entries.length +
+      ' catalog rows and ' +
+      aliases.length +
+      ' aliases to ' +
+      path.relative(process.cwd(), OUT_FILE)
+  );
+  if (problems.length) process.exitCode = 1;
+}
+
+// Run only when executed directly, so tests can import the module without
+// kicking off the Wowhead fetches.
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
+}

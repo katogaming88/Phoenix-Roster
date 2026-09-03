@@ -8,6 +8,25 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.80.0] - 2026-09-02
+
+### Frontend
+
+- The found-BoE form's item field offers the season's BoEs as you type (#875). Pick one, or
+  type its name in any capitalisation, and the find is recorded under the catalog's spelling
+  and linked to the item; anything else is still accepted as typed, so a find can be reported
+  before the list knows the item. The BoE Sales page's Edit form offers the same list, and a
+  Save that matches it writes the link with the name.
+
+### Backend
+
+- `items.is_boe` marks the season BoE catalog (#875). `submit_boe_found` links a find to a
+  flagged row only, case-insensitively, and stores the catalog spelling; a same-named boss drop
+  no longer links. The catalog rows come from the new `scripts/fetch-boe-items.js`, which
+  resolves the names in `scripts/boe-names/` through Wowhead and writes a data file that also
+  links the existing rows by name and by known misspelling (17 items across the two Midnight
+  raids today).
+
 ## [3.79.0] - 2026-09-02
 
 ### Frontend

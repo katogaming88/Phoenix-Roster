@@ -97,7 +97,8 @@ Reference notes for walking a raider through the site -- not published to raider
 - **Opt out of showing on other teams' pages** keeps their stream off other teams' sites while still showing it here
 
 ### Report a found BoE
-- The **BoE** tab is the replacement for the old BoE Google Form: reporting team, character Name-Realm, item name, track, optional note, Submit
+- The **BoE** tab is the replacement for the old BoE Google Form: reporting team, character Name-Realm, item, track, optional note, Submit
+- The item field offers the season's BoEs as they type ([#875](https://github.com/katogaming88/WGA-Raid-Hub/issues/875)); picking one, or typing its name in any capitalisation, records it under the catalog's spelling. Anything else is still accepted as typed, so a find can be reported before the list knows the item
 - No login needed. The guild-level way in is the **Found a BoE?** card on the guild page ([#781](https://github.com/katogaming88/WGA-Raid-Hub/issues/781)): pick the team you raided with, and it hands off to that team's form with that team already chosen. It carries no team in the link, so one pinned link serves every team including Wrathless, and it hides itself entirely if no team has BoE turned on. Direct per-team links (`index.html?team=<slug>#boe`) still land on the card the same way
 - **Reporting for team** is a dropdown, not a label ([#767](https://github.com/katogaming88/WGA-Raid-Hub/issues/767)). It starts on the right team by itself (an explicit `?team=` link wins, otherwise their claimed character's team, otherwise the page they are on) but they can always change it, because raiders sub across teams. It lists Wrathless too, which raids with the guild but has no page of its own, and it hides any team that has switched its own `boe` flag off
 - Logged in, the character field prefills from their claimed character (still editable). Anything they have already typed or picked survives, so a late login never overwrites their work

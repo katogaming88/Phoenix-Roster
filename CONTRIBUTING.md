@@ -126,6 +126,7 @@ or add the `chore` label.
 | `js/guild.js` | Boot/logic for `guild.html`. Also not team-scoped, but it does load common.js for `TEAMS` and the guild-wide helpers, then nulls the team globals so a team-dependent call throws rather than rendering Phoenix's data. Skips discord.js, whose session read is hard-scoped to one team |
 | `js/boe-page.js` | Boot for `boe.html`: session, the three-RPC access answer (`fetchBoeAccess()` in common.js), then `js/boe-manage.js` renders. Same team-free shape as `js/guild.js` |
 | `js/boe-manage.js` | The BoE lifecycle renderer and its RPC calls; takes `canManage` as a parameter and resolves no identity itself |
+| `js/boe.js` | The raider-facing found-BoE card on `index.html`: the reporting-team picker, the item picker from `DATA.boeItems`, the `submit_boe_found` call and the webhook ping |
 | `css/styles.css` | Shared styles across all pages |
 | `css/officer.css` | Officer-specific styles (partial split out of `styles.css`, still in progress) |
 | `css/admin.css` | Admin-page-specific styles |

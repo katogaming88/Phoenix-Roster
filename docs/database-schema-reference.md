@@ -56,6 +56,13 @@ Master item catalog. Every loot piece the system knows about.
 | `armor_type`     | text | Plate/Mail/Leather/Cloth -- used to filter BiS lists by class             |
 | `sort_id`        | int4 | Controls display order within a slot                                      |
 | `is_placeholder` | bool | Marks synthetic items added before real loot data exists (e.g. early PTR) |
+| `icon`           | text | Wowhead icon name, for the item image                                     |
+| `secondary_stats` | jsonb | Secondary stats from Wowhead (#560), shown as pills                       |
+| `main_stats`     | jsonb | Main stats from Wowhead (#609)                                            |
+| `weapon_subtype` | text | Weapon subtype (Staff, Dagger, ...) for weapons (#609)                    |
+| `wcl_zone_id`    | int4 | The raid the item drops in, matching `raid_zones.wcl_zone_id`; scopes the item to a season (#535) |
+| `is_ptr`         | bool | Fetched from a PTR zone page and not yet live (#561)                      |
+| `is_boe`         | bool | A season BoE (#875): offered by the found form's picker and linked by `submit_boe_found`; kept out of every other view |
 
 ---
 

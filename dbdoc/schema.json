@@ -695,6 +695,12 @@
           "name": "weapon_subtype",
           "type": "text",
           "nullable": true
+        },
+        {
+          "name": "is_boe",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
         }
       ],
       "indexes": [

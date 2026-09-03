@@ -17,6 +17,7 @@
 | is_ptr | boolean | false | false |  |  |  |
 | main_stats | jsonb |  | true |  |  |  |
 | weapon_subtype | text |  | true |  |  |  |
+| is_boe | boolean | false | false |  |  |  |
 
 ## Constraints
 
@@ -64,6 +65,7 @@ erDiagram
   boolean is_ptr
   jsonb main_stats
   text weapon_subtype
+  boolean is_boe
 }
 "public.bis_items" {
   integer id

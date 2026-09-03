@@ -46,9 +46,13 @@ insert into public.guild_officers (id, discord_id, auth_user_id) values
 insert into public.classes_specs (id, class, spec, role) values
   (1, 'Mage', 'Frost', 'Ranged');
 
-insert into public.items (id, wow_item_id, name, slot, armor_type) values
-  (1, 100001, 'Seed Test Staff', 'Two-Hand', null),
-  (2, 100002, 'Seed Test Robe', 'Chest', 'Cloth');
+-- Item 3 is the seed's one BoE (#875): submit_boe_found links a find to a
+-- flagged row only, and the picker suites want one to offer. Unscoped (no
+-- wcl_zone_id), like the other two, so it shows for every season.
+insert into public.items (id, wow_item_id, name, slot, armor_type, is_boe) values
+  (1, 100001, 'Seed Test Staff', 'Two-Hand', null, false),
+  (2, 100002, 'Seed Test Robe', 'Chest', 'Cloth', false),
+  (3, 100003, 'Seed Test BoE Belt', 'Waist', 'Leather', true);
 
 insert into public.players (id, team_id, name_realm, class_spec_id) values
   (1, 1, 'Seedraider-Illidan', 1),

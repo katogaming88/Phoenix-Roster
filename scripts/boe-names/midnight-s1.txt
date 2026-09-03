@@ -1,0 +1,11 @@
+# March on Quel'Danas, Midnight season 1. The first data line is the raid's
+# raid_zones.wcl_zone_id; then one BoE name per line, as Wowhead spells it.
+46
+Breastplate of the Final Defense
+Fading Dawn Sabatons
+Infernal Greatlock Girdle
+Nullstrider's Boots
+Power Stance Breeches
+Primal Spark Pauldrons
+Raging Storm Sash
+Visage of Unseen Truths

@@ -36,9 +36,10 @@ function makeEl(extra) {
 // nothing would fail here instead of passing against a truncating server. A
 // table source given as a function overrides the keyset semantics entirely
 // (for error pages).
-function makeBoeClient({ items = [], listings = [], rpc = {}, updates = {} } = {}) {
+function makeBoeClient({ items = [], listings = [], rpc = {}, updates = {}, catalog = [] } = {}) {
   const captured = { byTable: {}, gts: [], rpcCalls: [], updates: [] };
-  const tableRows = { boe_items: items, boe_listings: listings };
+  // items is the BoE catalog read (#875): the rows flagged is_boe, id and name.
+  const tableRows = { boe_items: items, boe_listings: listings, items: catalog };
   function builder(table) {
     const calls = { select: null, countRequested: false, eq: [], order: [], gt: null, limit: null, update: null };
     const b = {
@@ -111,7 +112,7 @@ function makeBoeClient({ items = [], listings = [], rpc = {}, updates = {} } = {
 const managerRpc = (extra) => Object.assign({ is_boe_manager: () => ({ data: true, error: null }) }, extra);
 
 function loadSandbox({ client, els = {}, confirmResult = true } = {}) {
-  const spies = { audit: [], confirms: [] };
+  const spies = { audit: [], confirms: [], datalists: [] };
   CONTAINERS.forEach((id) => {
     if (!els[id]) els[id] = makeEl();
   });
@@ -136,6 +137,10 @@ function loadSandbox({ client, els = {}, confirmResult = true } = {}) {
     // own team, not the page's. This page has no team.
     writeAuditLog: (action, targetType, targetId, detail, teamId) => {
       spies.audit.push({ action, targetType, targetId, detail, teamId });
+    },
+    // js/common.js owns the datalist writer (#875); both pages load it.
+    renderBoeItemDatalist: (names) => {
+      spies.datalists.push(names);
     },
     setTimeout,
     clearTimeout,
@@ -167,6 +172,7 @@ function boeRow(over) {
       team_id: 1,
       player_id: null,
       finder_name: 'Kae-Tichondrius',
+      item_id: null,
       item_name: 'Voidglass Cloak',
       track: 'Hero',
       note: null,
@@ -1120,7 +1126,7 @@ describe('manager edit (#874)', () => {
     expect(captured.updates).toEqual([
       {
         table: 'boe_items',
-        values: { item_name: 'Slippers of the Hissing Cult', track: 'Myth', note: 'Donate' },
+        values: { item_name: 'Slippers of the Hissing Cult', track: 'Myth', note: 'Donate', item_id: null },
         eq: [['id', 1]]
       }
     ]);
@@ -1252,5 +1258,128 @@ describe('manager edit (#874)', () => {
     expect(els['boe-edit-form-1'].style.display).toBe('none');
     expect(els['boe-edit-btn-1'].focused).toBe(1);
     expect(els.guildBoeOpen.innerHTML).toBe('untouched');
+  });
+});
+
+// The catalog picker on the edit form (#875): boe.html reads the rows flagged
+// is_boe, feeds the shared datalist, and Save resolves the typed name against
+// that list so the stored spelling and item_id can never disagree.
+describe('catalog picker on the edit form (#875)', () => {
+  const CATALOG = () => [
+    { id: 7, name: 'Crushing Coiler Coif' },
+    { id: 8, name: 'Slitherscale Girdle' }
+  ];
+  const focusable = () =>
+    makeEl({
+      focused: 0,
+      focus() {
+        this.focused++;
+      }
+    });
+  const editEls = (id) => ({
+    ['boe-edit-form-' + id]: makeEl({ style: { display: 'none' } }),
+    ['boe-edit-btn-' + id]: focusable(),
+    ['boe-edit-name-' + id]: focusable(),
+    ['boe-edit-track-' + id]: makeEl(),
+    ['boe-edit-note-' + id]: makeEl(),
+    ['boe-status-' + id]: makeEl()
+  });
+  const typeInto = (els, id, { name, track, note }) => {
+    els['boe-edit-name-' + id].value = name;
+    els['boe-edit-track-' + id].value = track;
+    els['boe-edit-note-' + id].value = note;
+  };
+
+  it('reads the catalog once, fills the datalist with its names, and points the name field at it', async () => {
+    const { client, captured } = makeBoeClient({
+      items: [FOUND()],
+      listings: [],
+      rpc: managerRpc(),
+      catalog: CATALOG()
+    });
+    const loaded = await build({ client });
+    expect(captured.byTable.items).toHaveLength(1);
+    expect(captured.byTable.items[0].select).toBe('id, name');
+    expect(captured.byTable.items[0].eq).toEqual([['is_boe', true]]);
+    expect(loaded.spies.datalists).toEqual([['Crushing Coiler Coif', 'Slitherscale Girdle']]);
+    expect(loaded.els.guildBoeOpen.innerHTML).toContain('id="boe-edit-name-1" list="boeItemOptions"');
+  });
+
+  it('Save resolves a typed name against the catalog: the catalog spelling and item_id go in the payload and the audit', async () => {
+    const els = editEls(1);
+    const { client, captured } = makeBoeClient({
+      items: [FOUND()],
+      listings: [],
+      rpc: managerRpc(),
+      catalog: CATALOG()
+    });
+    const loaded = await build({ client, els });
+    typeInto(els, 1, { name: ' crushing coiler coif ', track: 'Hero', note: '' });
+    loaded.sandbox.saveBoeEdit(1, makeEl());
+    await flush();
+    await flush();
+    expect(captured.updates).toEqual([
+      {
+        table: 'boe_items',
+        values: { item_name: 'Crushing Coiler Coif', track: 'Hero', note: null, item_id: 7 },
+        eq: [['id', 1]]
+      }
+    ]);
+    expect(loaded.spies.audit[0].detail).toContain('item renamed from "Voidglass Cloak" to "Crushing Coiler Coif"');
+    expect(loaded.spies.audit[0].detail).toContain('catalog link was (none), now 7');
+    expect(els.guildBoeOpen.innerHTML).toContain('Crushing Coiler Coif');
+  });
+
+  it('a name outside the catalog writes item_id null and the text as typed', async () => {
+    const els = editEls(1);
+    const { client, captured } = makeBoeClient({
+      items: [boeRow({ id: 1, item_name: 'Crushing Coiler Coif', item_id: 7 })],
+      listings: [],
+      rpc: managerRpc(),
+      catalog: CATALOG()
+    });
+    const loaded = await build({ client, els });
+    typeInto(els, 1, { name: 'Feet - Heroic', track: 'Hero', note: '' });
+    loaded.sandbox.saveBoeEdit(1, makeEl());
+    await flush();
+    await flush();
+    expect(captured.updates[0].values).toEqual({
+      item_name: 'Feet - Heroic',
+      track: 'Hero',
+      note: null,
+      item_id: null
+    });
+    expect(loaded.spies.audit[0].detail).toContain('catalog link was 7, now (none)');
+  });
+
+  it('a Save whose only effect is the link still writes', async () => {
+    const els = editEls(1);
+    const { client, captured } = makeBoeClient({
+      items: [boeRow({ id: 1, item_name: 'Crushing Coiler Coif', item_id: null })],
+      listings: [],
+      rpc: managerRpc(),
+      catalog: CATALOG()
+    });
+    const loaded = await build({ client, els });
+    typeInto(els, 1, { name: 'Crushing Coiler Coif', track: 'Hero', note: '' });
+    loaded.sandbox.saveBoeEdit(1, makeEl());
+    await flush();
+    await flush();
+    expect(captured.updates).toHaveLength(1);
+    expect(captured.updates[0].values.item_id).toBe(7);
+    expect(loaded.spies.audit[0].detail).toBe('catalog link was (none), now 7');
+  });
+
+  it('a failed catalog read costs the picker and nothing else', async () => {
+    const { client } = makeBoeClient({
+      items: [FOUND()],
+      listings: [],
+      rpc: managerRpc(),
+      catalog: () => ({ data: null, error: { message: 'boom' } })
+    });
+    const loaded = await build({ client });
+    expect(loaded.spies.datalists).toEqual([[]]);
+    expect(loaded.els.guildBoeOpen.innerHTML).toContain('Voidglass Cloak');
+    expect(loaded.els.guildBoeSummary.innerHTML).not.toContain('Could not load');
   });
 });

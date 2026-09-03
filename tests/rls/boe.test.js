@@ -170,7 +170,9 @@ describe('direct INSERT has no path on the data tables', () => {
 describe('submit_boe_found', () => {
   const submit = (args) => `select public.submit_boe_found(${args}) as id`;
 
-  it('anon submit with a rostered name resolves the player and catalog item', async () => {
+  // Since #875 only a catalog BoE links; the seed staff is a boss drop, so its
+  // resolution is null even on an exact name. The belt test below is the link.
+  it('anon submit with a rostered name resolves the player, and a boss drop stays unlinked', async () => {
     await withTxn(async ({ q, asAnon }) => {
       const res = await asAnon(submit("1, 'Seedraider-Illidan', 'Seed Test Staff', 'Hero', 'from trash'"));
       const id = res.rows[0].id;
@@ -184,12 +186,20 @@ describe('submit_boe_found', () => {
         team_id: 1,
         player_id: 1,
         finder_name: 'Seedraider-Illidan',
-        item_id: 1,
+        item_id: null,
         item_name: 'Seed Test Staff',
         track: 'Hero',
         note: 'from trash',
         status: 'found'
       });
+    });
+  });
+
+  it('a catalog BoE links case-insensitively and is stored with the catalog spelling', async () => {
+    await withTxn(async ({ q, asAnon }) => {
+      const res = await asAnon(submit("1, 'Seedraider-Illidan', '  seed test boe belt ', 'Hero', null"));
+      const row = (await q('select item_id, item_name from public.boe_items where id = $1', [res.rows[0].id])).rows[0];
+      expect(row).toEqual({ item_id: 3, item_name: 'Seed Test BoE Belt' });
     });
   });
 

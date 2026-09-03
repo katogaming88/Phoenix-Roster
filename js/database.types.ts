@@ -563,6 +563,7 @@ export type Database = {
           armor_type: string | null
           icon: string | null
           id: number
+          is_boe: boolean
           is_placeholder: boolean
           is_ptr: boolean
           main_stats: Json | null
@@ -578,6 +579,7 @@ export type Database = {
           armor_type?: string | null
           icon?: string | null
           id?: number
+          is_boe?: boolean
           is_placeholder?: boolean
           is_ptr?: boolean
           main_stats?: Json | null
@@ -593,6 +595,7 @@ export type Database = {
           armor_type?: string | null
           icon?: string | null
           id?: number
+          is_boe?: boolean
           is_placeholder?: boolean
           is_ptr?: boolean
           main_stats?: Json | null
