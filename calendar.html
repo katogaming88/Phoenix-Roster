@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WGA Raid Hub -- Calendar</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css?v=3.84.0">
+</head>
+<body>
+
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
+<header class="header">
+  <a href="index.html" class="header-link">
+    <span class="header-emblem">🔥</span>
+    <h1 id="headerTeamName">Phoenix</h1>
+    <p class="header-sub">Raid Hub</p>
+  </a>
+  <div class="header-divider"></div>
+</header>
+
+<nav class="site-nav" id="siteNav" aria-label="Site">
+  <div id="siteNavItems" style="display:contents;"></div>
+  <div class="site-nav-right">
+    <select id="teamSwitcherSelect" class="team-switcher" title="Switch team"></select>
+    <div class="nav-bell-wrap">
+      <button class="site-nav-item nav-bell" id="navBell" onclick="toggleNotifDropdown(event)" style="display:none" data-tooltip="Notifications" title="Notifications">
+        &#128276;<span id="navBellBadge" class="nav-notif nav-notif-abs" style="display:none"></span>
+      </button>
+      <div id="notifDropdown" class="notif-dropdown" style="display:none"></div>
+    </div>
+    <button class="site-nav-item site-nav-discord" id="navDiscord" onclick="loginWithDiscord()" data-tooltip="Sign in with Discord to view your priority standing and mark loot received">Login with Discord</button>
+    <a href="officer.html" class="site-nav-item" id="navOfficer" style="display:none" data-tooltip="Officer dashboard -- manage roster, loot, and signups">Officer Access</a>
+  </div>
+</nav>
+
+<div id="maintenanceBanner" class="state-msg" style="display:none;">
+  <h2 style="margin-bottom:0.5rem;">Down for Maintenance</h2>
+  <p id="maintenanceBannerMessage"></p>
+</div>
+
+<main id="main-content" class="app-main" tabindex="-1">
+
+<div id="loadingMsg" class="state-msg">
+  <div class="spinner"></div><br>Loading calendar...
+</div>
+
+<div class="landing-body">
+  <div id="fullCalendar" class="pub-loot"></div>
+</div>
+
+</main>
+
+<footer class="footer">We Go Again &middot; <span class="team-name">Phoenix</span> &middot; v<span id="versionNum"></span> &middot; <a class="footer-link" href="https://github.com/katogaming88/WGA-Raid-Hub/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a> &middot; <a class="footer-link footer-icon-link" href="https://patreon.com/Katorri" target="_blank" rel="noopener" aria-label="Support on Patreon" title="Support on Patreon"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M0 .48v23.04h4.22V.48zm15.385 0c-4.764 0-8.641 3.88-8.641 8.65 0 4.755 3.877 8.623 8.641 8.623 4.75 0 8.615-3.868 8.615-8.623C24 4.36 20.136.48 15.385.48z"/></svg></a></footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/common.js?v=3.84.0"></script>
+<script src="js/discord.js?v=3.84.0"></script>
+<script src="js/officer-quick-actions.js?v=3.84.0"></script>
+<script src="js/calendar.js?v=3.84.0"></script>
+<script>
+// Non-href SITE_NAV_ITEMS (Home, Roster, ...) don't have a view on this
+// page -- 'officer' mode is reused here purely for its href-ification of
+// those into index.html+hash links (same trick officer.html itself relies
+// on), not because this is an officer-only page.
+renderSiteNav('officer');
+document.getElementById('versionNum').textContent = VERSION;
+document.getElementById('headerTeamName').textContent = TEAM_NAME;
+document.querySelectorAll('.team-name').forEach(function(el){el.textContent=TEAM_NAME;});
+if (TEAM_SLUG !== 'phoenix') {
+  document.querySelectorAll('a[href="index.html"], a[href="calendar.html"]').forEach(function(a){
+    a.href = a.getAttribute('href') + '?team=' + TEAM_SLUG;
+  });
+}
+initTeamUI();
+document.title = 'WGA Raid Hub -- Calendar -- ' + TEAM_NAME;
+
+checkMaintenanceMode().then(function (maint) {
+  if (maint.enabled) {
+    showMaintenanceBanner(maint.message);
+    return;
+  }
+  loadData(function () {
+    document.getElementById('loadingMsg').style.display = 'none';
+    buildCalendarWidget('full');
+    if (typeof initDiscordLogin === 'function') initDiscordLogin();
+  });
+});
+</script>
+</body>
+</html>

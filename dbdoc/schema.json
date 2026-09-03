@@ -5136,6 +5136,271 @@
           "def": "CREATE TRIGGER trg_priority_stale_dismissals_team_id_check BEFORE INSERT OR UPDATE ON public.priority_stale_dismissals FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
         }
       ]
+    },
+    {
+      "name": "public.raid_schedule",
+      "type": "BASE TABLE",
+      "comment": "The raid calendar's officer-owned recurring weekly rule (#892, part of #640): one row per weekday/time this team normally raids. is_optional flags a night with no automatic default-Present (#895) -- every non-bench roster player must explicitly RSVP. Raid nights are computed on the fly from this table plus raid_schedule_exceptions (js/calendar.js, computeRaidNights()), not materialized as rows.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('raid_schedule_id_seq'::regclass)"
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "weekday",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "start_time",
+          "type": "time without time zone",
+          "nullable": false
+        },
+        {
+          "name": "timezone",
+          "type": "text",
+          "nullable": false,
+          "default": "'America/New_York'::text"
+        },
+        {
+          "name": "duration_minutes",
+          "type": "integer",
+          "nullable": false,
+          "default": "180"
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "nullable": false,
+          "default": "true"
+        },
+        {
+          "name": "is_optional",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "raid_schedule_pkey",
+          "def": "CREATE UNIQUE INDEX raid_schedule_pkey ON public.raid_schedule USING btree (id)",
+          "table": "public.raid_schedule",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_schedule_team_id_weekday_start_time_key",
+          "def": "CREATE UNIQUE INDEX raid_schedule_team_id_weekday_start_time_key ON public.raid_schedule USING btree (team_id, weekday, start_time)",
+          "table": "public.raid_schedule",
+          "columns": [
+            "team_id",
+            "weekday",
+            "start_time"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "raid_schedule_weekday_check",
+          "type": "CHECK",
+          "def": "CHECK (((weekday \u003e= 0) AND (weekday \u003c= 6)))",
+          "table": "public.raid_schedule",
+          "referenced_table": "",
+          "columns": [
+            "weekday"
+          ]
+        },
+        {
+          "name": "raid_schedule_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.raid_schedule",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_schedule_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.raid_schedule",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_schedule_team_id_weekday_start_time_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (team_id, weekday, start_time)",
+          "table": "public.raid_schedule",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "weekday",
+            "start_time"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "public.raid_schedule_exceptions",
+      "type": "BASE TABLE",
+      "comment": "One-off cancellation or addition on top of raid_schedule's recurring rule (#892) -- exception_type distinguishes skipping a normally-scheduled night from adding an extra one. is_optional only applies to an 'added' row.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('raid_schedule_exceptions_id_seq'::regclass)"
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "raid_date",
+          "type": "date",
+          "nullable": false
+        },
+        {
+          "name": "exception_type",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "start_time",
+          "type": "time without time zone",
+          "nullable": true
+        },
+        {
+          "name": "duration_minutes",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "is_optional",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false"
+        },
+        {
+          "name": "note",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "created_by",
+          "type": "integer",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "raid_schedule_exceptions_pkey",
+          "def": "CREATE UNIQUE INDEX raid_schedule_exceptions_pkey ON public.raid_schedule_exceptions USING btree (id)",
+          "table": "public.raid_schedule_exceptions",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_schedule_exceptions_team_id_raid_date_exception_type_key",
+          "def": "CREATE UNIQUE INDEX raid_schedule_exceptions_team_id_raid_date_exception_type_key ON public.raid_schedule_exceptions USING btree (team_id, raid_date, exception_type)",
+          "table": "public.raid_schedule_exceptions",
+          "columns": [
+            "team_id",
+            "raid_date",
+            "exception_type"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "raid_schedule_exceptions_type_check",
+          "type": "CHECK",
+          "def": "CHECK ((exception_type = ANY (ARRAY['cancelled'::text, 'added'::text])))",
+          "table": "public.raid_schedule_exceptions",
+          "referenced_table": "",
+          "columns": [
+            "exception_type"
+          ]
+        },
+        {
+          "name": "raid_schedule_exceptions_created_by_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (created_by) REFERENCES team_members(id) ON DELETE SET NULL",
+          "table": "public.raid_schedule_exceptions",
+          "referenced_table": "public.team_members",
+          "columns": [
+            "created_by"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_schedule_exceptions_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.raid_schedule_exceptions",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_schedule_exceptions_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.raid_schedule_exceptions",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_schedule_exceptions_team_id_raid_date_exception_type_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (team_id, raid_date, exception_type)",
+          "table": "public.raid_schedule_exceptions",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "raid_date",
+            "exception_type"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -5882,6 +6147,45 @@
     },
     {
       "table": "public.priority_stale_dismissals",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.raid_schedule",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.raid_schedule_exceptions",
+      "columns": [
+        "created_by"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.team_members",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "zero_or_one",
+      "def": "FOREIGN KEY (created_by) REFERENCES team_members(id) ON DELETE SET NULL"
+    },
+    {
+      "table": "public.raid_schedule_exceptions",
       "columns": [
         "team_id"
       ],

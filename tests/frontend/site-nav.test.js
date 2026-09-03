@@ -67,11 +67,15 @@ describe('SITE_NAV_ITEMS', () => {
     expect(sandbox.SITE_NAV_ITEMS[0].id).toBe('navGuild');
   });
 
-  it('gives exactly two items an href, and both are cross-page links', () => {
+  it('gives exactly three items an href, and all are cross-page links', () => {
     // The active-default rule below depends on knowing which items are
-    // cross-page links, so a third one arriving unnoticed should fail here.
+    // cross-page links, so a fourth one arriving unnoticed should fail here.
     const { sandbox } = makeSandbox();
-    expect(sandbox.SITE_NAV_ITEMS.filter((i) => i.href).map((i) => i.id)).toEqual(['navGuild', 'navBoeManage']);
+    expect(sandbox.SITE_NAV_ITEMS.filter((i) => i.href).map((i) => i.id)).toEqual([
+      'navGuild',
+      'navBoeManage',
+      'navCalendar'
+    ]);
   });
 
   it('carries a BoE Sales entry for officer.html only, shipped hidden (#864)', () => {
@@ -98,13 +102,13 @@ describe('renderSiteNav, public mode', () => {
     expect(guild.attrs).not.toContain('onclick');
   });
 
-  it('still renders every other item as a showView button', () => {
+  it('still renders every non-href item as a showView button', () => {
     const { sandbox, mount } = makeSandbox();
     sandbox.renderSiteNav('public');
     const rendered = items(mount.innerHTML);
     expect(rendered.length).toBe(sandbox.SITE_NAV_ITEMS.filter((i) => !i.officerOnly).length);
     rendered
-      .filter((i) => i.id !== 'navGuild')
+      .filter((i) => i.id !== 'navGuild' && i.id !== 'navCalendar')
       .forEach((i) => {
         expect(i.tag).toBe('button');
         expect(i.attrs).toContain('onclick');

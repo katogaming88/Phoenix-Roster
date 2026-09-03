@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=3.83.0">
+<link rel="stylesheet" href="css/styles.css?v=3.84.0">
 <script>var whTooltips = {colorLinks: true, iconizeLinks: true, iconSize: 'small'};</script>
 <script src="https://wow.zamimg.com/widgets/power.js"></script>
 </head>
@@ -113,6 +113,7 @@
       </div>
     </div>
     <div id="landingProgression"></div>
+    <div id="landingCalendar" class="pub-loot"></div>
     <div id="landingLoot" class="pub-loot"></div>
   </div>
 </div>
@@ -372,17 +373,18 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/common.js?v=3.83.0"></script>
-<script src="js/discord.js?v=3.83.0"></script>
-<script src="js/officer-quick-actions.js?v=3.83.0"></script>
-<script src="js/streamers.js?v=3.83.0"></script>
-<script src="js/news.js?v=3.83.0"></script>
-<script src="js/roster.js?v=3.83.0"></script>
-<script src="js/contact.js?v=3.83.0"></script>
-<script src="js/signup.js?v=3.83.0"></script>
-<script src="js/wishlist.js?v=3.83.0"></script>
-<script src="js/bonusRoll.js?v=3.83.0"></script>
-<script src="js/boe.js?v=3.83.0"></script>
+<script src="js/common.js?v=3.84.0"></script>
+<script src="js/discord.js?v=3.84.0"></script>
+<script src="js/officer-quick-actions.js?v=3.84.0"></script>
+<script src="js/streamers.js?v=3.84.0"></script>
+<script src="js/news.js?v=3.84.0"></script>
+<script src="js/calendar.js?v=3.84.0"></script>
+<script src="js/roster.js?v=3.84.0"></script>
+<script src="js/contact.js?v=3.84.0"></script>
+<script src="js/signup.js?v=3.84.0"></script>
+<script src="js/wishlist.js?v=3.84.0"></script>
+<script src="js/bonusRoll.js?v=3.84.0"></script>
+<script src="js/boe.js?v=3.84.0"></script>
 <script>
 renderSiteNav('public');
 document.getElementById('versionNum').textContent = VERSION;
@@ -390,6 +392,7 @@ document.getElementById('headerTeamName').textContent = TEAM_NAME;
 document.querySelectorAll('.team-name').forEach(function(el){el.textContent=TEAM_NAME;});
 if (TEAM_SLUG !== 'phoenix') {
   document.querySelectorAll('a[href="officer.html"]').forEach(function(a){a.href='officer.html?team='+TEAM_SLUG;});
+  document.querySelectorAll('a[href="calendar.html"]').forEach(function(a){a.href='calendar.html?team='+TEAM_SLUG;});
 }
 initTeamUI();
 // This page has several public views (Roster, Profile, Signup, History, ...)

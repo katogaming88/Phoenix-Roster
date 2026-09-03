@@ -26,7 +26,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 // The HTML entry points GitHub Pages serves. Adding a page here registers it
 // with the stamper AND with tests/ci/asset-version-check.test.js, which imports
 // this list. Both halves of that contract move together on purpose.
-export const PAGES = ['index.html', 'officer.html', 'admin.html', 'guild.html', 'boe.html'];
+export const PAGES = ['index.html', 'officer.html', 'admin.html', 'guild.html', 'boe.html', 'calendar.html'];
 
 // Local (relative) css/ and js/ assets only. External URLs -- Google Fonts and
 // the jsDelivr supabase-js CDN -- are versioned or pinned upstream and are

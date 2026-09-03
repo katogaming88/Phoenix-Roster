@@ -94,7 +94,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.83.0';
+var VERSION = '3.84.0';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -129,6 +129,12 @@ var SITE_NAV_ITEMS = [
   },
   { id: 'navHome', label: 'Home', tooltip: 'Back to the roster overview', view: 'landing', hash: null },
   { id: 'navRoster', label: 'Roster', tooltip: "See who's currently on the roster", view: 'roster', hash: 'roster' },
+  {
+    id: 'navCalendar',
+    label: 'Calendar',
+    tooltip: 'Upcoming raid nights',
+    href: 'calendar.html'
+  },
   {
     id: 'navStreamers',
     label: 'Streams',

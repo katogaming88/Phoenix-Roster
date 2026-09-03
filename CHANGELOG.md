@@ -8,6 +8,25 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.84.0] - 2026-09-03
+
+### Frontend
+
+- Adds a real Raid Calendar: a Home-page widget and a new `calendar.html` page (reachable from a
+  new Calendar nav item on both the raider and officer sidebars) showing this month's raid nights,
+  replacing the visual-only mock that lived on the redesign branch
+  ([#892](https://github.com/katogaming88/WGA-Raid-Hub/issues/892), part of
+  [#640](https://github.com/katogaming88/WGA-Raid-Hub/issues/640)). Raiders are shown as Present by
+  default unless benched; self-mark RSVP and Discord notifications land in a later PR.
+
+### Backend
+
+- `raid_schedule`/`raid_schedule_exceptions` store each team's recurring weekly raid rule plus
+  one-off cancellations/additions ([#892](https://github.com/katogaming88/WGA-Raid-Hub/issues/892)).
+  Raid nights are computed on the fly from these two tables rather than stored as per-instance rows.
+
+---
+
 ## [3.83.0] - 2026-09-03
 
 ### Frontend
