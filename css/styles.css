@@ -284,12 +284,17 @@ a.prog-boss-heroic-pulls:hover { color:var(--gold); text-decoration:underline; }
 .mini-cal-day-raid .mini-cal-daynum { color:var(--text); font-weight:600; }
 .mini-cal-daycount { font-size:0.85rem; font-weight:600; color:var(--text-muted); white-space:nowrap; }
 .mini-cal-day-today { border-color:var(--gold); box-shadow:0 0 0 1px var(--gold) inset; }
+.mini-cal-day-clickable { cursor:pointer; transition:border-color 0.15s; }
+.mini-cal-day-clickable:hover { border-color:var(--gold-dim); }
 .calendar-status { width:8px; height:8px; border-radius:50%; display:inline-block; cursor:default; }
 .calendar-status-present { background:var(--heal); }
-.calendar-status-absent { background:#e0c23d; }
+.calendar-status-absent { background:var(--melee); }
 .calendar-status-tentative { background:#e0c23d; }
 .calendar-legend { display:flex; flex-wrap:wrap; gap:1rem; margin-top:0.75rem; align-items:center; }
 .calendar-legend-item { display:flex; align-items:center; gap:0.4rem; font-size:0.87rem; color:var(--text-muted); }
+.rsvp-status-options { display:flex; flex-wrap:wrap; gap:0.5rem; }
+.rsvp-note { width:100%; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); font-family:'Rajdhani',sans-serif; font-size:0.95rem; padding:0.5rem 0.7rem; border-radius:3px; resize:vertical; }
+.rsvp-note:focus { border-color:var(--gold); }
 @media (max-width:480px) { .mini-cal-day { min-height:48px; } .mini-cal-daynum { font-size:0.76rem; } .mini-cal-daycount { font-size:0.72rem; } }
 
 /* Streamers */

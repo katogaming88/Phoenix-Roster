@@ -28,7 +28,8 @@ const ACTION_PATHS: Record<string, string> = {
   signup: '/signup',
   selfreceived: '/selfreceived',
   bis: '/bis',
-  mplus: '/mplus'
+  mplus: '/mplus',
+  rsvp: '/rsvp-status'
 };
 
 Deno.serve(async (req) => {

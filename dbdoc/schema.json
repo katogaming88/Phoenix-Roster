@@ -5401,6 +5401,142 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.raid_rsvps",
+      "type": "BASE TABLE",
+      "comment": "A raider's self-declared override for one raid night (#893, part of #640) -- absence of a row means the computed default (Present, or Bench via players.is_bench) applies. Forward-looking intent only, never synced into public.attendance. Written only through set_own_rsvp() (SECURITY DEFINER); no direct INSERT/UPDATE/DELETE policy for anyone.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('raid_rsvps_id_seq'::regclass)"
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "player_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "raid_date",
+          "type": "date",
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "note",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "raid_rsvps_pkey",
+          "def": "CREATE UNIQUE INDEX raid_rsvps_pkey ON public.raid_rsvps USING btree (id)",
+          "table": "public.raid_rsvps",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_rsvps_team_id_player_id_raid_date_key",
+          "def": "CREATE UNIQUE INDEX raid_rsvps_team_id_player_id_raid_date_key ON public.raid_rsvps USING btree (team_id, player_id, raid_date)",
+          "table": "public.raid_rsvps",
+          "columns": [
+            "team_id",
+            "player_id",
+            "raid_date"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "raid_rsvps_status_check",
+          "type": "CHECK",
+          "def": "CHECK ((status = ANY (ARRAY['Attending'::text, 'Late'::text, 'Leaving Early'::text, 'Tentative'::text, 'Absent'::text])))",
+          "table": "public.raid_rsvps",
+          "referenced_table": "",
+          "columns": [
+            "status"
+          ]
+        },
+        {
+          "name": "raid_rsvps_player_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE",
+          "table": "public.raid_rsvps",
+          "referenced_table": "public.players",
+          "columns": [
+            "player_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_rsvps_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.raid_rsvps",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_rsvps_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.raid_rsvps",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_rsvps_team_id_player_id_raid_date_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (team_id, player_id, raid_date)",
+          "table": "public.raid_rsvps",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "player_id",
+            "raid_date"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_raid_rsvps_updated_at",
+          "def": "CREATE TRIGGER trg_raid_rsvps_updated_at BEFORE UPDATE ON public.raid_rsvps FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
     }
   ],
   "relations": [
@@ -6196,6 +6332,32 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.raid_rsvps",
+      "columns": [
+        "player_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.players",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.raid_rsvps",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
     }
   ],
   "functions": [
@@ -6605,6 +6767,12 @@
       "name": "public.submit_boe_found",
       "return_type": "int4",
       "arguments": "p_team_id integer, p_name_realm text, p_item_name text, p_track text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_donate boolean DEFAULT false, p_upgrade_rank text DEFAULT NULL::text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.set_own_rsvp",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_raid_date date, p_status text, p_note text DEFAULT NULL::text",
       "type": "FUNCTION"
     },
     {

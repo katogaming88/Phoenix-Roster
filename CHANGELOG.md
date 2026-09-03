@@ -8,6 +8,27 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.85.0] - 2026-09-03
+
+### Frontend
+
+- Raiders can now click a raid night on `calendar.html` to mark themselves Late, Leaving Early,
+  Tentative, or Absent, with an optional note
+  ([#893](https://github.com/katogaming88/WGA-Raid-Hub/issues/893), part of
+  [#640](https://github.com/katogaming88/WGA-Raid-Hub/issues/640)). Bench raiders get no picker.
+  The Discord bot posts a notification embed for every change.
+
+### Backend
+
+- `raid_rsvps` stores a raider's self-declared override for one raid night, written only through
+  the new `set_own_rsvp()` RPC (no direct write policy for anyone, officers included)
+  ([#893](https://github.com/katogaming88/WGA-Raid-Hub/issues/893)). Forward-looking intent only --
+  never synced into `attendance`, which stays the sole source for loot-fairness scoring.
+- The `discord-bot-webhook` Edge Function relays a new `rsvp` action to the bot's `/rsvp-status`
+  route.
+
+---
+
 ## [3.84.0] - 2026-09-03
 
 ### Frontend
