@@ -97,7 +97,7 @@ Reference notes for walking a raider through the site -- not published to raider
 - **Opt out of showing on other teams' pages** keeps their stream off other teams' sites while still showing it here
 
 ### Report a found BoE
-- The **BoE** tab is the replacement for the old BoE Google Form: reporting team, character Name-Realm, item, track, upgrade rank, optional note, Submit
+- The BoE Google Form is closed. The **BoE** tab is where a find is reported now: reporting team, character Name-Realm, item, track, upgrade rank, optional note, Submit
 - The item field is a list of the season's BoEs ([#875](https://github.com/katogaming88/WGA-Raid-Hub/issues/875), select-only since [#880](https://github.com/katogaming88/WGA-Raid-Hub/pull/880)); pick the one you found. It fills once the page has loaded, and an item that is not on it cannot be reported until the catalog gains it, so tell an officer
 - **Track** and **Upgrade rank** are both required ([#865](https://github.com/katogaming88/WGA-Raid-Hub/issues/865)): the rank is a list of 1/6 to 6/6, the number the item's tooltip shows. Together they say which item this is: two finds of the same item on the same track at the same rank are one queue and the first reported sells first, while a different rank is a different item and never waits behind the other. The form refuses to submit without them
 - **I'd like to donate my finder's fee to the guild** is a checkbox under the note, off by default ([#862](https://github.com/katogaming88/WGA-Raid-Hub/issues/862)). It records the intent: the row shows it to the managers on the BoE Sales page, the Discord post carries it as its own field, and the manager's settle button is what decides when the item sells

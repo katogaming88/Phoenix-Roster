@@ -8,6 +8,12 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-03 -- The BoE alias route went with the Google Form (#750)
+
+The 2026-09-02 entry below planned it: `scripts/boe-names/aliases.txt`, `parseAliasesFile` and the alias block in `catalogSql` were temporary, earning one last run at the delta import from the Form. The Form closed on 2026-09-03 and they are gone. The generated catalog file links `boe_items` rows by catalog name only; a misspelled row is a manager's Edit (#874), and the picker sends the catalog spelling so none arrive in bulk.
+
+---
+
 ## 2026-09-03 -- A BoE find is identified by name, track and upgrade rank; no item level column
 
 Tracking issue: [katogaming88/WGA-Raid-Hub#865](https://github.com/katogaming88/WGA-Raid-Hub/issues/865). Two finds of the same item on the same track looked identical in the manager view, and a manager recording a sale had no way to tell which one sold. Raiders had been typing the rank into the item name or the note; the importer stripped it.

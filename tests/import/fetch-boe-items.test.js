@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseNamesFile, parseAliasesFile, pickSuggestion, catalogSql } from '../../scripts/fetch-boe-items.js';
+import { parseNamesFile, pickSuggestion, catalogSql } from '../../scripts/fetch-boe-items.js';
 
 // scripts/fetch-boe-items.js (#875) resolves the season's BoE names through
 // Wowhead's search-suggestion endpoint and writes data/sql/boe-catalog.sql.
@@ -47,21 +47,6 @@ describe('parseNamesFile', () => {
 
   it('rejects a file whose first data line is not a zone id', () => {
     expect(() => parseNamesFile('Visage of Unseen Truths\n')).toThrow(/zone id/);
-  });
-});
-
-describe('parseAliasesFile', () => {
-  it('maps each known misspelling to its catalog name', () => {
-    const text =
-      '# known misspellings\nCrushin Coiler Coif => Crushing Coiler Coif\nPower Stance Breechs => Power Stance Breeches\n';
-    expect(parseAliasesFile(text)).toEqual([
-      { from: 'Crushin Coiler Coif', to: 'Crushing Coiler Coif' },
-      { from: 'Power Stance Breechs', to: 'Power Stance Breeches' }
-    ]);
-  });
-
-  it('rejects a line without the arrow', () => {
-    expect(() => parseAliasesFile('Crushin Coiler Coif\n')).toThrow(/=>/);
   });
 });
 
@@ -117,8 +102,7 @@ describe('catalogSql', () => {
       wclZoneId: 53
     }
   ];
-  const aliases = [{ from: 'Crushin Coiler Coif', to: 'Crushing Coiler Coif' }];
-  const sql = catalogSql(entries, aliases, new Date('2026-09-02T00:00:00Z'));
+  const sql = catalogSql(entries, new Date('2026-09-02T00:00:00Z'));
 
   it('is one transaction inserting flagged rows that skip an existing spelling', () => {
     expect(sql.startsWith('-- ')).toBe(true);
@@ -136,19 +120,18 @@ describe('catalogSql', () => {
     expect(sql).not.toMatch(/set is_boe = true/);
   });
 
-  it('links rows by name, then by alias keeping the submitted spelling in the note', () => {
+  // The alias route (known misspellings mapped to a catalog name) went with
+  // the Google Form in #750's close-out: the picker sends the catalog
+  // spelling, so a link is by name or it is a manager's Edit.
+  it('links rows by catalog name only', () => {
     expect(sql).toContain('lower(b.item_name) = lower(i.name) and b.item_id is null');
-    expect(sql).toContain("lower(b.item_name) = lower('Crushin Coiler Coif')");
-    expect(sql).toContain("lower(i.name) = lower('Crushing Coiler Coif')");
-    expect(sql).toContain('submitted as');
+    expect(sql).toContain('-- 2 catalog rows. Apply with:');
+    expect(sql).not.toContain('submitted as');
+    expect(sql).not.toMatch(/alias/i);
   });
 
   it('emits balanced dollar-quoted blocks (the $ halving trap of 2026-08-26)', () => {
     const count = (sql.match(/\$\$/g) || []).length;
     expect(count).toBe(2);
-  });
-
-  it('rejects an alias whose target is not in the catalog', () => {
-    expect(() => catalogSql(entries, [{ from: 'x', to: 'Not Listed' }], new Date())).toThrow(/Not Listed/);
   });
 });
