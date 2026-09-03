@@ -8,6 +8,20 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-03 -- The auction house fee comes off the top; the finder is capped at the net
+
+Tracking issue: [katogaming88/WGA-Raid-Hub#861](https://github.com/katogaming88/WGA-Raid-Hub/issues/861). Record Sale wrote `guild_cut = sale_price - finder_payout`, so every guild cut overstated what the bank receives by the game's 5% auction house fee (about 491,000 gold over last season's sales). The 2026-08-25 entry below chose to leave the fee unmodeled; this supersedes that bullet.
+
+- **`boe_items.ah_fee`**, the fee the game kept, set by `boe_record_sale` and nulled by `boe_revert` with the rest of the receipt. `guild_cut` is now `sale_price - ah_fee - finder_payout`, and `boe_items_money_sums` enforces `finder_payout + guild_cut + ah_fee = sale_price` on every sold or paid row: the invariant this change creates, and the one that would have caught the gap.
+- **The fee is the game's fixed 5% and not a setting** (Russell, 2026-09-03). No `site_settings` column, no admin field, no third argument on `set_boe_payout_settings`, though the issue had all three: one named constant in `boe_record_sale` and the same literal in the backfill. Checked against two real mails: a 125,000 sale with a 6,250 cut (prod row 24) and a 47,999 sale with a cut of 2,399 gold 95 silver (row 27). Silver and copper are ignored by decision, so the fee is `round(sale * 5 / 100)`, half away from zero, the payout's own rounding. The deposit the game refunds on a sold auction nets to zero and is not modeled.
+- **The finder is capped at the net, not the gross** (Russell, 2026-09-03): `finder_payout = least(sale - fee, greatest(floor, round(sale * floor / pivot)))`, so on a sub-floor sale the guild takes zero rather than going out of pocket by the fee. Every payout above the floor is unchanged. Two prod rows moved: ids 2 and 25, both sub-floor sales with a guild cut of 0.
+- **The backfill corrects every row sold before the fee existed**, the 48 imported from the sheets included, since the sheet never subtracted it either; 62 rows on prod at apply time. `check_boe_status_transition` returns early for any role but `authenticated`, so the migration's direct UPDATE needs no trigger bypass (the issue's worry about one was unfounded). The importer's generated SQL predates the column and would fail the completeness constraint on a re-run; the Form is closed and no further import is owed, so it stays as the historical record it is.
+- The manager view shows the fee between the sale and the finder's cut in Awaiting Payout and History, names the guild cut as net, and a donated payout reads as the sale net of the fee, never the fee itself. The admin dashboard's payout read-back names the cap.
+
+[Full discussion -> #861](https://github.com/katogaming88/WGA-Raid-Hub/issues/861)
+
+---
+
 ## 2026-09-03 -- The BoE alias route went with the Google Form (#750)
 
 The 2026-09-02 entry below planned it: `scripts/boe-names/aliases.txt`, `parseAliasesFile` and the alias block in `catalogSql` were temporary, earning one last run at the delta import from the Form. The Form closed on 2026-09-03 and they are gone. The generated catalog file links `boe_items` rows by catalog name only; a misspelled row is a manager's Edit (#874), and the picker sends the catalog spelling so none arrive in bulk.

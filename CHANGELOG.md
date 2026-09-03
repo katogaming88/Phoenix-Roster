@@ -8,6 +8,26 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.83.0] - 2026-09-03
+
+### Frontend
+
+- BoE Sales shows the auction house fee on every sold row, between the sale and the finder's
+  payout, and the Guild cut column is now the net figure, what the bank actually receives
+  ([#861](https://github.com/katogaming88/WGA-Raid-Hub/issues/861)). A donated payout reads as
+  the sale net of the fee. The site admin dashboard's payout read-back names the cap: a finder
+  never gets more than the sale minus the game's 5% fee.
+
+### Backend
+
+- `boe_items.ah_fee` records the game's fixed 5% auction house fee on each sale
+  ([#861](https://github.com/katogaming88/WGA-Raid-Hub/issues/861)). `boe_record_sale` takes it off
+  the top and returns it with the split; the finder is capped at the net, so the guild is never
+  out of pocket on a sub-floor sale; `finder_payout + guild_cut + ah_fee = sale_price` is now a
+  constraint on every sold or paid row. Every row sold before this, the sheet imports included,
+  is backfilled: finder payouts are unchanged except on two sub-floor sales, and the fee comes
+  out of the guild cut.
+
 ## [3.82.3] - 2026-09-03
 
 ### Frontend
@@ -19,6 +39,10 @@ with each release split into `### Frontend` (drives the version number) and
 
 ### Backend
 
+- The BoE catalog script drops its alias route (`scripts/boe-names/aliases.txt`, `parseAliasesFile`
+  and the alias block in the generated SQL) now that the Google Form is closed (#750): the picker
+  sends the catalog spelling, so a misspelled row is a manager's Edit. The generated catalog file
+  links rows by name only.
 - `npm run db:docs` no longer re-sorts the trigger listings in `dbdoc/`. tbls 1.96.0 (released
   2026-09-03) orders triggers by creation on every platform and `tbls diff` compares in that same
   order, so the name order `scripts/ci/dbdoc-sort.js` imposed failed the schema-docs check on
@@ -32,13 +56,6 @@ with each release split into `### Frontend` (drives the version number) and
 - A tip on the found form warns to report before depositing a BoE in the guild bank: once it's
   banked, it shows the depositor a base item level with no track or upgrade rank, so they can no
   longer read either off themselves.
-
-### Backend
-
-- The BoE catalog script drops its alias route (`scripts/boe-names/aliases.txt`, `parseAliasesFile`
-  and the alias block in the generated SQL) now that the Google Form is closed (#750): the picker
-  sends the catalog spelling, so a misspelled row is a manager's Edit. The generated catalog file
-  links rows by name only.
 
 ## [3.82.1] - 2026-09-03
 

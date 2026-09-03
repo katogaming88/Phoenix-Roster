@@ -184,6 +184,7 @@ function boeRow(over) {
       sale_price: null,
       finder_payout: null,
       guild_cut: null,
+      ah_fee: null,
       payout_donated: false,
       upgrade_rank: null
     },
@@ -209,7 +210,8 @@ const SOLD = () =>
     sold_at: '2026-08-21T02:00:00Z',
     sale_price: 250000,
     finder_payout: 50000,
-    guild_cut: 200000
+    guild_cut: 187500,
+    ah_fee: 12500
   });
 const PAID = () =>
   boeRow({
@@ -220,7 +222,8 @@ const PAID = () =>
     payout_paid_at: '2026-08-22T02:00:00Z',
     sale_price: 100000,
     finder_payout: 20000,
-    guild_cut: 80000
+    guild_cut: 75000,
+    ah_fee: 5000
   });
 const RETIRED = () =>
   boeRow({ id: 5, item_name: 'Drape of Embers', status: 'retired', retired_at: '2026-08-23T02:00:00Z' });
@@ -356,7 +359,7 @@ describe('audit entries name the BoE team, not the page (#774)', () => {
       listings: [],
       rpc: {
         boe_record_sale: () => ({
-          data: [{ sale_price: 250000, finder_payout: 50000, guild_cut: 200000 }],
+          data: [{ sale_price: 250000, finder_payout: 50000, guild_cut: 187500, ah_fee: 12500 }],
           error: null
         })
       }
@@ -389,7 +392,7 @@ describe('price parsing and recording a sale', () => {
       listings: [],
       rpc: managerRpc({
         boe_record_sale: () => ({
-          data: [{ sale_price: 250000, finder_payout: 50000, guild_cut: 200000 }],
+          data: [{ sale_price: 250000, finder_payout: 50000, guild_cut: 187500, ah_fee: 12500 }],
           error: null
         })
       })
@@ -402,7 +405,8 @@ describe('price parsing and recording a sale', () => {
     expect(sale.args).toEqual({ p_id: 1, p_sale_price: 250000 });
     expect(els.guildBoeAwaiting.innerHTML).toContain('Voidglass Cloak');
     expect(els.guildBoeAwaiting.innerHTML).toContain('50,000');
-    expect(els.guildBoeAwaiting.innerHTML).toContain('200,000');
+    expect(els.guildBoeAwaiting.innerHTML).toContain('12,500');
+    expect(els.guildBoeAwaiting.innerHTML).toContain('187,500');
     // The split came from the RPC's return row: still exactly one boe_items read.
     expect(captured.byTable.boe_items).toHaveLength(1);
   });
@@ -523,9 +527,40 @@ describe('summary strip', () => {
   it('totals guild income over sold and paid, and outstanding payouts over sold', async () => {
     const { client } = makeBoeClient({ items: ALL_ROWS(), listings: [], rpc: managerRpc() });
     const { els } = await build({ client });
-    // guild_cut: 200,000 (sold) + 80,000 (paid); finder_payout outstanding: 50,000 (sold only)
-    expect(els.guildBoeSummary.innerHTML).toContain('280,000');
+    // guild_cut, net of the fee since #861: 187,500 (sold) + 75,000 (paid); finder_payout outstanding: 50,000 (sold only)
+    expect(els.guildBoeSummary.innerHTML).toContain('262,500');
     expect(els.guildBoeSummary.innerHTML).toContain('50,000');
+  });
+});
+
+// The auction house fee (#861): the game keeps 5% of every sale, so the row
+// carries it and the guild cut is what the bank actually receives. Both money
+// sections show the fee between the sale and the finder cut and name the
+// guild cut as net; a row sold before the fee existed (null) renders an
+// empty cell rather than a zero, since nothing was recorded.
+describe('the auction house fee column (#861)', () => {
+  it('reads ah_fee with the row and shows it in Awaiting Payout and History under a net guild cut header', async () => {
+    const { client, captured } = makeBoeClient({ items: ALL_ROWS(), listings: [], rpc: managerRpc() });
+    const { els } = await build({ client });
+    expect(captured.byTable.boe_items[0].select).toContain('ah_fee');
+    const headers =
+      '<th scope="col">Sale</th><th scope="col">AH fee</th><th scope="col">Finder payout</th><th scope="col">Guild cut (net)</th>';
+    expect(els.guildBoeAwaiting.innerHTML).toContain(headers);
+    expect(els.guildBoeHistory.innerHTML).toContain(headers);
+    expect(els.guildBoeAwaiting.innerHTML).toContain(
+      '<td>250,000g</td><td>12,500g</td><td>50,000g</td><td>187,500g</td>'
+    );
+    expect(els.guildBoeHistory.innerHTML).toContain('<td>100,000g</td><td>5,000g</td><td>20,000g</td><td>75,000g</td>');
+  });
+
+  it('renders an empty fee cell on a row sold before the fee existed', async () => {
+    const { client } = makeBoeClient({
+      items: [Object.assign(SOLD(), { ah_fee: null })],
+      listings: [],
+      rpc: managerRpc()
+    });
+    const { els } = await build({ client });
+    expect(els.guildBoeAwaiting.innerHTML).toContain('<td>250,000g</td><td></td><td>50,000g</td><td>187,500g</td>');
   });
 });
 
@@ -781,6 +816,7 @@ describe('undoing a lifecycle step (#802)', () => {
     expect(item.sale_price).toBeNull();
     expect(item.finder_payout).toBeNull();
     expect(item.guild_cut).toBeNull();
+    expect(item.ah_fee).toBeNull();
     expect(item.sold_at).toBeNull();
     expect(loaded.els.guildBoeOpen.innerHTML).toContain('Bindings of Depth');
     expect(loaded.els.guildBoeAwaiting.innerHTML).not.toContain('Bindings of Depth');
@@ -1499,7 +1535,7 @@ describe('Donate to Guild (#862)', () => {
     const { els } = await build({ client });
     const html = text(els.guildBoeSummary.innerHTML);
     expect(html).toContain('Outstanding payouts: 50,000g');
-    expect(html).toContain('Guild income to date: 200,000g');
+    expect(html).toContain('Guild income to date: 187,500g');
     expect(html).not.toContain('Donated by finders');
   });
 
@@ -1526,14 +1562,15 @@ describe('Donate to Guild (#862)', () => {
 describe('donated rows in History read finder 0, guild whole (#862 follow-up)', () => {
   const flagged = (row) => Object.assign(row, { payout_donated: true });
 
-  it('a donated paid row shows Finder payout 0g and the whole amount as guild cut', async () => {
+  it('a donated paid row shows Finder payout 0g and the sale net of the fee as guild cut', async () => {
     const { client } = makeBoeClient({ items: [flagged(PAID())], listings: [], rpc: managerRpc() });
     const { els } = await build({ client });
     const html = els.guildBoeHistory.innerHTML;
     expect(html).toContain('<td>0g</td>');
-    expect(html).toContain('<td>100,000g</td>');
+    // 100,000 sale less the 5,000 fee (#861): the guild keeps 95,000, never the fee.
+    expect(html).toContain('<td>95,000g</td>');
     expect(html).not.toContain('<td>20,000g</td>');
-    expect(html).not.toContain('<td>80,000g</td>');
+    expect(html).not.toContain('<td>75,000g</td>');
     expect(html).toContain('>Donated</span>');
   });
 
@@ -1542,7 +1579,7 @@ describe('donated rows in History read finder 0, guild whole (#862 follow-up)', 
     const { els } = await build({ client });
     const html = els.guildBoeHistory.innerHTML;
     expect(html).toContain('<td>20,000g</td>');
-    expect(html).toContain('<td>80,000g</td>');
+    expect(html).toContain('<td>75,000g</td>');
     expect(html).not.toContain('<td>0g</td>');
   });
 
@@ -1551,11 +1588,11 @@ describe('donated rows in History read finder 0, guild whole (#862 follow-up)', 
     const { els } = await build({ client });
     const html = els.guildBoeAwaiting.innerHTML;
     expect(html).toContain('<td>50,000g</td>');
-    expect(html).toContain('<td>200,000g</td>');
+    expect(html).toContain('<td>187,500g</td>');
     expect(html).not.toContain('<td>0g</td>');
   });
 
-  it('Donate to Guild lands the row in History reading 0g and the full sale as guild cut', async () => {
+  it('Donate to Guild lands the row in History reading 0g and the sale net of the fee as guild cut', async () => {
     const els = { 'boe-status-3': makeEl() };
     const { client } = makeBoeClient({ items: [SOLD()], listings: [], rpc: managerRpc() });
     const loaded = await build({ client, els });
@@ -1563,7 +1600,8 @@ describe('donated rows in History read finder 0, guild whole (#862 follow-up)', 
     await flush();
     const html = els.guildBoeHistory.innerHTML;
     expect(html).toContain('<td>0g</td>');
-    expect(html).toContain('<td>250,000g</td>');
+    // 187,500 guild cut plus the 50,000 the finder gave up; the 12,500 fee stays with the game.
+    expect(html).toContain('<td>237,500g</td>');
     expect(html).not.toContain('<td>50,000g</td>');
   });
 
@@ -1578,7 +1616,7 @@ describe('donated rows in History read finder 0, guild whole (#862 follow-up)', 
     await flush();
     const html = loaded.els.guildBoeAwaiting.innerHTML;
     expect(html).toContain('<td>20,000g</td>');
-    expect(html).toContain('<td>80,000g</td>');
+    expect(html).toContain('<td>75,000g</td>');
   });
 });
 
@@ -1681,7 +1719,10 @@ describe('first come, first served at Record Sale (#865)', () => {
       found_at: '2026-08-21T01:00:00Z'
     });
   const SPLIT = {
-    boe_record_sale: () => ({ data: [{ sale_price: 100000, finder_payout: 20000, guild_cut: 80000 }], error: null })
+    boe_record_sale: () => ({
+      data: [{ sale_price: 100000, finder_payout: 20000, guild_cut: 75000, ah_fee: 5000 }],
+      error: null
+    })
   };
   async function sell(rows, id, opts = {}) {
     const els = { ['boe-sale-price-' + id]: makeEl({ value: '100,000' }), ['boe-status-' + id]: makeEl() };

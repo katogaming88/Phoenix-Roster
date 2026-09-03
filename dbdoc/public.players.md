@@ -283,6 +283,7 @@ erDiagram
   timestamp_with_time_zone created_at
   boolean payout_donated
   text upgrade_rank
+  bigint ah_fee
 }
 "public.priority_conflict_dismissals" {
   integer id

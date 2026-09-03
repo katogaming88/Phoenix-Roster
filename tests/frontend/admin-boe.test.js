@@ -283,15 +283,15 @@ describe('revoking a BoE manager (#748)', () => {
 });
 
 describe('boePayoutSummary (#748)', () => {
-  // boe_record_sale computes least(sale, greatest(floor, round(sale * floor /
-  // pivot))). Two exact identities fall out of that and are all this line
+  // boe_record_sale computes least(sale - fee, greatest(floor, round(sale * floor /
+  // pivot))) with fee = 5% of the sale (#861). Two exact identities fall out of that and are all this line
   // states: the rate is floor/pivot, and the percentage overtakes the floor
   // exactly when sale > pivot (S * floor/pivot > floor <=> S > pivot, for any
   // values). Nothing here mirrors the round/greatest/least logic itself.
   it('states the rate and the crossover for the shipped constants', () => {
     const { sandbox } = makeSandbox();
     expect(sandbox.boePayoutSummary('20000', '100000')).toBe(
-      'Finder gets 20% on sales above 100,000g, or a flat 20,000g below that, never more than the sale itself.'
+      "Finder gets 20% on sales above 100,000g, or a flat 20,000g below that, never more than the sale minus the game's 5% auction house fee. The guild keeps the rest."
     );
   });
 

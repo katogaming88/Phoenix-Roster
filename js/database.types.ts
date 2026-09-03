@@ -243,6 +243,7 @@ export type Database = {
       }
       boe_items: {
         Row: {
+          ah_fee: number | null
           created_at: string
           finder_name: string | null
           finder_payout: number | null
@@ -268,6 +269,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          ah_fee?: number | null
           created_at?: string
           finder_name?: string | null
           finder_payout?: number | null
@@ -293,6 +295,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          ah_fee?: number | null
           created_at?: string
           finder_name?: string | null
           finder_payout?: number | null
@@ -2390,6 +2393,7 @@ export type Database = {
       boe_record_sale: {
         Args: { p_id: number; p_sale_price: number; p_sold_at?: string }
         Returns: {
+          ah_fee: number
           finder_payout: number
           guild_cut: number
           sale_price: number

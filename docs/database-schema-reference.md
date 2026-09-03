@@ -387,8 +387,9 @@ One row per found Bind-on-Equip, carrying the lifecycle (found -> listed -> sold
 | `payout_paid_at` | timestamptz | Set when the finder is paid                                            |
 | `retired_at`     | timestamptz | Set on retire                                                          |
 | `sale_price`     | int8        | Gross sale in gold, present iff sold/paid                              |
-| `finder_payout`  | int8        | The finder's cut, present iff sold/paid                               |
-| `guild_cut`      | int8        | `sale_price - finder_payout`, present iff sold/paid                    |
+| `finder_payout`  | int8        | The finder's cut, present iff sold/paid; never more than the sale net of the fee (#861) |
+| `guild_cut`      | int8        | `sale_price - ah_fee - finder_payout`, what the bank receives, present iff sold/paid (#861) |
+| `ah_fee`         | int8        | The game's fixed 5% auction house fee on the sale, whole gold, present iff sold/paid; `finder_payout + guild_cut + ah_fee = sale_price` by constraint (#861) |
 | `payout_floor`   | int8        | Snapshot of the payout floor in force at sale                         |
 | `payout_pivot`   | int8        | Snapshot of the payout pivot in force at sale                         |
 | `payout_donated` | bool        | The finder's cut was, or is to be, kept by the guild (#862): the raider's intent at submit, the manager's decision at settle |
