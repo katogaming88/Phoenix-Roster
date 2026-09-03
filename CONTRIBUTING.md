@@ -44,7 +44,7 @@ When merging a PR:
 
 Bumping the version means more than one file: every local `css/`/`js/`
 tag on every page carries a `?v=<VERSION>` cache-bust query string
-(#431), 45 of them across the four pages. `npm run stamp -- 3.67.0`
+(#431), 49 of them across the five pages. `npm run stamp -- 3.67.0`
 rewrites the `VERSION` constant and every one of those tags in a single
 pass, and
 prints a per-page count so a page that matched nothing is visible rather
@@ -82,11 +82,20 @@ or add the `chore` label.
   (`npm run test:a11y`), which needs a one-time
   `npx playwright install chromium`. It serves the site locally and answers
   every third-party and Supabase request from `tests/browser/fixtures/`, so
-  it is offline and does not touch production. Ten public page states are
+  it is offline and does not touch production. Eleven public page states are
   loaded, checked against axe at WCAG 2.1 AA, and measured for reflow at
   480px. Each state waits on a sentinel selector that only exists once its
   async reads have rendered, so a page that silently truncated fails rather
   than passing empty
+- Two files in that suite measure what axe has no automated rule for, and both
+  assert a pair rather than a single reading. `reduced-motion.test.js` reads
+  animation and transition durations under `prefers-reduced-motion` and under
+  the default, because "the spinner does not animate" is equally true of a
+  working media query and of a stylesheet with no animation at all.
+  `keyboard.test.js` focuses every focusable element on every state in
+  `states.js` and reads its outline back, then checks the modality contract:
+  Tab shows a ring, a click on a button or a link does not, and a click into
+  a text box or a select does
 - `tests/browser/a11y-baseline.json` records every violation the site has
   today, compared for exact equality. A PR that fixes one has to delete its
   entries, and a PR that adds one fails. Refresh it with

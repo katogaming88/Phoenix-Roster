@@ -21,13 +21,30 @@
 body { background:var(--bg); color:var(--text); font-family:'Rajdhani',sans-serif; font-size:18px; min-height:100vh; display:flex; flex-direction:column; }
 
 /* Accessibility utilities (#777). Guild-only when they landed; every page uses
-   them since #437 gave the other three a skip link. The focus-visible baseline
-   #435 also covers is still scoped to .guild-page in css/guild.css, and moves
-   here in its own PR because it restyles focus on every page and that wants a
-   look rather than a test. */
+   them since #437 gave the other three a skip link. .sr-only is what hides a
+   form control that a styled label draws in its place: display:none would hide
+   it from the focus order and the accessibility tree as well, which is what the
+   signup chips used to do. */
 .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 .skip-link { position:absolute; left:0.5rem; top:-4rem; z-index:100; padding:0.6rem 1rem; background:var(--bg-elevated); color:var(--gold-light); border:1px solid var(--gold-dim); border-radius:4px; text-decoration:none; letter-spacing:0.08em; transition:top 0.15s; }
 .skip-link:focus { top:0.5rem; }
+
+/* Keyboard baseline (#435). Was scoped to .guild-page (css/guild.css) while
+   that was the only page anyone had tabbed through; tests/browser/keyboard.test.js
+   focuses every focusable element on ten page states now, so it applies
+   everywhere. Same declarations guild.html has shipped since #777.
+
+   :focus-visible rather than :focus, so the ring answers the keyboard and not
+   the mouse. Chromium decides from the last interaction: after Tab everything
+   gets it, after a click a button or a link gets nothing, and a text input or a
+   select gets it either way because a control that takes keyboard input always
+   matches. All three measured, and asserted in that file.
+
+   The ten rules that used to pair a border-colour :focus with outline:none are
+   why this needs the removals rather than careful ordering. Two of them win on
+   specificity from anywhere in the file: select#playerSelect is (1,1,0) and
+   .officer-prompt-box input is (0,1,1), both above this rule's (0,1,0). */
+:focus-visible { outline:2px solid var(--gold); outline-offset:2px; border-radius:2px; }
 
 /* Motion baseline (#435). Was scoped to .guild-page (css/guild.css) while only
    that page had been checked in a browser; tests/browser/reduced-motion.test.js
@@ -126,6 +143,9 @@ body { background:var(--bg); color:var(--text); font-family:'Rajdhani',sans-seri
 .site-nav-item[data-tooltip] { position:relative; }
 .site-nav-item[data-tooltip]::after { content:attr(data-tooltip); position:absolute; top:calc(100% + 6px); left:50%; transform:translateX(-50%); background:var(--bg-elevated); border:1px solid var(--border-mid); color:var(--text-muted); font-size:1.07rem; font-weight:400; letter-spacing:0.04em; text-transform:none; white-space:nowrap; padding:0.3rem 0.6rem; border-radius:3px; pointer-events:none; opacity:0; transition:opacity 0s; z-index:200; }
 .site-nav-item[data-tooltip]:hover::after { opacity:1; }
+/* Hover alone left the tooltips unreachable without a mouse (#435). :focus-visible,
+   so clicking a nav item does not pop its own tooltip over the view it just opened. */
+.site-nav-item[data-tooltip]:focus-visible::after { opacity:1; }
 #navHome::after, #navSignup::after { left:0; transform:none; }
 #navDiscord::after, #navOfficer::after { left:auto; right:0; transform:none; }
 @media (max-width:480px) { .site-nav { padding:0 0.25rem; } .site-nav-item { padding:0.6rem 0.6rem; font-size:0.89rem; } }
@@ -279,7 +299,7 @@ a.prog-boss-heroic-pulls:hover { color:var(--gold); text-decoration:underline; }
 .selector-label { font-size:1.07rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--text-muted); font-weight:600; }
 .selector-outer { position:relative; width:100%; max-width:460px; }
 .selector-outer::after { content:'▾'; position:absolute; right:14px; top:50%; transform:translateY(-50%); color:var(--gold-dim); pointer-events:none; font-size:1.02rem; }
-select#playerSelect { width:100%; appearance:none; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); font-family:'Rajdhani',sans-serif; font-size:1rem; font-weight:500; padding:0.65rem 2.2rem 0.65rem 1rem; border-radius:3px; cursor:pointer; transition:border-color 0.15s; outline:none; }
+select#playerSelect { width:100%; appearance:none; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); font-family:'Rajdhani',sans-serif; font-size:1rem; font-weight:500; padding:0.65rem 2.2rem 0.65rem 1rem; border-radius:3px; cursor:pointer; transition:border-color 0.15s; }
 select#playerSelect:hover { border-color:var(--gold-dim); }
 select#playerSelect:focus { border-color:var(--gold); box-shadow:0 0 0 2px rgba(214,163,68,0.12); }
 select#playerSelect option { background:#1a1d27; }
@@ -289,7 +309,7 @@ select#playerSelect option { background:#1a1d27; }
 .officer-prompt.active { display:flex; }
 .officer-prompt-box { background:var(--bg-card); border:1px solid var(--border-mid); border-radius:6px; padding:2rem; width:100%; max-width:320px; display:flex; flex-direction:column; gap:1rem; }
 .officer-prompt-box h2 { font-family:'Cinzel',serif; font-size:1rem; color:var(--gold-light); letter-spacing:0.1em; }
-.officer-prompt-box input { width:100%; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); font-family:'Rajdhani',sans-serif; font-size:1rem; padding:0.6rem 1rem; border-radius:3px; outline:none; }
+.officer-prompt-box input { width:100%; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); font-family:'Rajdhani',sans-serif; font-size:1rem; padding:0.6rem 1rem; border-radius:3px; }
 .officer-prompt-box input:focus { border-color:var(--gold); }
 .prompt-buttons { display:flex; gap:0.5rem; }
 .btn { font-family:'Rajdhani',sans-serif; font-size:1rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; padding:0.55rem 1.25rem; border-radius:3px; cursor:pointer; border:none; }
@@ -441,7 +461,7 @@ select#playerSelect option { background:#1a1d27; }
 
 /* Roster search */
 .roster-search-row { display:flex; gap:0.5rem; margin-bottom:0.75rem; flex-wrap:wrap; align-items:flex-start; }
-.roster-search-input { font-family:'Rajdhani',sans-serif; font-size:1.02rem; font-weight:500; padding:0.3rem 0.75rem; border-radius:3px; border:1px solid var(--border); background:var(--bg-input); color:var(--text); outline:none; transition:border-color 0.15s; flex:1; min-width:140px; width:100%; }
+.roster-search-input { font-family:'Rajdhani',sans-serif; font-size:1.02rem; font-weight:500; padding:0.3rem 0.75rem; border-radius:3px; border:1px solid var(--border); background:var(--bg-input); color:var(--text); transition:border-color 0.15s; flex:1; min-width:140px; width:100%; }
 .roster-search-input::placeholder { color:var(--text-muted); }
 .roster-search-input:focus { border-color:var(--gold-dim); }
 .bis-search-wrap { position:relative; flex:1; min-width:140px; display:flex; flex-direction:column; gap:0.25rem; }
@@ -454,7 +474,7 @@ select#playerSelect option { background:#1a1d27; }
 .trial-promo-count { font-size:1.02rem; font-weight:600; padding:2px 8px; border-radius:2px; background:rgba(240,200,112,0.1); color:var(--gold); border:1px solid rgba(240,200,112,0.25); }
 .trial-promo-thresholds { display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap; margin-bottom:0.7rem; }
 .trial-promo-thresh-label { font-size:0.97rem; color:var(--text-muted); }
-.trial-promo-input { width:42px; font-family:'Rajdhani',sans-serif; font-size:1.02rem; font-weight:600; text-align:center; padding:0.2rem 0.3rem; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); border-radius:3px; outline:none; }
+.trial-promo-input { width:42px; font-family:'Rajdhani',sans-serif; font-size:1.02rem; font-weight:600; text-align:center; padding:0.2rem 0.3rem; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); border-radius:3px; }
 .trial-promo-input:focus { border-color:var(--gold-dim); }
 .trial-promo-table { width:100%; border-collapse:collapse; }
 .trial-promo-table th { font-size:0.95rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); font-weight:600; padding:0.3rem 0.6rem; border-bottom:1px solid rgba(240,200,112,0.15); text-align:left; }
@@ -539,7 +559,7 @@ select#playerSelect option { background:#1a1d27; }
 .attend-threshold-row { display:flex; align-items:center; gap:1rem; margin-bottom:1.25rem; flex-wrap:wrap; }
 .attend-threshold-label { font-size:1rem; color:var(--text-muted); white-space:nowrap; min-width:130px; }
 .attend-threshold-label strong { color:var(--gold-light); font-weight:700; }
-.attend-slider { flex:1; min-width:160px; -webkit-appearance:none; appearance:none; height:4px; border-radius:2px; background:var(--bg-elevated); outline:none; cursor:pointer; }
+.attend-slider { flex:1; min-width:160px; -webkit-appearance:none; appearance:none; height:4px; border-radius:2px; background:var(--bg-elevated); cursor:pointer; }
 .attend-slider::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:16px; height:16px; border-radius:50%; background:var(--gold); border:2px solid var(--bg-card); cursor:pointer; }
 .attend-slider::-moz-range-thumb { width:16px; height:16px; border-radius:50%; background:var(--gold); border:2px solid var(--bg-card); cursor:pointer; }
 .attend-player-row { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; padding:1rem 1.25rem; margin-bottom:0.75rem; }
@@ -552,7 +572,7 @@ select#playerSelect option { background:#1a1d27; }
 .attend-manage-panel { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; padding:1.25rem; margin-bottom:1.25rem; }
 .attend-manage-header { display:flex; align-items:center; justify-content:space-between; gap:0.75rem; flex-wrap:wrap; margin-bottom:1rem; }
 .attend-confirm-banner { background:rgba(214,163,68,0.07); border:1px solid var(--gold-dim); border-radius:3px; padding:0.65rem 1rem; font-size:1rem; color:var(--text); margin-bottom:0.75rem; display:flex; align-items:center; flex-wrap:wrap; gap:0.5rem; }
-.attend-night-select { appearance:none; -webkit-appearance:none; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); font-family:'Rajdhani',sans-serif; font-size:1rem; font-weight:500; padding:0.5rem 1rem 0.5rem 0.75rem; border-radius:3px; cursor:pointer; outline:none; min-width:240px; max-width:100%; }
+.attend-night-select { appearance:none; -webkit-appearance:none; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); font-family:'Rajdhani',sans-serif; font-size:1rem; font-weight:500; padding:0.5rem 1rem 0.5rem 0.75rem; border-radius:3px; cursor:pointer; min-width:240px; max-width:100%; }
 .attend-night-select:focus { border-color:var(--gold); }
 .attend-grid-info { font-size:1.04rem; color:var(--text-muted); margin-bottom:0.6rem; }
 .attend-grid-rows { display:flex; flex-direction:column; gap:0.3rem; }
@@ -561,7 +581,7 @@ select#playerSelect option { background:#1a1d27; }
 .attend-grid-source { font-size:1rem; color:var(--text-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .attend-status-wrap { position:relative; }
 .attend-status-wrap::after { content:'▾'; position:absolute; right:0.5rem; top:50%; transform:translateY(-50%); color:var(--gold-dim); pointer-events:none; font-size:0.97rem; }
-.attend-status-select { appearance:none; -webkit-appearance:none; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); font-family:'Rajdhani',sans-serif; font-size:1.07rem; padding:0.28rem 1.4rem 0.28rem 0.55rem; border-radius:3px; cursor:pointer; outline:none; width:100%; }
+.attend-status-select { appearance:none; -webkit-appearance:none; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); font-family:'Rajdhani',sans-serif; font-size:1.07rem; padding:0.28rem 1.4rem 0.28rem 0.55rem; border-radius:3px; cursor:pointer; width:100%; }
 .attend-status-select:focus { border-color:var(--gold); }
 .attend-status-select:disabled { opacity:0.6; cursor:default; }
 .attend-save-ind { font-size:0.97rem; font-weight:600; text-align:right; white-space:nowrap; }
@@ -663,9 +683,9 @@ select#playerSelect option { background:#1a1d27; }
 .signup-step-label { font-size:1.02rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--text-muted); font-weight:600; margin-bottom:0.75rem; }
 .signup-step-title { font-family:'Cinzel',serif; font-size:1.3rem; font-weight:700; color:var(--gold-light); margin-bottom:0.75rem; letter-spacing:0.06em; }
 .signup-step-desc { font-size:1.04rem; color:var(--text-muted); line-height:1.55; margin-bottom:1.5rem; }
-.signup-input { width:100%; font-family:'Rajdhani',sans-serif; font-size:1rem; font-weight:500; padding:0.6rem 0.9rem; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); border-radius:3px; outline:none; transition:border-color 0.15s; margin-bottom:1rem; }
+.signup-input { width:100%; font-family:'Rajdhani',sans-serif; font-size:1rem; font-weight:500; padding:0.6rem 0.9rem; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); border-radius:3px; transition:border-color 0.15s; margin-bottom:1rem; }
 .signup-input:focus { border-color:var(--gold); }
-.signup-textarea { width:100%; font-family:'Rajdhani',sans-serif; font-size:1rem; font-weight:500; padding:0.6rem 0.9rem; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); border-radius:3px; outline:none; resize:vertical; min-height:90px; transition:border-color 0.15s; }
+.signup-textarea { width:100%; font-family:'Rajdhani',sans-serif; font-size:1rem; font-weight:500; padding:0.6rem 0.9rem; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); border-radius:3px; resize:vertical; min-height:90px; transition:border-color 0.15s; }
 .signup-textarea:focus { border-color:var(--gold); }
 .signup-field { margin-bottom:1.25rem; }
 .signup-label { display:block; font-size:1.04rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.5rem; }
@@ -673,12 +693,15 @@ select#playerSelect option { background:#1a1d27; }
 .signup-radio-group { display:flex; flex-wrap:wrap; gap:0.4rem; }
 .signup-radio-label { display:flex; align-items:center; gap:0.4rem; font-size:1rem; font-weight:500; padding:0.35rem 0.85rem; background:var(--bg-elevated); border:1px solid var(--border); border-radius:3px; cursor:pointer; transition:all 0.12s; user-select:none; }
 .signup-radio-label:hover { border-color:var(--border-mid); }
-.signup-radio-label input { display:none; }
+/* .sr-only on the input itself (js/signup.js), not display:none: the control has
+   to stay focusable for the chip to be usable by keyboard at all. The ring goes on
+   the label, matching how :has(input:checked) below already draws the checked state. */
+.signup-radio-label:has(input:focus-visible) { outline:2px solid var(--gold); outline-offset:2px; }
 .signup-radio-label:has(input:checked) { background:rgba(214,163,68,0.1); border-color:var(--gold-dim); color:var(--gold-light); }
 .signup-checkbox-group { display:flex; flex-wrap:wrap; gap:0.4rem; }
 .signup-checkbox-label { display:flex; align-items:center; gap:0.4rem; font-size:1rem; font-weight:500; padding:0.35rem 0.85rem; background:var(--bg-elevated); border:1px solid var(--border); border-radius:3px; cursor:pointer; transition:all 0.12s; user-select:none; }
 .signup-checkbox-label:hover { border-color:var(--border-mid); }
-.signup-checkbox-label input { display:none; }
+.signup-checkbox-label:has(input:focus-visible) { outline:2px solid var(--gold); outline-offset:2px; }
 .signup-checkbox-label:has(input:checked) { background:rgba(214,163,68,0.1); border-color:var(--gold-dim); color:var(--gold-light); }
 .realm-combobox { position:relative; }
 .realm-input { margin-bottom:0; }
@@ -737,7 +760,7 @@ select#playerSelect option { background:#1a1d27; }
 
 /* Add/Remove player */
 .add-player-label { display:block; font-size:0.97rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.2rem; }
-.add-player-input { width:100%; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); font-family:'Rajdhani',sans-serif; font-size:1rem; padding:0.45rem 0.75rem; border-radius:3px; outline:none; }
+.add-player-input { width:100%; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); font-family:'Rajdhani',sans-serif; font-size:1rem; padding:0.45rem 0.75rem; border-radius:3px; }
 .add-player-input:focus { border-color:var(--gold); }
 .add-player-input option { background:#1a1d27; }
 .btn-danger { background:rgba(255,124,92,0.1); border:1px solid rgba(255,124,92,0.35); color:var(--melee); }
