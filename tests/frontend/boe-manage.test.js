@@ -183,7 +183,8 @@ function boeRow(over) {
       retired_at: null,
       sale_price: null,
       finder_payout: null,
-      guild_cut: null
+      guild_cut: null,
+      payout_donated: false
     },
     over
   );
@@ -458,7 +459,7 @@ describe('lifecycle actions', () => {
     const loaded = await build({ client, els });
     loaded.sandbox.markBoePaid(3, makeEl({ textContent: 'Mark Paid' }));
     await flush();
-    expect(captured.rpcCalls.find((c) => c.name === 'boe_mark_paid').args).toEqual({ p_id: 3 });
+    expect(captured.rpcCalls.find((c) => c.name === 'boe_mark_paid').args).toEqual({ p_id: 3, p_donated: false });
     expect(loaded.spies.audit[0].action).toBe('BoE Payout Paid');
     expect(loaded.spies.audit[0].detail).toContain('50,000');
     expect(loaded.spies.audit[0].detail).toContain('Ashveil-Tichondrius');
@@ -1381,5 +1382,128 @@ describe('catalog picker on the edit form (#875)', () => {
     expect(loaded.spies.datalists).toEqual([[]]);
     expect(loaded.els.guildBoeOpen.innerHTML).toContain('Voidglass Cloak');
     expect(loaded.els.guildBoeSummary.innerHTML).not.toContain('Could not load');
+  });
+});
+
+// Donate to Guild (#862): a second settle button, a Donating marker for the
+// intent a raider recorded, a Donated badge in History, and guild income that
+// counts a donated cut. The money columns never change; the flag is the whole
+// recognition, and a plain Mark Paid clears it.
+describe('Donate to Guild (#862)', () => {
+  const DONATING_SOLD = () => SOLD();
+  const flagged = (row) => Object.assign(row, { payout_donated: true });
+  const text = (html) => html.replace(/<[^>]*>/g, '').replace(/&middot;/g, '.');
+
+  it('Awaiting rows offer Mark Paid, then Donate to Guild, then Undo Sale', async () => {
+    const { client } = makeBoeClient({ items: [SOLD()], listings: [], rpc: managerRpc() });
+    const { els } = await build({ client });
+    const html = els.guildBoeAwaiting.innerHTML;
+    expect(html).toContain('>Donate to Guild</button>');
+    expect(html.indexOf('>Mark Paid</button>')).toBeLessThan(html.indexOf('>Donate to Guild</button>'));
+    expect(html.indexOf('>Donate to Guild</button>')).toBeLessThan(html.indexOf('>Undo Sale</button>'));
+  });
+
+  it('Donate to Guild settles through boe_mark_paid with p_donated true, audits it, and History reads Donated', async () => {
+    const els = { 'boe-status-3': makeEl() };
+    const { client, captured } = makeBoeClient({ items: [DONATING_SOLD()], listings: [], rpc: managerRpc() });
+    const loaded = await build({ client, els });
+    loaded.sandbox.donateBoePayout(3, makeEl({ textContent: 'Donate to Guild' }));
+    await flush();
+    expect(captured.rpcCalls.find((c) => c.name === 'boe_mark_paid').args).toEqual({ p_id: 3, p_donated: true });
+    expect(loaded.spies.audit[0]).toMatchObject({ action: 'BoE Payout Donated', targetId: 3, teamId: 1 });
+    expect(loaded.spies.audit[0].detail).toContain('50,000');
+    expect(loaded.spies.audit[0].detail).toContain('Ashveil-Tichondrius');
+    expect(els.guildBoeHistory.innerHTML).toContain('>Donated</span>');
+    expect(els.guildBoeHistory.innerHTML).not.toContain('>Paid</span>');
+    expect(els.guildBoeAwaiting.innerHTML).toContain('Nothing awaiting payout');
+  });
+
+  it('Mark Paid on a flagged row clears the intent and says so in the audit', async () => {
+    const els = { 'boe-status-3': makeEl() };
+    const { client, captured } = makeBoeClient({ items: [flagged(SOLD())], listings: [], rpc: managerRpc() });
+    const loaded = await build({ client, els });
+    loaded.sandbox.markBoePaid(3, makeEl({ textContent: 'Mark Paid' }));
+    await flush();
+    expect(captured.rpcCalls.find((c) => c.name === 'boe_mark_paid').args).toEqual({ p_id: 3, p_donated: false });
+    expect(loaded.spies.audit[0].action).toBe('BoE Payout Paid');
+    expect(loaded.spies.audit[0].detail).toContain('donate intent cleared');
+    expect(loaded.sandbox.findBoeItem(3).payout_donated).toBe(false);
+    expect(els.guildBoeHistory.innerHTML).toContain('>Paid</span>');
+    expect(els.guildBoeHistory.innerHTML).not.toContain('Donating');
+  });
+
+  it('a Donating marker shows on found, listed and sold rows carrying the intent, and on no other row', async () => {
+    const items = [
+      flagged(boeRow({ id: 1, status: 'found' })),
+      boeRow({ id: 2, item_name: 'Plain Find', status: 'found' }),
+      flagged(boeRow({ id: 3, status: 'listed', item_name: 'Flagged Listing' })),
+      flagged(SOLD()),
+      flagged(PAID())
+    ];
+    const { client } = makeBoeClient({ items, listings: [], rpc: managerRpc() });
+    const { els } = await build({ client });
+    const open = els.guildBoeOpen.innerHTML;
+    expect((open.match(/>Donating</g) || []).length).toBe(2);
+    expect(open.indexOf('Plain Find')).toBeGreaterThan(-1);
+    expect(els.guildBoeAwaiting.innerHTML).toContain('>Donating<');
+    expect(els.guildBoeHistory.innerHTML).toContain('>Donated</span>');
+    expect(els.guildBoeHistory.innerHTML).not.toContain('>Donating<');
+  });
+
+  it('guild income counts a donated cut, the strip shows the donated total, and the per-team line still sums to the headline', async () => {
+    const items = [
+      flagged(
+        boeRow({
+          id: 3,
+          team_id: 1,
+          status: 'paid',
+          sold_at: '2026-08-18T00:00:00Z',
+          payout_paid_at: '2026-08-19T00:00:00Z',
+          sale_price: 100000,
+          finder_payout: 20000,
+          guild_cut: 80000
+        })
+      ),
+      boeRow({
+        id: 5,
+        team_id: 4,
+        status: 'sold',
+        sold_at: '2026-08-20T00:00:00Z',
+        sale_price: 250000,
+        finder_payout: 50000,
+        guild_cut: 200000
+      })
+    ];
+    const { client } = makeBoeClient({ items, listings: [], rpc: managerRpc() });
+    const { els } = await build({ client });
+    const html = text(els.guildBoeSummary.innerHTML);
+    expect(html).toContain('Guild income to date: 300,000g');
+    expect(html).toContain('Donated by finders: 20,000g');
+    expect(html).toContain('Outstanding payouts: 50,000g');
+    expect(html).toMatch(/Phoenix Reborn 1 \(100,000g\)/);
+    expect(html).toMatch(/Wrathless 1 \(200,000g\)/);
+  });
+
+  it('a sold row that is donating still counts as outstanding until a manager settles it, and the strip has no donated line without one', async () => {
+    const { client } = makeBoeClient({ items: [flagged(SOLD())], listings: [], rpc: managerRpc() });
+    const { els } = await build({ client });
+    const html = text(els.guildBoeSummary.innerHTML);
+    expect(html).toContain('Outstanding payouts: 50,000g');
+    expect(html).toContain('Guild income to date: 200,000g');
+    expect(html).not.toContain('Donated by finders');
+  });
+
+  it('Undo Payout leaves the intent, so the marker comes back in Awaiting', async () => {
+    const { client } = makeBoeClient({
+      items: [flagged(PAID())],
+      listings: [],
+      rpc: { boe_revert: () => ({ data: 'sold', error: null }) }
+    });
+    const loaded = await build({ client });
+    loaded.sandbox.revertBoe(4, makeEl());
+    await flush();
+    expect(loaded.sandbox.findBoeItem(4).payout_donated).toBe(true);
+    expect(loaded.els.guildBoeAwaiting.innerHTML).toContain('>Donating<');
+    expect(loaded.els.guildBoeAwaiting.innerHTML).toContain('>Donate to Guild</button>');
   });
 });
