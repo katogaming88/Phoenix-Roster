@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=3.82.1">
+<link rel="stylesheet" href="css/styles.css?v=3.82.2">
 <script>var whTooltips = {colorLinks: true, iconizeLinks: true, iconSize: 'small'};</script>
 <script src="https://wow.zamimg.com/widgets/power.js"></script>
 </head>
@@ -217,6 +217,11 @@
     <section class="landing-card" aria-labelledby="boeHeading">
       <h2 id="boeHeading">Report a BoE Drop</h2>
       <p style="color:var(--text);">Found a BoE while raiding with the guild? Report it here and the officers handle the listing. If it sells, you get a cut of the sale.</p>
+      <div class="trial-promo-card" style="max-width:420px;margin:0 auto 1rem;text-align:left;">
+        <strong style="color:var(--gold-light);">Report here before depositing it in the guild bank.</strong>
+        Once it's in the bank, the item shows a base item level and no track or upgrade rank -- there's no way to tell
+        those back out later, so report it while you still have it on your character.
+      </div>
       <div style="display:flex;flex-direction:column;gap:0.35rem;max-width:420px;margin:0 auto;text-align:left;">
         <label for="boeTeamSelect">Reporting for team</label>
         <select id="boeTeamSelect" class="add-player-input"></select>
@@ -367,17 +372,17 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/common.js?v=3.82.1"></script>
-<script src="js/discord.js?v=3.82.1"></script>
-<script src="js/officer-quick-actions.js?v=3.82.1"></script>
-<script src="js/streamers.js?v=3.82.1"></script>
-<script src="js/news.js?v=3.82.1"></script>
-<script src="js/roster.js?v=3.82.1"></script>
-<script src="js/contact.js?v=3.82.1"></script>
-<script src="js/signup.js?v=3.82.1"></script>
-<script src="js/wishlist.js?v=3.82.1"></script>
-<script src="js/bonusRoll.js?v=3.82.1"></script>
-<script src="js/boe.js?v=3.82.1"></script>
+<script src="js/common.js?v=3.82.2"></script>
+<script src="js/discord.js?v=3.82.2"></script>
+<script src="js/officer-quick-actions.js?v=3.82.2"></script>
+<script src="js/streamers.js?v=3.82.2"></script>
+<script src="js/news.js?v=3.82.2"></script>
+<script src="js/roster.js?v=3.82.2"></script>
+<script src="js/contact.js?v=3.82.2"></script>
+<script src="js/signup.js?v=3.82.2"></script>
+<script src="js/wishlist.js?v=3.82.2"></script>
+<script src="js/bonusRoll.js?v=3.82.2"></script>
+<script src="js/boe.js?v=3.82.2"></script>
 <script>
 renderSiteNav('public');
 document.getElementById('versionNum').textContent = VERSION;
