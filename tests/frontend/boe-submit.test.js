@@ -27,7 +27,8 @@ const CARD_ELS = [
   'boeTeamSelect',
   'boeViewWrap',
   'navBoE',
-  'boeItemOptions'
+  'boeItemOptions',
+  'boeDonate'
 ];
 
 function makeSandbox({ search = '' } = {}) {
@@ -140,7 +141,8 @@ describe('submitBoeFound RPC payload', () => {
       p_name_realm: 'Kae-Tichondrius',
       p_item_name: 'Voidglass Cloak',
       p_track: 'Hero',
-      p_note: 'from trash before boss 2'
+      p_note: 'from trash before boss 2',
+      p_donate: false
     });
   });
 
@@ -206,7 +208,8 @@ describe('boe-webhook invoke', () => {
       finder: 'Kae-Tichondrius',
       item: 'Voidglass Cloak',
       track: 'Hero',
-      note: 'from trash before boss 2'
+      note: 'from trash before boss 2',
+      donate: false
     });
   });
 
@@ -597,5 +600,33 @@ describe('item picker (#875)', () => {
     await sandbox.submitBoeFound();
     expect(calls[0].params.p_item_name).toBe('Voidglass Cloak');
     expect(calls[1].body.item).toBe('Voidglass Cloak');
+  });
+});
+
+// The donate checkbox (#862): intent, not settlement. It reaches the RPC as
+// p_donate and the webhook as donate, and clears with the other fields.
+describe('donate intent (#862)', () => {
+  it('a checked box sends p_donate true to the RPC and donate true to the webhook, then clears', async () => {
+    const { sandbox, el } = makeSandbox();
+    const { calls, client } = recorderClient();
+    sandbox.supabaseClient = client;
+    fillCard(el);
+    el('boeDonate').checked = true;
+    await sandbox.submitBoeFound();
+    expect(calls[0].params.p_donate).toBe(true);
+    expect(calls[1].body.donate).toBe(true);
+    expect(el('boeDonate').checked).toBe(false);
+  });
+
+  it('an unchecked box sends false and stays false after a failed submit', async () => {
+    const { sandbox, el } = makeSandbox();
+    const { calls, client } = recorderClient({
+      rpcResult: { data: null, error: { message: 'Unknown track: Heroic' } }
+    });
+    sandbox.supabaseClient = client;
+    fillCard(el);
+    await sandbox.submitBoeFound();
+    expect(calls[0].params.p_donate).toBe(false);
+    expect(calls.map((c) => c.kind)).toEqual(['rpc']);
   });
 });

@@ -654,6 +654,57 @@ describe('revert walks the correction edges', () => {
   });
 });
 
+// Donated payouts (#862): a flag on the settle step, never a status. The raider
+// form records the intent, the manager's button decides, and a plain Mark Paid
+// clears the intent, so the flag is written only by the two RPCs.
+describe('donated payouts (#862)', () => {
+  const submit = (args) => `select public.submit_boe_found(${args}) as id`;
+
+  it('submit_boe_found stores the raider intent, false by default', async () => {
+    await withTxn(async ({ q, asAnon }) => {
+      const yes = await asAnon(submit("1, 'Seedraider-Illidan', 'Seed Test BoE Belt', 'Hero', null, true"));
+      const no = await asAnon(submit("1, 'Seedraider-Illidan', 'Seed Test BoE Belt', 'Hero', null"));
+      const rows = (
+        await q('select id, payout_donated from public.boe_items where id in ($1, $2) order by id', [
+          yes.rows[0].id,
+          no.rows[0].id
+        ])
+      ).rows;
+      expect(rows.map((r) => r.payout_donated)).toEqual([true, false]);
+    });
+  });
+
+  it('boe_mark_paid settles as donated on request, and a plain Mark Paid clears the intent', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await asUser(OFFICER_T1, 'select public.boe_mark_paid(2, null, true)');
+      let row = (await q('select status, payout_donated from public.boe_items where id = 2')).rows[0];
+      expect(row).toEqual({ status: 'paid', payout_donated: true });
+      await asUser(OFFICER_T1, 'select public.boe_revert(2)');
+      await asUser(OFFICER_T1, 'select public.boe_mark_paid(2)');
+      row = (await q('select status, payout_donated from public.boe_items where id = 2')).rows[0];
+      expect(row).toEqual({ status: 'paid', payout_donated: false });
+    });
+  });
+
+  it('boe_revert paid back to sold leaves the flag alone', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await asUser(OFFICER_T1, 'select public.boe_mark_paid(2, null, true)');
+      const res = await asUser(OFFICER_T1, 'select public.boe_revert(2) as status');
+      expect(res.rows[0].status).toBe('sold');
+      const row = (await q('select payout_donated from public.boe_items where id = 2')).rows[0];
+      expect(row.payout_donated).toBe(true);
+    });
+  });
+
+  it('a manager cannot set the flag by a direct UPDATE', async () => {
+    await withTxn(async ({ asUser }) => {
+      await expect(
+        asUser(OFFICER_T1, 'update public.boe_items set payout_donated = true where id = 1')
+      ).rejects.toThrow(/go through the BoE RPCs/);
+    });
+  });
+});
+
 describe('plain UPDATE is metadata-only and DELETE is manager-gated', () => {
   it('a manager can edit the note, the finder, the item name and the track, but not move status', async () => {
     await withTxn(async ({ q, asUser }) => {
