@@ -215,14 +215,14 @@ describe('boe.html specifics (#864)', () => {
 describe('index.html specifics', () => {
   const html = read('index.html');
 
-  // The donate checkbox (#862) shipped with no explanation beside it, so
-  // raiders kept typing "donate" into the note instead. The explanation is a
-  // paragraph the checkbox points at through aria-describedby, so a screen
-  // reader hears it with the control and not as stray text above it.
-  it('explains the donate option beside its checkbox, and the checkbox points at the explanation', () => {
-    expect(new Set(ids(html)).has('boeDonateHelp')).toBe(true);
-    const box = html.match(/<input[^>]*\sid="boeDonate"[^>]*>/);
+  // The donate checkbox (#862) briefly carried an explainer paragraph above it
+  // (3.81.3). It was cut the same day: the label already says what the box
+  // does, so the checkbox stands alone with its label and points at nothing.
+  it('shows the donate option as a checkbox with its label and no explainer', () => {
+    expect(new Set(ids(html)).has('boeDonateHelp')).toBe(false);
+    const box = html.match(/<label for="boeDonate"[^>]*>\s*(<input[^>]*\sid="boeDonate"[^>]*>)\s*([^<]*)<\/label>/);
     expect(box).not.toBeNull();
-    expect(box[0]).toMatch(/aria-describedby="boeDonateHelp"/);
+    expect(box[1]).not.toMatch(/aria-describedby/);
+    expect(box[2].trim()).toBe("I'd like to donate my finder's fee to the guild");
   });
 });
