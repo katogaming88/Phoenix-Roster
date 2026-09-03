@@ -1,0 +1,13 @@
+# The Venomous Abyss, Midnight season 2. The first data line is the raid's
+# raid_zones.wcl_zone_id; then one BoE name per line, as Wowhead spells it.
+# A BoE nobody has found yet is added here when it appears.
+53
+Bound Serpent's Jade Eye
+Crushing Coiler Coif
+Fanged Brute's Greatbelt
+Greaves of the Noxious Depths
+Pauldrons of the Forgotten Sacrifice
+Slippers of the Hissing Cult
+Slitherscale Girdle
+Temple Delver's Mystic Helm
+Venom Rite Mantle

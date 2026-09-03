@@ -151,7 +151,7 @@ async function fetchZoneItems(zoneId, isPtr) {
 // The zone page's loot table doesn't carry the icon slug, so that's the one
 // thing still fetched per item -- from Wowhead's lightweight tooltip JSON
 // endpoint (what their own tooltip widget uses), not the full item page.
-async function fetchIcon(id) {
+export async function fetchIcon(id) {
   const res = await fetch(`https://nether.wowhead.com/tooltip/item/${id}?dataEnv=1&locale=0`, {
     headers: { 'User-Agent': 'Mozilla/5.0 (compatible; wga-item-seeder/1.0)' }
   });

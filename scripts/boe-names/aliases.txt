@@ -1,0 +1,9 @@
+# Known misspellings in boe_items, one per line as `wrong => Catalog Name`,
+# matched case-insensitively against item_name. The link keeps the submitted
+# spelling in the row's note. A find named only by its slot cannot be aliased;
+# a manager renames it from the page (#874).
+Crushin Coiler Coif => Crushing Coiler Coif
+Power Stance Breechs => Power Stance Breeches
+Pauldrons of forgotten Sacrifice => Pauldrons of the Forgotten Sacrifice
+Pau;drpns of the forgotten sacrafice => Pauldrons of the Forgotten Sacrifice
+Infernal Greatlock Girdle (Socket) => Infernal Greatlock Girdle
