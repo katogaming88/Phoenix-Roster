@@ -8,6 +8,15 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.82.3] - 2026-09-03
+
+### Frontend
+
+- The BoE tab now keeps its `#boe` hash, so a refresh (or the pinned per-team Discord link)
+  lands back on it instead of the home view. Opening the tab was clearing the hash right back
+  out the moment it set it, since it was missing from the write side of the hash-reflection map
+  even though the read side already knew `#boe`.
+
 ## [3.82.2] - 2026-09-03
 
 ### Frontend
