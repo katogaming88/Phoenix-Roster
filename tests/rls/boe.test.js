@@ -193,6 +193,14 @@ describe('submit_boe_found', () => {
     });
   });
 
+  it('a catalog BoE links case-insensitively and is stored with the catalog spelling', async () => {
+    await withTxn(async ({ q, asAnon }) => {
+      const res = await asAnon(submit("1, 'Seedraider-Illidan', '  seed test boe belt ', 'Hero', null"));
+      const row = (await q('select item_id, item_name from public.boe_items where id = $1', [res.rows[0].id])).rows[0];
+      expect(row).toEqual({ item_id: 3, item_name: 'Seed Test BoE Belt' });
+    });
+  });
+
   it('an unrostered name keeps the raw finder_name with a null player_id', async () => {
     await withTxn(async ({ q, asAnon }) => {
       const res = await asAnon(submit("1, 'Stranger-Proudmoore', 'Unknown Green Blade', null, null"));

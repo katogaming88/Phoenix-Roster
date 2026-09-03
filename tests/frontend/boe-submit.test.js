@@ -26,7 +26,8 @@ const CARD_ELS = [
   'boeStatus',
   'boeTeamSelect',
   'boeViewWrap',
-  'navBoE'
+  'navBoE',
+  'boeItemOptions'
 ];
 
 function makeSandbox({ search = '' } = {}) {
@@ -501,5 +502,100 @@ describe('boe feature flag', () => {
     sandbox.DATA = { features: { boe: true } };
     sandbox.showBoeView();
     expect(shown).toEqual(['landing', 'boe']);
+  });
+});
+
+// The item picker (#875): a native datalist filled from DATA.boeItems for the
+// viewed season, and a case-insensitive catalog match that submits the
+// catalog's spelling. renderBoeItemDatalist is the real common.js helper, so
+// what lands in the datalist stub is what the page would render.
+describe('item picker (#875)', () => {
+  const S1 = { id: 10, name: 'Visage of Unseen Truths', slot: 'Head', armorType: 'Cloth', icon: null, wclZoneId: 46 };
+  const S2 = { id: 11, name: 'Crushing Coiler Coif', slot: 'Head', armorType: 'Mail', icon: null, wclZoneId: 53 };
+  const UNSCOPED = {
+    id: 12,
+    name: 'Seed Test BoE Belt',
+    slot: 'Waist',
+    armorType: 'Leather',
+    icon: null,
+    wclZoneId: null
+  };
+  const catalogData = (over) =>
+    Object.assign(
+      {
+        features: {},
+        boeItems: [S1, S2, UNSCOPED],
+        raidZones: [
+          { wclZoneId: 46, season: 'midnight-s1' },
+          { wclZoneId: 53, season: 'midnight-s2' }
+        ],
+        seasonName: 'midnight-s2'
+      },
+      over
+    );
+
+  it("offers the viewed season's BoEs plus any unscoped one, escaped, and nothing from another season", () => {
+    const { sandbox, el } = makeSandbox();
+    sandbox.DATA = catalogData({
+      boeItems: [S1, S2, UNSCOPED, { id: 13, name: 'Girdle "of" <Night>', slot: 'Waist', wclZoneId: 53 }]
+    });
+    sandbox.refreshBoeItemOptions();
+    const html = el('boeItemOptions').innerHTML;
+    expect(html).toContain('<option value="Crushing Coiler Coif">');
+    expect(html).toContain('<option value="Seed Test BoE Belt">');
+    expect(html).toContain('<option value="Girdle &quot;of&quot; &lt;Night&gt;">');
+    expect(html).not.toContain('Visage of Unseen Truths');
+  });
+
+  it('offers every BoE when the viewed season has no zones', () => {
+    const { sandbox, el } = makeSandbox();
+    sandbox.DATA = catalogData({ seasonName: 'no-such-season' });
+    sandbox.refreshBoeItemOptions();
+    const html = el('boeItemOptions').innerHTML;
+    expect(html).toContain('Visage of Unseen Truths');
+    expect(html).toContain('Crushing Coiler Coif');
+    expect(html).toContain('Seed Test BoE Belt');
+  });
+
+  it('renders no options while the boe flag is off', () => {
+    const { sandbox, el } = makeSandbox();
+    sandbox.DATA = catalogData({ features: { boe: false } });
+    sandbox.refreshBoeItemOptions();
+    expect(el('boeItemOptions').innerHTML).toBe('');
+  });
+
+  it('submits a case-insensitive catalog match with the catalog spelling, to the RPC and the webhook', async () => {
+    const { sandbox, el } = makeSandbox();
+    const { calls, client } = recorderClient();
+    sandbox.supabaseClient = client;
+    sandbox.DATA = catalogData();
+    fillCard(el);
+    el('boeItemName').value = '  crushing coiler coif ';
+    await sandbox.submitBoeFound();
+    expect(calls.map((c) => c.kind)).toEqual(['rpc', 'invoke']);
+    expect(calls[0].params.p_item_name).toBe('Crushing Coiler Coif');
+    expect(calls[1].body.item).toBe('Crushing Coiler Coif');
+  });
+
+  it("matches against the whole catalog, not only the viewed season's", async () => {
+    const { sandbox, el } = makeSandbox();
+    const { calls, client } = recorderClient();
+    sandbox.supabaseClient = client;
+    sandbox.DATA = catalogData();
+    fillCard(el);
+    el('boeItemName').value = 'VISAGE OF UNSEEN TRUTHS';
+    await sandbox.submitBoeFound();
+    expect(calls[0].params.p_item_name).toBe('Visage of Unseen Truths');
+  });
+
+  it('sends a name outside the catalog as typed', async () => {
+    const { sandbox, el } = makeSandbox();
+    const { calls, client } = recorderClient();
+    sandbox.supabaseClient = client;
+    sandbox.DATA = catalogData();
+    fillCard(el);
+    await sandbox.submitBoeFound();
+    expect(calls[0].params.p_item_name).toBe('Voidglass Cloak');
+    expect(calls[1].body.item).toBe('Voidglass Cloak');
   });
 });
