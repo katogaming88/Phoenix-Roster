@@ -536,6 +536,88 @@ describe('team officers settle payouts for their own team (#888)', () => {
   });
 });
 
+// The finder's Discord id (#889): submit_boe_found stamps the signed-in
+// caller's Discord id on the row (null for anon), a raider reads the rows they
+// submitted signed in whatever character name they typed, and the listings of
+// those rows come with them. Never client-supplied: the trigger keeps the
+// column off the plain-UPDATE list. The seed's auth users carry no provider_id
+// (supabase/seed.sql), so a synthetic finder is inserted here; its Discord id
+// matches no team_members, site_admins or boe_managers row, so
+// link_auth_user_to_member() links nothing.
+describe("the finder's Discord id (#889)", () => {
+  const FINDER = '00000000-0000-0000-0000-0000000000a9';
+  const FINDER_DISCORD = 'discord-finder-9';
+  const addFinder = (q) =>
+    q("insert into auth.users (id, raw_user_meta_data) values ($1, jsonb_build_object('provider_id', $2::text))", [
+      FINDER,
+      FINDER_DISCORD
+    ]);
+  // Team 4 (Wrathless) has no players, so the typed name never resolves and
+  // the Discord id is the only link the row carries.
+  const submit = (args) => `select public.submit_boe_found(${args}) as id`;
+  const FIND = "4, 'Wanderer-Illidan', 'Some BoE Cloak', 'Hero', null, false, '2/6'";
+
+  it('a signed-in submit stores the caller Discord id; an anon submit stores null', async () => {
+    await withTxn(async ({ q, asUser, asAnon }) => {
+      await addFinder(q);
+      const mine = (await asUser(FINDER, submit(FIND))).rows[0].id;
+      const theirs = (await asAnon(submit(FIND))).rows[0].id;
+      const rows = (
+        await q('select id, player_id, finder_discord_id from public.boe_items where id in ($1, $2) order by id', [
+          mine,
+          theirs
+        ])
+      ).rows;
+      expect(rows).toEqual([
+        { id: mine, player_id: null, finder_discord_id: FINDER_DISCORD },
+        { id: theirs, player_id: null, finder_discord_id: null }
+      ]);
+    });
+  });
+
+  it('the finder reads their own row and its listings, and nothing else', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await addFinder(q);
+      const id = (await asUser(FINDER, submit(FIND))).rows[0].id;
+      expect((await asUser(FINDER, 'select id from public.boe_items')).rows.map((r) => r.id)).toEqual([id]);
+      await asUser(OFFICER_T1, 'select public.boe_record_listing($1, 100000)', [id]);
+      const listings = await asUser(FINDER, 'select boe_item_id from public.boe_listings');
+      expect(listings.rows.map((r) => r.boe_item_id)).toEqual([id]);
+    });
+  });
+
+  // Green before and after the migration: the seeded raider has no
+  // provider_id, so current_discord_id() is null for them, and a null must
+  // never match the null on a row submitted signed out.
+  it('a user with no Discord id sees neither a signed-in find nor a signed-out one', async () => {
+    await withTxn(async ({ q, asUser, asAnon }) => {
+      await addFinder(q);
+      await asUser(FINDER, submit(FIND));
+      const id = (await asAnon(submit(FIND))).rows[0].id;
+      await asUser(OFFICER_T1, 'select public.boe_record_listing($1, 100000)', [id]);
+      expect((await asUser(RAIDER_T1, 'select id from public.boe_items')).rows.length).toBe(0);
+      expect((await asUser(RAIDER_T1, 'select id from public.boe_listings')).rows.length).toBe(0);
+    });
+  });
+
+  it('current_discord_id() is null for anon and for a user without a provider id', async () => {
+    await withTxn(async ({ q, asUser, asAnon }) => {
+      await addFinder(q);
+      expect((await asAnon('select public.current_discord_id() as d')).rows[0].d).toBeNull();
+      expect((await asUser(RAIDER_T1, 'select public.current_discord_id() as d')).rows[0].d).toBeNull();
+      expect((await asUser(FINDER, 'select public.current_discord_id() as d')).rows[0].d).toBe(FINDER_DISCORD);
+    });
+  });
+
+  it('a manager cannot set the column by a direct UPDATE', async () => {
+    await withTxn(async ({ asUser }) => {
+      await expect(
+        asUser(OFFICER_T1, "update public.boe_items set finder_discord_id = 'discord-forged' where id = 1")
+      ).rejects.toThrow(/go through the BoE RPCs/);
+    });
+  });
+});
+
 describe('the boe_manager admin trio is site-admin only (#766)', () => {
   it('a site admin can grant, list, and revoke', async () => {
     await withTxn(async ({ asUser }) => {

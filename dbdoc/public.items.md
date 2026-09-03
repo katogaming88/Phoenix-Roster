@@ -160,6 +160,7 @@ erDiagram
   boolean payout_donated
   text upgrade_rank
   bigint ah_fee
+  text finder_discord_id
 }
 "public.priority_order_confirmed_empty" {
   integer team_id FK

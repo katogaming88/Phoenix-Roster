@@ -245,6 +245,7 @@ export type Database = {
         Row: {
           ah_fee: number | null
           created_at: string
+          finder_discord_id: string | null
           finder_name: string | null
           finder_payout: number | null
           found_at: string
@@ -271,6 +272,7 @@ export type Database = {
         Insert: {
           ah_fee?: number | null
           created_at?: string
+          finder_discord_id?: string | null
           finder_name?: string | null
           finder_payout?: number | null
           found_at?: string
@@ -297,6 +299,7 @@ export type Database = {
         Update: {
           ah_fee?: number | null
           created_at?: string
+          finder_discord_id?: string | null
           finder_name?: string | null
           finder_payout?: number | null
           found_at?: string
@@ -2426,6 +2429,7 @@ export type Database = {
           role: string
         }[]
       }
+      current_discord_id: { Args: never; Returns: string }
       danger_clear_bis_requests: {
         Args: { p_team_id: number }
         Returns: number

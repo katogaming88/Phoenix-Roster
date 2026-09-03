@@ -17,6 +17,14 @@ with each release split into `### Frontend` (drives the version number) and
 - The RSVP note is now required, not optional, so officers always know why a raider changed their
   status.
 
+### Backend
+
+- A find submitted while signed in now records the finder's Discord account on the row, and a
+  raider who signs in sees every BoE they reported that way, on any team, with its listings
+  ([#889](https://github.com/katogaming88/WGA-Raid-Hub/issues/889)). The typed character name still links the
+  roster row as before; the 16 existing rows whose character reached a signed-in member were
+  backfilled, and a find reported signed out stays visible to officers and BoE managers only.
+
 ---
 
 ## [3.86.0] - 2026-09-03
