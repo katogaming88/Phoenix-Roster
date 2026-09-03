@@ -479,13 +479,21 @@ function _saveRsvpStatus() {
   var noteEl = document.getElementById('rsvpNote');
   var errEl = document.getElementById('rsvpError');
   var saveBtn = document.getElementById('rsvpSaveBtn');
+  var note = (noteEl && noteEl.value.trim()) || '';
+  if (!note) {
+    if (errEl) {
+      errEl.textContent = 'A note is required so officers know why.';
+      errEl.style.display = '';
+    }
+    return;
+  }
   if (saveBtn) saveBtn.disabled = true;
   supabaseClient
     .rpc('set_own_rsvp', {
       p_team_id: _teamCfg.supabaseTeamId,
       p_raid_date: _calModalDate,
       p_status: _calModalStatus,
-      p_note: (noteEl && noteEl.value.trim()) || null
+      p_note: note
     })
     .then(function (result) {
       if (saveBtn) saveBtn.disabled = false;
@@ -496,7 +504,7 @@ function _saveRsvpStatus() {
         }
         return;
       }
-      _notifyRsvpBot(_calModalDate, _calModalStatus, (noteEl && noteEl.value.trim()) || '');
+      _notifyRsvpBot(_calModalDate, _calModalStatus, note);
       var monthDate = new Date(_calModalDate + 'T00:00:00');
       _calInvalidateMonthCache(new Date(monthDate.getFullYear(), monthDate.getMonth(), 1));
       _closeRsvpModal();

@@ -8,6 +8,17 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.86.1] - 2026-09-03
+
+### Frontend
+
+- Fixed the RSVP status picker's Save button clipping past the modal's edge -- the Cancel/Clear/Save
+  row now wraps instead of overflowing ([#893](https://github.com/katogaming88/WGA-Raid-Hub/issues/893)).
+- The RSVP note is now required, not optional, so officers always know why a raider changed their
+  status.
+
+---
+
 ## [3.86.0] - 2026-09-03
 
 ### Frontend

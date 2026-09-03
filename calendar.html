@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=3.86.0">
+<link rel="stylesheet" href="css/styles.css?v=3.86.1">
 </head>
 <body>
 
@@ -61,9 +61,9 @@
   <div class="officer-prompt-box">
     <h2 id="rsvpModalTitle">Your status</h2>
     <div id="rsvpStatusOptions" class="rsvp-status-options"></div>
-    <textarea id="rsvpNote" class="rsvp-note" placeholder="Optional note (visible to officers)" rows="2"></textarea>
+    <textarea id="rsvpNote" class="rsvp-note" placeholder="Note (required, visible to officers)" rows="2"></textarea>
     <p id="rsvpError" style="display:none;font-size:0.88rem;color:var(--melee);"></p>
-    <div class="prompt-buttons">
+    <div class="prompt-buttons rsvp-prompt-buttons">
       <button type="button" class="btn btn-muted" onclick="_closeRsvpModal()">Cancel</button>
       <button type="button" class="btn btn-muted" onclick="_clearRsvpStatus()">Clear (back to default)</button>
       <button type="button" class="btn btn-gold" id="rsvpSaveBtn" onclick="_saveRsvpStatus()">Save</button>
@@ -72,10 +72,10 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/common.js?v=3.86.0"></script>
-<script src="js/discord.js?v=3.86.0"></script>
-<script src="js/officer-quick-actions.js?v=3.86.0"></script>
-<script src="js/calendar.js?v=3.86.0"></script>
+<script src="js/common.js?v=3.86.1"></script>
+<script src="js/discord.js?v=3.86.1"></script>
+<script src="js/officer-quick-actions.js?v=3.86.1"></script>
+<script src="js/calendar.js?v=3.86.1"></script>
 <script>
 // Non-href SITE_NAV_ITEMS (Home, Roster, ...) don't have a view on this
 // page -- 'officer' mode is reused here purely for its href-ification of

@@ -295,6 +295,13 @@ a.prog-boss-heroic-pulls:hover { color:var(--gold); text-decoration:underline; }
 .rsvp-status-options { display:flex; flex-wrap:wrap; gap:0.5rem; }
 .rsvp-note { width:100%; background:var(--bg-input); border:1px solid var(--border-mid); color:var(--text); font-family:'Rajdhani',sans-serif; font-size:0.95rem; padding:0.5rem 0.7rem; border-radius:3px; resize:vertical; }
 .rsvp-note:focus { border-color:var(--gold); }
+/* Three buttons (Cancel/Clear/Save) overflowed .officer-prompt-box's 320px
+   login-prompt width -- Save clipped past the box's rounded edge. Widen just
+   this modal's box and let the row wrap with equal-width buttons instead of
+   forcing one line. */
+#rsvpModal .officer-prompt-box { max-width:420px; }
+#rsvpModal .rsvp-prompt-buttons { flex-wrap:wrap; }
+#rsvpModal .rsvp-prompt-buttons .btn { flex:1 1 100px; white-space:normal; text-align:center; }
 @media (max-width:480px) { .mini-cal-day { min-height:48px; } .mini-cal-daynum { font-size:0.76rem; } .mini-cal-daycount { font-size:0.72rem; } }
 
 /* Streamers */
