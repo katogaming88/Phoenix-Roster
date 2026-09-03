@@ -8,6 +8,13 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [Unreleased]
+
+### Frontend
+
+- The found form's donate option is the checkbox and its label alone; the explanation that sat
+  above it since 3.81.3 is gone.
+
 ## [3.82.0] - 2026-09-03
 
 ### Frontend
