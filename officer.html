@@ -1267,6 +1267,7 @@ document.getElementById('headerTeamName').textContent = TEAM_NAME;
 document.querySelectorAll('.team-name').forEach(function(el){el.textContent=TEAM_NAME;});
 if (TEAM_SLUG !== 'phoenix') {
   document.querySelectorAll('a[href="index.html"]').forEach(function(a){a.href='index.html?team='+TEAM_SLUG;});
+  document.querySelectorAll('a[href="calendar.html"]').forEach(function(a){a.href='calendar.html?team='+TEAM_SLUG;});
 }
 initTeamUI();
 

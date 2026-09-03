@@ -987,6 +987,7 @@ function bootRosterApp() {
         populateDropdown();
         buildPublicStats();
         buildProgression();
+        buildCalendarWidget('compact');
         buildStreamWidget();
         renderExternalWclLink();
         // Before the hash routing below, so a #boe deep link on a team with
@@ -1026,6 +1027,7 @@ function bootRosterApp() {
       function () {
         buildPublicStats();
         buildProgression();
+        buildCalendarWidget('compact');
         buildRecentLoot();
         buildStreamWidget();
         // The BoE picker's catalog rides the items read (#875), which lands

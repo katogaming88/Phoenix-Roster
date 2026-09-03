@@ -73,6 +73,12 @@ priority_stale_dismissals,Claude readers read priority_stale_dismissals,claude_r
 priority_stale_dismissals,Officers manage priority_stale_dismissals,public,ALL,PERMISSIVE,"((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())","((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())"
 raid_encounters,Claude readers read raid_encounters,claude_readers,SELECT,PERMISSIVE,true,
 raid_encounters,Public read raid_encounters,public,SELECT,PERMISSIVE,true,
+raid_schedule,Claude readers read raid_schedule,claude_readers,SELECT,PERMISSIVE,true,
+raid_schedule,Officers write raid_schedule,public,ALL,PERMISSIVE,"((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_guild_officer() OR is_site_admin())","((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_guild_officer() OR is_site_admin())"
+raid_schedule,Public read raid_schedule,public,SELECT,PERMISSIVE,true,
+raid_schedule_exceptions,Claude readers read raid_schedule_exceptions,claude_readers,SELECT,PERMISSIVE,true,
+raid_schedule_exceptions,Officers write raid_schedule_exceptions,public,ALL,PERMISSIVE,"((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_guild_officer() OR is_site_admin())","((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_guild_officer() OR is_site_admin())"
+raid_schedule_exceptions,Public read raid_schedule_exceptions,public,SELECT,PERMISSIVE,true,
 raid_zones,Claude readers read raid_zones,claude_readers,SELECT,PERMISSIVE,true,
 raid_zones,Public read raid_zones,public,SELECT,PERMISSIVE,true,
 rclc_loot,Claude readers read rclc_loot,claude_readers,SELECT,PERMISSIVE,true,

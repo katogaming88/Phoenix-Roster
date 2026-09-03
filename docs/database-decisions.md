@@ -8,6 +8,20 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-03 -- Raid calendar RSVP intent stays fully separate from the attendance table
+
+Tracking issue: [katogaming88/WGA-Raid-Hub#640](https://github.com/katogaming88/WGA-Raid-Hub/issues/640) (phased into #892-#895).
+
+`raid_schedule`/`raid_schedule_exceptions` (#892) are new tables for the calendar's recurring weekly raid-night rule plus one-off cancel/add exceptions. **Decision: raid nights are computed on the fly from these two tables for a requested date range, not materialized as per-instance rows.** A recurring rule needs no per-instance row until something is attached to a specific date (an exception, or an RSVP in #893) -- materializing "the next N months of nights" today would need a cron job to keep extending the horizon and a cleanup story for old rows, both avoided by computing instances client-side instead.
+
+**Decision, stated directly by Kat and worth being explicit about:** the forthcoming `raid_rsvps` table (#893, self-mark Late/Leaving Early/Tentative/Absent) is forward-looking self-declared *intent*, captured before a raid happens. It is never synced into, or treated as a substitute for, the existing `attendance` table -- that table stays the sole retrospective record (populated from WCL log pulls or officer entry after the raid) and the sole input to the loot-fairness scoring pipeline. Someone can RSVP "Present" and still no-show; only `attendance` says what actually happened. This was raised explicitly because the two tables look similar (both are per-player, per-raid-night status) and the risk was a future contributor assuming one derives from the other.
+
+A raid night can additionally be flagged `is_optional` (#895): on those nights there is no automatic default-Present, every non-bench raider must explicitly respond, and unresponsive raiders get a direct-message reminder from the Discord bot at 24h and again at 2h before raid time.
+
+[Full discussion -> #640](https://github.com/katogaming88/WGA-Raid-Hub/issues/640)
+
+---
+
 ## 2026-09-03 -- The auction house fee comes off the top; the finder is capped at the net
 
 Tracking issue: [katogaming88/WGA-Raid-Hub#861](https://github.com/katogaming88/WGA-Raid-Hub/issues/861). Record Sale wrote `guild_cut = sale_price - finder_payout`, so every guild cut overstated what the bank receives by the game's 5% auction house fee (about 491,000 gold over last season's sales). The 2026-08-25 entry below chose to leave the fee unmodeled; this supersedes that bullet.

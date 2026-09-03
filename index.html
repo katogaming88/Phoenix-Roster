@@ -113,6 +113,7 @@
       </div>
     </div>
     <div id="landingProgression"></div>
+    <div id="landingCalendar" class="pub-loot"></div>
     <div id="landingLoot" class="pub-loot"></div>
   </div>
 </div>
@@ -377,6 +378,7 @@
 <script src="js/officer-quick-actions.js?v=3.83.0"></script>
 <script src="js/streamers.js?v=3.83.0"></script>
 <script src="js/news.js?v=3.83.0"></script>
+<script src="js/calendar.js?v=3.83.0"></script>
 <script src="js/roster.js?v=3.83.0"></script>
 <script src="js/contact.js?v=3.83.0"></script>
 <script src="js/signup.js?v=3.83.0"></script>
@@ -390,6 +392,7 @@ document.getElementById('headerTeamName').textContent = TEAM_NAME;
 document.querySelectorAll('.team-name').forEach(function(el){el.textContent=TEAM_NAME;});
 if (TEAM_SLUG !== 'phoenix') {
   document.querySelectorAll('a[href="officer.html"]').forEach(function(a){a.href='officer.html?team='+TEAM_SLUG;});
+  document.querySelectorAll('a[href="calendar.html"]').forEach(function(a){a.href='calendar.html?team='+TEAM_SLUG;});
 }
 initTeamUI();
 // This page has several public views (Roster, Profile, Signup, History, ...)
