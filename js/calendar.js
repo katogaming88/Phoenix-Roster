@@ -20,9 +20,7 @@
 var _CAL_WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 var _CAL_STATUS_LABELS = { present: 'Present', pending: 'No Response' };
 
-var _calScheduleRows = null;
-var _calExceptionRows = null;
-var _calDataPromise = null;
+var _calDataCache = {};
 var _calViewYear = null;
 var _calViewMonth = null;
 
@@ -36,6 +34,8 @@ function _calIsoDate(d) {
 
 function fetchSupabaseRaidSchedule() {
   if (!supabaseClient) return Promise.resolve([]);
+  // team-read-guard: raid_schedule is one row per weekday/time slot a team
+  // raids (UNIQUE on team_id/weekday/start_time), nowhere near the 1000-row cap.
   return supabaseClient
     .from('raid_schedule')
     .select('weekday, start_time, duration_minutes, active, is_optional')
@@ -56,12 +56,17 @@ function fetchSupabaseRaidSchedule() {
     );
 }
 
-function fetchSupabaseRaidScheduleExceptions() {
+function fetchSupabaseRaidScheduleExceptions(rangeStart, rangeEnd) {
   if (!supabaseClient) return Promise.resolve([]);
+  // team-read-guard: bounded to the one visible month below (rangeStart/
+  // rangeEnd), well under the 1000-row cap -- unlike raid_schedule above,
+  // this table is not bounded on its own (one row per exceptional date ever).
   return supabaseClient
     .from('raid_schedule_exceptions')
     .select('raid_date, exception_type, start_time, duration_minutes, is_optional, note')
     .eq('team_id', _teamCfg.supabaseTeamId)
+    .gte('raid_date', _calIsoDate(rangeStart))
+    .lte('raid_date', _calIsoDate(rangeEnd))
     .then(
       function (result) {
         if (result.error) {
@@ -77,19 +82,20 @@ function fetchSupabaseRaidScheduleExceptions() {
     );
 }
 
-// Loaded once per page view and cached -- the schedule rarely changes
-// mid-session, and every render (compact widget, full page, month nav)
-// works off the same two arrays.
-function _loadCalendarScheduleData() {
-  if (_calDataPromise) return _calDataPromise;
-  _calDataPromise = Promise.all([fetchSupabaseRaidSchedule(), fetchSupabaseRaidScheduleExceptions()]).then(
+// The recurring schedule is cached across the whole page view (rarely
+// changes mid-session); exceptions are cached per visible month, since a
+// new month means a new bounded fetch anyway.
+function _loadCalendarScheduleData(rangeStart, rangeEnd) {
+  var monthKey = rangeStart.getFullYear() + '-' + rangeStart.getMonth();
+  if (_calDataCache[monthKey]) return _calDataCache[monthKey];
+  var schedulePromise = (_calDataCache._schedule = _calDataCache._schedule || fetchSupabaseRaidSchedule());
+  var promise = Promise.all([schedulePromise, fetchSupabaseRaidScheduleExceptions(rangeStart, rangeEnd)]).then(
     function (results) {
-      _calScheduleRows = results[0];
-      _calExceptionRows = results[1];
-      return { scheduleRows: _calScheduleRows, exceptionRows: _calExceptionRows };
+      return { scheduleRows: results[0], exceptionRows: results[1] };
     }
   );
-  return _calDataPromise;
+  _calDataCache[monthKey] = promise;
+  return promise;
 }
 
 /**
@@ -299,9 +305,9 @@ function buildCalendarWidget(mode) {
   var year = mode === 'full' ? _calViewYear : today.getFullYear();
   var month = mode === 'full' ? _calViewMonth : today.getMonth();
 
-  _loadCalendarScheduleData().then(function (data) {
-    var rangeStart = new Date(year, month, 1);
-    var rangeEnd = new Date(year, month + 1, 0);
+  var rangeStart = new Date(year, month, 1);
+  var rangeEnd = new Date(year, month + 1, 0);
+  _loadCalendarScheduleData(rangeStart, rangeEnd).then(function (data) {
     var nights = computeRaidNights(data.scheduleRows, data.exceptionRows, rangeStart, rangeEnd);
     _renderCalGrid(el, year, month, nights, { compact: mode !== 'full' });
   });
