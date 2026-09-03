@@ -11,9 +11,11 @@ import { fileURLToPath } from 'node:url';
 //
 // The page is team-free like guild.html, so the first thing asserted is the
 // same clearing of the team globals common.js resolved at parse time. The rest
-// is the access ladder: signed out asks nothing, a signed-in raider is told
-// whom the page is for, an officer gets the read-only view, a manager or site
-// admin gets the actions.
+// is the access ladder, which #890 flattened: signed out asks nothing and gets
+// a sign-in prompt, and everyone signed in gets the page. What differs is what
+// the read returns and which buttons render -- a raider their own finds and no
+// buttons, an officer the teams they staff with the payout buttons on those
+// rows, a manager or site admin every find with every action.
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const COMMON_JS = readFileSync(path.join(HERE, '../../js/common.js'), 'utf8');
@@ -48,7 +50,14 @@ function builder(result) {
   return b;
 }
 
-function makeSandbox({ session = null, boeRpc = {}, boeItems = [], maintenance = null, rpcRejects = false } = {}) {
+function makeSandbox({
+  session = null,
+  boeRpc = {},
+  boeItems = [],
+  teamMembers = [],
+  maintenance = null,
+  rpcRejects = false
+} = {}) {
   const els = {};
   const calls = [];
   const errors = [];
@@ -92,6 +101,9 @@ function makeSandbox({ session = null, boeRpc = {}, boeItems = [], maintenance =
     from: (table) => {
       calls.push({ kind: 'from', table });
       if (table === 'site_settings') return builder({ data: maintenance, error: null });
+      // The caller's own rows, which fetchBoeAccess() reads for the teams
+      // they may settle (#890).
+      if (table === 'team_members') return builder({ data: teamMembers, error: null });
       if (table === 'boe_items' || table === 'boe_listings') {
         const rows = table === 'boe_items' ? boeItems : [];
         return builder({ data: rows, error: null, count: rows.length });
@@ -178,39 +190,59 @@ describe('boot states', () => {
     await settle(sandbox);
     expect(calls.filter((c) => c.kind === 'rpc')).toEqual([]);
     expect(els.boeAccessNote.innerHTML).toContain('Sign in');
-    expect(els.boeAccessNote.innerHTML).toContain('officers and BoE managers');
+    expect(els.boeAccessNote.innerHTML).toContain('reported under your character');
     expect(els.guildBoeSummary.innerHTML).toBe('');
     expect(els.boeAuthBtn.textContent).toBe('Sign in with Discord');
     expect(els.boeLoading.style.display).toBe('none');
   });
 
-  it('signed in with none of the three grants, says whom the page is for and renders nothing', async () => {
-    const { sandbox, els, calls } = makeSandbox({ session: SESSION });
+  it('renders for a signed-in raider, whose read returns their own finds', async () => {
+    // The "this page is for officers and BoE managers" dead end is gone
+    // (#890). A raider with no finds sees the empty sections, which is an
+    // answer; before this they were told the page was not for them.
+    const { sandbox, els, calls } = makeSandbox({
+      session: SESSION,
+      teamMembers: [{ team_id: 1, role: 'raider' }],
+      boeItems: [{ id: 1, team_id: 1, item_name: 'My Own Find', status: 'found', found_at: '2026-08-20T01:00:00Z' }]
+    });
     await settle(sandbox);
     expect(
       calls
         .filter((c) => c.kind === 'rpc')
         .map((c) => c.name)
         .sort()
-    ).toEqual(['is_any_team_officer', 'is_boe_manager', 'is_site_admin']);
-    expect(els.boeAccessNote.innerHTML).toContain('officers and BoE managers');
-    expect(els.boeAccessNote.innerHTML).not.toContain('Sign in');
-    expect(els.guildBoeSummary.innerHTML).toBe('');
+    ).toEqual(['is_boe_manager', 'is_site_admin']);
+    expect(els.boeAccessNote.innerHTML).toBe('');
+    expect(els.guildBoeOpen.innerHTML).toContain('My Own Find');
+    expect(els.guildBoeOpen.innerHTML).not.toContain('<button');
     expect(els.boeWhoAmI.textContent).toBe('Rex');
     expect(els.boeAuthBtn.textContent).toBe('Sign out');
   });
 
-  it('renders read-only for a plain team officer', async () => {
+  it('gives a team officer the payout buttons on their own team rows', async () => {
     const { sandbox, els } = makeSandbox({
       session: SESSION,
-      boeRpc: { is_any_team_officer: true },
-      boeItems: [{ id: 1, team_id: 1, item_name: 'Phoenix Find', status: 'found', found_at: '2026-08-20T01:00:00Z' }]
+      teamMembers: [{ team_id: 1, role: 'officer' }],
+      boeItems: [
+        {
+          id: 1,
+          team_id: 1,
+          item_name: 'Phoenix Sale',
+          status: 'sold',
+          found_at: '2026-08-20T01:00:00Z',
+          sold_at: '2026-08-21T01:00:00Z',
+          sale_price: 100000,
+          finder_payout: 20000,
+          guild_cut: 75000,
+          ah_fee: 5000
+        }
+      ]
     });
     await settle(sandbox);
     expect(els.boeAccessNote.innerHTML).toBe('');
-    expect(els.guildBoeSummary.innerHTML).toContain('assigned by a site admin');
-    expect(els.guildBoeOpen.innerHTML).toContain('Phoenix Find');
-    expect(els.guildBoeOpen.innerHTML).not.toContain('<button');
+    expect(els.guildBoeAwaiting.innerHTML).toContain('Phoenix Sale');
+    expect(els.guildBoeAwaiting.innerHTML).toContain('Mark Paid');
+    expect(els.guildBoeAwaiting.innerHTML).not.toContain('Undo Sale');
   });
 
   it('renders with actions for a BoE manager holding no officer role anywhere', async () => {
@@ -233,10 +265,18 @@ describe('boot states', () => {
     expect(els.guildBoeOpen.innerHTML).toContain('Record Listing');
   });
 
-  it('treats an access RPC that rejects as no access rather than a broken page', async () => {
-    const { sandbox, els, errors } = makeSandbox({ session: SESSION, rpcRejects: true });
+  it('treats an access RPC that rejects as no buttons rather than no page', async () => {
+    // The grants decide the buttons; the policies decide the rows. A flaky
+    // grant read must not cost a signed-in visitor the records they can read.
+    const { sandbox, els, errors } = makeSandbox({
+      session: SESSION,
+      rpcRejects: true,
+      boeItems: [{ id: 1, team_id: 1, item_name: 'My Own Find', status: 'found', found_at: '2026-08-20T01:00:00Z' }]
+    });
     await settle(sandbox);
-    expect(els.boeAccessNote.innerHTML).toContain('officers and BoE managers');
+    expect(els.boeAccessNote.innerHTML).toBe('');
+    expect(els.guildBoeOpen.innerHTML).toContain('My Own Find');
+    expect(els.guildBoeOpen.innerHTML).not.toContain('<button');
     expect(els.boeLoading.style.display).toBe('none');
     expect(errors).toEqual([]);
   });

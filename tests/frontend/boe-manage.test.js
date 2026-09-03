@@ -162,14 +162,38 @@ function loadSandbox({ client, els = {}, confirmResult = true } = {}) {
   return { sandbox, els, spies };
 }
 
-// canManage is what js/guild.js resolves and hands in (is_boe_manager() or
-// is_site_admin()). It arrives as a parameter rather than being worked out
-// here, so this module has no opinion on identity at all.
+// The access answer is what js/boe-page.js resolves and hands in
+// (fetchBoeAccess() in js/common.js): `manage` for the lifecycle actions,
+// `settleTeamIds` for the payout buttons (#890). It arrives as a parameter
+// rather than being worked out here, so this module has no opinion on
+// identity at all. canManage: false with no settle teams is the raider view.
+function accessFor(opts) {
+  return {
+    signedIn: true,
+    manage: opts && 'canManage' in opts ? !!opts.canManage : true,
+    settleTeamIds: (opts && opts.settleTeamIds) || []
+  };
+}
+
 async function build(opts) {
   const loaded = loadSandbox(opts);
-  loaded.sandbox.buildBoeManage(opts && 'canManage' in opts ? opts.canManage : true);
+  loaded.sandbox.buildBoeManage(accessFor(opts));
   for (let i = 0; i < 12; i++) await flush();
   return loaded;
+}
+
+// Every row in a section with an Actions column needs a cell in it, or the
+// table goes ragged for exactly the audience the column was added for.
+function cellCounts(html) {
+  const headers = (html.match(/<th[\s>]/g) || []).length;
+  const body = html.split('<tbody>')[1] || '';
+  return {
+    headers,
+    rows: body
+      .split('</tr>')
+      .filter((r) => r.includes('<td'))
+      .map((r) => (r.match(/<td[\s>]/g) || []).length)
+  };
 }
 
 function boeRow(over) {
@@ -237,6 +261,32 @@ const RETIRED = () =>
 const ALL_ROWS = () => [FOUND(), LISTED(), SOLD(), PAID(), RETIRED()];
 const LISTING_ROW = () => ({ id: 11, boe_item_id: 2, listed_at: '2026-08-19T12:00:00Z', price: 300000, note: null });
 const LISTED_OTHER_TEAM = () => boeRow({ id: 2, team_id: 4, item_name: 'Wrathless Find', status: 'listed' });
+// The same two settleable states on a team the officer below does not staff.
+const SOLD_T2 = () =>
+  boeRow({
+    id: 6,
+    team_id: 2,
+    item_name: 'Hellfire Sale',
+    status: 'sold',
+    sold_at: '2026-08-21T03:00:00Z',
+    sale_price: 100000,
+    finder_payout: 20000,
+    guild_cut: 75000,
+    ah_fee: 5000
+  });
+const PAID_T2 = () =>
+  boeRow({
+    id: 7,
+    team_id: 2,
+    item_name: 'Hellfire Payout',
+    status: 'paid',
+    sold_at: '2026-08-18T03:00:00Z',
+    payout_paid_at: '2026-08-22T03:00:00Z',
+    sale_price: 100000,
+    finder_payout: 20000,
+    guild_cut: 75000,
+    ah_fee: 5000
+  });
 
 describe('buildBoeManage sections', () => {
   it('partitions rows into Open, Awaiting Payout, and History by status', async () => {
@@ -316,13 +366,21 @@ describe('manager gating (#774)', () => {
     expect(els.guildBoeAwaiting.innerHTML).toContain('Mark Paid');
   });
 
-  it('a read-only officer sees the grant note and no buttons', async () => {
+  it('a raider sees their own rows and no buttons at all', async () => {
     const { client } = makeBoeClient({ items: ALL_ROWS(), listings: [] });
     const { els } = await build({ client, canManage: false });
-    expect(els.guildBoeSummary.innerHTML).toContain('assigned by a site admin');
+    expect(els.guildBoeOpen.innerHTML).toContain('Voidglass Cloak');
     expect(els.guildBoeOpen.innerHTML).not.toContain('<button');
     expect(els.guildBoeAwaiting.innerHTML).not.toContain('<button');
     expect(els.guildBoeHistory.innerHTML).not.toContain('<button');
+  });
+
+  it('gives a raider no Actions column to leave empty', async () => {
+    const { client } = makeBoeClient({ items: ALL_ROWS(), listings: [] });
+    const { els } = await build({ client, canManage: false });
+    expect(els.guildBoeAwaiting.innerHTML).not.toContain('Actions');
+    expect(els.guildBoeHistory.innerHTML).not.toContain('Actions');
+    expect(els.guildBoeOpen.innerHTML).not.toContain('Actions');
   });
 
   // Who the caller is belongs to js/guild.js now. This module asks nothing
@@ -352,6 +410,92 @@ describe('manager gating (#774)', () => {
     expect(btn.disabled).toBe(false);
     expect(btn.textContent).toBe('Mark Paid');
     expect(loaded.spies.audit).toEqual([]);
+  });
+});
+
+// A team officer settles payouts on their own team's rows and nothing else
+// (#888 server-side, #890 in the interface). The button follows the row, not
+// the page, because one officer's list can hold rows from teams they do not
+// staff: a raider's own find on another team never reaches them, but a
+// manager's does, and Wrathless has no officers at all.
+describe('per-row settle for a team officer (#890)', () => {
+  const MIXED = () => [SOLD(), SOLD_T2(), PAID(), PAID_T2(), RETIRED(), FOUND()];
+  const officer = (client) => build({ client, canManage: false, settleTeamIds: [1] });
+
+  it('offers Mark Paid and Donate to Guild on their own team sold row', async () => {
+    const { client } = makeBoeClient({ items: MIXED(), listings: [] });
+    const { els } = await officer(client);
+    const row = els.guildBoeAwaiting.innerHTML.split('</tr>').find((r) => r.includes('Bindings of Depth'));
+    expect(row).toContain('Mark Paid');
+    expect(row).toContain('Donate to Guild');
+  });
+
+  it('offers neither on a sold row from a team they do not staff', async () => {
+    const { client } = makeBoeClient({ items: MIXED(), listings: [] });
+    const { els } = await officer(client);
+    const row = els.guildBoeAwaiting.innerHTML.split('</tr>').find((r) => r.includes('Hellfire Sale'));
+    expect(row).not.toContain('Mark Paid');
+    expect(row).not.toContain('Donate to Guild');
+  });
+
+  it('offers Undo Payout on their own paid row and not on another team paid row', async () => {
+    const { client } = makeBoeClient({ items: MIXED(), listings: [] });
+    const { els } = await officer(client);
+    const rows = els.guildBoeHistory.innerHTML.split('</tr>');
+    expect(rows.find((r) => r.includes('Girdle of Night'))).toContain('Undo Payout');
+    expect(rows.find((r) => r.includes('Hellfire Payout'))).not.toContain('Undo Payout');
+  });
+
+  it('withholds every manager action, on their own team as much as any other', async () => {
+    // Listing, sale, retire, un-retire, undo sale and edit stay with the BoE
+    // manager grant (#766). Settling is the one thing #888 opened up, because
+    // the officers who hand out the gold are the ones who know it went out.
+    const { client } = makeBoeClient({ items: MIXED(), listings: [] });
+    const { els } = await officer(client);
+    const all = els.guildBoeOpen.innerHTML + els.guildBoeAwaiting.innerHTML + els.guildBoeHistory.innerHTML;
+    ['Record Listing', 'Record Sale', 'Retire</button>', 'Un-retire', 'Undo Sale', '>Edit<'].forEach((label) => {
+      expect(all).not.toContain(label);
+    });
+  });
+
+  it('keeps the Open section actionless for them', async () => {
+    const { client } = makeBoeClient({ items: MIXED(), listings: [] });
+    const { els } = await officer(client);
+    expect(els.guildBoeOpen.innerHTML).not.toContain('Actions');
+    expect(els.guildBoeOpen.innerHTML).not.toContain('<button');
+  });
+
+  it('gives every row in a section with an Actions column a cell of its own', async () => {
+    const { client } = makeBoeClient({ items: MIXED(), listings: [] });
+    const { els } = await officer(client);
+    [els.guildBoeAwaiting.innerHTML, els.guildBoeHistory.innerHTML].forEach((html) => {
+      const shape = cellCounts(html);
+      expect(shape.headers).toBeGreaterThan(0);
+      shape.rows.forEach((n) => expect(n).toBe(shape.headers));
+    });
+  });
+
+  it('drops the Actions column when nothing in the section is theirs', async () => {
+    const { client } = makeBoeClient({ items: [SOLD_T2(), PAID_T2()], listings: [] });
+    const { els } = await officer(client);
+    expect(els.guildBoeAwaiting.innerHTML).not.toContain('Actions');
+    expect(els.guildBoeHistory.innerHTML).not.toContain('Actions');
+  });
+
+  it('settles every team for a manager, whose grant is guild-wide', async () => {
+    const { client } = makeBoeClient({ items: MIXED(), listings: [] });
+    const { els } = await build({ client, canManage: true });
+    const rows = els.guildBoeAwaiting.innerHTML.split('</tr>');
+    expect(rows.find((r) => r.includes('Hellfire Sale'))).toContain('Mark Paid');
+    expect(rows.find((r) => r.includes('Bindings of Depth'))).toContain('Mark Paid');
+  });
+
+  it('gives a settling officer somewhere to report a failure', async () => {
+    // markBoePaid() writes the server's refusal into boe-status-<id>; without
+    // the span the officer clicks and sees nothing happen.
+    const { client } = makeBoeClient({ items: MIXED(), listings: [] });
+    const { els } = await officer(client);
+    expect(els.guildBoeAwaiting.innerHTML).toContain('id="boe-status-3"');
   });
 });
 
@@ -729,11 +873,35 @@ describe('per-team credit line (#765)', () => {
   });
 });
 
-describe('summary scope note (#765)', () => {
-  it('tells a read-only officer the totals cover their own teams', async () => {
+describe('the scope note, per audience (#765, #890)', () => {
+  it('tells a settling officer what they may do and what the totals cover', async () => {
+    const { client } = makeBoeClient({ items: ALL_ROWS(), listings: [] });
+    const { els } = await build({ client, canManage: false, settleTeamIds: [1] });
+    expect(els.guildBoeSummary.innerHTML).toContain('settle payouts');
+    expect(els.guildBoeSummary.innerHTML).toContain('your own teams');
+  });
+
+  it('tells a raider these are the finds reported under their character', async () => {
     const { client } = makeBoeClient({ items: ALL_ROWS(), listings: [] });
     const { els } = await build({ client, canManage: false });
-    expect(els.guildBoeSummary.innerHTML).toContain('your own teams');
+    expect(els.guildBoeSummary.innerHTML).toContain('reported under your character');
+    expect(els.guildBoeSummary.innerHTML).not.toContain('your own teams');
+  });
+
+  it('hides guild income from a raider, whose rows are their own finds', async () => {
+    // The figure is the guild's, computed over whatever the policies returned.
+    // For a raider that is their own two or three rows, so a "Guild income to
+    // date" built from them would be a wrong number, not a partial one.
+    const { client } = makeBoeClient({ items: ALL_ROWS(), listings: [] });
+    const { els } = await build({ client, canManage: false });
+    expect(els.guildBoeSummary.innerHTML).not.toContain('Guild income');
+    expect(els.guildBoeSummary.innerHTML).toContain('Outstanding payouts');
+  });
+
+  it('keeps guild income for an officer, whose totals are their teams', async () => {
+    const { client } = makeBoeClient({ items: ALL_ROWS(), listings: [] });
+    const { els } = await build({ client, canManage: false, settleTeamIds: [1] });
+    expect(els.guildBoeSummary.innerHTML).toContain('Guild income');
   });
 
   it('says nothing about scope to a manager, whose totals really are guild-wide', async () => {
@@ -793,12 +961,22 @@ describe('undoing a lifecycle step (#802)', () => {
     expect(els.guildBoeHistory.innerHTML).toContain('Un-retire');
   });
 
-  it('offers none of them to a read-only officer', async () => {
+  it('offers none of them to a raider', async () => {
     const { client } = makeBoeClient({ items: [SOLD(), PAID(), RETIRED()], listings: [] });
     const { els } = await build({ client, canManage: false });
     expect(els.guildBoeAwaiting.innerHTML).not.toContain('Undo');
     expect(els.guildBoeHistory.innerHTML).not.toContain('Undo');
     expect(els.guildBoeHistory.innerHTML).not.toContain('Un-retire');
+  });
+
+  it('offers a settling officer the payout undo and neither of the others', async () => {
+    // Undo Payout is the settle step going backwards, which #888 gave them
+    // with Mark Paid. Undo Sale and Un-retire are manager steps.
+    const { client } = makeBoeClient({ items: [SOLD(), PAID(), RETIRED()], listings: [] });
+    const { els } = await build({ client, canManage: false, settleTeamIds: [1] });
+    expect(els.guildBoeHistory.innerHTML).toContain('Undo Payout');
+    expect(els.guildBoeHistory.innerHTML).not.toContain('Un-retire');
+    expect(els.guildBoeAwaiting.innerHTML).not.toContain('Undo Sale');
   });
 
   it('moves a paid row back to Awaiting Payout and clears the paid date', async () => {
