@@ -18,10 +18,17 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const COMMON_JS = readFileSync(path.join(HERE, '../../js/common.js'), 'utf8');
 const ROSTER_JS = readFileSync(path.join(HERE, '../../js/roster.js'), 'utf8');
 
+// A PostgREST builder stub. `is` and `gt` are here for the tests below that
+// give the page a ?team=: that is not a cold landing, so roster.js boots the
+// app instead, and loadData()'s reads chain both. Without them the boot
+// rejects, which vitest reports as an unhandled error and a failed run even
+// though every test passes.
 function builder(result) {
   const b = {
     select: () => b,
     eq: () => b,
+    is: () => b,
+    gt: () => b,
     order: () => b,
     limit: () => b,
     maybeSingle: () => Promise.resolve(result),
