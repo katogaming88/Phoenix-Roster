@@ -1001,7 +1001,7 @@
                   <li>When it sells, click <strong>Record Sale</strong> and enter the sale price. The finder's payout and the guild cut are computed from the guild-wide split policy and shown under <strong>Awaiting Payout</strong>.</li>
                   <li>After mailing the finder their gold, click <strong>Mark Paid</strong>. The item moves to History.</li>
                   <li><strong>Retire</strong> closes out an item that never sold or was reported by mistake.</li>
-                  <li>These actions need the BoE manager grant (assigned by a site admin); without it the tab is read-only.</li>
+                  <li>Listing, sale, retire and edit need the BoE manager grant (assigned by a site admin). <strong>Mark Paid</strong>, <strong>Donate to Guild</strong> and <strong>Undo Payout</strong> are open to officers and team leaders on their own team's finds, since they're the ones handing out the gold.</li>
                 </ol>
               </div>
 
@@ -1430,7 +1430,6 @@ function _grantOfficerAccessViaDiscord(session) {
   sessionStorage.setItem(_SESSION_KEY, '1');
   sessionStorage.setItem(_SESSION_TS_KEY, String(Date.now()));
   hideOfficerPrompt();
-  revealBoeSalesNav(session);
   document.getElementById('loadingMsg').style.display = '';
   loadData(
     function() {

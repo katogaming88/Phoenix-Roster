@@ -118,7 +118,7 @@ or add the `chore` label.
 | `officer.html` | Officer dashboard -- all management tabs |
 | `admin.html` | Site admin dashboard -- team management, site admin grant/revoke, feature flags, cross-team audit log, maintenance mode |
 | `guild.html` | Guild-wide page -- team selection, streams, news, BoE entry point, About the Guild. Not scoped to a team |
-| `boe.html` | BoE Sales -- the found-BoE auction lifecycle for officers, BoE managers and site admins. Guild-wide like `guild.html`, reached only through an access-gated link on the guild page or the officer dashboard |
+| `boe.html` | BoE Sales -- the found-BoE auction lifecycle, open to anyone signed in and scoped by the read policies (#890). Guild-wide like `guild.html`, reached from the BoE Sales link on the guild page or the officer dashboard |
 | `js/common.js` | Shared globals, `TEAMS`, `TEAM_SLUG`/`IS_COLD_LANDING` resolution, `VERSION`, data helpers, `renderProfile` |
 | `js/discord.js` | Discord OAuth login/session mapping, character claim flow |
 | `js/roster.js` | Public page boot, cold-landing team picker/auto-redirect, dropdown, stats row, recent loot |
@@ -129,8 +129,8 @@ or add the `chore` label.
 | `js/tabs/tab-*.js` | One file per officer tab (19 files) |
 | `js/admin.js` | Standalone boot/logic for `admin.html` -- not team-scoped, so it doesn't reuse common.js/discord.js |
 | `js/guild.js` | Boot/logic for `guild.html`. Also not team-scoped, but it does load common.js for `TEAMS` and the guild-wide helpers, then nulls the team globals so a team-dependent call throws rather than rendering Phoenix's data. Skips discord.js, whose session read is hard-scoped to one team |
-| `js/boe-page.js` | Boot for `boe.html`: session, the three-RPC access answer (`fetchBoeAccess()` in common.js), then `js/boe-manage.js` renders. Same team-free shape as `js/guild.js` |
-| `js/boe-manage.js` | The BoE lifecycle renderer and its RPC calls; takes `canManage` as a parameter and resolves no identity itself |
+| `js/boe-page.js` | Boot for `boe.html`: session, the access answer (`fetchBoeAccess()` in common.js: the manage grant plus the teams the caller may settle), then `js/boe-manage.js` renders for anyone signed in. Same team-free shape as `js/guild.js` |
+| `js/boe-manage.js` | The BoE lifecycle renderer and its RPC calls; takes the access answer as a parameter and resolves no identity itself |
 | `js/boe.js` | The raider-facing found-BoE card on `index.html`: the reporting-team picker, the item picker from `DATA.boeItems`, the `submit_boe_found` call and the webhook ping |
 | `css/styles.css` | Shared styles across all pages |
 | `css/officer.css` | Officer-specific styles (partial split out of `styles.css`, still in progress) |

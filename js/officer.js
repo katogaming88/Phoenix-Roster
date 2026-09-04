@@ -416,22 +416,6 @@ function buildOfficerDashboard() {
 // visible without a reload. loot and fairness both live partly inside the
 // Loot tab (Loot Fairness is a fairness sub-tab, not a loot one, #231's own
 // split) -- the Loot nav-item itself only disappears if both are off.
-// Reveals the site nav's BoE Sales link (boe.html, #864) for someone who may
-// open that page: an officer on any team, a BoE manager, or a site admin. The
-// item ships hidden from renderSiteNav() so it cannot flash before this
-// answers. Guild-wide, so it ignores this team's boe flag on purpose; the
-// page it points at shows every team's finds. Called once the Discord session
-// is established (officer.html's _grantOfficerAccessViaDiscord); a password
-// session has no auth user behind it, so the RPCs answer false and the link
-// stays hidden, which is right, since the page cannot read anything for it.
-function revealBoeSalesNav(session) {
-  var el = document.getElementById('navBoeManage');
-  if (!el) return;
-  fetchBoeAccess(session).then(function (access) {
-    el.style.display = access.visible ? '' : 'none';
-  });
-}
-
 function applyFeatureFlagVisibility() {
   function setVisible(id, visible) {
     var el = document.getElementById(id);
@@ -460,8 +444,8 @@ function applyFeatureFlagVisibility() {
   setVisible('navTab-loot', lootOn || fairnessOn);
   // The site nav's BoE link points back at index.html's submit card (#746);
   // hide it alongside the card when the team's boe flag is off. The BoE Sales
-  // link beside it is guild-wide and rides the access answer instead
-  // (revealBoeSalesNav()), not this team's flag.
+  // link beside it is guild-wide and always shown since #890, not gated on
+  // this team's flag and no longer on who is signed in.
   setVisible('navBoE', boeOn);
 
   setVisible('loot-subtab-btn-import', lootOn);

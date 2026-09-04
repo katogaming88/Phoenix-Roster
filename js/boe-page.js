@@ -13,8 +13,13 @@
 // does not load js/discord.js either; the one session read it needs is below.
 //
 // js/boe-manage.js does the rendering and resolves no identity of its own: it
-// takes canManage as a parameter (#774), and this file is the one place that
-// decides it, from fetchBoeAccess() in js/common.js.
+// takes the access answer as a parameter (#774), and this file is the one
+// place that decides it, from fetchBoeAccess() in js/common.js.
+//
+// Since #890 the page renders for anyone signed in rather than for officers
+// and BoE managers only. The read policies were already doing the scoping, so
+// there was nothing for a client-side gate to protect: a raider's own finds
+// came back for them all along and the page refused to show them.
 
 TEAM_SLUG = null;
 TEAM_NAME = null;
@@ -54,30 +59,28 @@ function renderBoePageAuth(session) {
 }
 
 /**
- * The page's one decision. Signed out gets a sign-in prompt, signed in
- * without any of the three grants gets told whom the page is for, anyone
- * else gets the records with or without the action buttons. The note is
- * cleared on a render so a re-boot after sign-in never leaves the prompt
- * sitting above the tables.
+ * The page's one decision, and it is now just "signed in?" (#890). Signed out
+ * gets a prompt that says what signing in is for; everyone else gets the
+ * records the policies return for them, with whatever buttons their access
+ * carries. The note is cleared on a render so a re-boot after sign-in never
+ * leaves the prompt sitting above the tables.
+ *
+ * Read off the access answer rather than the session, so a signed-in visitor
+ * whose grant reads failed still gets their rows instead of a sign-in prompt
+ * they cannot act on.
  */
-function renderBoePageAccess(session, access) {
+function renderBoePageAccess(access) {
   var note = document.getElementById('boeAccessNote');
-  if (!session) {
+  if (!access.signedIn) {
     if (note) {
       note.innerHTML =
-        '<p class="guild-empty">Sign in with Discord to see BoE Sales. This page is for officers and BoE managers.</p>';
-    }
-    return;
-  }
-  if (!access.visible) {
-    if (note) {
-      note.innerHTML =
-        '<p class="guild-empty">This page is for officers and BoE managers. Your account holds neither role; ask a site admin if it should.</p>';
+        '<p class="guild-empty">Sign in with Discord to see the BoEs reported under your character. ' +
+        'Officers and BoE managers see the finds they look after.</p>';
     }
     return;
   }
   if (note) note.innerHTML = '';
-  buildBoeManage(access.canManage);
+  buildBoeManage(access);
 }
 
 function bootBoePage() {
@@ -120,7 +123,7 @@ function bootBoePage() {
           return fetchBoeAccess(session);
         })
         .then(function (access) {
-          renderBoePageAccess(_boePageSession, access);
+          renderBoePageAccess(access);
           done();
         });
     })
