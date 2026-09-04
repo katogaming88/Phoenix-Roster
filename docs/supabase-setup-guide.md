@@ -876,12 +876,37 @@ Team IDs: Phoenix = 1, Hellfire = 2, Immolation = 3, Wrathless = 4.
 **Officers on a team without a page.** Immolation and Wrathless raid with the guild and do not
 otherwise use the site. The same insert works for any team id, hidden teams included, and it is
 the only step: a `team_members` row with `role = 'officer'` or `'team_leader'` lets that person
-settle their own team's BoE payouts on the BoE page (`can_settle_boe()`, #888) and nothing else,
-and `auth_user_id` fills itself on their first Discord sign-in. Insert the row when an officer
-asks for it, not ahead of time: a row assigns them the work.
+settle their own team's BoE payouts on the BoE page (`can_settle_boe()`, #888) and nothing else.
+Insert the row when an officer asks for it, not ahead of time: a row assigns them the work.
+
+**Set `auth_user_id` in the same statement if that person already has an account.** The
+`on_auth_user_created` trigger runs `after insert on auth.users`, so it links a hand-inserted row
+only for someone who has never signed in. For anyone who has, the row keeps `auth_user_id = null`,
+and every role check reads it as nothing: `my_team_role()` returns null, so `can_settle_boe()` is
+false and the BoE page shows them no settle buttons. The only other filler is `claim_character()`,
+which needs a character on that team to claim, and an officer on a team where they do not raid has
+none. Prod carries one row in exactly this state today (Immolation, `discord_id` set, no
+`auth_user_id`, no player row).
 
 ```sql
-insert into team_members (team_id, discord_id, role) values (4, 'DISCORD_ID_HERE', 'officer');  -- Wrathless officer
+-- The subselect is null for someone with no account yet, which is the case the trigger covers.
+insert into team_members (team_id, discord_id, auth_user_id, role)
+values (
+  4,
+  'DISCORD_ID_HERE',
+  (select id from auth.users where raw_user_meta_data ->> 'provider_id' = 'DISCORD_ID_HERE'),
+  'officer'
+);  -- Wrathless officer
+```
+
+To repair a row that is already in place:
+
+```sql
+update team_members tm
+set auth_user_id = u.id
+from auth.users u
+where u.raw_user_meta_data ->> 'provider_id' = tm.discord_id
+  and tm.auth_user_id is null;
 ```
 
 ---
@@ -922,10 +947,22 @@ In Supabase: **Project Settings** -> **Edge Functions** -> **Secrets**. Add each
 | `BOT_WEBHOOK_URL_HELLFIRE`     | `https://wga-hellfire.duckdns.org` (already live)        |
 | `SERVICE_ROLE_KEY`             | Supabase -> Project Settings -> API -> service_role      |
 | `BOE_WEBHOOK_URL`              | Discord channel settings -> Integrations -> Webhooks (#746) |
+| `BOE_SOLD_WEBHOOK_URL`         | Optional (#873). Same place, for a separate sold channel   |
 
 Note: the BoE webhook secret exists on prod under the name `BOE-Found-Webhook`
 (created that way in the dashboard, 2026-08-26). The boe-webhook function reads
 `BOE_WEBHOOK_URL` first and falls back to that name, so either works.
+
+Note: `BOE_SOLD_WEBHOOK_URL` is optional. `boe-sold-webhook` reads it first and
+falls back to the found pair, so with nothing added the sold message lands in the
+found channel and moving it later is one dashboard entry rather than a code change.
+With none of the three set the function no-ops with `{ skipped: true }`.
+
+Deploy the sold function by hand after adding (or deciding against) that secret:
+
+```bash
+supabase functions deploy boe-sold-webhook
+```
 
 Note: Supabase does not allow secrets prefixed with `SUPABASE_`, so the service role
 key is stored as `SERVICE_ROLE_KEY`.

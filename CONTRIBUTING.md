@@ -138,7 +138,7 @@ or add the `chore` label.
 | `css/guild.css` | Guild-page-specific styles, plus the keyboard/motion baselines scoped to that page until #435 generalises them |
 | `gs/*.gs` | Retired Google Apps Script source, kept only as historical record -- no code reads `gasUrl` or writes through GAS anymore; everything is Supabase-only |
 | `supabase/` | Supabase CLI project: local dev stack config and schema migrations |
-| `supabase/functions/` | Edge Functions (Deno). Webhook relays (`boe-webhook`, `discord-bot-webhook`, `contact-webhook`), scheduled sync jobs (`wcl-sync`, `wcl-progression-sync`, `twitch-live-check`), and `upload-bio-photo`, which authenticates the caller and is the only writer to Storage -- see "Storage" below |
+| `supabase/functions/` | Edge Functions (Deno). Webhook relays (`boe-webhook`, `boe-sold-webhook`, `discord-bot-webhook`, `contact-webhook`), scheduled sync jobs (`wcl-sync`, `wcl-progression-sync`, `twitch-live-check`), and `upload-bio-photo`, which authenticates the caller and is the only writer to Storage -- see "Storage" below |
 | `scripts/import/` | One-off/recurring data import tooling (loot, attendance, etc.) |
 | `scripts/ci/` | CI checks that need more than a workflow step (changelog classification, the team-wide read guard), plus the version stamper (`npm run stamp`), which owns the page registry the asset-version check reads |
 | `dbdoc/` | Generated schema docs (tbls). Never edit by hand; regenerate with `npm run db:docs` |

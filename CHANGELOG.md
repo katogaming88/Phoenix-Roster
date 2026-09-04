@@ -8,6 +8,29 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.89.0] - 2026-09-03
+
+### Frontend
+
+- Recording a sale now pings the finder in Discord
+  ([#873](https://github.com/katogaming88/WGA-Raid-Hub/issues/873)). They used to find out when a
+  manager remembered to tell them. The message names the item with its track and rank, lists the
+  sale price, the auction house fee, the guild's cut and the finder's own so the four add up, and
+  says to see your raid leaders or the BoE manager in the 15 minutes before raid starts for the
+  gold, with the manager linked so you can click straight through to whoever holds the grant. Only
+  the finder is notified. A
+  finder who chose to donate their cut gets a thank-you instead of a contact line. Undo Sale does
+  not retract the post; delete it in Discord by hand.
+
+### Backend
+
+- New `boe-sold-webhook` Edge Function behind the same manager or site admin gate as recording a
+  sale. It reads the row itself and posts nothing unless that row is still sold, so a replay after
+  an undo announces nothing. `BOE_SOLD_WEBHOOK_URL` sends it to its own channel; without it the
+  message lands in the found channel, and with no webhook configured at all the function no-ops.
+
+---
+
 ## [3.88.0] - 2026-09-03
 
 ### Frontend

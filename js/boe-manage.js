@@ -932,6 +932,15 @@ function confirmBoeSale(id, btnEl) {
         'g',
       item.team_id
     );
+    // Tell the finder in Discord (#873). Fire and forget, not gated on its
+    // result and not awaited: the row above is the write of record, and a
+    // Discord outage must not make a recorded sale look like it failed. The
+    // function reads the row itself, so it takes an id and nothing else --
+    // the money it prints is what the database holds, not what this client
+    // thinks it holds.
+    if (supabaseClient.functions && typeof supabaseClient.functions.invoke === 'function') {
+      Promise.resolve(supabaseClient.functions.invoke('boe-sold-webhook', { body: { id: id } })).catch(function () {});
+    }
   });
 }
 

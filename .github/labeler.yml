@@ -80,6 +80,7 @@ boe:
       - js/boe-manage.js
       - js/boe-page.js
       - supabase/functions/boe-webhook/**
+      - supabase/functions/boe-sold-webhook/**
       - scripts/fetch-boe-items.js
       - scripts/boe-names/**
 
