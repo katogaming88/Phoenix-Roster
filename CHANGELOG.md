@@ -8,6 +8,25 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.87.0] - 2026-09-03
+
+### Frontend
+
+- The BoE Sales page is open to anyone signed in ([#890](https://github.com/katogaming88/WGA-Raid-Hub/issues/890)).
+  It used to turn away everyone who was not an officer or a BoE manager, while the read policies
+  were already scoping it: a raider now sees the finds reported under their own character, a team
+  officer sees the teams they staff and settles those payouts (Mark Paid, Donate to Guild, Undo
+  Payout, [#888](https://github.com/katogaming88/WGA-Raid-Hub/issues/888)), and a BoE manager or
+  site admin still sees every find with every action. The buttons follow the row rather than the
+  page, so an officer gets none on another team's find, and the Actions column drops out of a
+  section where nothing is theirs. Guild income is left off a raider's summary, since it would be
+  summed over their own handful of finds.
+- The BoE Sales links in the guild page's nav and the officer dashboard's site nav are plain links
+  now. They shipped hidden and waited on three access checks before appearing; there is nothing
+  left to gate them on.
+
+---
+
 ## [3.86.2] - 2026-09-03
 
 ### Frontend
