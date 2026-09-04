@@ -8,6 +8,24 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.88.0] - 2026-09-03
+
+### Frontend
+
+- Reporting a BoE and following what happened to it are one page now
+  ([#891](https://github.com/katogaming88/WGA-Raid-Hub/issues/891)). The report form moved off
+  index.html's BoE tab to the top of the BoE page, above the finds it creates. Reporting still
+  needs no login. The form picks its own reporting team, so it starts on the team a pinned link
+  named, or a lone claimed character's team, and otherwise asks rather than guessing; the item
+  list follows whichever team is chosen.
+- One **BoE** link in every nav, in place of the BoE tab and the separate BoE Sales link. Every old
+  link still works: `index.html?team=<slug>#boe` and `guild.html#boe` both land on the page, and
+  the per-team one carries its team into the form.
+- The guild page's **Found a BoE?** card is gone. It only ever picked a team and sent you to the
+  form, which now picks its own.
+
+---
+
 ## [3.87.0] - 2026-09-03
 
 ### Frontend
