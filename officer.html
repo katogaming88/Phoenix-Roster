@@ -813,6 +813,27 @@
                 </div>
               </div>
 
+              <!-- Discord Signup Sheet (#900) -->
+              <div class="help-ref-card">
+                <h3 class="help-ref-title">Discord Signup Sheet<button class="help-btn" onclick="toggleHelp('help-discord-signup-sheet')" title="Show help">?</button></h3>
+                <div id="help-discord-signup-sheet" class="help-tip">
+                  The bot posts one message per raid night showing the whole roster's RSVP status, and edits it in place as people respond. Channel ID: leave blank to use the bot's default attendance channel. Lead Time: how many hours before the raid the sheet gets posted (default 48 -- e.g. a Tuesday 9pm ET raid posts the preceding Sunday at 9pm ET). Use Verify to confirm a channel ID resolves to the channel you expect -- many of our channels are named nearly identically across teams (e.g. phoenix-raid-attendance vs hellfire-raid-attendance).
+                </div>
+                <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
+                  <input type="text" id="discordSignupChannelInput" class="add-player-input" placeholder="Discord channel ID"
+                    style="max-width:220px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+                  <button class="btn btn-muted" id="discordSignupChannelVerifyBtn" onclick="verifyDiscordSignupChannel()">Verify</button>
+                  <span id="discordSignupChannelVerifyStatus" style="font-size:0.92rem;"></span>
+                </div>
+                <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.6rem;">
+                  <label for="discordSignupLeadHoursInput" style="font-size:0.92rem;">Lead time (hours)</label>
+                  <input type="number" id="discordSignupLeadHoursInput" class="add-player-input" min="1" max="336" placeholder="48"
+                    style="max-width:90px;font-size:0.95rem;padding:0.35rem 0.6rem;">
+                  <button class="btn btn-gold" id="discordSignupSheetSaveBtn" onclick="saveDiscordSignupSheetSettings()">Save</button>
+                  <span id="discordSignupSheetStatus" style="font-size:0.92rem;color:var(--heal);"></span>
+                </div>
+              </div>
+
             </div><!-- /season-sub-settings -->
 
             <div id="season-sub-progression" class="season-settings-wrap" style="display:none;">

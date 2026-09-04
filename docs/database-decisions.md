@@ -8,6 +8,21 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-04 -- Aggregated Discord signup sheet: the bot owns all the logic, not a new Edge Function
+
+Tracking issue: [#900](https://github.com/katogaming88/WGA-Raid-Hub/issues/900), part of #640.
+
+- **All the roster/RSVP querying, role grouping, embed building, and message-ID bookkeeping lives in the bot** (`wga-raid-bot/src/signupSheet.ts`), using the bot's own service-role Supabase client (same precedent as `wishlistStatus.ts`'s `fetchNudgeCandidates()`, already used by `/nudge-missing`) -- not split between a new site-side Edge Function and the bot. Reason: the Refresh button and the proactive lead-time sweep both need the bot to independently rebuild the exact same embed without any site-triggered event, so the formatting logic has to exist bot-side regardless -- splitting it would mean maintaining the same grouping logic in two places. The site's role shrinks to a migration for the DB objects the bot depends on, one new `discord-bot-webhook` relay action per bot capability, and the officer-facing settings.
+- **Two new service-role-only functions**, `raid_night_info()` and `claim_raid_signup_sheet()`, granted to `service_role` with no explicit `revoke` from `anon`/`public` -- this mirrors `wishlist_setup_status()`'s existing grant shape (wga-raid-bot#8) rather than inventing a stricter pattern: neither function is `SECURITY DEFINER`, so RLS on the underlying tables (`raid_signup_sheets` has no policy for anyone but the service role) is the real gate regardless of who can technically call the function.
+- **`claim_raid_signup_sheet()`'s atomicity is a `select ... for update` row lock, not a full claim/lease protocol.** A rare remaining race (two truly-simultaneous first-ever calls for a brand-new date, both missing the lock because neither row exists yet) is caught as a `unique_violation` and falls through to a re-select rather than being engineered away -- worst case is one extra duplicate message on a date's very first activity, never repeating, since only one `message_id` ever survives in the row afterward. Matches this codebase's established tolerance for similar low-frequency, self-healing races (#895's reminder-dedup-after-relay-succeeds ordering).
+- **The channel ID needs a "Verify" step, not just a text input.** Most of WGA's Discord channels are named near-identically across teams (`phoenix-raid-attendance` vs `hellfire-raid-attendance`), so a raw numeric ID gives an officer no way to confirm they copied the right team's channel. `discord-bot-webhook`'s relay was changed to forward the bot's actual response body (previously discarded on every success) so a new `verifyChannel` action can show the resolved channel name back in the officer UI -- backward compatible, every existing caller is fire-and-forget and already ignores the extra fields.
+- **Proactive lead time is officer-configurable, not a fixed cron offset.** Default 48 hours before the raid's actual start time (not "2 calendar days" by date alone) -- a Tuesday 9pm ET raid posts the preceding Sunday at 9pm ET. Lives in `team_settings.config.signupSheetLeadHours`, same team-leader/site-admin-only `set_team_setting()` path as every other flat settings key, no new RPC.
+- **Bench players get their own section regardless of RSVP status**, diverging from the issue's original "every non-bench roster member" text -- Kat's explicit correction: an optional night is exactly the kind of night a bench player might get pulled in for, so they need to be visible on the sheet too, not silently excluded.
+
+[Full discussion -> #900](https://github.com/katogaming88/WGA-Raid-Hub/issues/900)
+
+---
+
 ## 2026-09-04 -- Optional raid nights: bench included, reminder dedup gets its own locked table
 
 Tracking issue: [#895](https://github.com/katogaming88/WGA-Raid-Hub/issues/895), Phase 4 of 4 for the raid calendar (part of #640).

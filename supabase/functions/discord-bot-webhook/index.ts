@@ -30,7 +30,9 @@ const ACTION_PATHS: Record<string, string> = {
   bis: '/bis',
   mplus: '/mplus',
   rsvp: '/rsvp-status',
-  optionalReminder: '/optional-reminder'
+  optionalReminder: '/optional-reminder',
+  signupSheetSync: '/signup-sheet-sync',
+  verifyChannel: '/verify-channel'
 };
 
 Deno.serve(async (req) => {
@@ -63,7 +65,11 @@ Deno.serve(async (req) => {
       return jsonResponse({ success: false, error: 'Bot responded with ' + response.status });
     }
 
-    return jsonResponse({ success: true });
+    // Every caller before verifyChannel is fire-and-forget and never reads
+    // this body, so forwarding it is backward compatible -- verifyChannel
+    // needs the bot's actual {ok, name}/{ok, error} to reach the officer UI.
+    const body = await response.json().catch(() => ({}));
+    return jsonResponse({ success: true, ...body });
   } catch (err) {
     console.error('discord-bot-webhook error:', err);
     return jsonResponse({ success: false, error: err instanceof Error ? err.message : 'Unknown error' });

@@ -33,6 +33,13 @@ function buildSeasonTab() {
     targetHealCountInput.value = DATA && DATA.targetHealCount != null ? DATA.targetHealCount : '';
   var wclUrlInput = document.getElementById('wclUrlInput');
   if (wclUrlInput) wclUrlInput.value = (DATA && DATA.externalLinks && DATA.externalLinks.warcraftLogsUrl) || '';
+  var discordSignupChannelInput = document.getElementById('discordSignupChannelInput');
+  if (discordSignupChannelInput) discordSignupChannelInput.value = (DATA && DATA.discordSignupChannelId) || '';
+  var discordSignupLeadHoursInput = document.getElementById('discordSignupLeadHoursInput');
+  if (discordSignupLeadHoursInput)
+    discordSignupLeadHoursInput.value = DATA && DATA.signupSheetLeadHours != null ? DATA.signupSheetLeadHours : '';
+  var discordSignupChannelVerifyStatus = document.getElementById('discordSignupChannelVerifyStatus');
+  if (discordSignupChannelVerifyStatus) discordSignupChannelVerifyStatus.textContent = '';
   SEASON_RAIDS = JSON.parse(JSON.stringify((DATA && DATA.raidProgression) || []));
   // Reset to Settings subtab; Progression and History render lazily on switch
   var defaultBtn = document.getElementById('season-subtab-btn-settings');
@@ -861,6 +868,105 @@ function saveWclUrl() {
         btn.textContent = 'Save';
       }
       if (status) status.textContent = err.message || 'Error saving.';
+    });
+}
+
+// #900, part of #640. Channel and lead-time hours are saved together --
+// independent from Verify below, which is read-only and doesn't require a
+// team-leader role, unlike Save itself (set_team_setting()'s RLS is
+// team-leader/site-admin only; a plain officer's Save attempt surfaces that
+// rejection as this function's own .catch, same as every other
+// saveTeamSetting() call on this page).
+function saveDiscordSignupSheetSettings() {
+  var channelInput = document.getElementById('discordSignupChannelInput');
+  var hoursInput = document.getElementById('discordSignupLeadHoursInput');
+  var channelVal = channelInput ? channelInput.value.trim() : '';
+  var hoursVal = hoursInput ? hoursInput.value.trim() : '';
+  var btn = document.getElementById('discordSignupSheetSaveBtn');
+  var status = document.getElementById('discordSignupSheetStatus');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+  }
+
+  saveTeamSetting(
+    {
+      discordSignupChannelId: channelVal || null,
+      signupSheetLeadHours: hoursVal ? Number(hoursVal) : null
+    },
+    true
+  )
+    .then(function () {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Save';
+      }
+      if (DATA) {
+        DATA.discordSignupChannelId = channelVal || null;
+        DATA.signupSheetLeadHours = hoursVal ? Number(hoursVal) : null;
+      }
+      writeAuditLog('Discord Signup Sheet Settings Set', null, null, channelVal + ' / ' + (hoursVal || '48') + 'h');
+      if (status) {
+        status.textContent = 'Saved!';
+        setTimeout(function () {
+          if (status) status.textContent = '';
+        }, 2000);
+      }
+    })
+    .catch(function (err) {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Save';
+      }
+      if (status) status.textContent = err.message || 'Error saving.';
+    });
+}
+
+// Read-only lookup, no write -- resolves a pasted channel ID to its actual
+// name via the bot (discord-bot-webhook's verifyChannel action) so an
+// officer can catch a wrong-team paste before relying on it. Many of this
+// guild's channels are named nearly identically across teams
+// (phoenix-raid-attendance vs hellfire-raid-attendance).
+function verifyDiscordSignupChannel() {
+  var input = document.getElementById('discordSignupChannelInput');
+  var val = input ? input.value.trim() : '';
+  var btn = document.getElementById('discordSignupChannelVerifyBtn');
+  var status = document.getElementById('discordSignupChannelVerifyStatus');
+  if (!val) {
+    if (status) {
+      status.style.color = 'var(--melee)';
+      status.textContent = 'Enter a channel ID first.';
+    }
+    return;
+  }
+  if (!supabaseClient) return;
+  if (btn) btn.disabled = true;
+  if (status) {
+    status.style.color = '';
+    status.textContent = 'Checking...';
+  }
+  supabaseClient.functions
+    .invoke('discord-bot-webhook', {
+      body: { action: 'verifyChannel', team: TEAM_SLUG, payload: { channelId: val } }
+    })
+    .then(function (result) {
+      if (btn) btn.disabled = false;
+      var body = result && result.data;
+      if (!status) return;
+      if (body && body.ok) {
+        status.style.color = 'var(--heal)';
+        status.textContent = '#' + body.name;
+      } else {
+        status.style.color = 'var(--melee)';
+        status.textContent = (body && body.error) || 'Channel not found.';
+      }
+    })
+    .catch(function () {
+      if (btn) btn.disabled = false;
+      if (status) {
+        status.style.color = 'var(--melee)';
+        status.textContent = 'Error checking channel.';
+      }
     });
 }
 

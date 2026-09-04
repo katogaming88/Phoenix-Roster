@@ -2900,6 +2900,8 @@ function applyTeamSettingsToData(data, config) {
   if (config.activeSignupSeason !== undefined) data.signupSeason = config.activeSignupSeason;
   data.features = config.features || {};
   data.externalLinks = config.externalLinks || {};
+  data.discordSignupChannelId = config.discordSignupChannelId || null;
+  data.signupSheetLeadHours = config.signupSheetLeadHours || null;
   data.teamOfficerBios = config.teamOfficerBios || [];
   // guildOfficerBios is guild-wide (site_settings, heavy-loaded in loadData()),
   // not sourced from any one team's config -- see fetchSupabaseGuildOfficerBios().

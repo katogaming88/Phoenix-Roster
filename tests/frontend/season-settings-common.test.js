@@ -162,6 +162,8 @@ describe('applyTeamSettingsToData', () => {
       signupsOpen: true,
       features: {},
       externalLinks: {},
+      discordSignupChannelId: null,
+      signupSheetLeadHours: null,
       teamOfficerBios: [],
       wishlistStatusLabels: {}
     });
