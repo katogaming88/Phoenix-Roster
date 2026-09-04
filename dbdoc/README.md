@@ -138,6 +138,7 @@
 | public.is_optional_raid_night | bool | p_team_id integer, p_raid_date date | FUNCTION |
 | public.claim_raid_signup_sheet | text | p_team_id integer, p_raid_date date, p_channel_id text | FUNCTION |
 | public.raid_night_info | record | p_team_id integer, p_raid_date date | FUNCTION |
+| public.resolve_boe_finder_discord_id | text | p_boe_id integer | FUNCTION |
 
 ## Enums
 

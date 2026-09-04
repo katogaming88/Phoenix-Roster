@@ -2539,6 +2539,10 @@ export type Database = {
         Args: { p_actor_id: string; p_team_id: number }
         Returns: string
       }
+      resolve_boe_finder_discord_id: {
+        Args: { p_boe_id: number }
+        Returns: string
+      }
       resolve_discord_display_name: {
         Args: { p_actor_id: string; p_team_id: number }
         Returns: string

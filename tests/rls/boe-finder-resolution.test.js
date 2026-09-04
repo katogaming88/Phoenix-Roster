@@ -72,10 +72,10 @@ const DISCORD_OFFICER_2 = 'discord-officer-2';
 // sold row here would owe the four money columns that
 // boe_items_money_complete_when_sold requires for nothing in return.
 const unresolvedItem = (q, teamId, finderName) =>
-  q(
-    "insert into public.boe_items (team_id, item_name, finder_name) values ($1, 'Test Find', $2) returning id",
-    [teamId, finderName]
-  ).then((r) => r.rows[0].id);
+  q("insert into public.boe_items (team_id, item_name, finder_name) values ($1, 'Test Find', $2) returning id", [
+    teamId,
+    finderName
+  ]).then((r) => r.rows[0].id);
 
 // A character, optionally linked to a member row and optionally removed from
 // the roster. players.team_id and team_members.team_id are not constrained to
@@ -227,9 +227,9 @@ describe('resolve_boe_finder_discord_id: the gate', () => {
     await withTxn(async ({ q, asAnon }) => {
       const id = await unresolvedItem(q, TEAM_1, 'Anonread-Illidan');
 
-      await expect(
-        asAnon('select public.resolve_boe_finder_discord_id($1) as id', [id])
-      ).rejects.toThrow(/permission denied/i);
+      await expect(asAnon('select public.resolve_boe_finder_discord_id($1) as id', [id])).rejects.toThrow(
+        /permission denied/i
+      );
     });
   });
 });
