@@ -47,11 +47,6 @@ export const STATES = [
     sentinel: '#signupForm .signup-step-title'
   },
   {
-    label: 'index-boe',
-    path: '/index.html?team=phoenix#boe',
-    sentinel: '#boeViewWrap h2'
-  },
-  {
     label: 'index-history',
     path: '/index.html?team=phoenix#history',
     sentinel: '#historyView .recap-season-block'
@@ -77,9 +72,11 @@ export const STATES = [
     sentinel: '#guildStreams .stream-card'
   },
   {
-    // The BoE Sales page (#864) signed out: the sign-in prompt is written only
-    // after the session read settles, so it is the sentinel. The signed-in
-    // render needs a seeded session and is Phase B with officer and admin.
+    // The BoE Sales page (#864) signed out, carrying the report form since
+    // #891. The sign-in prompt for the records is written only after the
+    // session read settles, so it is the sentinel; the form above it builds
+    // from its own reads and needs no session at all. The signed-in render
+    // needs a seeded session and is Phase B with officer and admin.
     label: 'boe',
     path: '/boe.html',
     sentinel: '#boeAccessNote p'

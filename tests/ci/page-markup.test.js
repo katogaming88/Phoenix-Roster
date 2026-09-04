@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -173,17 +173,23 @@ describe.each(TEAM_FREE)('$page never links to a bare index.html (#779)', ({ pag
 describe('guild.html specifics (#777)', () => {
   const html = read('guild.html');
 
-  // js/guild.js reveals this item only for someone who may open the page it
-  // points at, but the markup default is what covers the gap before the three
-  // RPCs resolve -- and it is the only thing covering the CDN-failure path,
-  // where bootGuildPage() returns before the reveal runs. The vm-sandbox suite
-  // cannot see this: its elements are stubbed as `style: {}`, so they start
-  // with no display at all whatever the page says.
-  it('ships the officer-gated nav item hidden, pointing at boe.html (#864)', () => {
-    const item = html.match(/<a[^>]*\sid="guildNavBoeManage"[^>]*>/);
+  // One BoE item since #891, pointing at the page that both reports a find
+  // and tracks it. The markup default covers the gap before the team settings
+  // say whether the guild runs BoE at all, and it is the only thing covering
+  // the CDN-failure path, where bootGuildPage() returns before js/guild.js
+  // gets to it. The vm-sandbox suite cannot see this: its elements are stubbed
+  // as `style: {}`, so they start with no display at all whatever the page says.
+  it('has one BoE nav item, shipped hidden and pointing at boe.html (#891)', () => {
+    const item = html.match(/<a[^>]*\sid="guildNavBoe"[^>]*>/);
     expect(item).not.toBeNull();
     expect(item[0]).toMatch(/style="display:\s*none;?"/);
     expect(item[0]).toMatch(/href="boe\.html"/);
+    expect(html).not.toContain('guildNavBoeManage');
+  });
+
+  it('carries no Found a BoE section any more (#891)', () => {
+    expect(new Set(ids(html)).has('guildBoeTeam')).toBe(false);
+    expect(html).not.toContain('Found a BoE?');
   });
 
   it('js/guild.js links to index.html only with a team', () => {
@@ -215,6 +221,37 @@ describe('boe.html specifics (#864)', () => {
 describe('index.html specifics', () => {
   const html = read('index.html');
 
+  // The report form moved to boe.html (#891), beside the rows it creates.
+  it('carries no BoE form any more', () => {
+    const present = new Set(ids(html));
+    ['boeViewWrap', 'boeTeamSelect', 'boeCharName', 'boeDonate', 'boeSubmitBtn'].forEach((id) =>
+      expect(present.has(id), id).toBe(false)
+    );
+    expect(html).not.toMatch(/src="js\/boe\.js/);
+  });
+});
+
+// The form left index.html for the page that tracks what it reports (#891).
+// A stale reference to the view it lived in would throw on both pages.
+describe('the BoE form moved (#891)', () => {
+  const html = read('boe.html');
+  const jsDir = join(ROOT, 'js');
+
+  it('loads js/boe.js before js/boe-page.js, which nulls the team globals', () => {
+    const form = html.indexOf('js/boe.js');
+    const page = html.indexOf('js/boe-page.js');
+    expect(form).toBeGreaterThan(-1);
+    expect(page).toBeGreaterThan(-1);
+    expect(form).toBeLessThan(page);
+  });
+
+  it('carries the form controls, each with a label', () => {
+    const present = new Set(ids(html));
+    ['boeTeamSelect', 'boeCharName', 'boeItemName', 'boeTrack', 'boeUpgradeRank', 'boeNote', 'boeDonate'].forEach(
+      (id) => expect(present.has(id), id).toBe(true)
+    );
+  });
+
   // The donate checkbox (#862) briefly carried an explainer paragraph above it
   // (3.81.3). It was cut the same day: the label already says what the box
   // does, so the checkbox stands alone with its label and points at nothing.
@@ -224,5 +261,15 @@ describe('index.html specifics', () => {
     expect(box).not.toBeNull();
     expect(box[1]).not.toMatch(/aria-describedby/);
     expect(box[2].trim()).toBe("I'd like to donate my finder's fee to the guild");
+  });
+
+  it('leaves no js/ file reaching for the view the form lived in', () => {
+    const stale = readdirSync(jsDir)
+      .filter((f) => f.endsWith('.js'))
+      .filter((f) => {
+        const src = readFileSync(join(jsDir, f), 'utf8');
+        return src.includes('boeViewWrap') || src.includes('showBoeView');
+      });
+    expect(stale).toEqual([]);
   });
 });

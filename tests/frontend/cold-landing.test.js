@@ -35,7 +35,7 @@ function builder(result) {
  * `storedTeam` null plus no ?team= is what makes IS_COLD_LANDING true, so the
  * gate takes the resolveColdLanding() branch rather than booting the app.
  */
-function coldLand({ session = null, memberRows = [], memberThrows = false, hasClient = true } = {}) {
+function coldLand({ session = null, memberRows = [], memberThrows = false, hasClient = true, search = '', hash = '' } = {}) {
   const nav = { replaced: [], hrefs: [] };
   const stored = {};
 
@@ -52,7 +52,8 @@ function coldLand({ session = null, memberRows = [], memberThrows = false, hasCl
   };
 
   const location = {
-    search: '',
+    search,
+    hash,
     pathname: '/index.html',
     get href() {
       return '/index.html';
@@ -163,6 +164,26 @@ describe('cold landing (#779)', () => {
     const { nav } = coldLand({ session: null });
     await settle();
     expect(nav.replaced.length).toBe(1);
+  });
+});
+
+// The BoE report form moved to boe.html (#891). index.html?team=<slug>#boe is
+// the pinned per-team Discord link every Immolation raider uses, so it has to
+// keep landing on the form rather than on a page that no longer has one.
+describe('the #boe deep link follows the form (#891)', () => {
+  it('replaces the page with boe.html, carrying the team', () => {
+    const { nav } = coldLand({ search: '?team=hellfire', hash: '#boe' });
+    expect(nav.replaced).toContain('boe.html?team=hellfire');
+  });
+
+  it('carries the resolved team even when the link named none', () => {
+    const { nav } = coldLand({ search: '?team=phoenix', hash: '#boe' });
+    expect(nav.replaced).toContain('boe.html?team=phoenix');
+  });
+
+  it('leaves every other hash alone', () => {
+    const { nav } = coldLand({ search: '?team=phoenix', hash: '#roster' });
+    expect(nav.replaced.filter((u) => String(u).indexOf('boe.html') === 0)).toEqual([]);
   });
 });
 
