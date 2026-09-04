@@ -9,9 +9,10 @@
 // No auth gate, same stance as contact-webhook: the card is a public
 // unauthenticated form, and submit_boe_found is anon-callable by design.
 //
-// The embed description preserves the retired bot's message line so the
-// channel keeps reading the same way:
-//   **Finder-Realm** of Team <name> found \<Track>- <Item>
+// The embed description followed the retired bot's message line byte for
+// byte until #918, escaped angle brackets included. The bot is gone, so the
+// track now reads as plain text:
+//   **Finder-Realm** of Team <name> found <Track> - <Item>
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -58,10 +59,12 @@ Deno.serve(async (req) => {
     const rankChunk = upgradeRank && String(upgradeRank).trim() ? ' ' + String(upgradeRank).trim() : '';
     const itemText = truncate(String(item).trim(), 200) + rankChunk;
     const teamText = String(team || 'Unknown');
-    // The backslash keeps Discord from parsing <Track> as a mention/channel
-    // token, matching the retired bot's output byte for byte. Track is
-    // optional on the card, so the chunk drops out entirely when unset.
-    const trackChunk = track ? '\\<' + String(track) + '>- ' : '';
+    // Plain text since #918. It used to sit in an escaped angle bracket, so
+    // that Discord would not read <Track> as a mention or channel token and
+    // so that the line matched the retired bot's output byte for byte; the
+    // bot is gone and the brackets read as noise. Track is optional on the
+    // card, so the chunk drops out entirely when unset.
+    const trackChunk = track ? String(track) + ' - ' : '';
     const description = '**' + finderText + '** of Team ' + teamText + ' found ' + trackChunk + itemText;
 
     const fields = [
@@ -86,6 +89,10 @@ Deno.serve(async (req) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        // One name across the found and sold posts (#918). Without it Discord
+        // shows whatever the webhook is called in the channel's integration
+        // settings, which a rename there would silently change.
+        username: 'BoE Sales',
         embeds: [
           {
             title: 'BoE Found',

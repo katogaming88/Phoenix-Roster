@@ -10,7 +10,7 @@
 //
 //   <@finder> -- BOE Sold!
 //
-//   Item: \<Hero>- Voidglass Cloak 2/6
+//   Item: Hero - Voidglass Cloak 2/6
 //   Sale Price: 52,800g
 //   Auction House Fee: 2,640g
 //   Guild Cut: 30,160g
@@ -124,16 +124,18 @@ Deno.serve(async (req) => {
       return jsonResponse({ success: true, skipped: true });
     }
 
-    // Service role from here on. The finder's own row is why: resolving a
-    // legacy find's finder walks players to team_members, and team_members'
-    // self-read returns only the caller's own row, so a BoE manager holding
-    // no officer role anywhere could not read it for themselves.
+    // Service role from here on, for the manager list below: boe_managers
+    // has no authenticated grant at all, so a manager holding only the grant
+    // would read an empty list and the closing line would name nobody. The
+    // finder used to need it too, for the same shape of reason; that walk now
+    // happens inside resolve_boe_finder_discord_id, which is security definer
+    // and does it on the caller's behalf (#918).
     const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
     const { data: row, error: rowError } = await db
       .from('boe_items')
       .select(
-        'id, team_id, player_id, finder_name, finder_discord_id, item_name, track, upgrade_rank, status, sale_price, ah_fee, guild_cut, finder_payout, payout_donated'
+        'id, team_id, finder_name, item_name, track, upgrade_rank, status, sale_price, ah_fee, guild_cut, finder_payout, payout_donated'
       )
       .eq('id', Number(id))
       .maybeSingle();
@@ -151,23 +153,22 @@ Deno.serve(async (req) => {
       return jsonResponse({ success: true, skipped: true, reason: 'not sold' });
     }
 
-    // The finder's Discord id: stamped on the row at submit when they were
-    // signed in (#889), otherwise resolved through their claimed character.
-    // A find reported signed out under an unclaimed name reaches neither, and
-    // gets its finder's name in bold with no ping, the way the found post
-    // renders one.
-    let finderId: string | null = row.finder_discord_id || null;
-    if (!finderId && row.player_id) {
-      const { data: player } = await db.from('players').select('team_member_id').eq('id', row.player_id).maybeSingle();
-      if (player && player.team_member_id) {
-        const { data: member } = await db
-          .from('team_members')
-          .select('discord_id')
-          .eq('id', player.team_member_id)
-          .maybeSingle();
-        finderId = (member && member.discord_id) || null;
-      }
-    }
+    // The finder's Discord id, in one call (#918): the id stamped on the row
+    // at submit when they were signed in (#889), else their claimed
+    // character's member row, else a guild-wide name match, which is what
+    // reaches somebody who reported a find while raiding with another team.
+    // Null when nothing matches or when one name reaches two different
+    // people, and the finder's name renders in bold with no ping instead, the
+    // way the found post renders one.
+    //
+    // On the caller's client rather than the service-role one, so the
+    // function's own gate does real work. It is security definer, which is
+    // also what lets a BoE manager holding no officer role anywhere read the
+    // rows behind it: team_members' self-read returns only their own.
+    const { data: resolvedFinderId } = await caller.rpc('resolve_boe_finder_discord_id', {
+      p_boe_id: Number(id)
+    });
+    const finderId: string | null = resolvedFinderId || null;
 
     // The BoE manager is a mention of whoever currently holds the grant, so
     // a finder can click through to them rather than go looking for who that
@@ -187,11 +188,13 @@ Deno.serve(async (req) => {
         ? joinNames(managers.map((m: { discord_id: string }) => '<@' + m.discord_id + '>'))
         : 'a BoE manager';
 
-    // The Item line, in the found post's own format (#865): the track in an
-    // escaped angle bracket so Discord does not read it as a mention token,
-    // then the name, then the rank. Identical items can be open at once, so
-    // this is what tells a finder with two open finds which one sold.
-    const trackChunk = row.track ? '\\<' + String(row.track) + '>- ' : '';
+    // The Item line, in the found post's own format: the track, then the
+    // name, then the rank. Identical items can be open at once, so this is
+    // what tells a finder with two open finds which one sold. The track used
+    // to sit in an escaped angle bracket, which reproduced the retired relay
+    // bot's output byte for byte and stopped being a reason once the bot was
+    // retired (#918).
+    const trackChunk = row.track ? String(row.track) + ' - ' : '';
     const rankChunk = row.upgrade_rank ? ' ' + String(row.upgrade_rank) : '';
     const itemLine = 'Item: ' + trackChunk + String(row.item_name || 'Unknown item') + rankChunk;
 
@@ -226,6 +229,10 @@ Deno.serve(async (req) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        // One name across the found and sold posts (#918). Without it Discord
+        // shows whatever the webhook is called in the channel's integration
+        // settings, which a rename there would silently change.
+        username: 'BoE Sales',
         content: content.length > 2000 ? content.slice(0, 1997) + '...' : content,
         allowed_mentions: finderId ? { users: [finderId] } : { parse: [] }
       })

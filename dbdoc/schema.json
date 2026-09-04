@@ -7082,6 +7082,12 @@
       "return_type": "record",
       "arguments": "p_team_id integer, p_raid_date date",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.resolve_boe_finder_discord_id",
+      "return_type": "text",
+      "arguments": "p_boe_id integer",
+      "type": "FUNCTION"
     }
   ],
   "enums": [

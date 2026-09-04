@@ -10,6 +10,21 @@ with each release split into `### Frontend` (drives the version number) and
 
 ## [3.91.0] - 2026-09-04
 
+### Backend
+
+- The Discord post for a sold BoE now reaches finders it used to miss ([#918](https://github.com/katogaming88/WGA-Raid-Hub/issues/918)). It resolved a
+  finder two ways, the Discord account they submitted from and the character claimed on the finding
+  team, and a raider who reports a find while raiding with another team has neither: the first live
+  sale to fire the ping went to a name in bold instead of to the person who found it. A new
+  `resolve_boe_finder_discord_id()` adds a third step, matching the finder's name across every team
+  and including characters that have since left a roster, and refusing to guess when one name reaches
+  two different people. That reaches the sale this came from. Six older finds still cannot be resolved
+  and keep the plain name: four were reported by people with no character on any roster, and two match
+  a character that was removed and never linked to a Discord account. Both posts also read cleaner:
+  the item's track is plain text now (`Champion - Pauldrons of the Forgotten Sacrifice`) instead of
+  sitting in escaped angle brackets copied from the retired relay bot, and both posts name themselves
+  "BoE Sales" rather than inheriting whatever the webhook is called in the channel settings.
+
 ### Frontend
 
 - The raid calendar can now open straight to a given date
