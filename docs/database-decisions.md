@@ -8,6 +8,22 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-04 -- Per-team roles get a grant RPC, like the guild-wide tiers
+
+Tracking issue: [#910](https://github.com/katogaming88/WGA-Raid-Hub/issues/910), part of the BoE Tracker milestone.
+
+- **The per-team tier was the only grant tier with no RPC.** `site_admins`, `boe_managers` and `guild_officers` each have an `admin_{list,grant,revoke}_*` trio that resolves `auth_user_id` at grant time. `team_members` had none: the only writer was `claim_character()`, which requires a claimable character on that team, and the officer dashboard's promote is a bare role update on a character that is already claimed. So the role needed membership and membership needed a roster, which meant **a team with no players could not be given an officer through any path in the site.** Wrathless (team 4) is that team.
+- **`claim_character()` was never the officer path, and making it one was rejected.** Claiming is a raider proving which character is theirs; a role is a grant. Relaxing the claim to mint membership rows would put the two on the same code path and give anyone who can claim a way to appear on a team's member list.
+- **Grant refuses to change a role that is already set.** `role` drives `my_team_role()`, `can_settle_boe()`, `is_any_team_officer()`, `is_team_leader_anywhere()` and the read rules built on them. An upsert whose conflict branch wrote `role` would let one mistyped Discord id demote a sitting team leader, with the audit entry reading like a fresh grant and nothing anywhere reading as an error. Changing a role stays with the promote path. The one repeat case that writes is filling an `auth_user_id` that was never linked, which is logged as a relink rather than a grant.
+- **Revoke demotes rather than deletes whenever a character is claimed.** `players_team_member_id_fkey` is `ON DELETE SET NULL`, so removing a member a character points at would silently unclaim that character: no error, no audit entry, and the person's own data quietly detached. A memberless row is deleted as normal.
+- **Only a site admin can open a rosterless team**, and that falls out of the gate rather than being a special case: the gate is `is_site_admin() or my_team_role(team_id) = 'team_leader'`, and `my_team_role()` is null for everybody on a team with no members.
+- **The identity refactor was considered and deferred.** The four grant tables each carry `(discord_id, auth_user_id)`: one person, unnamed, stored four times with four linkers. A `people` plus `team_memberships` model would collapse that and remove the unenforced duplication between `players.team_id` and its member's `team_id`. Against one dead row and one leader needing a second team, it is four to six PRs ending in a column drop on live prod with no rollback. Revisit only if Wrathless gains a roster.
+- **`link_auth_user_to_member()` gained its missing fourth branch.** It has covered `team_members`, `site_admins` and `boe_managers` since #766 and never `guild_officers`, so a guild officer granted before their first sign-in stayed unlinked. Both current holders signed in first, which is why nobody hit it.
+
+[Full discussion -> #910](https://github.com/katogaming88/WGA-Raid-Hub/issues/910)
+
+---
+
 ## 2026-09-03 -- The finder's Discord id is stamped at submit, never client-supplied
 
 Tracking issue: [#889](https://github.com/katogaming88/WGA-Raid-Hub/issues/889), part of the BoE Tracker milestone.
@@ -1013,6 +1029,8 @@ Triggered by losing a hand-arranged Supabase schema visualizer layout: the visua
 - **team_settings / season_snapshots SELECT policy.** Locked down to team members only (`my_team_role(team_id) is not null`). Both tables carry data with no reason to be publicly readable, unlike roster/loot which the public site intentionally exposes.
 - **attendance FK on-delete.** Changed `attendance.player_id` to `ON DELETE SET NULL` (was `CASCADE`), matching `rclc_loot`. Soft-delete (`players.archived_at`, decided in #258) is the primary path; this FK change is the safety net if a hard-delete ever happens anyway.
 - **Auth-link backfill.** Added an `AFTER INSERT` trigger on `team_members` and `site_admins` that backfills `auth_user_id` immediately if the person already has an `auth.users` row (covers the case where someone logs in via Discord before an officer seeds their row).
+  - **Correction, 2026-09-04 (#910): that trigger was never written.** `pg_trigger` on all five grant and roster tables carries only `updated_at` and one self-update guard, and no migration contains it. The trigger that does exist, `on_auth_user_created`, is `AFTER INSERT ON auth.users`, so it fires at account creation and covers the opposite case: a row seeded *before* the person signs in. The case this bullet describes, a row seeded *after*, was never handled, which is why production carried an unlinked grant row that read as correct and granted nothing, and why `docs/supabase-setup-guide.md` claimed the column "fills itself on first sign-in". `admin_grant_team_role()` replaces the trigger by resolving the id in the grant statement itself.
+  - **Two of this entry's four bullets have now been found unshipped.** The attendance FK was caught the same way in July and is recorded at the #218 entry above ("the decision #250 already called for but never actually migrated"). The seasons table and the `team_settings`/`season_snapshots` read rule have not been checked against the live schema. A decision log records intent: an entry describing a schema object is a claim to verify against `pg_trigger`, `pg_proc` or `pg_constraint` before anything leans on the behaviour it promises.
 
 [Full discussion -> #250](https://github.com/katogaming88/WGA-Raid-Hub/issues/250)
 

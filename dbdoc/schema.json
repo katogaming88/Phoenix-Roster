@@ -6798,6 +6798,18 @@
       "return_type": "text",
       "arguments": "",
       "type": "FUNCTION"
+    },
+    {
+      "name": "public.admin_grant_team_role",
+      "return_type": "uuid",
+      "arguments": "p_team_id integer, p_discord_id text, p_role text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.admin_revoke_team_role",
+      "return_type": "void",
+      "arguments": "p_team_id integer, p_discord_id text",
+      "type": "FUNCTION"
     }
   ],
   "enums": [

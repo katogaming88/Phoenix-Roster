@@ -868,25 +868,61 @@ insert into team_members (team_id, discord_id, role) values
   -- add all current officers for both teams
 ```
 
-Do not insert `auth_user_id` in either table -- it starts as null and is filled in
-automatically when each person logs in for the first time via the auth trigger.
+Do not insert `auth_user_id` by hand. For `team_members` use `admin_grant_team_role()` (below),
+which resolves it at grant time. The auth trigger only fills a row that already exists when the
+account is created, so it cannot be relied on for a row added later.
 
 Team IDs: Phoenix = 1, Hellfire = 2, Immolation = 3, Wrathless = 4.
 
 **Officers on a team without a page.** Immolation and Wrathless raid with the guild and do not
-otherwise use the site. The same insert works for any team id, hidden teams included, and it is
-the only step: a `team_members` row with `role = 'officer'` or `'team_leader'` lets that person
-settle their own team's BoE payouts on the BoE page (`can_settle_boe()`, #888) and nothing else.
-Insert the row when an officer asks for it, not ahead of time: a row assigns them the work.
+otherwise use the site. A `team_members` row with `role = 'officer'` or `'team_leader'` lets that
+person settle their own team's BoE payouts on the BoE page (`can_settle_boe()`, #888) and nothing
+else. Grant the role when an officer asks for it, not ahead of time: a row assigns them the work.
 
-**Set `auth_user_id` in the same statement if that person already has an account.** The
-`on_auth_user_created` trigger runs `after insert on auth.users`, so it links a hand-inserted row
-only for someone who has never signed in. For anyone who has, the row keeps `auth_user_id = null`,
-and every role check reads it as nothing: `my_team_role()` returns null, so `can_settle_boe()` is
-false and the BoE page shows them no settle buttons. The only other filler is `claim_character()`,
-which needs a character on that team to claim, and an officer on a team where they do not raid has
-none. Prod carries one row in exactly this state today (Immolation, `discord_id` set, no
-`auth_user_id`, no player row).
+**Use the RPC, not an INSERT** (#910). `admin_grant_team_role(team_id, discord_id, role)` resolves
+`auth_user_id` in the same statement, audit-logs the grant, and returns the resolved id so an inert
+grant is obvious straight away. It works for any team id, hidden teams included, and it is the only
+step.
+
+A hand-written INSERT is the trap it replaces. `on_auth_user_created` runs `after insert on
+auth.users`, so it links a row only for someone who has **never** signed in. For anyone who has, a
+hand-inserted row keeps `auth_user_id = null` and every role check reads it as nothing:
+`my_team_role()` returns null, so `can_settle_boe()` is false and the BoE page shows them no settle
+buttons, while the row looks perfectly correct in the table. The only other filler is
+`claim_character()`, which needs a character on that team to claim, and an officer on a team where
+they do not raid has none. Production carries one row in exactly this state today (Immolation,
+`discord_id` set, no `auth_user_id`, no player row).
+
+**A psql session has no signed-in identity, so the call needs one.** `is_site_admin()` reads
+`auth.uid()`, and `write_audit_log()` raises `Not signed in` outright when it is null, so calling
+the RPC on a bare connection is refused twice. Set the claim first, in the same transaction, the
+way the RLS test harness does:
+
+```sql
+begin;
+select set_config('request.jwt.claims', '{"sub":"YOUR_AUTH_USER_ID","role":"authenticated"}', true);
+set local role authenticated;
+
+-- Returns the resolved auth_user_id: null means that Discord account has no
+-- site account yet, and the grant will activate on their first sign-in.
+select admin_grant_team_role(4, 'DISCORD_ID_HERE', 'officer');  -- Wrathless officer
+
+commit;
+```
+
+Your own `auth_user_id` is the `sub`: `select auth_user_id from site_admins`.
+
+Re-running the same grant on a row that was never linked is the repair path, and is the only case
+where a repeat call writes anything. The grant refuses to *change* a role that is already set, so a
+promotion or demotion goes through the officer dashboard, not this call.
+
+To remove a role, `admin_revoke_team_role(team_id, discord_id)`. It demotes to `raider` when that
+person has claimed a character on the team and deletes the row only when nothing points at it,
+because the foreign key from `players` is `ON DELETE SET NULL` and a plain delete would silently
+unclaim their character.
+
+Direct SQL remains the fallback if the RPC is ever unavailable. Resolve the id in the same
+statement, never as a bare insert:
 
 ```sql
 -- The subselect is null for someone with no account yet, which is the case the trigger covers.

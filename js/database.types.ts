@@ -2325,6 +2325,10 @@ export type Database = {
         Args: { p_discord_id: string }
         Returns: number
       }
+      admin_grant_team_role: {
+        Args: { p_discord_id: string; p_role: string; p_team_id: number }
+        Returns: string
+      }
       admin_list_boe_managers: {
         Args: never
         Returns: {
@@ -2362,6 +2366,10 @@ export type Database = {
       }
       admin_revoke_site_admin: {
         Args: { p_discord_id: string }
+        Returns: undefined
+      }
+      admin_revoke_team_role: {
+        Args: { p_discord_id: string; p_team_id: number }
         Returns: undefined
       }
       admin_set_maintenance_mode: {

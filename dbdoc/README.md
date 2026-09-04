@@ -131,6 +131,8 @@
 | public.boe_record_sale | record | p_id integer, p_sale_price bigint, p_sold_at timestamp with time zone DEFAULT NULL::timestamp with time zone | FUNCTION |
 | public.can_settle_boe | bool | p_team_id integer | FUNCTION |
 | public.current_discord_id | text |  | FUNCTION |
+| public.admin_grant_team_role | uuid | p_team_id integer, p_discord_id text, p_role text | FUNCTION |
+| public.admin_revoke_team_role | void | p_team_id integer, p_discord_id text | FUNCTION |
 
 ## Enums
 

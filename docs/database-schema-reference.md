@@ -204,7 +204,7 @@ Links Discord/auth users to a team. The account-level membership layer, separate
 | `team_id`      | int4 | FK -> `teams.id`                                                              |
 | `discord_id`   | text | Discord user snowflake -- used for auth and notifications                     |
 | `auth_user_id` | uuid | FK -> `auth.users.id` (Supabase auth)                                         |
-| `role`         | text | Team role: officer/member/viewer                                              |
+| `role`         | text | Team role: `raider`/`officer`/`team_leader` (CHECK constraint; since #294)     |
 | `name_realm`   | text | The character this member considers their main (see note on redundancy below) |
 | `updated_at`   | timestamptz | Auto-set on every UPDATE via trigger                                   |
 
@@ -470,6 +470,8 @@ Both exist for deduplication on re-import but handle different failure modes. `r
 ### 4. `players.name_realm` vs `team_members.name_realm`
 
 These look like the same field but represent different layers. `players.name_realm` is the roster character (the actual raider). `team_members.name_realm` is the character a Discord account has linked to themselves for identity purposes. A team member's linked character might not match any roster player (e.g. an officer managing from the bench, or a prospective applicant). They will often be the same string but are conceptually distinct.
+
+`team_members.name_realm` is legacy in practice. It came from the #338 import bridge, is read only by `resolve_actor_name()`, and has drifted: two of the nine officer rows in production name a character other than the one the account has claimed. `admin_grant_team_role()` (#910) leaves it null, because setting it buys a nav label and costs a dead "View My Profile" button for any name that is not on the roster. Retiring it or backfilling it is open work.
 
 ### 5. `site_admins` vs `team_members` sharing `discord_id` and `auth_user_id`
 
