@@ -18,8 +18,9 @@ with each release split into `### Frontend` (drives the version number) and
   sale to fire the ping went to a name in bold instead of to the person who found it. A new
   `resolve_boe_finder_discord_id()` adds a third step, matching the finder's name across every team
   and including characters that have since left a roster, and refusing to guess when one name reaches
-  two different people. Four finds still cannot be resolved at all, all of them from a team with no
-  roster of its own, and those keep the plain name. Both Discord posts also read a little cleaner:
+  two different people. That reaches the sale this came from. Six older finds still cannot be resolved
+  and keep the plain name: four were reported by people with no character on any roster, and two match
+  a character that was removed and never linked to a Discord account. Both posts also read cleaner:
   the item's track is plain text now (`Champion - Pauldrons of the Forgotten Sacrifice`) instead of
   sitting in escaped angle brackets copied from the retired relay bot, and both posts name themselves
   "BoE Sales" rather than inheriting whatever the webhook is called in the channel settings.
