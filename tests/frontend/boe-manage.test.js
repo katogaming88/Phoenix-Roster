@@ -42,7 +42,7 @@ function makeEl(extra) {
 // table source given as a function overrides the keyset semantics entirely
 // (for error pages).
 function makeBoeClient({ items = [], listings = [], rpc = {}, updates = {}, catalog = [] } = {}) {
-  const captured = { byTable: {}, gts: [], rpcCalls: [], updates: [] };
+  const captured = { byTable: {}, gts: [], rpcCalls: [], updates: [], invokes: [] };
   // items is the BoE catalog read (#875): the rows flagged is_boe, id and name.
   const tableRows = { boe_items: items, boe_listings: listings, items: catalog };
   function builder(table) {
@@ -109,6 +109,14 @@ function makeBoeClient({ items = [], listings = [], rpc = {}, updates = {}, cata
       captured.rpcCalls.push({ name, args });
       const fn = rpc[name];
       return Promise.resolve(fn ? fn(args) : { data: null, error: null });
+    },
+    // The sold ping (#873) is an Edge Function invoke, fire and forget after
+    // the sale RPC lands, the same shape as the found post in js/boe.js.
+    functions: {
+      invoke(name, opts) {
+        captured.invokes.push({ name, body: opts && opts.body });
+        return Promise.resolve({ data: null, error: null });
+      }
     }
   };
   return { client, captured };
@@ -689,6 +697,80 @@ describe('summary strip', () => {
 // sections show the fee between the sale and the finder cut and name the
 // guild cut as net; a row sold before the fee existed (null) renders an
 // empty cell rather than a zero, since nothing was recorded.
+// The finder hears their BoE sold from Discord rather than from a manager
+// remembering to tell them (#873). Recording the sale is the only action that
+// posts: a listing is not news to the finder, and a payout or a retirement is
+// news they get in person or not at all.
+describe('the sold ping (#873)', () => {
+  const saleRpc = () => ({
+    boe_record_sale: () => ({
+      data: [{ sale_price: 250000, finder_payout: 50000, guild_cut: 187500, ah_fee: 12500 }],
+      error: null
+    })
+  });
+
+  async function recordSale(over) {
+    const els = { 'boe-sale-price-1': makeEl({ value: '250,000' }), 'boe-status-1': makeEl() };
+    const { client, captured } = makeBoeClient(Object.assign({ items: [FOUND()], listings: [] }, over));
+    const loaded = await build({ client, els });
+    loaded.sandbox.confirmBoeSale(1, makeEl());
+    for (let i = 0; i < 6; i++) await flush();
+    return { captured, loaded, els };
+  }
+
+  it('invokes boe-sold-webhook once with the row id, after the RPC lands', async () => {
+    const { captured } = await recordSale({ rpc: saleRpc() });
+    expect(captured.invokes).toEqual([{ name: 'boe-sold-webhook', body: { id: 1 } }]);
+  });
+
+  it('sends nothing when the sale RPC refused', async () => {
+    // The row is not sold, so a ping would tell the finder something untrue.
+    const { captured } = await recordSale({
+      rpc: { boe_record_sale: () => ({ data: null, error: { message: 'Not authorized' } }) }
+    });
+    expect(captured.invokes).toEqual([]);
+  });
+
+  it('does not gate the sale on the post', async () => {
+    // Fire and forget, the found post's stance: the row update is the write
+    // of record and a Discord outage must not undo it.
+    const els = { 'boe-sale-price-1': makeEl({ value: '250,000' }), 'boe-status-1': makeEl() };
+    const { client } = makeBoeClient({ items: [FOUND()], listings: [], rpc: saleRpc() });
+    client.functions.invoke = () => Promise.reject(new Error('function down'));
+    const loaded = await build({ client, els });
+    loaded.sandbox.confirmBoeSale(1, makeEl());
+    for (let i = 0; i < 6; i++) await flush();
+    expect(loaded.sandbox.findBoeItem(1).status).toBe('sold');
+    expect(els['boe-status-1'].textContent).toBe('');
+  });
+
+  it('posts nothing for a listing, a payout, a retirement or an undo', async () => {
+    const els = {
+      'boe-listing-price-2': makeEl({ value: '300,000' }),
+      'boe-status-2': makeEl(),
+      'boe-status-3': makeEl(),
+      'boe-status-4': makeEl(),
+      'boe-status-1': makeEl()
+    };
+    const { client, captured } = makeBoeClient({
+      items: [FOUND(), LISTED(), SOLD(), PAID()],
+      listings: [],
+      rpc: {
+        boe_record_listing: () => ({ data: null, error: null }),
+        boe_mark_paid: () => ({ data: null, error: null }),
+        boe_revert: () => ({ data: 'found', error: null })
+      }
+    });
+    const loaded = await build({ client, els });
+    loaded.sandbox.confirmBoeListing(2, makeEl());
+    loaded.sandbox.markBoePaid(3, makeEl());
+    loaded.sandbox.retireBoe(1, makeEl());
+    loaded.sandbox.revertBoe(3, makeEl());
+    for (let i = 0; i < 8; i++) await flush();
+    expect(captured.invokes).toEqual([]);
+  });
+});
+
 describe('the auction house fee column (#861)', () => {
   it('reads ah_fee with the row and shows it in Awaiting Payout and History under a net guild cut header', async () => {
     const { client, captured } = makeBoeClient({ items: ALL_ROWS(), listings: [], rpc: managerRpc() });
