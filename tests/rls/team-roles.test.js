@@ -140,10 +140,15 @@ describe('admin_grant_team_role() opens a team that has no roster', () => {
 });
 
 describe('admin_grant_team_role() and an existing row', () => {
+  // The auth user has to exist BEFORE the member row for these two. That is
+  // the shape the repair exists for: on_auth_user_created fires once, at
+  // account creation, so a row inserted by hand for somebody who signed in
+  // months ago is never linked by anything. Insert the row first and the
+  // trigger links it on the spot, leaving nothing to repair.
   it('repairs a row whose auth_user_id never got filled', async () => {
     await withTxn(async (q, asUser) => {
-      await newMember(q, WRATHLESS, HAS_ACCOUNT, 'officer');
       await makeAuthUser(q, HAS_ACCOUNT_UID, HAS_ACCOUNT);
+      await newMember(q, WRATHLESS, HAS_ACCOUNT, 'officer');
 
       const res = await grant(asUser, SITE_ADMIN, WRATHLESS, HAS_ACCOUNT, 'officer');
       expect(res.rows[0].auth_user_id).toBe(HAS_ACCOUNT_UID);
@@ -153,8 +158,8 @@ describe('admin_grant_team_role() and an existing row', () => {
 
   it('records the repair as a repair, not as a fresh grant', async () => {
     await withTxn(async (q, asUser) => {
-      await newMember(q, WRATHLESS, HAS_ACCOUNT, 'officer');
       await makeAuthUser(q, HAS_ACCOUNT_UID, HAS_ACCOUNT);
+      await newMember(q, WRATHLESS, HAS_ACCOUNT, 'officer');
       await grant(asUser, SITE_ADMIN, WRATHLESS, HAS_ACCOUNT, 'officer');
 
       expect((await lastLog(q)).action).toBe('team_role_relinked');
@@ -184,6 +189,18 @@ describe('admin_grant_team_role() and an existing row', () => {
 
       await expect(grant(asUser, SITE_ADMIN, WRATHLESS, HAS_ACCOUNT, 'officer')).rejects.toThrow(
         /already has the officer role/i
+      );
+    });
+  });
+
+  it('refuses a re-grant when the row is unlinked and there is still no account', async () => {
+    // Nothing to repair: saying so beats returning a null that reads the same
+    // as a fresh grant that did not resolve.
+    await withTxn(async (q, asUser) => {
+      await newMember(q, WRATHLESS, NO_ACCOUNT, 'officer');
+
+      await expect(grant(asUser, SITE_ADMIN, WRATHLESS, NO_ACCOUNT, 'officer')).rejects.toThrow(
+        /no account exists for it/i
       );
     });
   });
