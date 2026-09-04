@@ -41,6 +41,16 @@ async function linkRaiderT1ToPlayer(q, { isBench = false } = {}) {
   await q('update public.players set team_member_id = 3, is_bench = $1 where id = 1', [isBench]);
 }
 
+// No raid_schedule/raid_schedule_exceptions rows are seeded for team 1, so
+// every date is non-optional by default -- these tests only need an
+// exception row when they actually want an optional night (#895).
+async function markOptionalNight(q, teamId, raidDate) {
+  await q(
+    "insert into public.raid_schedule_exceptions (team_id, raid_date, exception_type, start_time, is_optional) values ($1, $2, 'added', '20:00', true)",
+    [teamId, raidDate]
+  );
+}
+
 const setOwn = (asUser, uid, teamId, raidDate, status, note = null) =>
   asUser(uid, 'select * from public.set_own_rsvp($1, $2, $3, $4)', [teamId, raidDate, status, note]);
 
@@ -89,17 +99,17 @@ describe('set_own_rsvp()', () => {
     });
   });
 
-  it('rejects a benched player', async () => {
+  it('rejects a benched player on a normal (non-optional) night', async () => {
     await withTxn(async ({ q, asUser }) => {
       await linkRaiderT1ToPlayer(q, { isBench: true });
       await expect(setOwn(asUser, RAIDER_T1, 1, '2026-09-10', 'Late')).rejects.toThrow(/Bench players/);
     });
   });
 
-  it('rejects a status outside the four raider-facing options', async () => {
+  it('rejects a status outside the five raider-facing options', async () => {
     await withTxn(async ({ q, asUser }) => {
       await linkRaiderT1ToPlayer(q);
-      await expect(setOwn(asUser, RAIDER_T1, 1, '2026-09-10', 'Attending')).rejects.toThrow(/Invalid RSVP status/);
+      await expect(setOwn(asUser, RAIDER_T1, 1, '2026-09-10', 'Sick')).rejects.toThrow(/Invalid RSVP status/);
     });
   });
 
@@ -108,6 +118,82 @@ describe('set_own_rsvp()', () => {
       await linkRaiderT1ToPlayer(q);
       await q('update public.players set archived_at = now() where id = 1');
       await expect(setOwn(asUser, RAIDER_T1, 1, '2026-09-10', 'Late')).rejects.toThrow(/No active roster character/);
+    });
+  });
+
+  it("rejects 'Attending' on a normal (non-optional) night", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await linkRaiderT1ToPlayer(q);
+      await expect(setOwn(asUser, RAIDER_T1, 1, '2026-09-10', 'Attending')).rejects.toThrow(
+        /Attending is only valid on an optional raid night/
+      );
+    });
+  });
+
+  it("accepts 'Attending' on an optional night (#895)", async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await linkRaiderT1ToPlayer(q);
+      await markOptionalNight(q, 1, '2026-09-10');
+      await setOwn(asUser, RAIDER_T1, 1, '2026-09-10', 'Attending');
+      const rows = (await q('select * from public.raid_rsvps where team_id = 1 and raid_date = $1', ['2026-09-10']))
+        .rows;
+      expect(rows).toHaveLength(1);
+      expect(rows[0].status).toBe('Attending');
+    });
+  });
+
+  it('accepts a benched player on an optional night (#895)', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await linkRaiderT1ToPlayer(q, { isBench: true });
+      await markOptionalNight(q, 1, '2026-09-10');
+      await setOwn(asUser, RAIDER_T1, 1, '2026-09-10', 'Attending');
+      const rows = (await q('select * from public.raid_rsvps where team_id = 1 and raid_date = $1', ['2026-09-10']))
+        .rows;
+      expect(rows).toHaveLength(1);
+      expect(rows[0].status).toBe('Attending');
+    });
+  });
+
+  it('a benched player can also set a non-Attending status on an optional night', async () => {
+    await withTxn(async ({ q, asUser }) => {
+      await linkRaiderT1ToPlayer(q, { isBench: true });
+      await markOptionalNight(q, 1, '2026-09-10');
+      await setOwn(asUser, RAIDER_T1, 1, '2026-09-10', 'Tentative');
+      const rows = (await q('select * from public.raid_rsvps where team_id = 1 and raid_date = $1', ['2026-09-10']))
+        .rows;
+      expect(rows).toHaveLength(1);
+      expect(rows[0].status).toBe('Tentative');
+    });
+  });
+});
+
+describe('is_optional_raid_night()', () => {
+  it('is false for a date with no matching schedule or exception row', async () => {
+    await withTxn(async ({ q }) => {
+      const res = await q('select public.is_optional_raid_night(1, $1) as result', ['2026-09-10']);
+      expect(res.rows[0].result).toBe(false);
+    });
+  });
+
+  it("is true for a date with an 'added' exception flagged is_optional", async () => {
+    await withTxn(async ({ q }) => {
+      await markOptionalNight(q, 1, '2026-09-10');
+      const res = await q('select public.is_optional_raid_night(1, $1) as result', ['2026-09-10']);
+      expect(res.rows[0].result).toBe(true);
+    });
+  });
+
+  it("a 'cancelled' exception wins over an active recurring rule for the same date", async () => {
+    await withTxn(async ({ q }) => {
+      // Thursday = weekday 4.
+      await q(
+        "insert into public.raid_schedule (team_id, weekday, start_time, is_optional) values (1, 4, '20:00', true)"
+      );
+      await q(
+        "insert into public.raid_schedule_exceptions (team_id, raid_date, exception_type) values (1, '2026-09-10', 'cancelled')"
+      );
+      const res = await q('select public.is_optional_raid_night(1, $1) as result', ['2026-09-10']);
+      expect(res.rows[0].result).toBe(false);
     });
   });
 });

@@ -54,6 +54,7 @@
 | [public.raid_schedule](public.raid_schedule.md) | 9 | The raid calendar's officer-owned recurring weekly rule (#892, part of #640): one row per weekday/time this team normally raids. is_optional flags a night with no automatic default-Present (#895) -- every non-bench roster player must explicitly RSVP. Raid nights are computed on the fly from this table plus raid_schedule_exceptions (js/calendar.js, computeRaidNights()), not materialized as rows. | BASE TABLE |
 | [public.raid_schedule_exceptions](public.raid_schedule_exceptions.md) | 10 | One-off cancellation or addition on top of raid_schedule's recurring rule (#892) -- exception_type distinguishes skipping a normally-scheduled night from adding an extra one. is_optional only applies to an 'added' row. | BASE TABLE |
 | [public.raid_rsvps](public.raid_rsvps.md) | 8 | A raider's self-declared override for one raid night (#893, part of #640) -- absence of a row means the computed default (Present, or Bench via players.is_bench) applies. Forward-looking intent only, never synced into public.attendance. Written only through set_own_rsvp() (SECURITY DEFINER); no direct INSERT/UPDATE/DELETE policy for anyone. | BASE TABLE |
+| [public.raid_rsvp_reminders_sent](public.raid_rsvp_reminders_sent.md) | 6 | Dedup log for the optional-night DM reminder sweep (#895, part of #640) -- records that a 24h/2h reminder was already sent for a player/raid_date/checkpoint so the cron sweep does not re-DM on every tick. Insert-only, written solely by the optional-rsvp-reminders Edge Function via the service role. Not the source of truth for whether a player has responded -- that is raid_rsvps. | BASE TABLE |
 
 ## Stored procedures and functions
 
@@ -133,6 +134,7 @@
 | public.current_discord_id | text |  | FUNCTION |
 | public.admin_grant_team_role | uuid | p_team_id integer, p_discord_id text, p_role text | FUNCTION |
 | public.admin_revoke_team_role | void | p_team_id integer, p_discord_id text | FUNCTION |
+| public.is_optional_raid_night | bool | p_team_id integer, p_raid_date date | FUNCTION |
 
 ## Enums
 
@@ -220,6 +222,8 @@ erDiagram
 "public.raid_schedule_exceptions" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.raid_rsvps" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.raid_rsvps" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+"public.raid_rsvp_reminders_sent" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+"public.raid_rsvp_reminders_sent" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 
 "public.attendance" {
   integer id
@@ -734,6 +738,14 @@ erDiagram
   text note
   timestamp_with_time_zone created_at
   timestamp_with_time_zone updated_at
+}
+"public.raid_rsvp_reminders_sent" {
+  integer id
+  integer team_id FK
+  integer player_id FK
+  date raid_date
+  text checkpoint
+  timestamp_with_time_zone sent_at
 }
 ```
 
