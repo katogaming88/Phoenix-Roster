@@ -8,6 +8,37 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.91.0] - 2026-09-04
+
+### Frontend
+
+- The raid calendar can now open straight to a given date
+  ([#900](https://github.com/katogaming88/WGA-Raid-Hub/issues/900), part of the aggregated Discord
+  signup sheet). `calendar.html?date=YYYY-MM-DD` jumps to that date's month and opens the RSVP modal
+  for it once your Discord login state resolves -- this is what the signup sheet's Discord embed
+  links to.
+- New "Discord Signup Sheet" settings card on the officer dashboard's Season tab (team leaders and
+  site admins only): a channel ID, a Verify button that shows back the actual resolved channel name
+  (many of our channels are named nearly identically across teams), and a configurable lead time
+  before a raid night's sheet gets posted (default 48 hours before the raid's actual start time).
+
+### Backend
+
+- A new aggregated, always-current Discord message per raid night
+  ([#900](https://github.com/katogaming88/WGA-Raid-Hub/issues/900), part of #640) -- shows the whole
+  roster's RSVP status at a glance, grouped by role, with Late/Tentative/Absent/Bench each pulled
+  into their own section, and edits in place as people respond instead of reposting. Fully separate
+  from the existing per-status-change ping ([#893](https://github.com/katogaming88/WGA-Raid-Hub/issues/893)),
+  which is untouched. Posted proactively ahead of each raid night (configurable lead time, default
+  48h before start) and re-synced on every RSVP change; a Refresh button on the message itself
+  manually re-syncs it too. All the logic lives in the Discord bot (wga-raid-bot), using its own
+  service-role Supabase client -- the site's role is just the new `raid_signup_sheets` bookkeeping
+  table, `claim_raid_signup_sheet()`/`raid_night_info()`, and relaying the trigger through
+  `discord-bot-webhook`, which now also forwards the bot's response body so the channel-Verify
+  step can work.
+
+---
+
 ## [3.90.0] - 2026-09-04
 
 ### Frontend
