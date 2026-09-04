@@ -68,9 +68,12 @@ const DISCORD_OFFICER_2 = 'discord-officer-2';
 
 // A find with neither a stamped Discord id nor a player_id: the state every
 // name-fallback case starts from, and the shape of the row that prompted this.
+// Status is left at its default: the resolver never reads it, and inserting a
+// sold row here would owe the four money columns that
+// boe_items_money_complete_when_sold requires for nothing in return.
 const unresolvedItem = (q, teamId, finderName) =>
   q(
-    "insert into public.boe_items (team_id, item_name, finder_name, status) values ($1, 'Test Find', $2, 'sold') returning id",
+    "insert into public.boe_items (team_id, item_name, finder_name) values ($1, 'Test Find', $2) returning id",
     [teamId, finderName]
   ).then((r) => r.rows[0].id);
 
