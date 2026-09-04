@@ -5664,6 +5664,100 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.raid_signup_sheets",
+      "type": "BASE TABLE",
+      "comment": "Bookkeeping for the bot-owned aggregated signup-sheet Discord message (#900, part of #640): tracks which channel/message holds the one edited-in-place embed per team/raid_date. Written and read only by the bot's service-role client via claim_raid_signup_sheet(); no read use case for an officer or end user. Mirrors raid_rsvp_reminders_sent's locked-down shape (#895).",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('raid_signup_sheets_id_seq'::regclass)"
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "raid_date",
+          "type": "date",
+          "nullable": false
+        },
+        {
+          "name": "channel_id",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "message_id",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "raid_signup_sheets_pkey",
+          "def": "CREATE UNIQUE INDEX raid_signup_sheets_pkey ON public.raid_signup_sheets USING btree (id)",
+          "table": "public.raid_signup_sheets",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_signup_sheets_team_id_raid_date_key",
+          "def": "CREATE UNIQUE INDEX raid_signup_sheets_team_id_raid_date_key ON public.raid_signup_sheets USING btree (team_id, raid_date)",
+          "table": "public.raid_signup_sheets",
+          "columns": [
+            "team_id",
+            "raid_date"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "raid_signup_sheets_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.raid_signup_sheets",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_signup_sheets_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.raid_signup_sheets",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_signup_sheets_team_id_raid_date_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (team_id, raid_date)",
+          "table": "public.raid_signup_sheets",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "raid_date"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -6511,6 +6605,19 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.raid_signup_sheets",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
     }
   ],
   "functions": [
@@ -6961,6 +7068,18 @@
     {
       "name": "public.is_optional_raid_night",
       "return_type": "bool",
+      "arguments": "p_team_id integer, p_raid_date date",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.claim_raid_signup_sheet",
+      "return_type": "text",
+      "arguments": "p_team_id integer, p_raid_date date, p_channel_id text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.raid_night_info",
+      "return_type": "record",
       "arguments": "p_team_id integer, p_raid_date date",
       "type": "FUNCTION"
     }

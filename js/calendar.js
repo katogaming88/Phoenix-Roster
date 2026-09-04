@@ -35,6 +35,38 @@ var _calModalDate = null;
 var _calModalStatus = null;
 var _calModalIsOptional = false;
 
+// '?date=YYYY-MM-DD' deep link (#900) -- the signup-sheet embed's "View on
+// Site" button lands here. Read once at load time; calendar.html jumps the
+// initial month view to it before the first buildCalendarWidget('full')
+// call, and _resolveDeepLinkDate() (below) opens the RSVP modal for it once
+// Discord login state is known (_openRsvpModal needs _calResolveMyPlayer(),
+// which isn't reliable until then -- same reasoning as #517's
+// #profile/<name> deep link in js/roster.js's _resolveHashProfile()).
+var _pendingDeepLinkDate = new URLSearchParams(location.search).get('date');
+
+function _resolveDeepLinkDate() {
+  if (!_pendingDeepLinkDate) return;
+  var target = _pendingDeepLinkDate;
+  _pendingDeepLinkDate = null;
+  _openRsvpModal(target);
+}
+
+// Callbacks invoked by discord.js once login state is known. calendar.html
+// also loads js/officer-quick-actions.js, which defines onDiscordInitNoSession
+// (calls _qaRefresh()) but deliberately not onDiscordSessionRestored -- this
+// file loads after it, so a same-named declaration here wins/shadows it
+// (#371), same collision js/roster.js's own onDiscordSessionRestored already
+// documents. Call _qaRefresh() ourselves in both so officer-quick-actions.js's
+// UI still reacts on this page.
+function onDiscordSessionRestored(session) {
+  if (typeof _qaRefresh === 'function') _qaRefresh();
+  _resolveDeepLinkDate();
+}
+function onDiscordInitNoSession() {
+  if (typeof _qaRefresh === 'function') _qaRefresh();
+  _resolveDeepLinkDate();
+}
+
 function _calIsoDate(d) {
   var mm = String(d.getMonth() + 1);
   if (mm.length < 2) mm = '0' + mm;
@@ -533,6 +565,7 @@ function _saveRsvpStatus() {
         return;
       }
       _notifyRsvpBot(_calModalDate, _calModalStatus, note);
+      _syncSignupSheet(_calModalDate);
       var monthDate = new Date(_calModalDate + 'T00:00:00');
       _calInvalidateMonthCache(new Date(monthDate.getFullYear(), monthDate.getMonth(), 1));
       _closeRsvpModal();
@@ -561,6 +594,7 @@ function _clearRsvpStatus() {
         }
         return;
       }
+      _syncSignupSheet(_calModalDate);
       var monthDate = new Date(_calModalDate + 'T00:00:00');
       _calInvalidateMonthCache(new Date(monthDate.getFullYear(), monthDate.getMonth(), 1));
       _closeRsvpModal();
@@ -582,6 +616,25 @@ function _notifyRsvpBot(raidDate, status, note) {
         team: TEAM_SLUG,
         payload: { charName: myPlayer.nameRealm, raidDate: raidDate, status: status, note: note }
       }
+    })
+    .then(
+      function () {},
+      function () {}
+    );
+}
+
+// Fire-and-forget trigger for the bot-owned aggregated signup sheet (#900,
+// part of #640) -- fully separate from _notifyRsvpBot above, which is the
+// existing per-status-change ping and stays untouched. All the actual
+// grouping/embed/message-bookkeeping logic lives bot-side
+// (wga-raid-bot's src/signupSheet.ts); this just tells it "the RSVP picture
+// for this date changed, go re-sync." No player/status data needed in the
+// payload -- the bot re-queries the full roster/RSVP state itself.
+function _syncSignupSheet(raidDate) {
+  if (!supabaseClient) return;
+  supabaseClient.functions
+    .invoke('discord-bot-webhook', {
+      body: { action: 'signupSheetSync', team: TEAM_SLUG, payload: { raidDate: raidDate } }
     })
     .then(
       function () {},

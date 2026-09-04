@@ -94,7 +94,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.90.0';
+var VERSION = '3.91.0';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -2900,6 +2900,8 @@ function applyTeamSettingsToData(data, config) {
   if (config.activeSignupSeason !== undefined) data.signupSeason = config.activeSignupSeason;
   data.features = config.features || {};
   data.externalLinks = config.externalLinks || {};
+  data.discordSignupChannelId = config.discordSignupChannelId || null;
+  data.signupSheetLeadHours = config.signupSheetLeadHours || null;
   data.teamOfficerBios = config.teamOfficerBios || [];
   // guildOfficerBios is guild-wide (site_settings, heavy-loaded in loadData()),
   // not sourced from any one team's config -- see fetchSupabaseGuildOfficerBios().
