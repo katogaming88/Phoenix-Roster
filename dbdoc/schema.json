@@ -5543,6 +5543,127 @@
           "def": "CREATE TRIGGER trg_raid_rsvps_updated_at BEFORE UPDATE ON public.raid_rsvps FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
         }
       ]
+    },
+    {
+      "name": "public.raid_rsvp_reminders_sent",
+      "type": "BASE TABLE",
+      "comment": "Dedup log for the optional-night DM reminder sweep (#895, part of #640) -- records that a 24h/2h reminder was already sent for a player/raid_date/checkpoint so the cron sweep does not re-DM on every tick. Insert-only, written solely by the optional-rsvp-reminders Edge Function via the service role. Not the source of truth for whether a player has responded -- that is raid_rsvps.",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('raid_rsvp_reminders_sent_id_seq'::regclass)"
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "player_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "raid_date",
+          "type": "date",
+          "nullable": false
+        },
+        {
+          "name": "checkpoint",
+          "type": "text",
+          "nullable": false
+        },
+        {
+          "name": "sent_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "raid_rsvp_reminders_sent_pkey",
+          "def": "CREATE UNIQUE INDEX raid_rsvp_reminders_sent_pkey ON public.raid_rsvp_reminders_sent USING btree (id)",
+          "table": "public.raid_rsvp_reminders_sent",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_rsvp_reminders_sent_team_id_player_id_raid_date_checkp_key",
+          "def": "CREATE UNIQUE INDEX raid_rsvp_reminders_sent_team_id_player_id_raid_date_checkp_key ON public.raid_rsvp_reminders_sent USING btree (team_id, player_id, raid_date, checkpoint)",
+          "table": "public.raid_rsvp_reminders_sent",
+          "columns": [
+            "team_id",
+            "player_id",
+            "raid_date",
+            "checkpoint"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "raid_rsvp_reminders_sent_checkpoint_check",
+          "type": "CHECK",
+          "def": "CHECK ((checkpoint = ANY (ARRAY['24h'::text, '2h'::text])))",
+          "table": "public.raid_rsvp_reminders_sent",
+          "referenced_table": "",
+          "columns": [
+            "checkpoint"
+          ]
+        },
+        {
+          "name": "raid_rsvp_reminders_sent_player_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE",
+          "table": "public.raid_rsvp_reminders_sent",
+          "referenced_table": "public.players",
+          "columns": [
+            "player_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_rsvp_reminders_sent_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.raid_rsvp_reminders_sent",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_rsvp_reminders_sent_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (id)",
+          "table": "public.raid_rsvp_reminders_sent",
+          "referenced_table": "",
+          "columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "raid_rsvp_reminders_sent_team_id_player_id_raid_date_checkp_key",
+          "type": "UNIQUE",
+          "def": "UNIQUE (team_id, player_id, raid_date, checkpoint)",
+          "table": "public.raid_rsvp_reminders_sent",
+          "referenced_table": "",
+          "columns": [
+            "team_id",
+            "player_id",
+            "raid_date",
+            "checkpoint"
+          ]
+        }
+      ]
     }
   ],
   "relations": [
@@ -6364,6 +6485,32 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.raid_rsvp_reminders_sent",
+      "columns": [
+        "player_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.players",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.raid_rsvp_reminders_sent",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
     }
   ],
   "functions": [
@@ -6809,6 +6956,12 @@
       "name": "public.admin_revoke_team_role",
       "return_type": "void",
       "arguments": "p_team_id integer, p_discord_id text",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.is_optional_raid_night",
+      "return_type": "bool",
+      "arguments": "p_team_id integer, p_raid_date date",
       "type": "FUNCTION"
     }
   ],

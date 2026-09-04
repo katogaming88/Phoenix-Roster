@@ -8,6 +8,34 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.90.0] - 2026-09-04
+
+### Frontend
+
+- Optional raid nights now support a real RSVP
+  ([#895](https://github.com/katogaming88/WGA-Raid-Hub/issues/895), Phase 4 of the raid calendar).
+  Clicking into an optional night's cell on the calendar now offers an `Attending` status alongside
+  the existing four, and a raider who confirms attendance renders with the same green dot as a
+  normal Present night instead of the amber "flagged" color. Bench raiders, who normally have no
+  RSVP picker at all, can now click into an optional night specifically -- there's no default
+  status for anyone on one of these nights, bench included, since it's exactly the kind of night a
+  bench player might get pulled in for.
+
+### Backend
+
+- A 24h/2h DM reminder sweep for optional raid nights
+  ([#895](https://github.com/katogaming88/WGA-Raid-Hub/issues/895)). A new `optional-rsvp-reminders`
+  Edge Function runs on a 15-minute pg_cron schedule, finds every optional night in the next couple
+  days, and DMs (through the existing Discord bot, via a new `/optional-reminder` bot route) anyone
+  -- bench included -- who hasn't set an RSVP status yet, 24 hours out and again at 2 hours out. A
+  new `raid_rsvp_reminders_sent` table is a pure dedup log so nobody gets double-DMed on the next
+  tick; it carries no read policy for anyone but the service role. `set_own_rsvp()` now accepts
+  `Attending`, gated to optional nights only, and its bench guard relaxes for that same case. A new
+  shared `is_optional_raid_night()` SQL function keeps the recurring-rule/exception precedence in
+  one place instead of duplicating it between the RPC and the Edge Function.
+
+---
+
 ## [3.89.0] - 2026-09-03
 
 ### Frontend

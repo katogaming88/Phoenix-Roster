@@ -13,14 +13,19 @@
 // day on the full page (calendar.html only, not the Home widget) opens a
 // status picker calling set_own_rsvp(), and the grid shows that override
 // in place of the computed default (Present, or No Response on an optional
-// night -- #895/Phase 4) once one exists. Bench raiders get no picker at
-// all (Bench is never raider-editable, enforced server-side too).
+// night -- #895/Phase 4) once one exists. Bench raiders get no picker on a
+// normal night (Bench is never raider-editable there, enforced server-side
+// too) -- but DO get one on an optional night (#895), since an optional
+// night has no default for anyone and bench is exactly who might get
+// pulled in for it. See dayCanPick below and set_own_rsvp()'s relaxed
+// bench guard.
 
 var _CAL_WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 var _CAL_STATUS_LABELS = { present: 'Present', pending: 'No Response' };
-// The four raider-facing override statuses (#893). 'Attending' is a valid
-// raid_rsvps.status value for optional nights (#895) but is not offered
-// here and not accepted by set_own_rsvp() yet.
+// The four raider-facing override statuses offered on every raid night
+// (#893). 'Attending' (#895) is also a valid raid_rsvps.status value, but
+// only offered -- and accepted by set_own_rsvp() -- on an optional night;
+// see _renderRsvpStatusOptions().
 var _CAL_RSVP_STATUSES = ['Late', 'Leaving Early', 'Tentative', 'Absent'];
 
 var _calDataCache = {};
@@ -28,6 +33,7 @@ var _calViewYear = null;
 var _calViewMonth = null;
 var _calModalDate = null;
 var _calModalStatus = null;
+var _calModalIsOptional = false;
 
 function _calIsoDate(d) {
   var mm = String(d.getMonth() + 1);
@@ -214,11 +220,15 @@ function _calNightsByDate(nights) {
   return byDate;
 }
 
-// css class + aria label for one of the four override statuses -- Absent
-// gets its own color (red-ish, --melee), the other three share the
-// existing amber "tentative" treatment (still attending, just flagged).
+// css class + aria label for an override status -- Absent gets its own
+// color (red-ish, --melee), Attending (#895, optional nights only) reads
+// as the same green/present style as the computed default, and the
+// remaining three share the existing amber "tentative" treatment (still
+// attending, just flagged).
 function _calOverrideClass(status) {
-  return status === 'Absent' ? 'absent' : 'tentative';
+  if (status === 'Absent') return 'absent';
+  if (status === 'Attending') return 'present';
+  return 'tentative';
 }
 
 /**
@@ -247,7 +257,6 @@ function _renderCalGrid(containerEl, year, month, nights, opts) {
       }).length) ||
     0;
   var attending = Math.max(0, rosterCount - benchCount);
-  var canPick = !opts.compact && opts.myPlayer && !opts.myPlayer.isBench;
 
   var weekdayHtml = _CAL_WEEKDAY_LABELS
     .map(function (d) {
@@ -268,11 +277,15 @@ function _renderCalGrid(containerEl, year, month, nights, opts) {
     var isToday = _calIsoDate(today) === dateStr;
     var statusHtml = '';
     var countHtml = '';
+    var dayCanPick = false;
     if (isRaidDay) {
       var myOverride = myOverridesByDate[dateStr];
       var anyOptional = dayNights.some(function (n) {
         return n.isOptional;
       });
+      // Bench raiders can only pick on an optional night -- see the file
+      // header comment and set_own_rsvp()'s matching server-side gate.
+      dayCanPick = !opts.compact && opts.myPlayer && (!opts.myPlayer.isBench || anyOptional);
       var statusClass, statusLabel;
       if (myOverride) {
         statusClass = _calOverrideClass(myOverride.status);
@@ -298,7 +311,7 @@ function _renderCalGrid(containerEl, year, month, nights, opts) {
       '<div class="mini-cal-day' +
       (isRaidDay ? ' mini-cal-day-raid' : '') +
       (isToday ? ' mini-cal-day-today' : '') +
-      (isRaidDay && canPick ? ' mini-cal-day-clickable" onclick="_openRsvpModal(\'' + dateStr + "')" : '') +
+      (isRaidDay && dayCanPick ? ' mini-cal-day-clickable" onclick="_openRsvpModal(\'' + dateStr + "')" : '') +
       '"><span class="mini-cal-daynum">' +
       day +
       '</span>' +
@@ -414,9 +427,10 @@ function _calNavMonth(delta) {
 
 function _openRsvpModal(dateStr) {
   var myPlayer = _calResolveMyPlayer();
-  if (!myPlayer || myPlayer.isBench) return; // cell isn't clickable in that case anyway
+  if (!myPlayer) return;
   _calModalDate = dateStr;
   _calModalStatus = null;
+  _calModalIsOptional = false;
   var titleEl = document.getElementById('rsvpModalTitle');
   if (titleEl) {
     var d = new Date(dateStr + 'T00:00:00');
@@ -431,6 +445,18 @@ function _openRsvpModal(dateStr) {
   var rangeStart = new Date(monthKey.getFullYear(), monthKey.getMonth(), 1);
   var rangeEnd = new Date(monthKey.getFullYear(), monthKey.getMonth() + 1, 0);
   _loadCalendarScheduleData(rangeStart, rangeEnd).then(function (data) {
+    var nights = computeRaidNights(data.scheduleRows, data.exceptionRows, rangeStart, rangeEnd);
+    var night = nights.find(function (n) {
+      return n.date === dateStr;
+    });
+    _calModalIsOptional = !!(night && night.isOptional);
+    // Defense in depth -- the grid only makes a bench player's cell
+    // clickable on an optional night (see dayCanPick in _renderCalGrid),
+    // but don't trust that alone; set_own_rsvp() enforces this too.
+    if (myPlayer.isBench && !_calModalIsOptional) {
+      _closeRsvpModal();
+      return;
+    }
     var existing = (data.rsvpRows || []).find(function (row) {
       return row.player_id === myPlayer.id && row.raid_date === dateStr;
     });
@@ -449,12 +475,14 @@ function _closeRsvpModal() {
   if (modal) modal.classList.remove('active');
   _calModalDate = null;
   _calModalStatus = null;
+  _calModalIsOptional = false;
 }
 
 function _renderRsvpStatusOptions() {
   var el = document.getElementById('rsvpStatusOptions');
   if (!el) return;
-  el.innerHTML = _CAL_RSVP_STATUSES
+  var statuses = _calModalIsOptional ? ['Attending'].concat(_CAL_RSVP_STATUSES) : _CAL_RSVP_STATUSES;
+  el.innerHTML = statuses
     .map(function (status) {
       return (
         '<button type="button" class="filter-chip' +
@@ -480,7 +508,7 @@ function _saveRsvpStatus() {
   var errEl = document.getElementById('rsvpError');
   var saveBtn = document.getElementById('rsvpSaveBtn');
   var note = (noteEl && noteEl.value.trim()) || '';
-  if (!note) {
+  if (_calModalStatus !== 'Attending' && !note) {
     if (errEl) {
       errEl.textContent = 'A note is required so officers know why.';
       errEl.style.display = '';

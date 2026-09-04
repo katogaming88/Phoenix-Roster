@@ -8,6 +8,19 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-04 -- Optional raid nights: bench included, reminder dedup gets its own locked table
+
+Tracking issue: [#895](https://github.com/katogaming88/WGA-Raid-Hub/issues/895), Phase 4 of 4 for the raid calendar (part of #640).
+
+- **Bench players are not excluded from an optional night.** On a normal raid night, bench has nothing to RSVP about -- there's no default-Present for them to override, so `set_own_rsvp()` blocked them outright. Kat's correction while scoping this phase: an optional night (e.g. a bonus clear) is exactly the kind of night a bench player might get pulled in for, so treating bench the same as a mandatory night would silently exclude players who could actually attend. `set_own_rsvp()`'s bench guard now only applies when the target night is *not* optional; the reminder sweep's roster query (`optional-rsvp-reminders`) deliberately has no `is_bench=false` filter, unlike every other roster query in this schema.
+- **A shared `is_optional_raid_night(team_id, raid_date)` SQL function, not two copies of the precedence.** Both `set_own_rsvp()`'s server-side gate on the `Attending` status/bench exception, and the Edge Function's date-window scan, need to agree on exactly what counts as an optional night (cancelled exception wins > added exception wins > active recurring rule > not a raid night at all). Rather than port `js/calendar.js`'s `computeRaidNights()` precedence into both SQL and the Edge Function's TypeScript separately -- and risk the two drifting -- it's one `STABLE` SQL function, called from both.
+- **`raid_rsvp_reminders_sent` gets RLS enabled with no read policy for anyone but the service role and `claude_readers`** (not even officer-read, unlike `audit_log`). It's a pure dedup log for the 24h/2h DM sweep, not an audit trail of a real action someone took -- a checkpoint row is meaningless without cross-referencing `raid_rsvps`/`raid_schedule` anyway, and there's no officer workflow that needs to see it. A service-role query in the SQL Editor is enough if it ever needs debugging.
+- **The dedup insert happens after the bot-relay call succeeds, not before.** A crashed/timed-out relay call legitimately retries on the next 15-minute cron tick rather than being falsely marked sent -- same fire-and-forget tolerance already accepted by `_notifyRsvpBot`'s own RSVP-change notification. The accepted tradeoff is a rare double-DM if the relay succeeds but the dedup insert itself fails.
+
+[Full discussion -> #895](https://github.com/katogaming88/WGA-Raid-Hub/issues/895)
+
+---
+
 ## 2026-09-04 -- Per-team roles get a grant RPC, like the guild-wide tiers
 
 Tracking issue: [#910](https://github.com/katogaming88/WGA-Raid-Hub/issues/910), part of the BoE Tracker milestone.
