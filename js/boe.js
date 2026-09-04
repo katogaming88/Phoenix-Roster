@@ -2,26 +2,31 @@
 // Google Form. Calls the anon-callable submit_boe_found RPC (the write of
 // record, #745) and then pings the boe-webhook Edge Function fire-and-forget,
 // the same side-channel shape as js/signup.js's discord-bot-webhook call.
-// Zero login required by design: Immolation raiders reach this through a
-// pinned per-team Discord link (index.html?team=<slug>#boe) instead of the
-// site nav, so the card leans on common.js's existing ?team= resolution and
-// shows which team it will report for. Own file since officer.html and
-// index.html are separate script bundles -- same reasoning as js/bonusRoll.js.
+// Zero login required by design: Immolation raiders reach it through a pinned
+// per-team Discord link rather than the site nav.
 //
-// Depends on: common.js (supabaseClient, DATA, TEAM_NAME, _teamCfg,
-// featureEnabled), js/roster.js (showView), js/discord.js (getDiscordSession,
-// optional -- the card works logged out).
+// It was a view on index.html until #891 moved it onto boe.html, beside the
+// rows it creates, so one page reports a find and shows what became of it.
+// Almost everything below follows from that page having no team of its own
+// (js/boe-page.js nulls the team globals the way js/guild.js does):
+//
+//   - the reporting team is chosen here rather than inherited from the page,
+//     so there is a placeholder and the submit refuses without an answer;
+//   - the item catalog and the raid zones its season filter needs are read
+//     here, because there is no loadData() on this page to hang them off;
+//   - the season the picker filters to is the reporting team's, looked up
+//     from the same team_settings read that decides which teams to offer.
+//
+// Loaded before js/boe-page.js so the explicit ?team= is captured before that
+// file nulls the globals it comes from.
+//
+// Depends on: common.js (supabaseClient, TEAMS, TEAM_SLUG and _hadExplicitTeam
+// at parse time only, featureEnabledIn, fetchSupabaseRaidZones, _esc).
 
-// Nav entry point (SITE_NAV_ITEMS onclick and the #boe hash route). Guarded
-// here rather than in showView so a deep link with the flag off lands on the
-// home view instead of a hidden card as a blank panel.
-function showBoeView() {
-  if (typeof featureEnabled === 'function' && !featureEnabled('boe')) {
-    showView('landing');
-    return;
-  }
-  showView('boe');
-}
+// The team a pinned per-team link asked for: boe.html?team=<slug>, and the
+// index.html?team=<slug>#boe links that redirect to it. Read at parse time
+// because js/boe-page.js nulls TEAM_SLUG immediately after this file loads.
+var _boeReportTeam = typeof _hadExplicitTeam !== 'undefined' && _hadExplicitTeam ? TEAM_SLUG : null;
 
 // What the card last filled in by itself. Anything the visitor types or picks
 // makes the element's value diverge from these, which is how a late async
@@ -31,28 +36,43 @@ function showBoeView() {
 var _boeAutoTeam = null;
 var _boeAutoChar = null;
 
-// Called from bootRosterApp()'s loadData success callback, once DATA (and so
-// the team's feature flags) is real: hides the card and its nav button when
-// the boe flag is off, builds the reporting-team dropdown, and prefills from
-// whatever identity is known synchronously (the localStorage session cache).
-// The two refresh functions below finish the job once the network answers.
+// The teams currently offered, in the order rendered, and the season each one
+// is playing. Both come from the team_settings read below.
+var _boeVisibleSlugs = [];
+var _boeTeamSeasons = {};
+
+// The BoE catalog and the raid zones the season filter needs. index.html got
+// both out of loadData()'s items read (#875); this page reads them itself.
+// Named apart from js/boe-manage.js's own _boeCatalog, which is a different
+// list for a different picker and shares this page's global scope.
+var _boeFormCatalog = [];
+var _boeFormZones = [];
+
+// bootBoePage() runs again on every auth change, and re-picking the default
+// team there would throw away a choice the visitor had already made in a tab
+// where a session arrived from somewhere else.
+var _boeCardBuilt = false;
+
+/**
+ * Builds the card and then fills in everything that needs the network: which
+ * teams are offering BoE and what season each is on, the item catalog, and
+ * the visitor's own claimed character. Safe to call again; only the first
+ * call picks a default team.
+ */
 function initBoeCard() {
-  var wrap = document.getElementById('boeViewWrap');
-  var nav = document.getElementById('navBoE');
-  if (typeof featureEnabled === 'function' && !featureEnabled('boe')) {
-    if (wrap) wrap.style.display = 'none';
-    if (nav) nav.style.display = 'none';
-    return;
+  if (!document.getElementById('boeTeamSelect')) return Promise.resolve();
+  if (!_boeCardBuilt) {
+    _boeCardBuilt = true;
+    renderBoeTeamOptions(Object.keys(TEAMS));
+    setBoeTeam(defaultBoeTeamSlug(null));
   }
-  renderBoeTeamOptions(Object.keys(TEAMS));
-  setBoeTeam(defaultBoeTeamSlug(null));
-  var charEl = document.getElementById('boeCharName');
-  var session = typeof getDiscordSession === 'function' ? getDiscordSession() : null;
-  if (charEl && !charEl.value && session && session.nameRealm) {
-    charEl.value = session.nameRealm;
-    _boeAutoChar = session.nameRealm;
-  }
-  refreshBoeTeamOptions();
+  return Promise.all([refreshBoeTeamOptions(), refreshBoeCatalog()])
+    .then(function () {
+      return refreshBoeIdentity();
+    })
+    .then(function () {
+      refreshBoeItemOptions();
+    });
 }
 
 // Hidden teams are included on purpose: Wrathless submits finds and appears
@@ -63,51 +83,71 @@ function initBoeCard() {
 // not anything a visitor or the database supplies. If a team name ever starts
 // coming from team_settings, this needs an escape helper (this bundle has
 // none -- js/signup.js keeps its own local copy for the same reason).
+//
+// The placeholder leads because this page has no team to default to (#891).
+// Reporting into whichever team happened to sort first would file finds where
+// nobody is watching for them.
 function renderBoeTeamOptions(slugs) {
   var sel = document.getElementById('boeTeamSelect');
   if (!sel) return;
-  sel.innerHTML = slugs
-    .map(function (slug) {
-      return '<option value="' + slug + '">' + TEAMS[slug].name + '</option>';
-    })
-    .join('');
+  _boeVisibleSlugs = slugs.slice();
+  sel.innerHTML =
+    '<option value="">Select the team you raided with</option>' +
+    slugs
+      .map(function (slug) {
+        return '<option value="' + slug + '">' + TEAMS[slug].name + '</option>';
+      })
+      .join('');
 }
 
+// A null slug selects the placeholder, which is a real answer here rather
+// than a missing one.
 function setBoeTeam(slug) {
   var sel = document.getElementById('boeTeamSelect');
-  if (!sel || !slug) return;
-  sel.value = slug;
-  _boeAutoTeam = slug;
+  if (!sel) return;
+  sel.value = slug || '';
+  _boeAutoTeam = sel.value;
 }
 
 // Precedence, most specific first: an explicit ?team= wins so a pinned link
 // always reports where it says it will; then a lone claimed character's team;
-// then the page team.
+// then nothing, and the visitor answers.
 //
-// Exactly one claim is the only case where we can improve on the page's team.
+// Exactly one claim is the only case where a guess is better than asking.
 // Someone with alts on several teams could be raiding with any of them
-// tonight, so leave them where they landed instead of guessing, which is also
-// what happens when they have no claim at all.
+// tonight, and before #891 the page they were on broke the tie. This page has
+// no team, so the placeholder stands instead of picking one of their teams at
+// random.
 function defaultBoeTeamSlug(claimedSlugs) {
-  if (_hadExplicitTeam) return TEAM_SLUG;
+  if (_boeReportTeam) return _boeReportTeam;
   if (claimedSlugs && claimedSlugs.length === 1) return claimedSlugs[0];
-  return TEAM_SLUG;
+  return null;
 }
 
 // Drops any team that has switched its own boe flag off, so finds cannot pile
-// up somewhere nobody is watching the officer tab. One public read of every
-// team's settings; team_settings has a public read policy. Deliberately fails
-// open: if the read errors, every team stays listed, because a raider who
-// cannot report a find at all is the worse outcome.
+// up somewhere nobody is watching, and records every team's season for the
+// item picker. One public read of every team's settings; team_settings has a
+// public read policy. Deliberately fails open: if the read errors, every team
+// stays listed, because a raider who cannot report a find at all is the worse
+// outcome.
 function refreshBoeTeamOptions() {
   if (!supabaseClient) return Promise.resolve();
   return Promise.resolve(supabaseClient.from('team_settings').select('team_id, config'))
     .then(function (res) {
       if (!res || res.error || !res.data) return;
       var disabled = {};
+      var seasonByTeamId = {};
       res.data.forEach(function (row) {
-        if (!featureEnabledIn(row.config && row.config.features, 'boe')) disabled[row.team_id] = true;
+        var cfg = row.config || {};
+        if (!featureEnabledIn(cfg.features, 'boe')) disabled[row.team_id] = true;
+        // seasonView when a team has pinned one, else the live season name --
+        // the same precedence resolveSeasonView() uses on the team pages.
+        seasonByTeamId[row.team_id] = cfg.seasonView || cfg.seasonName || '';
       });
+      Object.keys(TEAMS).forEach(function (slug) {
+        _boeTeamSeasons[slug] = seasonByTeamId[TEAMS[slug].supabaseTeamId] || '';
+      });
+
       var keep = Object.keys(TEAMS).filter(function (slug) {
         return !disabled[TEAMS[slug].supabaseTeamId];
       });
@@ -115,7 +155,10 @@ function refreshBoeTeamOptions() {
       var sel = document.getElementById('boeTeamSelect');
       var current = sel && sel.value;
       renderBoeTeamOptions(keep);
-      if (keep.indexOf(current) !== -1) {
+      if (!current) {
+        // Still on the placeholder, which the re-render just restored.
+        setBoeTeam(null);
+      } else if (keep.indexOf(current) !== -1) {
         // Re-select what was already there without recording it as our own
         // choice. Stamping _boeAutoTeam here would erase the difference
         // between a value the visitor picked and one the card filled in,
@@ -130,11 +173,43 @@ function refreshBoeTeamOptions() {
     .catch(function () {});
 }
 
-// The card is built before initDiscordLogin() runs (js/roster.js boot order),
-// so it only ever sees the TTL-less localStorage cache. This re-resolves once
-// a real session exists, and is called from the onDiscord* hooks in the files
-// that already own them -- never from here, since js/boe.js loads last and a
-// same-named function would shadow theirs (the #371 bug, js/roster.js:874).
+// The BoE catalog and the raid zones, both of which index.html handed over
+// through DATA (#875). Read together so the picker never filters against a
+// half-loaded pair, and fails open to an unfiltered catalog: a raider who
+// cannot find their item in the list cannot report it at all.
+function refreshBoeCatalog() {
+  if (!supabaseClient) return Promise.resolve();
+  return Promise.all([
+    // team-read-guard: the BoE catalog, one row per BoE the guild tracks.
+    Promise.resolve(supabaseClient.from('items').select('id, name, wcl_zone_id').eq('is_boe', true)),
+    typeof fetchSupabaseRaidZones === 'function' ? fetchSupabaseRaidZones() : Promise.resolve([])
+  ])
+    .then(function (r) {
+      var res = r[0];
+      if (res && !res.error && res.data) {
+        _boeFormCatalog = res.data
+          .map(function (row) {
+            return {
+              id: row.id,
+              name: String(row.name || '').trim(),
+              wclZoneId: row.wcl_zone_id == null ? null : row.wcl_zone_id
+            };
+          })
+          .filter(function (it) {
+            return it.name;
+          })
+          .sort(function (a, b) {
+            return a.name.localeCompare(b.name);
+          });
+      }
+      _boeFormZones = r[1] || [];
+    })
+    .catch(function () {});
+}
+
+// The card is built before any session is known, so this re-resolves once one
+// exists. Called from initBoeCard(), which js/boe-page.js re-runs on every
+// auth change.
 //
 // Same "auth_user_id only, no team_id filter" read as resolveColdLanding(),
 // which the RLS policy allows and which returns nothing for anon. Two
@@ -181,37 +256,56 @@ function refreshBoeIdentity() {
     .catch(function () {});
 }
 
-// The team the submit will report against. Falls back to the page team if the
-// select is missing or holds something TEAMS does not know.
+// The team the submit will report against, or null while the placeholder is
+// selected. There is no page team to fall back on any more (#891).
 function selectedBoeTeamSlug() {
   var sel = document.getElementById('boeTeamSelect');
   var slug = sel && sel.value;
-  return slug && TEAMS[slug] ? slug : TEAM_SLUG;
+  return slug && TEAMS[slug] ? slug : null;
 }
 
-// The item picker (#875, select-only since #877). DATA.boeItems is the
-// season catalog common.js collects out of the items read. The select offers
-// the viewed season's rows (by wcl zone, through the helper the season filter
-// uses, which fails open to every BoE when the season has no zones) plus any
-// unscoped row. Filled from the heavy-load callback in js/roster.js, since
-// the items read resolves after initBoeCard() has run; until then the select
-// holds only its placeholder option.
-function boeCatalogEntries() {
-  return (typeof DATA !== 'undefined' && DATA && DATA.boeItems) || [];
+// The season whose BoEs the picker offers: the reporting team's, or the first
+// listed team that has one when the reporting team has none. That second case
+// is Wrathless, which raids with the guild and configures no season of its
+// own -- without the borrow its picker would offer every BoE the guild has
+// ever tracked, across every tier.
+function boeSeasonForSelectedTeam() {
+  var slug = selectedBoeTeamSlug();
+  if (slug && _boeTeamSeasons[slug]) return _boeTeamSeasons[slug];
+  for (var i = 0; i < _boeVisibleSlugs.length; i++) {
+    if (_boeTeamSeasons[_boeVisibleSlugs[i]]) return _boeTeamSeasons[_boeVisibleSlugs[i]];
+  }
+  return '';
 }
 
+// The season's rows by wcl zone, plus any unscoped row. Fails open to the
+// whole catalog when the season has no zones, the same rule
+// isItemInSeasonScope() applies on the team pages: an incompletely onboarded
+// season should not leave a raider with nothing to pick.
 function boeSeasonCatalogEntries() {
-  var all = boeCatalogEntries();
-  if (!all.length) return [];
-  var zones = typeof currentZoneIdsForSeason === 'function' ? currentZoneIdsForSeason(resolveSeasonView()) : {};
-  var scoped = Object.keys(zones).length > 0;
-  return all.filter(function (it) {
+  if (!_boeFormCatalog.length) return [];
+  var season = boeSeasonForSelectedTeam();
+  var zones = {};
+  var scoped = false;
+  if (season) {
+    _boeFormZones.forEach(function (rz) {
+      if (rz.season !== season) return;
+      var id = parseInt(rz.wclZoneId, 10);
+      if (id) {
+        zones[id] = true;
+        scoped = true;
+      }
+    });
+  }
+  return _boeFormCatalog.filter(function (it) {
     return it.wclZoneId == null || !scoped || zones[it.wclZoneId] === true;
   });
 }
 
+// The item picker (#875, select-only since #877): a select of the season's
+// BoEs, submitted exactly as chosen. There is no free-text fallback, so an
+// item the catalog does not carry cannot be reported until it gains one.
 function refreshBoeItemOptions() {
-  if (typeof featureEnabled === 'function' && !featureEnabled('boe')) return;
   var select = document.getElementById('boeItemName');
   if (!select) return;
   var current = select.value;
@@ -225,6 +319,12 @@ function refreshBoeItemOptions() {
   select.value = current;
 }
 
+// The season filter follows the reporting team, so the picker rebuilds when
+// that changes. Wired from the select's onchange in boe.html.
+function onBoeTeamChange() {
+  refreshBoeItemOptions();
+}
+
 function submitBoeFound() {
   var charEl = document.getElementById('boeCharName');
   var itemEl = document.getElementById('boeItemName');
@@ -235,6 +335,7 @@ function submitBoeFound() {
   var btn = document.getElementById('boeSubmitBtn');
   var status = document.getElementById('boeStatus');
 
+  var teamSlug = selectedBoeTeamSlug();
   var charName = charEl ? charEl.value.trim() : '';
   var itemName = itemEl ? itemEl.value.trim() : '';
   var track = trackEl && trackEl.value ? trackEl.value : null;
@@ -245,6 +346,12 @@ function submitBoeFound() {
 
   // Validate before any network call, text feedback only -- the status span
   // is a role="status" live region, so this announces to screen readers too.
+  // The team comes first because it is the first field, and because there is
+  // no page team behind it to make a wrong guess from (#891).
+  if (!teamSlug) {
+    if (status) status.textContent = 'Please select the team you raided with.';
+    return;
+  }
   if (!charName) {
     if (status) status.textContent = 'Please enter your character name.';
     return;
@@ -272,10 +379,7 @@ function submitBoeFound() {
   }
   if (status) status.textContent = '';
 
-  // The picked team, not the page's: a raider on another team's page (or on
-  // Wrathless, which has no page anyone visits) must be able to file the find
-  // where it actually belongs (#767).
-  var teamCfg = TEAMS[selectedBoeTeamSlug()];
+  var teamCfg = TEAMS[teamSlug];
 
   return supabaseClient
     .rpc('submit_boe_found', {
@@ -312,6 +416,8 @@ function submitBoeFound() {
           upgradeRank: rank
         }
       });
+      // The team stays: a raider reporting two finds from one night is
+      // reporting them for the same team.
       if (itemEl) itemEl.value = '';
       if (noteEl) noteEl.value = '';
       if (trackEl) trackEl.value = '';

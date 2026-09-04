@@ -302,7 +302,8 @@ function _boeItemCell(item) {
 // catalog link, #865 the item level and upgrade rank.
 var BOE_TRACKS = ['Champion', 'Hero', 'Myth'];
 // The six ranks the raider form offers (#865). Three lists have to agree:
-// index.html's static options, this one, and the array in submit_boe_found.
+// boe.html's static options on the report form, this one, and the array in
+// submit_boe_found.
 var BOE_RANKS = ['1/6', '2/6', '3/6', '4/6', '5/6', '6/6'];
 var BOE_EDIT_COLUMNS = [
   ['item_name', 'item'],

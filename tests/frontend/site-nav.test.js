@@ -73,22 +73,27 @@ describe('SITE_NAV_ITEMS', () => {
     const { sandbox } = makeSandbox();
     expect(sandbox.SITE_NAV_ITEMS.filter((i) => i.href).map((i) => i.id)).toEqual([
       'navGuild',
-      'navBoeManage',
-      'navCalendar'
+      'navCalendar',
+      'navBoE'
     ]);
   });
 
-  it('carries a BoE Sales entry for officer.html, no longer shipped hidden (#890)', () => {
-    // It shipped display:none until #890 and js/officer.js revealed it once
-    // three access RPCs answered. The page is open to everyone signed in now,
-    // so there is nothing left to gate the link on and no reveal to wait for.
-    // Still officerOnly: index.html keeps its own BoE item until #891.
+  it('carries one BoE item, a link to the page that both reports and tracks (#891)', () => {
+    // Two items until #891: BoE opened a view on index.html and BoE Sales
+    // linked to boe.html for officers. The form moved onto that page, so one
+    // link serves both and the officer-only one is gone.
     const { sandbox } = makeSandbox();
-    const item = sandbox.SITE_NAV_ITEMS.find((i) => i.id === 'navBoeManage');
-    expect(item).toBeDefined();
+    expect(sandbox.SITE_NAV_ITEMS.filter((i) => /boe/i.test(i.id)).map((i) => i.id)).toEqual(['navBoE']);
+    const item = sandbox.SITE_NAV_ITEMS.find((i) => i.id === 'navBoE');
     expect(item.href).toBe('boe.html');
-    expect(item.officerOnly).toBe(true);
-    expect(item.hidden).toBeUndefined();
+    expect(item.view).toBeUndefined();
+    expect(item.onclick).toBeUndefined();
+    expect(item.officerOnly).toBeUndefined();
+  });
+
+  it('carries the page team through to the form, so a pinned link and the nav agree', () => {
+    const { sandbox } = makeSandbox();
+    expect(sandbox.SITE_NAV_ITEMS.find((i) => i.id === 'navBoE').carryTeam).toBe(true);
   });
 
   it('ships nothing in the nav hidden any more', () => {
@@ -113,7 +118,7 @@ describe('renderSiteNav, public mode', () => {
     const rendered = items(mount.innerHTML);
     expect(rendered.length).toBe(sandbox.SITE_NAV_ITEMS.filter((i) => !i.officerOnly).length);
     rendered
-      .filter((i) => i.id !== 'navGuild' && i.id !== 'navCalendar')
+      .filter((i) => i.id !== 'navGuild' && i.id !== 'navCalendar' && i.id !== 'navBoE')
       .forEach((i) => {
         expect(i.tag).toBe('button');
         expect(i.attrs).toContain('onclick');
@@ -169,14 +174,22 @@ describe('renderSiteNav, officer mode', () => {
     expect(items(mount.innerHTML).filter((i) => i.active)).toEqual([]);
   });
 
-  it('renders the BoE Sales link visible, pointing at boe.html with no team param (#890)', () => {
+  it('renders the BoE link visible, carrying this page team (#891)', () => {
     const { sandbox, mount } = makeSandbox({ search: '?team=hellfire' });
     sandbox.renderSiteNav('officer');
-    const boe = items(mount.innerHTML).find((i) => i.id === 'navBoeManage');
+    const boe = items(mount.innerHTML).find((i) => i.id === 'navBoE');
     expect(boe).toBeDefined();
     expect(boe.tag).toBe('a');
-    expect(boe.href).toBe('boe.html');
+    expect(boe.href).toBe('boe.html?team=hellfire');
     expect(boe.attrs).not.toContain('display:none');
+  });
+
+  it('leaves the team off the links that have no team to carry', () => {
+    const { sandbox, mount } = makeSandbox({ search: '?team=hellfire' });
+    sandbox.renderSiteNav('officer');
+    const rendered = items(mount.innerHTML);
+    expect(rendered.find((i) => i.id === 'navGuild').href).toBe('guild.html');
+    expect(rendered.find((i) => i.id === 'navCalendar').href).toBe('calendar.html');
   });
 
   it('leaves every item unhidden', () => {

@@ -8,8 +8,8 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=3.87.0">
-<link rel="stylesheet" href="css/guild.css?v=3.87.0">
+<link rel="stylesheet" href="css/styles.css?v=3.88.0">
+<link rel="stylesheet" href="css/guild.css?v=3.88.0">
 </head>
 <body class="guild-page">
 <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -28,13 +28,12 @@
   <a class="site-nav-item" href="#teams">Teams</a>
   <a class="site-nav-item" href="#streams">Streams</a>
   <a class="site-nav-item" href="#news">News</a>
-  <a class="site-nav-item" id="guildNavBoe" href="#boe">BoE</a>
-  <!-- Defaults hidden so it cannot flash before the team settings say whether
-       the guild runs BoE at all. It is also the only thing hiding this on the
-       CDN-failure path, where bootGuildPage() returns before js/guild.js gets
-       to it. Points at the BoE Sales page (#864), which is open to anyone
-       signed in since #890, so the item is no longer access-gated. -->
-  <a class="site-nav-item" id="guildNavBoeManage" href="boe.html" style="display:none;">BoE Sales</a>
+  <!-- One BoE item since #891, pointing at the page that reports a find and
+       tracks it. Defaults hidden so it cannot flash before the team settings
+       say whether the guild runs BoE at all; that is also the only thing
+       hiding it on the CDN-failure path, where bootGuildPage() returns before
+       js/guild.js gets to it. -->
+  <a class="site-nav-item" id="guildNavBoe" href="boe.html" style="display:none;">BoE</a>
   <a class="site-nav-item" href="#about">About</a>
   <div class="site-nav-right">
     <span class="site-nav-item" id="guildWhoAmI"></span>
@@ -78,16 +77,6 @@
     <div id="guildNews"></div>
   </section>
 
-  <section class="guild-section" id="boe" aria-labelledby="boeHeading">
-    <h2 id="boeHeading">Found a BoE?</h2>
-    <p class="guild-section-intro">BoEs are guild property. Report a find and an officer takes it from there. Pick the team you were raiding with, then continue to the form.</p>
-    <div class="guild-boe-row">
-      <label for="guildBoeTeam">Reporting for team</label>
-      <select id="guildBoeTeam" class="add-player-input"></select>
-      <button type="button" class="btn btn-gold" id="guildBoeGo" onclick="goToBoeForm()">Report a find</button>
-    </div>
-  </section>
-
   <section class="guild-section" id="about" aria-labelledby="aboutHeading">
     <h2 id="aboutHeading">About the Guild</h2>
     <p class="guild-section-intro">We Go Again is a Tichondrius guild raiding across three teams, from AOTC-paced groups to Mythic progression. The officers below run the guild as a whole; each team has its own officers on its About tab.</p>
@@ -103,10 +92,10 @@
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/common.js?v=3.87.0"></script>
-<script src="js/news.js?v=3.87.0"></script>
-<script src="js/streamers.js?v=3.87.0"></script>
-<script src="js/guild.js?v=3.87.0"></script>
+<script src="js/common.js?v=3.88.0"></script>
+<script src="js/news.js?v=3.88.0"></script>
+<script src="js/streamers.js?v=3.88.0"></script>
+<script src="js/guild.js?v=3.88.0"></script>
 <script>
 document.getElementById('guildVersion').textContent = VERSION;
 </script>

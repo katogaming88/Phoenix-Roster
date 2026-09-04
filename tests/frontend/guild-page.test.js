@@ -32,15 +32,12 @@ const PAGE_ELS = [
   'guildNews',
   'guildBios',
   'about',
-  'guildBoeTeam',
-  'guildBoeGo',
-  'boe',
-  // The two nav items that hide with what they point at. getElementById
-  // returns null for anything absent here, and both call sites guard, so
-  // leaving them out would make every assertion below throw rather than fail.
-  // guildNavBoeManage now points at boe.html rather than a section here (#864).
+  // The BoE nav item hides with the feature. getElementById returns null for
+  // anything absent here and the call site guards, so leaving it out would
+  // make every assertion below throw rather than fail. The Found a BoE card
+  // and the separate BoE Sales item both went in #891: one item, pointing at
+  // the page that reports a find and tracks it.
   'guildNavBoe',
-  'guildNavBoeManage',
   'guildWhoAmI',
   'guildAuthBtn',
   'guildVersion'
@@ -162,7 +159,19 @@ function makeSandbox({
 
   const sandbox = {
     window: {},
-    location: { search: '', pathname: '/guild.html', origin: 'https://example.test', href: '', hash },
+    // `replaced` records location.replace(), which the #boe hash uses to send
+    // an old link to the page the form moved to (#891).
+    location: {
+      search: '',
+      pathname: '/guild.html',
+      origin: 'https://example.test',
+      href: '',
+      hash,
+      replaced: [],
+      replace(url) {
+        this.replaced.push(url);
+      }
+    },
     sessionStorage: {
       getItem: (k) => (k === 'wga_team' ? storedTeam : null),
       setItem: () => {},
@@ -861,94 +870,38 @@ describe('news teaser (#781)', () => {
   });
 });
 
-describe('BoE entry point (#781)', () => {
-  // The form itself stays on index.html; this is the single guild-level link
-  // #750 wants in place of the per-team pinned links, now that the form
-  // resolves its own team (#767).
-  const options = (el) => (el.innerHTML.match(/value="([^"]+)"/g) || []).map((m) => m.slice(7, -1));
-
-  it('lists every team with the BoE flag on', async () => {
+// The Found a BoE card was a team picker that handed off to index.html's
+// form. #891 put the form on boe.html and made this a plain link to it: the
+// picker lives in the form now, so a card whose only job was to choose a team
+// before leaving is a step for nothing.
+describe('BoE entry point (#781, #891)', () => {
+  it('points the nav item straight at the page that reports and tracks finds', async () => {
     const { sandbox, els } = makeSandbox();
     await sandbox.bootGuildPage();
-    expect(options(els.guildBoeTeam)).toEqual(['phoenix', 'hellfire', 'immolation', 'wrathless']);
+    expect(els.guildNavBoe.href).toBe('boe.html');
+    expect(els.guildNavBoe.style.display).toBe('');
   });
 
-  it('includes hidden teams, unlike the team cards', async () => {
-    // js/boe.js:58-59 does the same: a Wrathless raider still has to be able
-    // to report a find even though the team is not in any picker.
-    const { sandbox, els } = makeSandbox();
-    await sandbox.bootGuildPage();
-    expect(options(els.guildBoeTeam)).toContain('wrathless');
-  });
-
-  it('drops a team that turned the feature off', async () => {
-    const { sandbox, els } = makeSandbox({
-      teamSettings: [
-        { team_id: 1, config: { features: { boe: false } } },
-        { team_id: 2, config: {} },
-        { team_id: 3, config: {} },
-        { team_id: 4, config: {} }
-      ]
-    });
-    await sandbox.bootGuildPage();
-    const opts = options(els.guildBoeTeam);
-    expect(opts).not.toContain('phoenix');
-    expect(opts).toContain('hellfire');
-  });
-
-  it('defaults to the resolved team', async () => {
-    const { sandbox, els } = makeSandbox({ session: SESSION, memberRows: [claim(3, 'Charlie-Tichondrius')] });
-    await sandbox.bootGuildPage();
-    expect(els.guildBoeTeam.value).toBe('immolation');
-  });
-
-  it('falls back to the first enabled team when the resolved one has BoE off', async () => {
-    const { sandbox, els } = makeSandbox({
-      storedTeam: 'phoenix',
-      teamSettings: [
-        { team_id: 1, config: { features: { boe: false } } },
-        { team_id: 2, config: {} },
-        { team_id: 3, config: {} },
-        { team_id: 4, config: {} }
-      ]
-    });
-    await sandbox.bootGuildPage();
-    expect(els.guildBoeTeam.value).toBe('hellfire');
-  });
-
-  it('sends the visitor to the form on the selected team', async () => {
-    const { sandbox, els } = makeSandbox();
-    await sandbox.bootGuildPage();
-    els.guildBoeTeam.value = 'hellfire';
-    sandbox.goToBoeForm();
-    expect(sandbox.location.href).toBe('index.html?team=hellfire#boe');
-  });
-
-  it('hides the whole card when no team has BoE enabled', async () => {
-    const { sandbox, els } = makeSandbox({
-      teamSettings: [1, 2, 3, 4].map((id) => ({ team_id: id, config: { features: { boe: false } } }))
-    });
-    await sandbox.bootGuildPage();
-    expect(els.boe.style.display).toBe('none');
-  });
-
-  // A nav item pointing at a hidden section scrolls nowhere, and the hidden
-  // section is a zero-height target applyGuildHash() already refuses. The item
-  // reads the same boolean the card does so the two cannot drift apart.
-  it('hides the nav item along with the card', async () => {
+  it('hides the item when no team runs BoE', async () => {
     const { sandbox, els } = makeSandbox({
       teamSettings: [1, 2, 3, 4].map((id) => ({ team_id: id, config: { features: { boe: false } } }))
     });
     await sandbox.bootGuildPage();
     expect(els.guildNavBoe.style.display).toBe('none');
-    expect(els.guildNavBoe.style.display).toBe(els.boe.style.display);
   });
 
-  it('keeps the nav item while any team runs BoE', async () => {
-    const { sandbox, els } = makeSandbox();
+  it('carries no team picker of its own any more', async () => {
+    const { sandbox } = makeSandbox();
     await sandbox.bootGuildPage();
-    expect(els.guildNavBoe.style.display).toBe('');
-    expect(els.guildNavBoe.style.display).toBe(els.boe.style.display);
+    expect(sandbox.goToBoeForm).toBeUndefined();
+    expect(GUILD_JS).not.toContain('guildBoeTeam');
+  });
+
+  it('has one BoE item, not a second one for the sales page', async () => {
+    const { sandbox } = makeSandbox();
+    await sandbox.bootGuildPage();
+    expect(sandbox.renderGuildBoeManage).toBeUndefined();
+    expect(GUILD_JS).not.toContain('guildNavBoeManage');
   });
 });
 
@@ -1120,10 +1073,13 @@ describe('deep links to a section (#782)', () => {
   // against a page whose sections are still empty and lands at the top. That
   // breaks exactly the link #750 wants to hand out (guild.html#boe), and it is
   // invisible in a test that only checks the markup.
-  it('scrolls to the named section once its content exists', async () => {
-    const { sandbox, els } = makeSandbox({ hash: '#boe' });
+  it('sends the old #boe link to the page the form moved to (#891)', async () => {
+    // guild.html#boe is the link #750 hands out. The section it named is
+    // gone, so the hash has to land on the form rather than at the top of a
+    // page that no longer mentions it.
+    const { sandbox } = makeSandbox({ hash: '#boe' });
     await sandbox.bootGuildPage();
-    expect(els.boe.scrolledIntoView).toBe(true);
+    expect(sandbox.location.replaced).toContain('boe.html');
   });
 
   it('scrolls to About too', async () => {
@@ -1135,8 +1091,8 @@ describe('deep links to a section (#782)', () => {
   it('does nothing without a hash', async () => {
     const { sandbox, els } = makeSandbox();
     await sandbox.bootGuildPage();
-    expect(els.boe.scrolledIntoView).toBe(false);
     expect(els.about.scrolledIntoView).toBe(false);
+    expect(sandbox.location.replaced).toEqual([]);
   });
 
   it('ignores a hash naming nothing on the page', async () => {
@@ -1168,44 +1124,11 @@ describe('boot with no supabase client', () => {
 // stops asking who the visitor is and shows the link whenever the guild runs
 // BoE at all. The page behind it does the rest: signed out it offers sign-in,
 // signed in it renders whatever the read policies return.
-describe('BoE Sales link (#774, #864, #890)', () => {
-  it('is shown to a signed-out visitor, and asks nothing about them', async () => {
-    // The revealed value, not just "not none": the markup ships display:none
-    // for the no-flash reason, so a not.toBe('none') would pass on a page
-    // that never touched the item.
-    const { sandbox, els, calls } = makeSandbox();
+describe('the BoE surface lives elsewhere (#864, #890, #891)', () => {
+  it('asks nothing about the visitor to decide the link', async () => {
+    const { sandbox, calls } = makeSandbox({ session: SESSION });
     await sandbox.bootGuildPage();
-    expect(els.guildNavBoeManage.style.display).toBe('');
     expect(calls.filter((c) => c.kind === 'rpc')).toEqual([]);
-  });
-
-  it('is shown to a signed-in raider, and still asks nothing', async () => {
-    const { sandbox, els, calls } = makeSandbox({ session: SESSION });
-    await sandbox.bootGuildPage();
-    expect(els.guildNavBoeManage.style.display).toBe('');
-    expect(calls.filter((c) => c.kind === 'rpc')).toEqual([]);
-  });
-
-  it('is shown to a BoE manager, on the same rule as everyone else', async () => {
-    const { sandbox, els } = makeSandbox({ session: SESSION, boeRpc: { is_boe_manager: true } });
-    await sandbox.bootGuildPage();
-    expect(els.guildNavBoeManage.style.display).toBe('');
-  });
-
-  it('points at boe.html, never at a section of this page', async () => {
-    const { sandbox, els } = makeSandbox({ session: SESSION, boeRpc: { is_boe_manager: true } });
-    await sandbox.bootGuildPage();
-    expect(els.guildNavBoeManage.href).toBe('boe.html');
-  });
-
-  it('stays hidden when no team runs BoE, even for a manager', async () => {
-    const { sandbox, els } = makeSandbox({
-      session: SESSION,
-      boeRpc: { is_boe_manager: true },
-      teamSettings: [1, 2, 3, 4].map((id) => ({ team_id: id, config: { features: { boe: false } } }))
-    });
-    await sandbox.bootGuildPage();
-    expect(els.guildNavBoeManage.style.display).toBe('none');
   });
 
   it('renders no lifecycle rows on this page any more', async () => {

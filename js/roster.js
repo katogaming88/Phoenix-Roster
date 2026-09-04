@@ -10,8 +10,7 @@ function showView(name) {
     'historyViewWrap',
     'aboutViewWrap',
     'newsViewWrap',
-    'helpViewWrap',
-    'boeViewWrap'
+    'helpViewWrap'
   ].forEach(function (id) {
     document.getElementById(id).classList.remove('active');
   });
@@ -49,21 +48,12 @@ function showView(name) {
     markNewsSeen();
   }
   if (name === 'help') document.getElementById('helpViewWrap').classList.add('active');
-  if (name === 'boe') document.getElementById('boeViewWrap').classList.add('active');
-  [
-    'navHome',
-    'navSignup',
-    'navRoster',
-    'navStreamers',
-    'navHistory',
-    'navAbout',
-    'navNews',
-    'navHelp',
-    'navBoE'
-  ].forEach(function (id) {
-    var el = document.getElementById(id);
-    if (el) el.classList.remove('active');
-  });
+  ['navHome', 'navSignup', 'navRoster', 'navStreamers', 'navHistory', 'navAbout', 'navNews', 'navHelp'].forEach(
+    function (id) {
+      var el = document.getElementById(id);
+      if (el) el.classList.remove('active');
+    }
+  );
   var activeNav = {
     landing: 'navHome',
     profile: 'navHome',
@@ -73,8 +63,7 @@ function showView(name) {
     history: 'navHistory',
     about: 'navAbout',
     news: 'navNews',
-    help: 'navHelp',
-    boe: 'navBoE'
+    help: 'navHelp'
   }[name];
   if (activeNav) {
     var el = document.getElementById(activeNav);
@@ -91,10 +80,8 @@ function showView(name) {
   // from renderProfile() instead, right after this runs. Every other view
   // (signup, history, about, news, help) is out of scope for now; clear the
   // hash for them so a stale '#roster'/'#profile/...' from before doesn't win
-  // on the next reload and land the wrong view. 'boe' has to be here too, not
-  // just on the read side below, or every visit to the tab clears its own
-  // hash right back out and a refresh loses the tab.
-  var hashByView = { landing: '', roster: 'roster', streamers: 'streams', boe: 'boe' };
+  // on the next reload and land the wrong view.
+  var hashByView = { landing: '', roster: 'roster', streamers: 'streams' };
   if (name !== 'profile') setViewHash(Object.prototype.hasOwnProperty.call(hashByView, name) ? hashByView[name] : '');
 }
 
@@ -881,10 +868,6 @@ function _esc(str) {
 // silently never react to a restored session.
 function onDiscordSessionRestored(session) {
   if (typeof _qaRefresh === 'function') _qaRefresh();
-  // The BoE card is built before initDiscordLogin() runs, so it only ever saw
-  // the localStorage cache; re-resolve now that the session is real (#767).
-  // Called from here, not js/boe.js, for the same shadowing reason as above.
-  if (typeof refreshBoeIdentity === 'function') refreshBoeIdentity();
   if (session && session.nameRealm && sessionStorage.getItem('wga_open_profile')) {
     sessionStorage.removeItem('wga_open_profile');
     autoOpenClaimedProfile(session.nameRealm);
@@ -968,6 +951,15 @@ function autoOpenClaimedProfile(nameRealm) {
 // News is a plain static file fetch (news.json), unrelated to team data, so it
 // loads independently and isn't gated by maintenance mode.
 function bootRosterApp() {
+  // The report form moved to boe.html (#891). index.html?team=<slug>#boe is
+  // the pinned per-team Discord link every Immolation raider uses, so it has
+  // to keep landing on the form; the team goes with it, because that is the
+  // whole point of a per-team link. First thing in the boot, before any read,
+  // so the redirect does not wait on a page it is leaving.
+  if ((location.hash || '') === '#boe') {
+    location.replace('boe.html' + (TEAM_SLUG ? '?team=' + TEAM_SLUG : ''));
+    return;
+  }
   if (typeof loadNews === 'function') loadNews();
   checkMaintenanceMode().then(function (maint) {
     if (maint.enabled) {
@@ -990,9 +982,11 @@ function bootRosterApp() {
         buildCalendarWidget('compact');
         buildStreamWidget();
         renderExternalWclLink();
-        // Before the hash routing below, so a #boe deep link on a team with
-        // the flag off finds the card (and its nav button) already hidden.
-        initBoeCard();
+        // The BoE nav item is a link to boe.html since #891, but it is still
+        // this team's raider-facing switch: a team that has turned BoE off
+        // has nothing here to report.
+        var boeNav = document.getElementById('navBoE');
+        if (boeNav) boeNav.style.display = featureEnabled('boe') ? '' : 'none';
         // Deep-link support for officer.html's nav (#354) -- its Roster/Streams/Sign
         // Up/Help links point back at index.html since those views only exist here.
         // '#profile/<name>' (#517) is handled separately below since it can't be
@@ -1012,11 +1006,9 @@ function bootRosterApp() {
             history: 'history',
             about: 'about',
             news: 'news',
-            help: 'help',
-            boe: 'boe'
+            help: 'help'
           }[hashKey];
           if (hashView === 'signup') showSignupView();
-          else if (hashView === 'boe') showBoeView();
           else if (hashView) showView(hashView);
           else showView('landing');
         }
@@ -1030,9 +1022,6 @@ function bootRosterApp() {
         buildCalendarWidget('compact');
         buildRecentLoot();
         buildStreamWidget();
-        // The BoE picker's catalog rides the items read (#875), which lands
-        // here rather than at core-ready where initBoeCard() ran.
-        if (typeof refreshBoeItemOptions === 'function') refreshBoeItemOptions();
         var sel = document.getElementById('playerSelect');
         var profileWrap = document.getElementById('profileViewWrap');
         if (sel && sel.value && profileWrap && profileWrap.classList.contains('active')) {

@@ -38,16 +38,6 @@
     },
     "reflow480": "overflow"
   },
-  "index-boe": {
-    "axe": {
-      "frame-title": 1,
-      "link-in-text-block": 1
-    },
-    "axeIncomplete": {
-      "color-contrast": 3
-    },
-    "reflow480": "overflow"
-  },
   "index-history": {
     "axe": {
       "frame-title": 1,
@@ -74,7 +64,7 @@
       "link-in-text-block": 1
     },
     "axeIncomplete": {
-      "color-contrast": 28
+      "color-contrast": 29
     },
     "reflow480": "overflow"
   },

@@ -8,12 +8,12 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=3.87.0">
+<link rel="stylesheet" href="css/styles.css?v=3.88.0">
 <!-- Shares guild.html's layout: the guild-page body class carries the
      wrapping nav and the keyboard and motion baselines, and the guild-*
      classes below are the same section grammar. Nothing here is styled on
      its own. -->
-<link rel="stylesheet" href="css/guild.css?v=3.87.0">
+<link rel="stylesheet" href="css/guild.css?v=3.88.0">
 </head>
 <body class="guild-page">
 <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -48,6 +48,54 @@
 
 <main id="main-content" class="guild-body" tabindex="-1">
 
+  <!-- Report a find (#746), moved here from index.html's BoE view in #891 so
+       one page reports a BoE and shows what became of it. Needs no login:
+       submit_boe_found is anon-callable, and the reporting team is chosen
+       here rather than inherited, since this page has none. -->
+  <section class="guild-section" id="boe-report" aria-labelledby="boeHeading">
+    <h2 id="boeHeading">Report a BoE Drop</h2>
+    <p class="guild-section-intro">Found a BoE while raiding with the guild? Report it here and the officers handle the listing. If it sells, you get a cut of the sale. No login needed.</p>
+    <div class="trial-promo-card" style="max-width:420px;margin:0 0 1rem;text-align:left;">
+      <strong style="color:var(--gold-light);">Report here before depositing it in the guild bank.</strong>
+      Once it's in the bank, it shows you a base item level with no track or upgrade rank, so you won't be able
+      to read them off yourself anymore -- fill this out first, while it's still on your character.
+    </div>
+    <div style="display:flex;flex-direction:column;gap:0.35rem;max-width:420px;text-align:left;">
+      <label for="boeTeamSelect">Reporting for team</label>
+      <select id="boeTeamSelect" class="add-player-input" onchange="onBoeTeamChange()"></select>
+      <label for="boeCharName" style="margin-top:0.5rem;">Character (Name-Realm)</label>
+      <input type="text" id="boeCharName" class="add-player-input" autocomplete="off" aria-required="true">
+      <label for="boeItemName" style="margin-top:0.5rem;">Item</label>
+      <select id="boeItemName" class="add-player-input" aria-required="true">
+        <option value="">Select item</option>
+      </select>
+      <label for="boeTrack" style="margin-top:0.5rem;">Track</label>
+      <select id="boeTrack" class="add-player-input" aria-required="true">
+        <option value="">Select track</option>
+        <option value="Champion">Champion</option>
+        <option value="Hero">Hero</option>
+        <option value="Myth">Myth</option>
+      </select>
+      <label for="boeUpgradeRank" style="margin-top:0.5rem;">Upgrade rank</label>
+      <select id="boeUpgradeRank" class="add-player-input" aria-required="true">
+        <option value="">Select upgrade rank</option>
+        <option value="1/6">1/6</option>
+        <option value="2/6">2/6</option>
+        <option value="3/6">3/6</option>
+        <option value="4/6">4/6</option>
+        <option value="5/6">5/6</option>
+        <option value="6/6">6/6</option>
+      </select>
+      <label for="boeNote" style="margin-top:0.5rem;">Note (optional)</label>
+      <textarea id="boeNote" class="add-player-input" rows="3"></textarea>
+      <label for="boeDonate" style="margin-top:0.5rem;display:flex;align-items:center;gap:0.5rem;cursor:pointer;"><input type="checkbox" id="boeDonate"> I'd like to donate my finder's fee to the guild</label>
+      <div style="display:flex;align-items:center;gap:0.75rem;margin-top:0.75rem;">
+        <button type="button" class="btn btn-gold" id="boeSubmitBtn" onclick="submitBoeFound()">Submit</button>
+        <span id="boeStatus" role="status" style="font-size:0.92rem;color:var(--heal);"></span>
+      </div>
+    </div>
+  </section>
+
   <!-- The BoE lifecycle, open to anyone signed in since #890. It lived on the
        officer dashboard as a tab (#747), then on guild.html as a section
        (#774), and is a page of its own since #864. js/boe-page.js asks only
@@ -56,7 +104,7 @@
        audience's buttons from the access answer. -->
   <section class="guild-section" id="boe-manage" aria-labelledby="boeManageHeading">
     <h2 id="boeManageHeading">BoE Sales</h2>
-    <p class="guild-section-intro">Found BoEs from the report through to the finder being paid. You see what your access allows: BoE managers and site admins see every find and run the whole lifecycle, team officers see the teams they staff and settle those payouts, and raiders see the finds reported under their own character.</p>
+    <p class="guild-section-intro">What happened to the finds already reported, from the report through to the finder being paid. You see what your access allows: BoE managers and site admins see every find and run the whole lifecycle, team officers see the teams they staff and settle those payouts, and raiders see the finds reported under their own character.</p>
     <div id="boeAccessNote"></div>
     <div id="guildBoeSummary"></div>
     <div id="guildBoeOpen"></div>
@@ -79,9 +127,10 @@
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/common.js?v=3.87.0"></script>
-<script src="js/boe-manage.js?v=3.87.0"></script>
-<script src="js/boe-page.js?v=3.87.0"></script>
+<script src="js/common.js?v=3.88.0"></script>
+<script src="js/boe-manage.js?v=3.88.0"></script>
+<script src="js/boe.js?v=3.88.0"></script>
+<script src="js/boe-page.js?v=3.88.0"></script>
 <script>
 document.getElementById('boeVersion').textContent = VERSION;
 </script>

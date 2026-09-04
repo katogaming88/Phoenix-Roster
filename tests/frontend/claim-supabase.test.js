@@ -660,6 +660,10 @@ describe('onDiscordSessionRestored (#371 collision regression)', () => {
       },
       window: {},
       console,
+      // roster.js's boot gate reads location.hash before anything else, to
+      // send an old #boe deep link to boe.html (#891). A sandbox without a
+      // location throws at load rather than failing a test.
+      location: { hash: '', search: '', pathname: '/index.html', href: '', replace() {} },
       loadData: () => {}, // no-op: roster.js's own boot call, not under test here
       checkMaintenanceMode: () => Promise.resolve({ enabled: false }), // common.js stub, same reason
       _qaRefresh: qaRefresh

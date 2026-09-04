@@ -20,6 +20,9 @@ import { fileURLToPath } from 'node:url';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const COMMON_JS = readFileSync(path.join(HERE, '../../js/common.js'), 'utf8');
 const BOE_MANAGE_JS = readFileSync(path.join(HERE, '../../js/boe-manage.js'), 'utf8');
+// The report form since #891, loaded before js/boe-page.js so it captures the
+// explicit ?team= before that file nulls the team globals.
+const BOE_JS = readFileSync(path.join(HERE, '../../js/boe.js'), 'utf8');
 const BOE_PAGE_JS = readFileSync(path.join(HERE, '../../js/boe-page.js'), 'utf8');
 
 const PAGE_ELS = [
@@ -34,7 +37,17 @@ const PAGE_ELS = [
   'guildBoeHistory',
   'boeWhoAmI',
   'boeAuthBtn',
-  'boeVersion'
+  'boeVersion',
+  // The report form (#891).
+  'boeTeamSelect',
+  'boeCharName',
+  'boeItemName',
+  'boeTrack',
+  'boeUpgradeRank',
+  'boeNote',
+  'boeDonate',
+  'boeSubmitBtn',
+  'boeStatus'
 ];
 
 function builder(result) {
@@ -55,6 +68,8 @@ function makeSandbox({
   boeRpc = {},
   boeItems = [],
   teamMembers = [],
+  teamSettings = [{ team_id: 1, config: {} }],
+  boeCatalog = [],
   maintenance = null,
   rpcRejects = false
 } = {}) {
@@ -104,6 +119,9 @@ function makeSandbox({
       // The caller's own rows, which fetchBoeAccess() reads for the teams
       // they may settle (#890).
       if (table === 'team_members') return builder({ data: teamMembers, error: null });
+      if (table === 'team_settings') return builder({ data: teamSettings, error: null });
+      if (table === 'items') return builder({ data: boeCatalog, error: null });
+      if (table === 'raid_zones') return builder({ data: [], error: null });
       if (table === 'boe_items' || table === 'boe_listings') {
         const rows = table === 'boe_items' ? boeItems : [];
         return builder({ data: rows, error: null, count: rows.length });
@@ -150,6 +168,7 @@ function makeSandbox({
   vm.runInContext(COMMON_JS, sandbox, { filename: 'common.js' });
   // Same order boe.html loads them in.
   vm.runInContext(BOE_MANAGE_JS, sandbox, { filename: 'boe-manage.js' });
+  vm.runInContext(BOE_JS, sandbox, { filename: 'boe.js' });
   vm.runInContext(BOE_PAGE_JS, sandbox, { filename: 'boe-page.js' });
   sandbox.supabaseClient = client;
   return { sandbox, els, calls, errors };
@@ -307,6 +326,42 @@ describe('boot states', () => {
     expect(els.maintenanceBanner.style.display).not.toBe('none');
     expect(calls.filter((c) => c.kind === 'rpc')).toEqual([]);
     expect(els.boeLoading.style.display).toBe('none');
+  });
+});
+
+// The report form shares the page with the records since #891. It needs no
+// login (submit_boe_found is anon-callable), so it builds on every visit,
+// before and regardless of the access answer.
+describe('the report form on the page (#891)', () => {
+  it('builds the reporting-team dropdown for a signed-out visitor', async () => {
+    const { sandbox, els } = makeSandbox();
+    await settle(sandbox);
+    expect(els.boeTeamSelect.innerHTML).toContain('Select the team you raided with');
+    expect(els.boeTeamSelect.innerHTML).toContain('value="phoenix"');
+  });
+
+  it('builds it for a signed-in visitor too', async () => {
+    const { sandbox, els } = makeSandbox({ session: SESSION });
+    await settle(sandbox);
+    expect(els.boeTeamSelect.innerHTML).toContain('value="phoenix"');
+  });
+
+  it('fills the item picker from its own catalog read', async () => {
+    const { sandbox, els } = makeSandbox({
+      boeCatalog: [{ id: 1, name: 'Seed Test BoE Belt', wcl_zone_id: null }]
+    });
+    await settle(sandbox);
+    expect(els.boeItemName.innerHTML).toContain('Seed Test BoE Belt');
+  });
+
+  it('still builds when the page is down for maintenance and nothing else runs', async () => {
+    // The banner takes the page over, so the form is not expected here; what
+    // matters is that the boot does not throw on the way out.
+    const { sandbox, errors } = makeSandbox({
+      maintenance: { maintenance_mode: true, maintenance_message: 'Back soon' }
+    });
+    await settle(sandbox);
+    expect(errors).toEqual([]);
   });
 });
 
