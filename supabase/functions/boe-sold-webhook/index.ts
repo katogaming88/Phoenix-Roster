@@ -175,8 +175,14 @@ Deno.serve(async (req) => {
     // of the finding team, who can settle that team's payouts since #888;
     // then the BoE managers, whose grant is guild-wide; then the legacy
     // prose, which named nobody in particular and still beats a dangling
-    // sentence. Wrathless has no members at all, so its finds fall through to
-    // the managers by construction.
+    // sentence.
+    //
+    // A team with no officer on file falls through to the managers, which is
+    // Wrathless today because it has no team_members rows at all. That is a
+    // gap rather than a rule: Russell's plan is a Wrathless officer who
+    // handles its finds, and the read below names them the day their row
+    // exists, with nothing here to change. The setup guide carries the
+    // insert.
     let contacts: string[] = [];
     const { data: officers } = await db
       .from('team_members')

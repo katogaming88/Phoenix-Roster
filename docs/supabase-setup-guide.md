@@ -877,7 +877,9 @@ Team IDs: Phoenix = 1, Hellfire = 2, Immolation = 3, Wrathless = 4.
 otherwise use the site. The same insert works for any team id, hidden teams included, and it is
 the only step: a `team_members` row with `role = 'officer'` or `'team_leader'` lets that person
 settle their own team's BoE payouts on the BoE page (`can_settle_boe()`, #888) and nothing else,
-and `auth_user_id` fills itself on their first Discord sign-in. Insert the row when an officer
+and `auth_user_id` fills itself on their first Discord sign-in. It also puts them in the sold ping
+for that team's finds (#873), which names the finding team's own officers and only falls back to
+the BoE managers for a team that has none. Insert the row when an officer
 asks for it, not ahead of time: a row assigns them the work.
 
 ```sql
