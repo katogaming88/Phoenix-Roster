@@ -540,10 +540,11 @@ A summary strip and three sections:
   what tells two finds of the same item apart. **Record Listing** logs a price and an
   optional note; an item can be listed more than once, so relists accumulate rather than replace
   each other. **Record Sale** takes the sale price, computes the split, and posts the finder's ping to
-  Discord ([#873](https://github.com/katogaming88/WGA-Raid-Hub/issues/873)): the item, the four money lines, and who to see for the gold. It names
-  the officers and team leaders of the finding team, since they can settle that team's payouts,
-  and falls back to the BoE managers for a team with no officers on file. Only the finder is
-  pinged. A finder who ticked the donate box gets a thank-you line instead of a contact line.
+  Discord ([#873](https://github.com/katogaming88/WGA-Raid-Hub/issues/873)): the item, the four
+  money lines, and to see their raid leaders or a BoE manager in the 15 minutes before raid for
+  the gold. It names roles rather than people, so nobody but the finder is mentioned and the line
+  does not go stale as the roster changes. A finder who ticked the donate box gets a thank-you
+  line instead of a contact line.
   **Undo Sale does not retract the post** -- delete it in Discord by hand if a sale was recorded
   in error. If an older find of the
   same item on the same track and rank is still open anywhere in the guild, it asks first and

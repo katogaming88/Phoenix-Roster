@@ -16,8 +16,8 @@
 //   Guild Cut: 30,160g
 //   Finder's Fee: 20,000g
 //
-//   Please get in touch with <@a>, <@b> or <@c> in the 15 minutes before raid
-//   starts to receive your gold.
+//   Please get in touch with your raid leaders or a BoE manager in the 15
+//   minutes before raid starts to receive your gold.
 //
 // Four decisions worth stating, all settled with Russell on 2026-09-03:
 //
@@ -27,10 +27,12 @@
 //   - The auction house fee gets its own line. Since #861 the guild cut is
 //     net of it, so without the line the four numbers do not add up and the
 //     finder is left assuming the guild took the difference.
-//   - Who to contact is the finder's own team officers, who can settle a
-//     payout on their team's rows since #888, falling back to the BoE
-//     managers and then to the legacy prose. A raider asks the people they
-//     raid with before they ask a stranger with a grant.
+//   - The closing line names roles, not people: "your raid leaders or a BoE
+//     manager". An earlier build of this looked up the finding team's
+//     officers and mentioned them by id. Russell's call, and the better one:
+//     a name list grows with the roster, goes stale the week someone steps
+//     down, and puts one particular person in front of a finder as the one
+//     who owes them gold. Naming roles means no contact reads at all here.
 //   - A donated row (#862) ends with thanks instead. Telling someone to
 //     collect gold they chose to give away is the one thing the old message
 //     could not have got wrong, because the option did not exist.
@@ -67,13 +69,6 @@ function jsonResponse(body: unknown, status = 200) {
 function gold(n: unknown) {
   const v = Math.round(Number(n) || 0);
   return v.toLocaleString('en-US') + 'g';
-}
-
-// "A", "A or B", "A, B or C" -- the list reads as a sentence rather than a
-// comma-joined dump, because it sits inside one.
-function joinNames(names: string[]) {
-  if (names.length <= 1) return names[0] || '';
-  return names.slice(0, -1).join(', ') + ' or ' + names[names.length - 1];
 }
 
 Deno.serve(async (req) => {
@@ -121,11 +116,10 @@ Deno.serve(async (req) => {
       return jsonResponse({ success: true, skipped: true });
     }
 
-    // Service role from here on. Neither read below can happen in the
-    // browser: boe_managers has no `authenticated` grant and its select
-    // policy admits officers and site admins, so a manager holding only the
-    // grant would read an empty list, and team_members' self-read returns
-    // only the caller's own row.
+    // Service role from here on. The finder's own row is why: resolving a
+    // legacy find's finder walks players to team_members, and team_members'
+    // self-read returns only the caller's own row, so a BoE manager holding
+    // no officer role anywhere could not read it for themselves.
     const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
     const { data: row, error: rowError } = await db
@@ -156,11 +150,7 @@ Deno.serve(async (req) => {
     // renders one.
     let finderId: string | null = row.finder_discord_id || null;
     if (!finderId && row.player_id) {
-      const { data: player } = await db
-        .from('players')
-        .select('team_member_id')
-        .eq('id', row.player_id)
-        .maybeSingle();
+      const { data: player } = await db.from('players').select('team_member_id').eq('id', row.player_id).maybeSingle();
       if (player && player.team_member_id) {
         const { data: member } = await db
           .from('team_members')
@@ -170,37 +160,6 @@ Deno.serve(async (req) => {
         finderId = (member && member.discord_id) || null;
       }
     }
-
-    // Who hands out the gold, most local first: the officers and team leaders
-    // of the finding team, who can settle that team's payouts since #888;
-    // then the BoE managers, whose grant is guild-wide; then the legacy
-    // prose, which named nobody in particular and still beats a dangling
-    // sentence.
-    //
-    // A team with no officer on file falls through to the managers, which is
-    // Wrathless today because it has no team_members rows at all. That is a
-    // gap rather than a rule: Russell's plan is a Wrathless officer who
-    // handles its finds, and the read below names them the day their row
-    // exists, with nothing here to change. The setup guide carries the
-    // insert.
-    let contacts: string[] = [];
-    const { data: officers } = await db
-      .from('team_members')
-      .select('discord_id, role')
-      .eq('team_id', row.team_id)
-      .in('role', ['officer', 'team_leader'])
-      .not('discord_id', 'is', null);
-    if (officers && officers.length) {
-      contacts = officers.map((o: { discord_id: string }) => o.discord_id);
-    } else {
-      const { data: managers } = await db.from('boe_managers').select('discord_id').not('discord_id', 'is', null);
-      if (managers && managers.length) {
-        contacts = managers.map((m: { discord_id: string }) => m.discord_id);
-      }
-    }
-    const contactText = contacts.length
-      ? joinNames(contacts.map((cid) => '<@' + cid + '>'))
-      : 'one of your raid officers or a guild officer';
 
     // The Item line, in the found post's own format (#865): the track in an
     // escaped angle bracket so Discord does not read it as a mention token,
@@ -228,8 +187,8 @@ Deno.serve(async (req) => {
     // The money lines still stand: what their cut would have been is the size
     // of what they gave.
     const closing = row.payout_donated
-      ? 'Thanks for donating your finder's fee to the guild bank.'
-      : 'Please get in touch with ' + contactText + ' ' + PAYOUT_WINDOW + ' to receive your gold.';
+      ? "Thanks for donating your finder's fee to the guild bank."
+      : 'Please get in touch with your raid leaders or a BoE manager ' + PAYOUT_WINDOW + ' to receive your gold.';
 
     const content = finderText + ' -- BOE Sold!\n\n' + moneyLines.join('\n') + '\n\n' + closing;
 

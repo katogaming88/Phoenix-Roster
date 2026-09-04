@@ -16,8 +16,8 @@ with each release split into `### Frontend` (drives the version number) and
   ([#873](https://github.com/katogaming88/WGA-Raid-Hub/issues/873)). They used to find out when a
   manager remembered to tell them. The message names the item with its track and rank, lists the
   sale price, the auction house fee, the guild's cut and the finder's own so the four add up, and
-  says who to see for the gold in the 15 minutes before raid starts: the officers of the finding
-  team, or the BoE managers for a team with no officers on file. Only the finder is pinged. A
+  says to see your raid leaders or a BoE manager in the 15 minutes before raid starts for the
+  gold. Only the finder is mentioned, and no individual is named. A
   finder who chose to donate their cut gets a thank-you instead of a contact line. Undo Sale does
   not retract the post; delete it in Discord by hand.
 
