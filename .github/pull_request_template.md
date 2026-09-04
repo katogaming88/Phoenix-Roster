@@ -12,4 +12,3 @@ Closes #
 
 - [ ] CHANGELOG.md entry under this PR's version block
 - [ ] Tested in browser (raider view and officer dashboard if affected)
-- [ ] Apps Script redeployed if `.gs` file changed

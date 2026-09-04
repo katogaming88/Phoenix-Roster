@@ -136,7 +136,6 @@ or add the `chore` label.
 | `css/officer.css` | Officer-specific styles (partial split out of `styles.css`, still in progress) |
 | `css/admin.css` | Admin-page-specific styles |
 | `css/guild.css` | Guild-page-specific styles, plus the keyboard/motion baselines scoped to that page until #435 generalises them |
-| `gs/*.gs` | Retired Google Apps Script source, kept only as historical record -- no code reads `gasUrl` or writes through GAS anymore; everything is Supabase-only |
 | `supabase/` | Supabase CLI project: local dev stack config and schema migrations |
 | `supabase/functions/` | Edge Functions (Deno). Webhook relays (`boe-webhook`, `boe-sold-webhook`, `discord-bot-webhook`, `contact-webhook`), scheduled sync jobs (`wcl-sync`, `wcl-progression-sync`, `twitch-live-check`), and `upload-bio-photo`, which authenticates the caller and is the only writer to Storage -- see "Storage" below |
 | `scripts/import/` | One-off/recurring data import tooling (loot, attendance, etc.) |

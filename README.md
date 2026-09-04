@@ -102,7 +102,7 @@ A separate, site-wide (not per-team) page gated to `site_admins`:
 2. `index.html`, `officer.html`, `admin.html`, `guild.html`, and `boe.html` are plain static pages (no build step, no bundler) that call Supabase directly from the browser via `supabase-js`, using a public anon key restricted by RLS.
 3. **Feature flags** (`team_settings.config.features`) let a team hide tabs/sub-tabs it doesn't use, editable per-team from the Admin tab or site-wide from `admin.html`.
 4. Every page is hosted on **GitHub Pages** at the repo root; the `TEAMS` object in `js/common.js` maps each team slug to its Supabase team ID, switched via `?team=`. `guild.html` and `boe.html` are the exceptions: both are guild-wide and carry no team; the guild page links down into the team pages, and the BoE page shows every team's finds and asks which team a new find is for. `boe.html` reads a `?team=` when one is given, purely to preselect that dropdown.
-5. Google Sheets/Apps Script was the original backend but has been **fully retired** (the migration's last phase closed 2026-07-21) -- the `gs/*.gs` files remain in the repo only as historical record; nothing reads or writes through them anymore.
+5. Google Sheets/Apps Script was the original backend but has been **fully retired** (the migration's last phase closed 2026-07-21); the old `.gs` source was removed from the repo once it was no longer needed even as historical record.
 
 For the full file-by-file breakdown, local dev setup (Docker + Supabase CLI), migration workflow, and PR requirements, see [`CONTRIBUTING.md`](CONTRIBUTING.md) -- that's the maintained source of truth for project structure so it doesn't drift out of sync with this file the way it previously did.
 
