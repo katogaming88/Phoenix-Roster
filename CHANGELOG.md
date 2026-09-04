@@ -29,6 +29,16 @@ with each release split into `### Frontend` (drives the version number) and
   an undo announces nothing. `BOE_SOLD_WEBHOOK_URL` sends it to its own channel; without it the
   message lands in the found channel, and with no webhook configured at all the function no-ops.
 
+- A team with no roster can be given an officer for the first time
+  ([#910](https://github.com/katogaming88/WGA-Raid-Hub/issues/910)). Per-team roles were the only
+  grant tier with no RPC: a `team_members` row could only come from claiming a character on that
+  team, so a team with no players had no way to get anyone who could settle its BoE payouts. New
+  `admin_grant_team_role()` and `admin_revoke_team_role()` resolve the Discord account at grant
+  time and return it, so a grant that has not activated yet is visible straight away. The grant
+  refuses to change a role that is already set, and revoke demotes to raider rather than removing
+  anyone whose character is claimed against the row. Signing in for the first time now also links
+  a waiting guild officer grant, which it had never done.
+
 ---
 
 ## [3.88.0] - 2026-09-03

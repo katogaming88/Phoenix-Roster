@@ -334,9 +334,8 @@ describe('link_auth_user_to_member() covers guild_officers', () => {
       await q('insert into public.guild_officers (discord_id) values ($1)', [NEW_GUILD_OFFICER]);
       await makeAuthUser(q, NEW_GUILD_OFFICER_UID, NEW_GUILD_OFFICER);
 
-      const row = (
-        await q('select auth_user_id from public.guild_officers where discord_id = $1', [NEW_GUILD_OFFICER])
-      ).rows[0];
+      const row = (await q('select auth_user_id from public.guild_officers where discord_id = $1', [NEW_GUILD_OFFICER]))
+        .rows[0];
       expect(row.auth_user_id).toBe(NEW_GUILD_OFFICER_UID);
     });
   });
@@ -350,9 +349,8 @@ describe('link_auth_user_to_member() covers guild_officers', () => {
       await makeAuthUser(q, NEW_GUILD_OFFICER_UID, NEW_GUILD_OFFICER);
 
       expect((await memberRow(q, WRATHLESS, NEW_GUILD_OFFICER)).auth_user_id).toBe(NEW_GUILD_OFFICER_UID);
-      const mgr = (
-        await q('select auth_user_id from public.boe_managers where discord_id = $1', [NEW_GUILD_OFFICER])
-      ).rows[0];
+      const mgr = (await q('select auth_user_id from public.boe_managers where discord_id = $1', [NEW_GUILD_OFFICER]))
+        .rows[0];
       expect(mgr.auth_user_id).toBe(NEW_GUILD_OFFICER_UID);
     });
   });
