@@ -922,10 +922,22 @@ In Supabase: **Project Settings** -> **Edge Functions** -> **Secrets**. Add each
 | `BOT_WEBHOOK_URL_HELLFIRE`     | `https://wga-hellfire.duckdns.org` (already live)        |
 | `SERVICE_ROLE_KEY`             | Supabase -> Project Settings -> API -> service_role      |
 | `BOE_WEBHOOK_URL`              | Discord channel settings -> Integrations -> Webhooks (#746) |
+| `BOE_SOLD_WEBHOOK_URL`         | Optional (#873). Same place, for a separate sold channel   |
 
 Note: the BoE webhook secret exists on prod under the name `BOE-Found-Webhook`
 (created that way in the dashboard, 2026-08-26). The boe-webhook function reads
 `BOE_WEBHOOK_URL` first and falls back to that name, so either works.
+
+Note: `BOE_SOLD_WEBHOOK_URL` is optional. `boe-sold-webhook` reads it first and
+falls back to the found pair, so with nothing added the sold message lands in the
+found channel and moving it later is one dashboard entry rather than a code change.
+With none of the three set the function no-ops with `{ skipped: true }`.
+
+Deploy the sold function by hand after adding (or deciding against) that secret:
+
+```bash
+supabase functions deploy boe-sold-webhook
+```
 
 Note: Supabase does not allow secrets prefixed with `SUPABASE_`, so the service role
 key is stored as `SERVICE_ROLE_KEY`.
