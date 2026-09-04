@@ -6,6 +6,11 @@
 // hide itself until three access RPCs answered. Here the page IS the surface,
 // so the only question is whether to render it or say whom it is for.
 //
+// Two things share the page since #891: the report form (js/boe.js, loaded
+// before this file so it captures the explicit ?team= first) and the records
+// below it. The form needs no session at all, so it is built on every visit,
+// before and regardless of the access answer.
+//
 // Team-free like guild.html, and for the same reasons (js/guild.js:1-35):
 // common.js resolved a team at parse time and hard-defaulted to Phoenix, so
 // the team globals are nulled here, in the consumer, and a team-dependent
@@ -108,6 +113,9 @@ function bootBoePage() {
         done();
         return null;
       }
+      // The report form works signed out, so it does not wait on the session
+      // read below or on the access answer that follows it.
+      if (typeof initBoeCard === 'function') initBoeCard();
       return withTimeoutMs(Promise.resolve(supabaseClient.auth.getSession()), 10000)
         .then(
           function (result) {

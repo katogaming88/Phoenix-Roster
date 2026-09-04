@@ -57,13 +57,21 @@ describe('the extractors can actually see markup', () => {
   // which is a claim about extraction and not about that page being compliant.
   const index = read('index.html');
   const guild = read('guild.html');
+  const boe = read('boe.html');
 
-  it('finds ids, labels, controls, aria-labelledby and aria-describedby on index.html', () => {
+  it('finds ids, controls, aria-labelledby and aria-describedby on index.html', () => {
     expect(ids(index).length).toBeGreaterThan(20);
-    expect(labelTargets(index).length).toBeGreaterThan(0);
     expect(controls(index).length).toBeGreaterThan(0);
     expect(labelledBy(index).length).toBeGreaterThan(0);
     expect(describedBy(index).length).toBeGreaterThan(0);
+  });
+
+  // index.html carried the only <label for> on the page in its BoE form, and
+  // that form moved to boe.html in #891. Proving the extractor against the
+  // page that has labels keeps this a claim about extraction; index.html
+  // having none of its own is the a11y debt #436 owns.
+  it('finds labels on boe.html', () => {
+    expect(labelTargets(boe).length).toBeGreaterThan(0);
   });
 
   it('finds headings and in-page anchors on guild.html', () => {
@@ -238,8 +246,10 @@ describe('the BoE form moved (#891)', () => {
   const jsDir = join(ROOT, 'js');
 
   it('loads js/boe.js before js/boe-page.js, which nulls the team globals', () => {
-    const form = html.indexOf('js/boe.js');
-    const page = html.indexOf('js/boe-page.js');
+    // The script tags, not the first mention: the section comment above them
+    // names js/boe-page.js too.
+    const form = html.indexOf('src="js/boe.js');
+    const page = html.indexOf('src="js/boe-page.js');
     expect(form).toBeGreaterThan(-1);
     expect(page).toBeGreaterThan(-1);
     expect(form).toBeLessThan(page);

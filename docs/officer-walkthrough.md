@@ -501,8 +501,9 @@ itself until three access checks answered. An old `?tab=boe` bookmark redirects 
 page. Signed out, the page offers Discord sign-in and comes back to itself afterwards.
 
 Runs the auction lifecycle for BoEs the guild sells -- **found -> listed -> sold -> paid**, plus
-**retire** for anything that never moves. Raiders report a find from the public **BoE** tab
-(#746) or the guild page card; everything after the report happens here.
+**retire** for anything that never moves. Raiders report a find from the form at the top of this
+same page (#746, moved here from index.html's BoE tab in [#891](https://github.com/katogaming88/WGA-Raid-Hub/issues/891)); everything after the
+report happens below it. Reporting still needs no login.
 
 A BoE that went into the guild bank before it was reported can't be reported by its finder: the
 bank shows a deposited BoE at a base item level with no track or upgrade rank, and the form

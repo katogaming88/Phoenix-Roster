@@ -430,7 +430,6 @@ function applyFeatureFlagVisibility() {
   var fairnessOn = featureEnabled('fairness');
   var attendanceOn = featureEnabled('attendance');
   var requestsOn = featureEnabled('requests');
-  var boeOn = featureEnabled('boe');
 
   setVisible('navTab-priority', priorityOn);
   setVisible('navTab-bis', bisOn);
@@ -442,11 +441,10 @@ function applyFeatureFlagVisibility() {
   // items.
   setVisible('navTab-requests', requestsOn);
   setVisible('navTab-loot', lootOn || fairnessOn);
-  // The site nav's BoE link points back at index.html's submit card (#746);
-  // hide it alongside the card when the team's boe flag is off. The BoE Sales
-  // link beside it is guild-wide and always shown since #890, not gated on
-  // this team's flag and no longer on who is signed in.
-  setVisible('navBoE', boeOn);
+  // No BoE line here since #891: the one nav item left points at boe.html,
+  // which is guild-wide (every team's finds, whoever can read them) and so is
+  // not this team's flag to hide. index.html still hides its own copy, where
+  // the item is raider-facing and a team with BoE off has nothing to report.
 
   setVisible('loot-subtab-btn-import', lootOn);
   setVisible('loot-subtab-btn-history', lootOn);

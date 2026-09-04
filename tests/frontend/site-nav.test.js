@@ -118,7 +118,7 @@ describe('renderSiteNav, public mode', () => {
     const rendered = items(mount.innerHTML);
     expect(rendered.length).toBe(sandbox.SITE_NAV_ITEMS.filter((i) => !i.officerOnly).length);
     rendered
-      .filter((i) => i.id !== 'navGuild' && i.id !== 'navCalendar')
+      .filter((i) => i.id !== 'navGuild' && i.id !== 'navCalendar' && i.id !== 'navBoE')
       .forEach((i) => {
         expect(i.tag).toBe('button');
         expect(i.attrs).toContain('onclick');

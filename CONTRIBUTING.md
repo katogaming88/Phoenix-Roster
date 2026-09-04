@@ -117,8 +117,8 @@ or add the `chore` label.
 | `index.html` | Public page -- landing, raider profiles, season signup |
 | `officer.html` | Officer dashboard -- all management tabs |
 | `admin.html` | Site admin dashboard -- team management, site admin grant/revoke, feature flags, cross-team audit log, maintenance mode |
-| `guild.html` | Guild-wide page -- team selection, streams, news, BoE entry point, About the Guild. Not scoped to a team |
-| `boe.html` | BoE Sales -- the found-BoE auction lifecycle, open to anyone signed in and scoped by the read policies (#890). Guild-wide like `guild.html`, reached from the BoE Sales link on the guild page or the officer dashboard |
+| `guild.html` | Guild-wide page -- team selection, streams, news, a BoE link, About the Guild. Not scoped to a team |
+| `boe.html` | BoE -- the report form (#891) above the found-BoE auction lifecycle, open to anyone signed in and scoped by the read policies (#890). Reporting needs no login at all. Guild-wide like `guild.html`, reached from the BoE link in every page's nav |
 | `js/common.js` | Shared globals, `TEAMS`, `TEAM_SLUG`/`IS_COLD_LANDING` resolution, `VERSION`, data helpers, `renderProfile` |
 | `js/discord.js` | Discord OAuth login/session mapping, character claim flow |
 | `js/roster.js` | Public page boot, cold-landing team picker/auto-redirect, dropdown, stats row, recent loot |
@@ -131,7 +131,7 @@ or add the `chore` label.
 | `js/guild.js` | Boot/logic for `guild.html`. Also not team-scoped, but it does load common.js for `TEAMS` and the guild-wide helpers, then nulls the team globals so a team-dependent call throws rather than rendering Phoenix's data. Skips discord.js, whose session read is hard-scoped to one team |
 | `js/boe-page.js` | Boot for `boe.html`: session, the access answer (`fetchBoeAccess()` in common.js: the manage grant plus the teams the caller may settle), then `js/boe-manage.js` renders for anyone signed in. Same team-free shape as `js/guild.js` |
 | `js/boe-manage.js` | The BoE lifecycle renderer and its RPC calls; takes the access answer as a parameter and resolves no identity itself |
-| `js/boe.js` | The raider-facing found-BoE card on `index.html`: the reporting-team picker, the item picker from `DATA.boeItems`, the `submit_boe_found` call and the webhook ping |
+| `js/boe.js` | The raider-facing report form on `boe.html` (#891): the reporting-team picker with its placeholder, the item picker from its own `items`/`raid_zones` reads, the `submit_boe_found` call and the webhook ping. Loaded before `js/boe-page.js`, which nulls the team globals it reads at parse time |
 | `css/styles.css` | Shared styles across all pages |
 | `css/officer.css` | Officer-specific styles (partial split out of `styles.css`, still in progress) |
 | `css/admin.css` | Admin-page-specific styles |

@@ -2,10 +2,17 @@
   {
     "date": "2026-09-03",
     "category": "Feature",
+    "version": "3.88.0",
+    "title": "Report a BoE and follow it, on one page",
+    "body": "The BoE form and the record of what happened to every find now live together on the BoE page. Report a drop at the top: your character, the item, its track and upgrade rank, and whether you'd rather donate your cut to the guild. Still no login needed. Underneath, sign in and you'll see the finds reported under your own character, from found through listed and sold to paid, so you can tell where yours got to without asking an officer. The Reporting for team field asks which team you raided with instead of assuming, unless you came from a link that already says. Old links all still work: the pinned per-team Discord links and the guild page's BoE link land you in the same place.",
+    "pinned": true
+  },
+  {
+    "date": "2026-09-03",
+    "category": "Feature",
     "version": "3.81.2",
     "title": "Report a found BoE right from the website",
-    "body": "Found a BoE while raiding with the guild? There's a BoE tab in the nav now -- fill in your character, the item, its track and upgrade rank, and officers take it from there. The team field defaults to whichever team's page you're on, but change it if you're not on any team's roster or you raided with a different team that night. Once it lists and sells, you get a cut of the sale (or you can donate it to the guild bank instead). Officers, BoE managers, and site admins track every find end to end -- listed, sold, paid, or retired -- on its own BoE Sales page, reachable from the Guild page's nav.",
-    "pinned": true
+    "body": "Found a BoE while raiding with the guild? There's a BoE tab in the nav now -- fill in your character, the item, its track and upgrade rank, and officers take it from there. The team field defaults to whichever team's page you're on, but change it if you're not on any team's roster or you raided with a different team that night. Once it lists and sells, you get a cut of the sale (or you can donate it to the guild bank instead). Officers, BoE managers, and site admins track every find end to end -- listed, sold, paid, or retired -- on its own BoE Sales page, reachable from the Guild page's nav."
   },
   {
     "date": "2026-08-27",

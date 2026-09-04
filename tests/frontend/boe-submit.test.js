@@ -125,7 +125,13 @@ function recorderClient({
       from(table) {
         calls.push({ kind: 'from', table });
         const rows =
-          table === 'team_settings' ? teamSettings : table === 'items' ? items : table === 'raid_zones' ? raidZones : memberRows;
+          table === 'team_settings'
+            ? teamSettings
+            : table === 'items'
+              ? items
+              : table === 'raid_zones'
+                ? raidZones
+                : memberRows;
         return { select: () => builder(rows) };
       },
       auth: {
@@ -383,8 +389,10 @@ describe('the reporting team on a page with none (#891)', () => {
 
   it('keeps every option when the settings read fails, so a find can still be reported', async () => {
     const { sandbox, el } = makeSandbox();
+    const failed = { then: (ok, err) => Promise.resolve({ data: null, error: { message: 'boom' } }).then(ok, err) };
+    failed.eq = () => failed;
     sandbox.supabaseClient = {
-      from: () => ({ select: () => Promise.resolve({ data: null, error: { message: 'boom' } }) }),
+      from: () => ({ select: () => failed }),
       auth: { getSession: () => Promise.resolve({ data: { session: null } }) }
     };
     await sandbox.initBoeCard();
@@ -566,11 +574,10 @@ describe('item picker (#875, #891)', () => {
 
   it('leaves the placeholder alone when the catalog read fails', async () => {
     const { sandbox, el } = makeSandbox();
+    const failed = { then: (ok, err) => Promise.resolve({ data: null, error: { message: 'boom' } }).then(ok, err) };
+    failed.eq = () => failed;
     sandbox.supabaseClient = {
-      from: (table) => ({
-        select: () =>
-          table === 'items' ? Promise.resolve({ data: null, error: { message: 'boom' } }) : builder(ALL_ENABLED)
-      }),
+      from: (table) => ({ select: () => (table === 'items' ? failed : builder(ALL_ENABLED)) }),
       auth: { getSession: () => Promise.resolve({ data: { session: null } }) }
     };
     await sandbox.initBoeCard();

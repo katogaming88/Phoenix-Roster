@@ -115,19 +115,6 @@ var SITE_NAV_ITEMS = [
     tooltip: 'The guild above the teams: streams, news, and how to join',
     href: 'guild.html'
   },
-  // The second cross-page item (#864). It shipped display:none until #890,
-  // with js/officer.js revealing it once three access RPCs answered; the page
-  // is open to anyone signed in now, so there is nothing left to gate the link
-  // on and no reveal to wait for. officerOnly still keeps it off index.html,
-  // which has its own BoE item for the report form until #891 folds the two
-  // surfaces together.
-  {
-    id: 'navBoeManage',
-    label: 'BoE Sales',
-    tooltip: 'Found-BoE auctions: listings, sales, payouts',
-    href: 'boe.html',
-    officerOnly: true
-  },
   { id: 'navHome', label: 'Home', tooltip: 'Back to the roster overview', view: 'landing', hash: null },
   { id: 'navRoster', label: 'Roster', tooltip: "See who's currently on the roster", view: 'roster', hash: 'roster' },
   {
@@ -151,13 +138,17 @@ var SITE_NAV_ITEMS = [
     hash: 'signup',
     onclick: 'showSignupView()'
   },
+  // One BoE item since #891, where the report form moved onto boe.html beside
+  // the rows it creates. It was a view of index.html with an officer-only
+  // "BoE Sales" link beside it; both surfaces are that one page now.
+  // carryTeam passes this page's team along, so the nav and a pinned
+  // per-team link report for the same team.
   {
     id: 'navBoE',
     label: 'BoE',
-    tooltip: 'Report a BoE drop you found while raiding',
-    view: 'boe',
-    hash: 'boe',
-    onclick: 'showBoeView()'
+    tooltip: 'Report a BoE drop, and follow what happens to it',
+    href: 'boe.html',
+    carryTeam: true
   },
   {
     id: 'navHistory',
@@ -205,13 +196,15 @@ function renderSiteNav(mode) {
   SITE_NAV_ITEMS.forEach(function (item) {
     if (item.officerOnly && mode !== 'officer') return;
     if (item.href) {
-      // Same markup in both modes: a link to another page needs no team param
-      // (guild.html and boe.html have no team) and no showView() (that view is
-      // not here). Nothing ships hidden since #890, so there is no reveal
-      // branch here any more either.
+      // Same markup in both modes: no showView(), since that view is not here.
+      // Most cross-page links need no team either (guild.html and calendar.html
+      // resolve their own), but boe.html's form reports for one, so an item
+      // may ask for the page's team to be carried across (#891). Nothing ships
+      // hidden since #890, so there is no reveal branch here any more.
       html +=
         '<a href="' +
         item.href +
+        (item.carryTeam && TEAM_SLUG ? '?team=' + TEAM_SLUG : '') +
         '" class="site-nav-item" id="' +
         item.id +
         '" data-tooltip="' +
@@ -3269,10 +3262,11 @@ function buildItemMaps(rows) {
   };
 }
 
-// Writes the BoE catalog names into the <datalist> the found form (index.html)
-// and the manager's edit form (boe.html) both point at (#875). innerHTML by
-// design: the test sandboxes stub createElement without appendChild, and the
-// list is a handful of names.
+// Writes the BoE catalog names into the <datalist> the manager's edit form on
+// boe.html points at (#875). The report form on that same page (#891) uses a
+// select of its own rather than this list. innerHTML by design: the test
+// sandboxes stub createElement without appendChild, and the list is a handful
+// of names.
 function renderBoeItemDatalist(names) {
   var list = document.getElementById('boeItemOptions');
   if (!list) return;

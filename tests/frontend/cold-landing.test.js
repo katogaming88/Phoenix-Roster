@@ -35,7 +35,14 @@ function builder(result) {
  * `storedTeam` null plus no ?team= is what makes IS_COLD_LANDING true, so the
  * gate takes the resolveColdLanding() branch rather than booting the app.
  */
-function coldLand({ session = null, memberRows = [], memberThrows = false, hasClient = true, search = '', hash = '' } = {}) {
+function coldLand({
+  session = null,
+  memberRows = [],
+  memberThrows = false,
+  hasClient = true,
+  search = '',
+  hash = ''
+} = {}) {
   const nav = { replaced: [], hrefs: [] };
   const stored = {};
 
