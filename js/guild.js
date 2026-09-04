@@ -39,10 +39,6 @@ DATA = { streamers: [], roster: [] };
 // so a link with no ?team= is an infinite bounce rather than a cosmetic slip.
 var _guildTeamSlug = null;
 
-// The signed-in Supabase session, captured once by bootGuildPage() so the BoE
-// access check (#774) does not have to ask auth for it a third time.
-var _guildSession = null;
-var _guildBoeAccess = { visible: false, canManage: false };
 var _guildTeamSource = 'default';
 
 // js/discord.js owns the shared withTimeout() but is deliberately not loaded
@@ -495,36 +491,26 @@ function goToBoeForm() {
 }
 
 /**
- * Whether to reveal the BoE Sales link (#774, #864). The answer comes from
- * fetchBoeAccess() in js/common.js, the same one boe.html gates itself on, so
- * the link and the page cannot disagree about who may open it.
- */
-function fetchGuildBoeAccess() {
-  return fetchBoeAccess(_guildSession).then(function (access) {
-    _guildBoeAccess = access;
-    return access;
-  });
-}
-
-/**
- * Reveals the BoE Sales nav item, or leaves it hidden. Hidden covers three
- * different people and says nothing to any of them: a signed-out visitor, a
- * raider, and an officer on a guild that has BoE turned off everywhere.
+ * Shows the BoE Sales nav item (#774, #864), on one question since #890: does
+ * the guild run BoE at all. It used to ask fetchBoeAccess() as well, because
+ * the page behind it turned away anyone who was not an officer or a BoE
+ * manager and an item pointing at a dead end is worse than no item. The page
+ * takes everyone now, so the access ask bought nothing and cost every guild
+ * visitor two RPCs.
  *
- * The surface itself is boe.html since #864; this page only carries the way
- * there. The feature check is guild-wide rather than per-team, the same
- * question the finder card above already asks: there is no "this team" here,
- * and a manager's read spans every team.
+ * The feature check is guild-wide rather than per-team, the same question the
+ * finder card above already asks: there is no "this team" here, and the page
+ * it points at spans every team.
  *
- * This page is public, so an item naming a surface the visitor cannot open
- * would advertise it to exactly the people the page hides itself from.
+ * The markup ships display:none so the item cannot flash before the team
+ * settings land, which is also what hides it on the CDN-failure path where
+ * bootGuildPage() returns before this runs.
  */
 function renderGuildBoeManage() {
   var navItem = document.getElementById('guildNavBoeManage');
   if (!navItem) return;
-  var show = _guildBoeAccess.visible && boeEnabledTeamSlugs().length > 0;
   navItem.href = 'boe.html';
-  navItem.style.display = show ? '' : 'none';
+  navItem.style.display = boeEnabledTeamSlugs().length > 0 ? '' : 'none';
 }
 
 /**
@@ -690,18 +676,11 @@ function bootGuildPage() {
           }
         )
         .then(function (session) {
-          _guildSession = session;
           renderGuildAuth(session);
           return resolveGuildTeam();
         })
         .then(function () {
-          return Promise.all([
-            fetchGuildTeamSettings(),
-            fetchGuildStreamers(),
-            fetchGuildNews(),
-            fetchGuildBios(),
-            fetchGuildBoeAccess()
-          ]);
+          return Promise.all([fetchGuildTeamSettings(), fetchGuildStreamers(), fetchGuildNews(), fetchGuildBios()]);
         })
         .then(function () {
           renderGuildSections();

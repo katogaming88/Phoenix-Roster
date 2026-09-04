@@ -78,17 +78,22 @@ describe('SITE_NAV_ITEMS', () => {
     ]);
   });
 
-  it('carries a BoE Sales entry for officer.html only, shipped hidden (#864)', () => {
-    // boe.html is for officers and BoE managers, so the link belongs on the
-    // officer dashboard's nav and not on the public page, and it stays hidden
-    // until the access answer reveals it, the same way index.html's
-    // #navOfficer does.
+  it('carries a BoE Sales entry for officer.html, no longer shipped hidden (#890)', () => {
+    // It shipped display:none until #890 and js/officer.js revealed it once
+    // three access RPCs answered. The page is open to everyone signed in now,
+    // so there is nothing left to gate the link on and no reveal to wait for.
+    // Still officerOnly: index.html keeps its own BoE item until #891.
     const { sandbox } = makeSandbox();
     const item = sandbox.SITE_NAV_ITEMS.find((i) => i.id === 'navBoeManage');
     expect(item).toBeDefined();
     expect(item.href).toBe('boe.html');
     expect(item.officerOnly).toBe(true);
-    expect(item.hidden).toBe(true);
+    expect(item.hidden).toBeUndefined();
+  });
+
+  it('ships nothing in the nav hidden any more', () => {
+    const { sandbox } = makeSandbox();
+    expect(sandbox.SITE_NAV_ITEMS.filter((i) => i.hidden)).toEqual([]);
   });
 });
 
@@ -164,24 +169,19 @@ describe('renderSiteNav, officer mode', () => {
     expect(items(mount.innerHTML).filter((i) => i.active)).toEqual([]);
   });
 
-  it('renders the BoE Sales link hidden, pointing at boe.html with no team param (#864)', () => {
-    // Hidden in the markup, not just unrevealed: the href branch used to emit
-    // no style at all, so the item would have flashed for every officer before
-    // the access RPCs answered. js/officer.js reveals it from fetchBoeAccess().
+  it('renders the BoE Sales link visible, pointing at boe.html with no team param (#890)', () => {
     const { sandbox, mount } = makeSandbox({ search: '?team=hellfire' });
     sandbox.renderSiteNav('officer');
     const boe = items(mount.innerHTML).find((i) => i.id === 'navBoeManage');
     expect(boe).toBeDefined();
     expect(boe.tag).toBe('a');
     expect(boe.href).toBe('boe.html');
-    expect(boe.attrs).toMatch(/style="display:\s*none;?"/);
+    expect(boe.attrs).not.toContain('display:none');
   });
 
-  it('leaves every other item unhidden', () => {
+  it('leaves every item unhidden', () => {
     const { sandbox, mount } = makeSandbox({ search: '?team=hellfire' });
     sandbox.renderSiteNav('officer');
-    items(mount.innerHTML)
-      .filter((i) => i.id !== 'navBoeManage')
-      .forEach((i) => expect(i.attrs).not.toContain('display:none'));
+    items(mount.innerHTML).forEach((i) => expect(i.attrs).not.toContain('display:none'));
   });
 });

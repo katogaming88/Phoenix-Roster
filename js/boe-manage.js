@@ -14,11 +14,15 @@
 // at all, and a guild officer holding the grant was excluded by name.
 //
 // js/boe-page.js owns who sees this (js/guild.js did until #864) and calls
-// buildBoeManage() only for someone who may read: any team officer, a BoE
-// manager, or a site admin. It passes
-// canManage, which the action buttons render behind. The server enforces the
-// same gate regardless (is_boe_manager() or is_site_admin() inside every
-// lifecycle RPC), so this is disclosure, not security.
+// buildBoeManage() for anyone signed in since #890: the read policies do the
+// scoping, so a raider gets the finds under their own character, an officer
+// the teams they staff, a manager or site admin every one. It passes the
+// access answer, which the buttons render behind -- `manage` for the
+// lifecycle actions and `settleTeamIds` for the payout ones, decided per row
+// rather than per page (#888). The server enforces the same gates regardless
+// (is_boe_manager() or is_site_admin() inside the lifecycle RPCs,
+// can_settle_boe() inside the settle ones), so this is disclosure, not
+// security.
 //
 // The lifecycle RPCs write no audit entries themselves, so every successful
 // mutation writes one from here, naming the BoE's own team rather than the
@@ -35,6 +39,10 @@ var _boeListings = [];
 // form's picker and Save's link. Empty when the read fails.
 var _boeCatalog = [];
 var _boeCanManage = false;
+// The teams whose payouts this reader may settle (#888, #890). Empty for a
+// raider and for a manager, whose grant is guild-wide and answered by
+// _boeCanManage instead.
+var _boeSettleTeamIds = [];
 
 // History renders one page at a time (#863): it holds every paid and retired
 // row, 47 from the legacy import alone, and grows with every settled sale.
@@ -44,7 +52,7 @@ var BOE_HISTORY_PAGE_SIZE = 20;
 var _boeHistoryPage = 0;
 var _boeHistoryPageCount = 1;
 
-function buildBoeManage(canManage) {
+function buildBoeManage(access) {
   var summary = document.getElementById('guildBoeSummary');
   var open = document.getElementById('guildBoeOpen');
   var awaiting = document.getElementById('guildBoeAwaiting');
@@ -63,7 +71,8 @@ function buildBoeManage(canManage) {
     return Promise.resolve();
   }
 
-  _boeCanManage = !!canManage;
+  _boeCanManage = !!(access && access.manage);
+  _boeSettleTeamIds = (access && access.settleTeamIds) || [];
   _boeHistoryPage = 0;
   bail('<p class="guild-empty">Loading BoE data...</p>');
 
@@ -382,6 +391,64 @@ function findBoeItem(id) {
   return null;
 }
 
+/**
+ * Who may settle this row's payout: the client's read of can_settle_boe()
+ * (#888). A BoE manager or site admin anywhere, an officer or team leader on
+ * that row's own team. One officer's list holds rows from teams they do not
+ * staff, so this is per row and never per page.
+ * @param {{ team_id: number }} item
+ */
+function _boeCanSettle(item) {
+  if (_boeCanManage) return true;
+  return _boeSettleTeamIds.indexOf(item.team_id) !== -1;
+}
+
+// Signed in, no grant and no team staffed: the rows are the reader's own
+// finds (#889, #890). Two things read differently for them, below.
+function _boeIsRaiderView() {
+  return !_boeCanManage && _boeSettleTeamIds.length === 0;
+}
+
+// What the reader may do, in one line, for the two audiences who are not BoE
+// managers (#765, #890). A manager gets nothing: the page is theirs and every
+// button is already on it.
+function _boeScopeNote() {
+  if (_boeCanManage) return '';
+  if (_boeSettleTeamIds.length) {
+    return (
+      '<p class="signup-officer-note">You can settle payouts (Mark Paid, Donate to Guild, Undo Payout) on the finds ' +
+      'of the teams you staff. Listing, sale, retiring and edits need the BoE manager grant, assigned by a site ' +
+      'admin. The totals above cover your own teams; a BoE manager sees the whole guild.</p>'
+    );
+  }
+  return (
+    '<p class="signup-officer-note">These are the BoEs reported under your character, plus anything you reported ' +
+    'while signed in. Officers and BoE managers handle listing, sale and payout, and mail you your cut once the ' +
+    'item sells.</p>'
+  );
+}
+
+/**
+ * One row's Actions cell. Empty when the row carries no button for this
+ * reader, which happens whenever someone else's row in the same section does:
+ * the column is per section, the buttons are per row, and a missing cell
+ * would shift every later column left on that row alone. The status span goes
+ * out only with buttons, since it is where those buttons report a refusal.
+ * @param {{ id: number }} item
+ * @param {string} buttons
+ */
+function _boeActionCell(item, buttons) {
+  if (!buttons) return '';
+  return (
+    '<div style="display:flex;gap:0.4rem;flex-wrap:wrap;">' +
+    buttons +
+    '</div>' +
+    '<span id="boe-status-' +
+    item.id +
+    '" role="status" style="display:block;color:var(--melee);font-size:0.95rem;"></span>'
+  );
+}
+
 function renderBoeManage() {
   var summary = document.getElementById('guildBoeSummary');
   var open = document.getElementById('guildBoeOpen');
@@ -428,12 +495,19 @@ function renderBoeManage() {
     (listingsByItem[l.boe_item_id] = listingsByItem[l.boe_item_id] || []).push(l);
   });
 
+  // Guild income is the guild's figure, summed over whatever the read
+  // returned. For a raider that is their own handful of finds, which would
+  // make it a wrong number rather than a partial one, so it comes off (#890).
+  // The other two are about them either way: what they are owed, and what
+  // they have given back.
   summary.innerHTML =
     localTimeZoneNote() +
     '<div style="display:flex;gap:2rem;flex-wrap:wrap;margin-bottom:0.5rem;">' +
-    '<span>Guild income to date: <strong style="color:var(--gold);">' +
-    formatGold(guildIncome) +
-    'g</strong></span>' +
+    (_boeIsRaiderView()
+      ? ''
+      : '<span>Guild income to date: <strong style="color:var(--gold);">' +
+        formatGold(guildIncome) +
+        'g</strong></span>') +
     '<span>Outstanding payouts: <strong style="color:var(--gold);">' +
     formatGold(outstanding) +
     'g</strong></span>' +
@@ -442,10 +516,7 @@ function renderBoeManage() {
       : '') +
     '</div>' +
     _boeTeamCreditLine() +
-    (_boeCanManage
-      ? ''
-      : '<p class="signup-officer-note">Lifecycle actions are limited to BoE managers, assigned by a site admin. ' +
-        'The totals above cover your own teams; a BoE manager sees the whole guild.</p>');
+    _boeScopeNote();
 
   // Open: found and listed items. finder_name and found_at always render so
   // two identical items in flight stay tellable apart.
@@ -541,7 +612,12 @@ function renderBoeManage() {
     'Guild cut (net)',
     'Status'
   ];
-  if (_boeCanManage) awaitingHeaders.push('Actions');
+  var awaitingActions =
+    _boeCanManage ||
+    awaitingRows.some(function (item) {
+      return _boeCanSettle(item);
+    });
+  if (awaitingActions) awaitingHeaders.push('Actions');
   var awaitingHtml = awaitingRows
     .map(function (item) {
       var cells =
@@ -570,23 +646,27 @@ function renderBoeManage() {
         '<td>' +
         _boeStatusCell(item) +
         '</td>';
-      if (_boeCanManage) {
-        cells +=
-          '<td><div style="display:flex;gap:0.4rem;flex-wrap:wrap;">' +
-          '<button class="btn btn-gold" style="font-size:0.85rem;padding:0.3rem 0.8rem;" onclick="markBoePaid(' +
-          item.id +
-          ', this)">Mark Paid</button>' +
-          '<button class="btn btn-muted" style="font-size:0.85rem;padding:0.3rem 0.8rem;" onclick="donateBoePayout(' +
-          item.id +
-          ', this)">Donate to Guild</button>' +
-          '<button class="btn btn-danger" style="font-size:0.85rem;padding:0.3rem 0.8rem;" onclick="revertBoe(' +
-          item.id +
-          ', this)">Undo Sale</button>' +
-          _boeEditForm(item) +
-          '</div>' +
-          '<span id="boe-status-' +
-          item.id +
-          '" role="status" style="display:block;color:var(--melee);font-size:0.95rem;"></span></td>';
+      if (awaitingActions) {
+        var awaitingButtons = '';
+        // Settling is what #888 opened to the officers who hand out the gold.
+        if (_boeCanSettle(item)) {
+          awaitingButtons +=
+            '<button class="btn btn-gold" style="font-size:0.85rem;padding:0.3rem 0.8rem;" onclick="markBoePaid(' +
+            item.id +
+            ', this)">Mark Paid</button>' +
+            '<button class="btn btn-muted" style="font-size:0.85rem;padding:0.3rem 0.8rem;" onclick="donateBoePayout(' +
+            item.id +
+            ', this)">Donate to Guild</button>';
+        }
+        // Undoing the sale and correcting the row stay with the grant.
+        if (_boeCanManage) {
+          awaitingButtons +=
+            '<button class="btn btn-danger" style="font-size:0.85rem;padding:0.3rem 0.8rem;" onclick="revertBoe(' +
+            item.id +
+            ', this)">Undo Sale</button>' +
+            _boeEditForm(item);
+        }
+        cells += '<td>' + _boeActionCell(item, awaitingButtons) + '</td>';
       }
       return '<tr>' + cells + '</tr>';
     })
@@ -608,7 +688,14 @@ function renderBoeManage() {
     'Finder payout',
     'Guild cut (net)'
   ];
-  if (_boeCanManage) historyHeaders.push('Actions');
+  // Over every history row rather than the twenty on this page, so the
+  // column does not appear and vanish as an officer pages through.
+  var historyActions =
+    _boeCanManage ||
+    historyRows.some(function (item) {
+      return item.status === 'paid' && _boeCanSettle(item);
+    });
+  if (historyActions) historyHeaders.push('Actions');
   var historyHtml = historyPageRows
     .map(function (item) {
       var cells =
@@ -637,19 +724,20 @@ function renderBoeManage() {
         '<td>' +
         _boeMoney(_boeGuildKept(item)) +
         '</td>';
-      if (_boeCanManage) {
-        cells +=
-          '<td><div style="display:flex;gap:0.4rem;flex-wrap:wrap;">' +
-          '<button class="btn btn-danger" style="font-size:0.85rem;padding:0.3rem 0.8rem;" onclick="revertBoe(' +
-          item.id +
-          ', this)">' +
-          (item.status === 'paid' ? 'Undo Payout' : 'Un-retire') +
-          '</button>' +
-          _boeEditForm(item) +
-          '</div>' +
-          '<span id="boe-status-' +
-          item.id +
-          '" role="status" style="display:block;color:var(--melee);font-size:0.95rem;"></span></td>';
+      if (historyActions) {
+        var historyButtons = '';
+        // Undo Payout is the settle step going backwards, so it goes with
+        // Mark Paid. Un-retire is a manager step, because retiring is one.
+        if (item.status === 'paid' ? _boeCanSettle(item) : _boeCanManage) {
+          historyButtons +=
+            '<button class="btn btn-danger" style="font-size:0.85rem;padding:0.3rem 0.8rem;" onclick="revertBoe(' +
+            item.id +
+            ', this)">' +
+            (item.status === 'paid' ? 'Undo Payout' : 'Un-retire') +
+            '</button>';
+        }
+        if (_boeCanManage) historyButtons += _boeEditForm(item);
+        cells += '<td>' + _boeActionCell(item, historyButtons) + '</td>';
       }
       return '<tr>' + cells + '</tr>';
     })

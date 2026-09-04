@@ -94,7 +94,7 @@ if (_hadExplicitTeam) {
 var _teamCfg = TEAMS[_teamParam] || TEAMS.phoenix;
 var TEAM_SLUG = _teamParam in TEAMS ? _teamParam : 'phoenix';
 var TEAM_NAME = _teamCfg.name;
-var VERSION = '3.86.2';
+var VERSION = '3.87.0';
 
 // Single source of truth for the top nav's item list/order/labels, shared by
 // index.html (public, JS-driven showView() buttons) and officer.html (a
@@ -115,17 +115,18 @@ var SITE_NAV_ITEMS = [
     tooltip: 'The guild above the teams: streams, news, and how to join',
     href: 'guild.html'
   },
-  // The second cross-page item (#864). officerOnly keeps it off index.html,
-  // where raiders have the Found a BoE card and nothing to manage; hidden
-  // ships it display:none so it cannot flash for an officer before the access
-  // RPCs answer, and js/officer.js reveals it from fetchBoeAccess().
+  // The second cross-page item (#864). It shipped display:none until #890,
+  // with js/officer.js revealing it once three access RPCs answered; the page
+  // is open to anyone signed in now, so there is nothing left to gate the link
+  // on and no reveal to wait for. officerOnly still keeps it off index.html,
+  // which has its own BoE item for the report form until #891 folds the two
+  // surfaces together.
   {
     id: 'navBoeManage',
     label: 'BoE Sales',
     tooltip: 'Found-BoE auctions: listings, sales, payouts',
     href: 'boe.html',
-    officerOnly: true,
-    hidden: true
+    officerOnly: true
   },
   { id: 'navHome', label: 'Home', tooltip: 'Back to the roster overview', view: 'landing', hash: null },
   { id: 'navRoster', label: 'Roster', tooltip: "See who's currently on the roster", view: 'roster', hash: 'roster' },
@@ -206,7 +207,8 @@ function renderSiteNav(mode) {
     if (item.href) {
       // Same markup in both modes: a link to another page needs no team param
       // (guild.html and boe.html have no team) and no showView() (that view is
-      // not here). `hidden` items ship display:none for the page to reveal.
+      // not here). Nothing ships hidden since #890, so there is no reveal
+      // branch here any more either.
       html +=
         '<a href="' +
         item.href +
@@ -214,9 +216,7 @@ function renderSiteNav(mode) {
         item.id +
         '" data-tooltip="' +
         item.tooltip +
-        '"' +
-        (item.hidden ? ' style="display:none;"' : '') +
-        '>' +
+        '">' +
         item.label +
         '</a>';
     } else if (mode === 'officer') {
@@ -298,32 +298,41 @@ function withTimeoutMs(promise, ms) {
 }
 
 /**
- * Who may open the BoE Sales surface (boe.html, #864), and who may act in it.
+ * What the caller may DO on the BoE Sales surface (boe.html, #864).
  *
- * The three RPCs are the same functions boe_items' own read policy evaluates
- * (my_team_role in officer/team_leader, or is_boe_manager(), or
- * is_site_admin()), asked here only to decide whether to render or reveal at
- * all. The server decides what the read returns and what every mutation is
- * allowed to do, so getting this wrong shows an empty page, never data.
+ * It used to answer whether they could open the page at all. Since #890 that
+ * question is gone: anyone signed in may, and the read policies decide what
+ * comes back -- a BoE manager or site admin every find, an officer the teams
+ * they staff, a raider the finds under their own character or reported while
+ * signed in (#889). Getting this wrong now costs buttons, never rows.
  *
+ * `manage` is the lifecycle grant (listing, sale, retire, edit, undo), the
+ * same is_boe_manager() or is_site_admin() pair every money RPC gates on.
  * is_boe_manager() is grant-only and does not fold in site admins, matching
  * the RLS gate, which is why admin is asked separately rather than assumed.
  *
- * Signed out short-circuits: all three resolve false for anon, so asking is
- * three round-trips to learn nothing on the most common visit. `session` is
- * whatever the caller holds as proof of being signed in; only its truthiness
- * is read, the RPCs use the client's own auth. Three pages share this answer
- * (#774 first resolved it in js/guild.js): guild.html and officer.html reveal
- * the link on it, boe.html gates itself on it.
+ * `settleTeamIds` is what can_settle_boe() grants an officer or team leader
+ * on their own team (#888): Mark Paid, Donate to Guild, Undo Payout. It comes
+ * from the caller's own team_members rows, which the self-read policy
+ * ("Members read own team_members") returns, rather than from a yes/no RPC,
+ * because the buttons are decided per row and need the ids themselves.
+ * is_any_team_officer() is no longer asked here; it stays for the
+ * boe_managers read policy, which has no team to scope by.
  *
- * @param {unknown} session
- * @returns {Promise<{ visible: boolean, canManage: boolean }>}
+ * Signed out short-circuits: every answer is empty for anon, so asking is
+ * round-trips to learn nothing on the most common visit. `session` is what
+ * the caller holds as proof of being signed in; the reads use the client's
+ * own auth, and only the user id is taken from it.
+ *
+ * @param {any} session
+ * @returns {Promise<{ signedIn: boolean, manage: boolean, settleTeamIds: number[] }>}
  */
 function fetchBoeAccess(session) {
-  var none = { visible: false, canManage: false };
-  if (!supabaseClient || !session) return Promise.resolve(none);
+  if (!session) return Promise.resolve({ signedIn: false, manage: false, settleTeamIds: [] });
+  var nothing = { signedIn: true, manage: false, settleTeamIds: [] };
+  if (!supabaseClient) return Promise.resolve(nothing);
 
-  /** @param {'is_boe_manager' | 'is_site_admin' | 'is_any_team_officer'} fn */
+  /** @param {'is_boe_manager' | 'is_site_admin'} fn */
   function ask(fn) {
     return Promise.resolve(supabaseClient.rpc(fn)).then(
       function (result) {
@@ -335,13 +344,33 @@ function fetchBoeAccess(session) {
     );
   }
 
-  return withTimeoutMs(Promise.all([ask('is_boe_manager'), ask('is_site_admin'), ask('is_any_team_officer')]), 10000)
+  function settleTeams() {
+    var uid = (session.user && session.user.id) || null;
+    if (!uid) return Promise.resolve([]);
+    // team-read-guard: the caller's own membership rows, at most one per team.
+    return Promise.resolve(supabaseClient.from('team_members').select('team_id, role').eq('auth_user_id', uid)).then(
+      function (result) {
+        if (!result || result.error || !result.data) return [];
+        return result.data
+          .filter(function (row) {
+            return row.role === 'officer' || row.role === 'team_leader';
+          })
+          .map(function (row) {
+            return row.team_id;
+          });
+      },
+      function () {
+        return [];
+      }
+    );
+  }
+
+  return withTimeoutMs(Promise.all([ask('is_boe_manager'), ask('is_site_admin'), settleTeams()]), 10000)
     .then(function (r) {
-      var canManage = r[0] || r[1];
-      return { visible: canManage || r[2], canManage: canManage };
+      return { signedIn: true, manage: r[0] || r[1], settleTeamIds: r[2] };
     })
     .catch(function () {
-      return none;
+      return nothing;
     });
 }
 

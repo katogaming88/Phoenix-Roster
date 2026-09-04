@@ -1164,38 +1164,30 @@ describe('boot with no supabase client', () => {
 });
 
 // Who gets the BoE Sales link. The lifecycle surface itself lives on boe.html
-// since #864; this page only reveals the way there, on the same access answer
-// (fetchBoeAccess() in js/common.js) that page gates itself on.
-describe('BoE Sales link (#774, #864)', () => {
-  it('is hidden for a signed-out visitor, and asks nothing about them', async () => {
+// since #864, and since #890 it is open to anyone signed in, so this page
+// stops asking who the visitor is and shows the link whenever the guild runs
+// BoE at all. The page behind it does the rest: signed out it offers sign-in,
+// signed in it renders whatever the read policies return.
+describe('BoE Sales link (#774, #864, #890)', () => {
+  it('is shown to a signed-out visitor, and asks nothing about them', async () => {
+    // The revealed value, not just "not none": the markup ships display:none
+    // for the no-flash reason, so a not.toBe('none') would pass on a page
+    // that never touched the item.
     const { sandbox, els, calls } = makeSandbox();
     await sandbox.bootGuildPage();
-    expect(els.guildNavBoeManage.style.display).toBe('none');
+    expect(els.guildNavBoeManage.style.display).toBe('');
     expect(calls.filter((c) => c.kind === 'rpc')).toEqual([]);
   });
 
-  it('is hidden for a signed-in raider who holds none of the three grants', async () => {
-    const { sandbox, els } = makeSandbox({ session: SESSION });
+  it('is shown to a signed-in raider, and still asks nothing', async () => {
+    const { sandbox, els, calls } = makeSandbox({ session: SESSION });
     await sandbox.bootGuildPage();
-    expect(els.guildNavBoeManage.style.display).toBe('none');
-  });
-
-  it('is revealed for a plain team officer, who gets the read-only page', async () => {
-    const { sandbox, els } = makeSandbox({ session: SESSION, boeRpc: { is_any_team_officer: true } });
-    await sandbox.bootGuildPage();
-    // The revealed value, not just "not none": the stubs start with no display
-    // at all, so a not.toBe('none') here would pass without the code existing.
     expect(els.guildNavBoeManage.style.display).toBe('');
+    expect(calls.filter((c) => c.kind === 'rpc')).toEqual([]);
   });
 
-  it('is revealed for a BoE manager holding no officer role anywhere', async () => {
+  it('is shown to a BoE manager, on the same rule as everyone else', async () => {
     const { sandbox, els } = makeSandbox({ session: SESSION, boeRpc: { is_boe_manager: true } });
-    await sandbox.bootGuildPage();
-    expect(els.guildNavBoeManage.style.display).toBe('');
-  });
-
-  it('is revealed for a site admin, whom is_boe_manager does not cover', async () => {
-    const { sandbox, els } = makeSandbox({ session: SESSION, boeRpc: { is_site_admin: true } });
     await sandbox.bootGuildPage();
     expect(els.guildNavBoeManage.style.display).toBe('');
   });

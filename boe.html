@@ -8,12 +8,12 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=3.86.2">
+<link rel="stylesheet" href="css/styles.css?v=3.87.0">
 <!-- Shares guild.html's layout: the guild-page body class carries the
      wrapping nav and the keyboard and motion baselines, and the guild-*
      classes below are the same section grammar. Nothing here is styled on
      its own. -->
-<link rel="stylesheet" href="css/guild.css?v=3.86.2">
+<link rel="stylesheet" href="css/guild.css?v=3.87.0">
 </head>
 <body class="guild-page">
 <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -48,14 +48,15 @@
 
 <main id="main-content" class="guild-body" tabindex="-1">
 
-  <!-- The BoE lifecycle, for officers, BoE managers and site admins. It lived
-       on the officer dashboard as a tab (#747), then on guild.html as a section
-       (#774), and is a page of its own since #864. js/boe-page.js decides what
-       to show from the three access RPCs; js/boe-manage.js writes into the four
-       containers. -->
+  <!-- The BoE lifecycle, open to anyone signed in since #890. It lived on the
+       officer dashboard as a tab (#747), then on guild.html as a section
+       (#774), and is a page of its own since #864. js/boe-page.js asks only
+       whether there is a session; the read policies scope the rows and
+       js/boe-manage.js writes into the four containers, rendering each
+       audience's buttons from the access answer. -->
   <section class="guild-section" id="boe-manage" aria-labelledby="boeManageHeading">
     <h2 id="boeManageHeading">BoE Sales</h2>
-    <p class="guild-section-intro">Every find across the guild, from reported through to the finder being paid. Recording a listing, a sale, a payout or a retirement needs the BoE manager grant; other officers see this read-only.</p>
+    <p class="guild-section-intro">Found BoEs from the report through to the finder being paid. You see what your access allows: BoE managers and site admins see every find and run the whole lifecycle, team officers see the teams they staff and settle those payouts, and raiders see the finds reported under their own character.</p>
     <div id="boeAccessNote"></div>
     <div id="guildBoeSummary"></div>
     <div id="guildBoeOpen"></div>
@@ -78,9 +79,9 @@
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/common.js?v=3.86.2"></script>
-<script src="js/boe-manage.js?v=3.86.2"></script>
-<script src="js/boe-page.js?v=3.86.2"></script>
+<script src="js/common.js?v=3.87.0"></script>
+<script src="js/boe-manage.js?v=3.87.0"></script>
+<script src="js/boe-page.js?v=3.87.0"></script>
 <script>
 document.getElementById('boeVersion').textContent = VERSION;
 </script>

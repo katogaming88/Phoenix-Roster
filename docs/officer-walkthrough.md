@@ -489,8 +489,9 @@ the tab at all. In practice this is usually one or two people per team. Five sub
 ## BoE Sales (its own page, `boe.html`)
 
 Reached from the **BoE Sales** link in this dashboard's site nav, or from the same link in
-the guild page's nav. Both appear only for someone who can open the page, so if the link
-isn't there, the access rules below are the reason. It lived on this dashboard as a tab
+the guild page's nav. Both are plain links since [#890](https://github.com/katogaming88/WGA-Raid-Hub/issues/890): the page is open to anyone
+signed in and scopes itself, so there is nothing left to gate them on and no access check to
+wait for. The guild page hides its link only when no team runs BoE at all. It lived on this dashboard as a tab
 until #774 moved it to the guild page: BoEs are guild property and the read spans every
 team, so a per-team page was the wrong home, and a BoE manager who runs the guild bank
 without staffing a raid team could not open this dashboard at all. #864 then gave it a page
@@ -512,12 +513,17 @@ its tooltip, and submit the report with the raider's character as the finder.
 - **The page is guild-wide, not per-team** (#765). It shows every find you're allowed to see
   rather than only the team whose page you're on, because BoEs are guild property. A BoE manager
   or site admin sees all four teams, Wrathless included; a plain officer sees the teams they
-  staff. Every row names the finding team, History included -- that's credit, not a
-  disambiguator.
-- **Actions need the BoE manager grant** (#766), assigned by a site admin on the site admin
-  dashboard. Without it it is read-only: totals and rows, no buttons. Officers on any team
-  see it read-only; everyone else is told whom the page is for. The grant is
+  staff; a raider sees the finds reported under their own character, plus anything they reported
+  while signed in ([#889](https://github.com/katogaming88/WGA-Raid-Hub/issues/889), [#890](https://github.com/katogaming88/WGA-Raid-Hub/issues/890)). Every row names the finding team, History included --
+  that's credit, not a disambiguator.
+- **Who may do what** ([#890](https://github.com/katogaming88/WGA-Raid-Hub/issues/890)). Listing, sale, retire, un-retire, undo sale and edit need the
+  **BoE manager grant** (#766), assigned by a site admin on the site admin dashboard; the grant is
   guild-wide, so a manager is authorized on every team's finds rather than one team's.
+  **Mark Paid**, **Donate to Guild** and **Undo Payout** are open to an officer or team leader on
+  that row's own team as well ([#888](https://github.com/katogaming88/WGA-Raid-Hub/issues/888)), because they're the ones handing out the gold. The
+  buttons follow the row, not the page: an officer of one team gets no settle buttons on another
+  team's row, and the Actions column drops out of a section where nothing is theirs. A raider gets
+  rows and no buttons, plus a line saying who handles the rest.
 
 A summary strip and three sections:
 
@@ -525,7 +531,9 @@ A summary strip and three sections:
   auction house fee, plus any finder's cut kept by the guild) and **Outstanding payouts** (what's still owed on
   sold-but-unpaid rows, a donating row included until it is settled). **Donated by finders**
   appears once there is one. Per-team find counts and
-  gold raised sit underneath, shown only once more than one team has found something.
+  gold raised sit underneath, shown only once more than one team has found something. A raider
+  doesn't get **Guild income to date**: summed over their own handful of finds it would be a wrong
+  number rather than a partial one ([#890](https://github.com/katogaming88/WGA-Raid-Hub/issues/890)).
 - **Open** -- found and listed items, oldest first. The Item cell carries the track and the
   upgrade rank in one badge ("Champion 2/6", [#865](https://github.com/katogaming88/WGA-Raid-Hub/issues/865)); that pair is
   what tells two finds of the same item apart. **Record Listing** logs a price and an
