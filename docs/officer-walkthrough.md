@@ -541,9 +541,11 @@ A summary strip and three sections:
   optional note; an item can be listed more than once, so relists accumulate rather than replace
   each other. **Record Sale** takes the sale price, computes the split, and posts the finder's ping to
   Discord ([#873](https://github.com/katogaming88/WGA-Raid-Hub/issues/873)): the item, the four
-  money lines, and to see their raid leaders or a BoE manager in the 15 minutes before raid for
-  the gold. It names roles rather than people, so nobody but the finder is mentioned and the line
-  does not go stale as the roster changes. A finder who ticked the donate box gets a thank-you
+  money lines, and to see their raid leaders or the BoE manager in the 15 minutes before raid for
+  the gold. Raid leaders are named as a role; the manager is a live mention of whoever holds the
+  grant, read when the message is posted, so it follows a grant change with no edit here. Only the
+  finder is notified: the manager mention is a clickable name and not a ping, or the grant holder
+  would hear about every sale all season. A finder who ticked the donate box gets a thank-you
   line instead of a contact line.
   **Undo Sale does not retract the post** -- delete it in Discord by hand if a sale was recorded
   in error. If an older find of the

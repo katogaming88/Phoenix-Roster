@@ -16,7 +16,7 @@
 //   Guild Cut: 30,160g
 //   Finder's Fee: 20,000g
 //
-//   Please get in touch with your raid leaders or a BoE manager in the 15
+//   Please get in touch with your raid leaders or <@manager> in the 15
 //   minutes before raid starts to receive your gold.
 //
 // Four decisions worth stating, all settled with Russell on 2026-09-03:
@@ -27,12 +27,13 @@
 //   - The auction house fee gets its own line. Since #861 the guild cut is
 //     net of it, so without the line the four numbers do not add up and the
 //     finder is left assuming the guild took the difference.
-//   - The closing line names roles, not people: "your raid leaders or a BoE
-//     manager". An earlier build of this looked up the finding team's
-//     officers and mentioned them by id. Russell's call, and the better one:
-//     a name list grows with the roster, goes stale the week someone steps
-//     down, and puts one particular person in front of a finder as the one
-//     who owes them gold. Naming roles means no contact reads at all here.
+//   - The closing line names the raid leaders as a role and the BoE manager
+//     as a mention. An earlier build listed the finding team's officers by
+//     id, which put five names in one sentence on Phoenix and would grow
+//     with the roster; the role covers them in two words a finder already
+//     knows. The manager is the opposite case: the grant is held by one or
+//     two people and a finder has no way to know who this season, so it is
+//     read at post time and rendered as a link they can click.
 //   - A donated row (#862) ends with thanks instead. Telling someone to
 //     collect gold they chose to give away is the one thing the old message
 //     could not have got wrong, because the option did not exist.
@@ -62,6 +63,13 @@ function jsonResponse(body: unknown, status = 200) {
     status,
     headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
   });
+}
+
+// "A", "A or B", "A, B or C" -- the manager list reads as a sentence rather
+// than a comma-joined dump, because it sits inside one.
+function joinNames(names: string[]) {
+  if (names.length <= 1) return names[0] || '';
+  return names.slice(0, -1).join(', ') + ' or ' + names[names.length - 1];
 }
 
 // Whole gold with thousands separators, the way every money figure on the
@@ -161,6 +169,24 @@ Deno.serve(async (req) => {
       }
     }
 
+    // The BoE manager is a mention of whoever currently holds the grant, so
+    // a finder can click through to them rather than go looking for who that
+    // is this season. The list is read at post time, so it follows the grant
+    // without anyone editing this file. Raid leaders stay prose: that is a
+    // role a finder already knows how to find, and naming the officers of
+    // every team would put five names in one sentence.
+    //
+    // Reading boe_managers needs the service role: the table has no
+    // `authenticated` grant and its select policy admits officers and site
+    // admins, so a manager holding only the grant would read an empty list.
+    // A grant that is not yet active still carries a discord_id, so the
+    // mention works before that person has ever signed in.
+    const { data: managers } = await db.from('boe_managers').select('discord_id').not('discord_id', 'is', null);
+    const managerText =
+      managers && managers.length
+        ? joinNames(managers.map((m: { discord_id: string }) => '<@' + m.discord_id + '>'))
+        : 'a BoE manager';
+
     // The Item line, in the found post's own format (#865): the track in an
     // escaped angle bracket so Discord does not read it as a mention token,
     // then the name, then the rank. Identical items can be open at once, so
@@ -188,13 +214,14 @@ Deno.serve(async (req) => {
     // of what they gave.
     const closing = row.payout_donated
       ? "Thanks for donating your finder's fee to the guild bank."
-      : 'Please get in touch with your raid leaders or a BoE manager ' + PAYOUT_WINDOW + ' to receive your gold.';
+      : 'Please get in touch with your raid leaders or ' + managerText + ' ' + PAYOUT_WINDOW + ' to receive your gold.';
 
     const content = finderText + ' -- BOE Sold!\n\n' + moneyLines.join('\n') + '\n\n' + closing;
 
-    // Only the finder is notified. The contacts render as names because
-    // allowed_mentions does not list them, which is the point: nobody wants a
-    // ping on every sale for the rest of the season.
+    // Only the finder is notified. The manager mention renders as a
+    // clickable name but sends no notification, because allowed_mentions
+    // lists the finder alone: with one manager today, listing them would mean
+    // a ping on every sale for the rest of the season.
     const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
