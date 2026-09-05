@@ -1063,7 +1063,7 @@ function executeRemovePlayer(nameRealm, firstName) {
           p_season: resolveSeasonViewCode(),
           p_player_id: player.id
         })
-        .catch(function () {});
+        .then(function () {}, function () {});
     })
     .then(function () {
       if (DATA && DATA.roster) {
