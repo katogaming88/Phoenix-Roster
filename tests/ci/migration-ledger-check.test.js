@@ -233,6 +233,9 @@ describe('CLI, order and clock rules', () => {
     execFileSync('git', ['init', '-q', '-b', 'main'], { cwd: dir });
     execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: dir });
     execFileSync('git', ['config', 'user.name', 'Test'], { cwd: dir });
+    // Windows checkouts default to autocrlf=true, which prints a warning per
+    // added file and buries the run's real output.
+    execFileSync('git', ['config', 'core.autocrlf', 'false'], { cwd: dir });
     for (const [name, authorDate] of files) {
       writeFileSync(join(dir, name), '-- test\n');
       execFileSync('git', ['add', name], { cwd: dir });
