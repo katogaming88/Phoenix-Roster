@@ -226,11 +226,28 @@ step by step in [docs/supabase-local-dev-setup.md](docs/supabase-local-dev-setup
 
 PRs that change `supabase/migrations/` must also:
 
-- Name the migration file with the **real current local timestamp** (`YYYYMMDDHHMMSS`),
-  not UTC and not hand-picked. Supabase orders and applies migrations by this
-  prefix, so a wrong one can silently apply out of order relative to
-  concurrent work from other contributors. Check the actual system clock
-  rather than guessing or copying an adjacent file's timestamp.
+- Create the file with `npm run migration:new -- <slug>`, which stamps it with
+  the **real current Eastern wall clock** (`YYYYMMDDHHMMSS`). Supabase orders
+  and applies migrations by that prefix, so it is a sort key shared between
+  everyone's machines and has to come from one clock. Do **not** use
+  `supabase migration new`: it stamps UTC, four hours ahead of Eastern in
+  summer and five in winter, and has twice sorted a later migration ahead of
+  an earlier one (2026-08-26 and 2026-09-03, both push refusals). Do not type
+  the number by hand either. The vendored Supabase skill at
+  `.agents/skills/supabase/SKILL.md` says to use the CLI command; it is pinned
+  upstream and cannot be edited here, so this rule overrides it and CI enforces
+  the override.
+- Before `supabase db push`, the new file must sort **after** every migration
+  already applied on prod. If someone else's file landed first and yours now
+  sorts below it, re-stamp yours with
+  `npm run migration:new -- --rename supabase/migrations/<file>`. Never reach
+  for `--include-all` to get around it.
+- Open the file with a header: `-- #NNN: <what it does>.`, then a bare `--`,
+  then why it is needed. Cite a prior migration by filename when this one
+  patches it.
+- Name the slug after the object changed, `<table>_<column>` or
+  `<function>_<what changed>`, lowercase with underscores. No dates in the
+  slug; the prefix already carries one.
 - Regenerate the schema docs: `supabase db reset`, then `npm run db:docs`, and
   commit the `dbdoc/` changes (CI fails stale docs)
 - Update [docs/RLS.md](docs/RLS.md) if the migration adds, alters, or drops an

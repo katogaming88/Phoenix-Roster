@@ -130,6 +130,7 @@ npm run test:frontend  # vitest -- frontend logic, no browser needed
 npm run test:rls       # vitest -- RLS policy behavior against a local reset
 npm run db:docs        # regenerate dbdoc/ after a migration change
 npm run db:rls         # regenerate docs/rls_policies.csv
+npm run migration:new -- <slug>   # new migration, stamped from the Eastern clock
 ```
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full PR checklist (what a migration change additionally requires) and versioning/changelog rules.

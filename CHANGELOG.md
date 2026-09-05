@@ -23,6 +23,19 @@ with each release split into `### Frontend` (drives the version number) and
   page and on every team page, while the page itself used the longer name in its title, header and
   heading.
 
+### Backend
+
+- New migrations are created with `npm run migration:new -- <slug>`, which stamps the filename from
+  the real Eastern wall clock
+  ([#927](https://github.com/katogaming88/WGA-Raid-Hub/issues/927)). Supabase applies migrations in
+  order of that 14-digit prefix, so it is a sort key shared between machines, and it was coming from
+  two clocks: `supabase migration new` stamps UTC, four hours ahead of Eastern in summer. 30 of the
+  161 files sort below a migration that was added before them, and two of those refused a
+  `supabase db push` outright. `--rename` re-stamps a file when the order moves while a PR is open.
+- The migration ledger check enforces both halves of that. It fails a pending file that sorts below
+  the newest version applied on prod, and a file stamped ahead of the Eastern clock at the commit
+  that added it, each naming the rename command.
+
 ---
 
 ## [3.91.1] - 2026-09-05
