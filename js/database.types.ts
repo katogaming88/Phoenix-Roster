@@ -812,6 +812,62 @@ export type Database = {
           },
         ]
       }
+      player_officer_notes: {
+        Row: {
+          archived_reason: string | null
+          archived_reason_detail: string | null
+          officer_notes: string | null
+          player_id: number
+          team_id: number
+          updated_at: string
+        }
+        Insert: {
+          archived_reason?: string | null
+          archived_reason_detail?: string | null
+          officer_notes?: string | null
+          player_id: number
+          team_id: number
+          updated_at?: string
+        }
+        Update: {
+          archived_reason?: string | null
+          archived_reason_detail?: string | null
+          officer_notes?: string | null
+          player_id?: number
+          team_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_officer_notes_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: true
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "player_officer_notes_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: true
+            referencedRelation: "priority_order_gaps"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "player_officer_notes_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: true
+            referencedRelation: "rnlsi"
+            referencedColumns: ["player_id"]
+          },
+          {
+            foreignKeyName: "player_officer_notes_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       player_wcl_season_perf: {
         Row: {
           best_perf_avg: number | null
@@ -874,8 +930,6 @@ export type Database = {
       players: {
         Row: {
           archived_at: string | null
-          archived_reason: string | null
-          archived_reason_detail: string | null
           bis_allowed: boolean
           bis_link: string | null
           bonus_roll_encounter_id: number | null
@@ -890,7 +944,6 @@ export type Database = {
           m_plus_note: string | null
           name_realm: string
           nickname: string | null
-          officer_notes: string | null
           team_id: number
           team_member_id: number | null
           tier_pieces_equipped: number | null
@@ -900,8 +953,6 @@ export type Database = {
         }
         Insert: {
           archived_at?: string | null
-          archived_reason?: string | null
-          archived_reason_detail?: string | null
           bis_allowed?: boolean
           bis_link?: string | null
           bonus_roll_encounter_id?: number | null
@@ -916,7 +967,6 @@ export type Database = {
           m_plus_note?: string | null
           name_realm: string
           nickname?: string | null
-          officer_notes?: string | null
           team_id: number
           team_member_id?: number | null
           tier_pieces_equipped?: number | null
@@ -926,8 +976,6 @@ export type Database = {
         }
         Update: {
           archived_at?: string | null
-          archived_reason?: string | null
-          archived_reason_detail?: string | null
           bis_allowed?: boolean
           bis_link?: string | null
           bonus_roll_encounter_id?: number | null
@@ -942,7 +990,6 @@ export type Database = {
           m_plus_note?: string | null
           name_realm?: string
           nickname?: string | null
-          officer_notes?: string | null
           team_id?: number
           team_member_id?: number | null
           tier_pieces_equipped?: number | null
@@ -2387,6 +2434,10 @@ export type Database = {
       archive_current_season: {
         Args: { p_roster_snapshot: Json; p_team_id: number }
         Returns: Json
+      }
+      archive_player: {
+        Args: { p_detail: string; p_player_id: number; p_reason: string }
+        Returns: string
       }
       boe_mark_paid: {
         Args: { p_donated?: boolean; p_id: number; p_paid_at?: string }
