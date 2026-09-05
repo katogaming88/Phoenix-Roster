@@ -145,7 +145,7 @@ var SITE_NAV_ITEMS = [
   // per-team link report for the same team.
   {
     id: 'navBoE',
-    label: 'BoE',
+    label: 'BoE Sales',
     tooltip: 'Report a BoE drop, and follow what happens to it',
     href: 'boe.html',
     carryTeam: true

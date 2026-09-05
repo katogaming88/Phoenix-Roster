@@ -117,8 +117,8 @@ or add the `chore` label.
 | `index.html` | Public page -- landing, raider profiles, season signup |
 | `officer.html` | Officer dashboard -- all management tabs |
 | `admin.html` | Site admin dashboard -- team management, site admin grant/revoke, feature flags, cross-team audit log, maintenance mode |
-| `guild.html` | Guild-wide page -- team selection, streams, news, a BoE link, About the Guild. Not scoped to a team |
-| `boe.html` | BoE -- the report form (#891) above the found-BoE auction lifecycle, open to anyone signed in and scoped by the read policies (#890). Reporting needs no login at all. Guild-wide like `guild.html`, reached from the BoE link in every page's nav |
+| `guild.html` | Guild-wide page -- team selection, streams, news, a BoE Sales link, About the Guild. Not scoped to a team |
+| `boe.html` | BoE -- the report form (#891) above the found-BoE auction lifecycle, open to anyone signed in and scoped by the read policies (#890). Reporting needs no login at all. Guild-wide like `guild.html`, reached from the BoE Sales link in every page's nav, and carrying that nav itself since #930 |
 | `js/common.js` | Shared globals, `TEAMS`, `TEAM_SLUG`/`IS_COLD_LANDING` resolution, `VERSION`, data helpers, `renderProfile` |
 | `js/discord.js` | Discord OAuth login/session mapping, character claim flow |
 | `js/roster.js` | Public page boot, cold-landing team picker/auto-redirect, dropdown, stats row, recent loot |

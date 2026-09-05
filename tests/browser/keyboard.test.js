@@ -37,11 +37,13 @@ const FOCUSABLE = [
   '[tabindex]:not([tabindex="-1"])'
 ].join(', ');
 
-// Today's states carry 7 (the signed-out BoE Sales page: skip link, header
-// link, two nav items, the sign-in button and two footer links) to 45
-// focusable elements. The floor is well under that on purpose: it is here so
-// a selector that stopped matching cannot pass every assertion below by
-// having nothing to assert on.
+// Today's states carry 19 (the signed-out BoE Sales page: skip link, header
+// link, six nav items, the sign-in button, eight form controls and two footer
+// links) to 48 focusable elements. The example was written when that page had
+// seven, before #891 moved the report form onto it and #930 gave it the guild
+// nav. The floor is well under the range on purpose: it is here so a selector
+// that stopped matching cannot pass every assertion below by having nothing
+// to assert on.
 const MIN_FOCUSABLE = 5;
 
 let server;

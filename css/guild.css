@@ -255,26 +255,35 @@
   color: var(--gold);
 }
 
-/* ── BoE entry point ────────────────────────────────────────────────── */
+/* ── BoE report form (boe.html, #891/#930) ──────────────────────────── */
 
-.guild-boe-row {
-  display: flex;
+/* Replaced the .guild-boe-row rules for the "Found a BoE?" card, which #891
+   removed from guild.html and which had had no user in js/, the pages, tests/
+   or docs/ since.
+
+   The form is a 420px column inside a 1100px page. As a stretch flex item
+   capped by max-width it sat hard against the left edge, with the full-width
+   lifecycle section right under it making the gap read as a mistake. The
+   section centres as a whole so the heading stays over its own form; the
+   fields inside keep their left edge, since centred labels over left-aligned
+   inputs is worse than either. */
+.guild-page .guild-boe-report {
   align-items: center;
-  flex-wrap: wrap;
-  gap: 0.75rem;
+  text-align: center;
 }
 
-.guild-boe-row label {
-  color: var(--text-muted);
-  letter-spacing: 0.05em;
+.guild-page .guild-boe-report-block {
+  width: 100%;
+  max-width: 420px;
+  text-align: left;
 }
 
-/* .add-player-input is width:100% for the officer forms it was written for,
-   which stretches this select across the whole section. */
-.guild-boe-row select {
-  width: auto;
-  min-width: 12rem;
-  max-width: 18rem;
+/* .trial-promo-card already carries margin-bottom: 1rem, so dropping the
+   inline margin:0 0 1rem changed nothing; the horizontals were 0. */
+.guild-page .guild-boe-report-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
 }
 
 /* ── BoE lifecycle (#774) ───────────────────────────────────────────── */

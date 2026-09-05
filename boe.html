@@ -29,7 +29,19 @@
 
 <nav class="site-nav" aria-label="Site">
   <a class="site-nav-item" href="guild.html">Guild</a>
+  <!-- The guild page's own sections, reached from here as deep links. This
+       page hardcoded Guild and BoE Sales, so arriving here dropped the four
+       items guild.html carries (#930). applyGuildHash() (js/guild.js)
+       re-applies the fragment once the sections have content, so these land
+       on the section rather than at the top of a page still rendering (#783).
+       The team-page items stay off: page-markup.test.js bans a bare
+       index.html link from here, and this page has a team only when you
+       arrive from one. -->
+  <a class="site-nav-item" href="guild.html#teams">Teams</a>
+  <a class="site-nav-item" href="guild.html#streams">Streams</a>
+  <a class="site-nav-item" href="guild.html#news">News</a>
   <a class="site-nav-item active" href="boe.html" aria-current="page">BoE Sales</a>
+  <a class="site-nav-item" href="guild.html#about">About</a>
   <div class="site-nav-right">
     <span class="site-nav-item" id="boeWhoAmI"></span>
     <button type="button" class="site-nav-item site-nav-discord" id="boeAuthBtn">Sign in with Discord</button>
@@ -52,15 +64,15 @@
        one page reports a BoE and shows what became of it. Needs no login:
        submit_boe_found is anon-callable, and the reporting team is chosen
        here rather than inherited, since this page has none. -->
-  <section class="guild-section" id="boe-report" aria-labelledby="boeHeading">
+  <section class="guild-section guild-boe-report" id="boe-report" aria-labelledby="boeHeading">
     <h2 id="boeHeading">Report a BoE Drop</h2>
     <p class="guild-section-intro">Found a BoE while raiding with the guild? Report it here and the officers handle the listing. If it sells, you get a cut of the sale. No login needed.</p>
-    <div class="trial-promo-card" style="max-width:420px;margin:0 0 1rem;text-align:left;">
+    <div class="trial-promo-card guild-boe-report-block">
       <strong style="color:var(--gold-light);">Report here before depositing it in the guild bank.</strong>
       Once it's in the bank, it shows you a base item level with no track or upgrade rank, so you won't be able
       to read them off yourself anymore -- fill this out first, while it's still on your character.
     </div>
-    <div style="display:flex;flex-direction:column;gap:0.35rem;max-width:420px;text-align:left;">
+    <div class="guild-boe-report-form guild-boe-report-block">
       <label for="boeTeamSelect">Reporting for team</label>
       <select id="boeTeamSelect" class="add-player-input" onchange="onBoeTeamChange()"></select>
       <label for="boeCharName" style="margin-top:0.5rem;">Character (Name-Realm)</label>
