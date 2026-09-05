@@ -32,7 +32,9 @@ const DIRECT_TEAM_INSERTS = {
   rclc_loot:
     "insert into public.rclc_loot (team_id, player_id, item_id, track, season) values (1, 1, 1, 'Hero', 'test-season')",
   player_wcl_season_perf:
-    "insert into public.player_wcl_season_perf (player_id, team_id, season) values (1, 1, 'test-season')"
+    "insert into public.player_wcl_season_perf (player_id, team_id, season) values (1, 1, 'test-season')",
+  player_officer_notes:
+    "insert into public.player_officer_notes (player_id, team_id, officer_notes) values (2, 1, 'note')"
 };
 
 describe('officer-write tables (direct team_id scope)', () => {
