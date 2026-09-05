@@ -49,7 +49,8 @@ Note the dependency, because it decides restore order: `priority_order` and `sco
 
 **In-app-only -- a lost/corrupted row here has no other source, and is only recoverable from a backup:**
 
-- `players` (the whole row, not just `officer_notes`: `nickname`, `join_date`, `is_trial`, `is_bench`, `bis_allowed`, `wishlist_allowed`, `is_backup_tank`, `is_backup_healer`, `m_plus_note` and the rest are all hand-entered)
+- `players` (the whole row: `nickname`, `join_date`, `is_trial`, `is_bench`, `bis_allowed`, `wishlist_allowed`, `is_backup_tank`, `is_backup_healer`, `m_plus_note` and the rest are all hand-entered)
+- `player_officer_notes` (the officer note and the removal reason behind each archived player, hand-entered; they lived on `players` until [#925](https://github.com/katogaming88/WGA-Raid-Hub/issues/925)). Deliberately **not** an `EMPTY_CHECK` floor: a team with nothing written down has no rows here, so an empty table is a legitimate state rather than the silent loss that check exists to catch.
 - `teams` (also the FK root of nearly every other table)
 - `site_admins` and `guild_officers` (empty means nobody can administer the site)
 - `item_preferences` (raider wishlists)

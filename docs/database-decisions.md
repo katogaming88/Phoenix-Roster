@@ -8,6 +8,26 @@ Each heading's date is the real calendar date the decision was made. It is delib
 
 ---
 
+## 2026-09-05 -- players' officer-only columns move to a side table rather than a revoke or a view (#925)
+
+`players` carries a `Public read players` policy with `qual = true`, `anon` and `authenticated` both hold table-level SELECT, and no column ACL narrows either. Three officer-written columns rode along with the public roster read: `officer_notes`, `archived_reason` and `archived_reason_detail`. Measured against prod on 2026-09-05, an anon read with the publishable key alone returned officer notes on three players and removal reasons on two. That policy's `polroles` is PUBLIC rather than a role list, so every signed-in raider read them too, which is the wider half of the exposure and was not in the issue as filed.
+
+Three mechanisms were considered and two were rejected on structure, not preference:
+
+- **A column revoke alone** cannot work while the shared roster select names the columns. One query at `js/common.js` serves `index.html` signed out and `officer.html` signed in, so revoking breaks the public roster. A column grant cannot separate the two audiences either: officers and raiders both hold `authenticated`, and the split this data needs is per row (am I an officer of this team) while column privileges are per role. No migration in this repo has ever used one.
+- **A view** is no help for the same reason the six existing views over `players` are harmless: all six are `security_invoker`, so the base table's RLS applies as the caller and nothing is narrowed. The only view shape that would be a boundary is a definer-rights view, which is exactly what #503 is open to remove from `incoming_roster`. Adding one would move against that.
+- **A side table** was chosen. `player_officer_notes` holds the three columns behind an officer-scoped policy admitting the same people the columns were reachable by before: team officers and team leaders on that team, guild officers, site admins. Once the columns are off `players` the public read policy stops applying to them at all, and no later edit to the public select can reintroduce the exposure by naming a column that is not there.
+
+A SECURITY DEFINER read function (#503's idiom) was the near miss. It solves the read for officers but leaves the columns on `players`, so it still needs a column revoke from both `anon` and `authenticated` to close the exposure, which is the mechanism with no precedent here. The side table needs no such companion.
+
+`m_plus_note` deliberately stayed on `players`. It is officer-written but not officer-only: `renderProfile()` shows it on the public profile beside the Excluded badge, so moving it would have blanked a public element. It holds no rows and #945 lists it as a prune candidate.
+
+`archive_player()` came with the move. `archived_at` stays on `players` while the reason moves, so removing a raider now spans two tables; two client writes would leave a window where someone is archived and the reason never landed. The function is SECURITY INVOKER, so both writes pass the caller's own policies, and it refuses a second archive so a double click cannot overwrite the first reason. Its upsert touches only the two archive columns, so removing a player who already has an officer note keeps that note.
+
+Shipped: `supabase/migrations/20260905154234_player_officer_notes.sql`.
+
+---
+
 ## 2026-09-04 -- Aggregated Discord signup sheet: the bot owns all the logic, not a new Edge Function
 
 Tracking issue: [#900](https://github.com/katogaming88/WGA-Raid-Hub/issues/900), part of #640.

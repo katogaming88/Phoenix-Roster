@@ -24,6 +24,7 @@ Includes notes on redundancies and why they exist.
 - [season_signups](#season_signups)
 - [attendance](#attendance)
 - [players](#players)
+- [player_officer_notes](#player_officer_notes)
 - [team_members](#team_members)
 - [teams](#teams)
 - [team_settings](#team_settings)
@@ -191,6 +192,27 @@ The active raid roster. One row per character on a team.
 | `team_member_id`   | int4        | FK -> `team_members.id` ON DELETE SET NULL -- links character to Discord account; many characters can share one team_member (the person layer) |
 | `archived_at`      | timestamptz | Soft-delete timestamp. Null = active roster. Populated on character swap/removal; archived stubs (name only, no class/spec) represent departed characters kept for history FKs |
 | `updated_at`       | timestamptz | Auto-set on every UPDATE via trigger                                             |
+
+---
+
+## `player_officer_notes`
+
+Officer-only annotations on a roster slot (#925). One row per `players` row, created on first write.
+
+These were columns on `players` until #925. That table carries a `FOR SELECT USING (true)` policy whose roles are PUBLIC, plus a table-level SELECT grant to both `anon` and `authenticated`, so the notes were readable with the publishable key from the JS bundle and by every signed-in raider. Officers and raiders share the `authenticated` role, so no column privilege could separate them, and a policy cannot hide a column, so the columns moved to a table with its own officer-scoped policy instead.
+
+`m_plus_note` stayed on `players`: the public profile renders it beside the Excluded badge, so it is officer-written but not officer-only.
+
+| Column                   | Type        | Purpose                                                                 |
+| ------------------------ | ----------- | ----------------------------------------------------------------------- |
+| `player_id`              | int4        | PK, FK -> `players.id` ON DELETE CASCADE                                 |
+| `team_id`                | int4        | FK -> `teams.id`, guarded against `players.team_id` by trigger           |
+| `officer_notes`          | text        | Private officer note, shown only on the officer dashboard                |
+| `archived_reason`        | text        | Why the player was removed (#476), fixed vocabulary of six values        |
+| `archived_reason_detail` | text        | Required freeform specifics behind that category                         |
+| `updated_at`             | timestamptz | Auto-set on every UPDATE via trigger                                     |
+
+Written two ways: the officer note upserts directly from the Roster tab, and `archive_player()` writes the two archive columns alongside `players.archived_at` so a removal cannot record one without the other.
 
 ---
 
