@@ -76,7 +76,11 @@ describe('the BoE report form is centred', () => {
   let opened;
 
   beforeAll(async () => {
-    opened = await openState(browser, server.port, STATES.find((s) => s.label === 'boe'));
+    opened = await openState(
+      browser,
+      server.port,
+      STATES.find((s) => s.label === 'boe')
+    );
   });
 
   afterAll(async () => {
