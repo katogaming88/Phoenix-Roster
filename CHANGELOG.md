@@ -8,6 +8,18 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.91.1] - 2026-09-05
+
+### Frontend
+
+- Fixed removing a player from a team roster failing with
+  `Failed: supabaseClient.rpc(...).catch is not a function`. The cleanup step that drops a removed
+  player from the season's standing priority order called `.catch()` directly on a Supabase RPC call,
+  which returns a thenable query builder rather than a real `Promise` and has no `.catch()` method --
+  the call threw immediately and aborted the whole removal before the roster list updated.
+
+---
+
 ## [3.91.0] - 2026-09-04
 
 ### Backend
