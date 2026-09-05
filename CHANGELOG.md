@@ -8,6 +8,23 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.91.2] - 2026-09-05
+
+### Frontend
+
+- The BoE Sales page now carries the guild page's full nav instead of two items
+  ([#930](https://github.com/katogaming88/WGA-Raid-Hub/issues/930)). Arriving there dropped Teams,
+  Streams, News and About, so the only way back to any of them was the browser's back button. They
+  return as deep links into `guild.html`, which lands on the section rather than the top of the page.
+- The report form on that page sits centred under its own heading. It was pinned to the left edge of
+  a full-width section, with the lifecycle list squared off underneath it, which read as a layout
+  bug. The fields keep their left edge inside the block.
+- The nav item that opens the page is called **BoE Sales** everywhere. It said "BoE" on the guild
+  page and on every team page, while the page itself used the longer name in its title, header and
+  heading.
+
+---
+
 ## [3.91.1] - 2026-09-05
 
 ### Frontend
