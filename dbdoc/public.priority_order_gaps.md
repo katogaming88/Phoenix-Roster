@@ -38,7 +38,7 @@ CREATE VIEW priority_order_gaps AS (
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
 | [public.priority_order](public.priority_order.md) | 8 |  | BASE TABLE |
-| [public.players](public.players.md) | 24 |  | BASE TABLE |
+| [public.players](public.players.md) | 21 |  | BASE TABLE |
 
 ## Relations
 

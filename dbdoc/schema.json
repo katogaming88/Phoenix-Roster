@@ -1235,11 +1235,6 @@
           "default": "false"
         },
         {
-          "name": "officer_notes",
-          "type": "text",
-          "nullable": true
-        },
-        {
           "name": "is_backup_tank",
           "type": "boolean",
           "nullable": false,
@@ -1271,16 +1266,6 @@
           "name": "bonus_roll_encounter_id",
           "type": "integer",
           "nullable": true
-        },
-        {
-          "name": "archived_reason",
-          "type": "text",
-          "nullable": true
-        },
-        {
-          "name": "archived_reason_detail",
-          "type": "text",
-          "nullable": true
         }
       ],
       "indexes": [
@@ -1303,16 +1288,6 @@
         }
       ],
       "constraints": [
-        {
-          "name": "players_archived_reason_check",
-          "type": "CHECK",
-          "def": "CHECK (((archived_reason IS NULL) OR (archived_reason = ANY (ARRAY['schedule_conflict'::text, 'performance'::text, 'drama'::text, 'moved_guilds'::text, 'switching_mains'::text, 'other'::text]))))",
-          "table": "public.players",
-          "referenced_table": "",
-          "columns": [
-            "archived_reason"
-          ]
-        },
         {
           "name": "players_tier_pieces_equipped_range",
           "type": "CHECK",
@@ -5758,6 +5733,112 @@
           ]
         }
       ]
+    },
+    {
+      "name": "public.player_officer_notes",
+      "type": "BASE TABLE",
+      "comment": "Officer-only annotations on a roster slot (#925): the private officer note, and why a player was removed plus the freeform specifics (#476). One row per players row, created on first write. These lived on players until #925, where the table's public read policy and its table-level anon grant made them readable with the publishable key and by every signed-in raider. m_plus_note stayed on players because the public profile renders it. archived_reason keeps the fixed vocabulary its old CHECK constraint carried.",
+      "columns": [
+        {
+          "name": "player_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "team_id",
+          "type": "integer",
+          "nullable": false
+        },
+        {
+          "name": "officer_notes",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "archived_reason",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "archived_reason_detail",
+          "type": "text",
+          "nullable": true
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": false,
+          "default": "now()"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "player_officer_notes_pkey",
+          "def": "CREATE UNIQUE INDEX player_officer_notes_pkey ON public.player_officer_notes USING btree (player_id)",
+          "table": "public.player_officer_notes",
+          "columns": [
+            "player_id"
+          ]
+        }
+      ],
+      "constraints": [
+        {
+          "name": "player_officer_notes_archived_reason_check",
+          "type": "CHECK",
+          "def": "CHECK (((archived_reason IS NULL) OR (archived_reason = ANY (ARRAY['schedule_conflict'::text, 'performance'::text, 'drama'::text, 'moved_guilds'::text, 'switching_mains'::text, 'other'::text]))))",
+          "table": "public.player_officer_notes",
+          "referenced_table": "",
+          "columns": [
+            "archived_reason"
+          ]
+        },
+        {
+          "name": "player_officer_notes_player_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE",
+          "table": "public.player_officer_notes",
+          "referenced_table": "public.players",
+          "columns": [
+            "player_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "player_officer_notes_team_id_fkey",
+          "type": "FOREIGN KEY",
+          "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE",
+          "table": "public.player_officer_notes",
+          "referenced_table": "public.teams",
+          "columns": [
+            "team_id"
+          ],
+          "referenced_columns": [
+            "id"
+          ]
+        },
+        {
+          "name": "player_officer_notes_pkey",
+          "type": "PRIMARY KEY",
+          "def": "PRIMARY KEY (player_id)",
+          "table": "public.player_officer_notes",
+          "referenced_table": "",
+          "columns": [
+            "player_id"
+          ]
+        }
+      ],
+      "triggers": [
+        {
+          "name": "trg_player_officer_notes_team_id_check",
+          "def": "CREATE TRIGGER trg_player_officer_notes_team_id_check BEFORE INSERT OR UPDATE ON public.player_officer_notes FOR EACH ROW EXECUTE FUNCTION check_team_id_matches_player()"
+        },
+        {
+          "name": "trg_player_officer_notes_updated_at",
+          "def": "CREATE TRIGGER trg_player_officer_notes_updated_at BEFORE UPDATE ON public.player_officer_notes FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+        }
+      ]
     }
   ],
   "relations": [
@@ -6618,6 +6699,32 @@
       ],
       "parent_cardinality": "exactly_one",
       "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.player_officer_notes",
+      "columns": [
+        "player_id"
+      ],
+      "cardinality": "zero_or_one",
+      "parent_table": "public.players",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+    },
+    {
+      "table": "public.player_officer_notes",
+      "columns": [
+        "team_id"
+      ],
+      "cardinality": "zero_or_more",
+      "parent_table": "public.teams",
+      "parent_columns": [
+        "id"
+      ],
+      "parent_cardinality": "exactly_one",
+      "def": "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
     }
   ],
   "functions": [
@@ -7087,6 +7194,12 @@
       "name": "public.resolve_boe_finder_discord_id",
       "return_type": "text",
       "arguments": "p_boe_id integer",
+      "type": "FUNCTION"
+    },
+    {
+      "name": "public.archive_player",
+      "return_type": "timestamptz",
+      "arguments": "p_player_id integer, p_reason text, p_detail text",
       "type": "FUNCTION"
     }
   ],
