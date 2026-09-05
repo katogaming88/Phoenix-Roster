@@ -195,6 +195,13 @@ describe('guild.html specifics (#777)', () => {
     expect(html).not.toContain('guildNavBoeManage');
   });
 
+  // The page it opens calls itself BoE Sales in its title, header, heading and
+  // its own nav; this item and the shared SITE_NAV_ITEMS entry were the two
+  // places still saying "BoE" (#930).
+  it('labels that item BoE Sales', () => {
+    expect(html).toMatch(/<a[^>]*\sid="guildNavBoe"[^>]*>BoE Sales<\/a>/);
+  });
+
   it('carries no Found a BoE section any more (#891)', () => {
     expect(new Set(ids(html)).has('guildBoeTeam')).toBe(false);
     expect(html).not.toContain('Found a BoE?');
@@ -223,6 +230,17 @@ describe('boe.html specifics (#864)', () => {
 
   it('links back to the guild page', () => {
     expect(html).toMatch(/href="guild\.html"/);
+  });
+
+  // This page hardcoded Guild and BoE Sales, so the four sections guild.html
+  // carries vanished on arrival (#930). They come back as deep links rather
+  // than as in-page anchors, because the sections live on the other page.
+  // applyGuildHash() re-applies the fragment once those sections have content.
+  it('carries the guild page sections as deep links, each resolving there', () => {
+    const targets = [...html.matchAll(/\shref="guild\.html#([^"]+)"/g)].map((m) => m[1]);
+    expect(targets).toEqual(expect.arrayContaining(['teams', 'streams', 'news', 'about']));
+    const guildIds = new Set(ids(read('guild.html')));
+    expect(targets.filter((t) => !guildIds.has(t))).toEqual([]);
   });
 });
 

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { startServer } from './static-server.js';
-import { launchBrowser, openState, REPO_ROOT } from './harness.js';
+import { launchBrowser, openState, REPO_ROOT, NARROW } from './harness.js';
 import { STATES } from './states.js';
 
 // The layer under the accessibility checks: did the page actually render?
@@ -61,5 +61,49 @@ describe.each(STATES)('$label renders', (state) => {
     // silently stopped halfway.
     expect(opened.pageErrors).toEqual([]);
     expect(opened.consoleErrors).toEqual([]);
+  });
+});
+
+// The report form is a 420px column inside a 1100px page. Capped by max-width
+// as a stretch flex item, it sat hard against the left edge with the
+// full-width lifecycle section right under it, so the gap read as a mistake
+// (#930).
+//
+// Both halves of the assertion carry weight. Equal gaps alone are also true of
+// a form filling the whole width, at zero each, so the left gap has to be
+// above zero for "centred" to mean anything.
+describe('the BoE report form is centred', () => {
+  let opened;
+
+  beforeAll(async () => {
+    opened = await openState(browser, server.port, STATES.find((s) => s.label === 'boe'));
+  });
+
+  afterAll(async () => {
+    if (opened) await opened.context.close();
+  });
+
+  // Measured off #boeTeamSelect's parent rather than a class this PR adds, so
+  // the red run fails on the gap being zero and not on a selector that does
+  // not exist yet.
+  const gaps = (page) =>
+    page.evaluate(() => {
+      const section = document.getElementById('boe-report').getBoundingClientRect();
+      const form = document.getElementById('boeTeamSelect').parentElement.getBoundingClientRect();
+      return { left: form.left - section.left, right: section.right - form.right };
+    });
+
+  it('sits centred in its section at desktop width', async () => {
+    const g = await gaps(opened.page);
+    expect(g.left).toBeGreaterThan(0);
+    expect(Math.abs(g.left - g.right)).toBeLessThan(2);
+  });
+
+  it('stays centred at 480px, where the page padding drops', async () => {
+    await opened.page.setViewportSize(NARROW);
+    await opened.page.waitForTimeout(300);
+    const g = await gaps(opened.page);
+    expect(g.left).toBeGreaterThanOrEqual(0);
+    expect(Math.abs(g.left - g.right)).toBeLessThan(2);
   });
 });

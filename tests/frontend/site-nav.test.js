@@ -85,6 +85,9 @@ describe('SITE_NAV_ITEMS', () => {
     const { sandbox } = makeSandbox();
     expect(sandbox.SITE_NAV_ITEMS.filter((i) => /boe/i.test(i.id)).map((i) => i.id)).toEqual(['navBoE']);
     const item = sandbox.SITE_NAV_ITEMS.find((i) => i.id === 'navBoE');
+    // The label the other pages inherit. It said "BoE" while the page it opens
+    // said "BoE Sales" everywhere on itself (#930).
+    expect(item.label).toBe('BoE Sales');
     expect(item.href).toBe('boe.html');
     expect(item.view).toBeUndefined();
     expect(item.onclick).toBeUndefined();
