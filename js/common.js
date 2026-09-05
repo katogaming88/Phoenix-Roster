@@ -1653,7 +1653,7 @@ function fetchSupabaseRoster() {
   var query = supabaseClient
     .from('players')
     .select(
-      'id, name_realm, nickname, is_trial, is_bench, is_backup_tank, is_backup_healer, bis_link, bis_allowed, wishlist_allowed, m_plus_excluded, m_plus_note, join_date, officer_notes, tier_pieces_equipped, tier_pieces_synced_at, bonus_roll_encounter_id, raid_encounters(name), classes_specs(class, spec, role)'
+      'id, name_realm, nickname, is_trial, is_bench, is_backup_tank, is_backup_healer, bis_link, bis_allowed, wishlist_allowed, m_plus_excluded, m_plus_note, join_date, tier_pieces_equipped, tier_pieces_synced_at, bonus_roll_encounter_id, raid_encounters(name), classes_specs(class, spec, role)'
     )
     .eq('team_id', _teamCfg.supabaseTeamId)
     .is('archived_at', null)
@@ -1704,6 +1704,36 @@ function fetchSupabaseMPlusRejections() {
           if (row.player_id != null && !(row.player_id in byPlayer)) {
             byPlayer[row.player_id] = row.officer_notes || '';
           }
+        });
+        return byPlayer;
+      },
+      function () {
+        return {};
+      }
+    );
+}
+
+// Officer notes per player (#925). They used to ride along with the roster
+// select above, which made them readable with the publishable key and by
+// every signed-in raider, so they live on player_officer_notes now behind
+// officer-only policies. This read runs on every page load like the roster
+// one does: RLS answers a raider or a signed-out visitor with zero rows
+// rather than an error, so there is nothing to gate on the client. Resolves
+// to a plain object keyed by player_id, or {} on any failure, so a missing
+// note renders as no note rather than blocking the roster load.
+function fetchSupabaseOfficerNotes() {
+  if (!supabaseClient) return Promise.resolve({});
+  // team-read-guard: one row per roster member that has a note, 80 on the largest team.
+  return supabaseClient
+    .from('player_officer_notes')
+    .select('player_id, officer_notes')
+    .eq('team_id', _teamCfg.supabaseTeamId)
+    .then(
+      function (result) {
+        if (result.error) return {};
+        var byPlayer = {};
+        (result.data || []).forEach(function (row) {
+          if (row.player_id != null) byPlayer[row.player_id] = row.officer_notes || '';
         });
         return byPlayer;
       },
@@ -1809,10 +1839,12 @@ function saveTeamOfficerBios(bios) {
  *
  * @param {any[]} rows - players rows with embedded classes_specs
  * @param {Object} [mplusRejections] - player_id -> rejection note, from fetchSupabaseMPlusRejections()
+ * @param {Object} [officerNotes] - player_id -> officer note, from fetchSupabaseOfficerNotes()
  * @returns {any[]}
  */
-function mapSupabaseRoster(rows, mplusRejections) {
+function mapSupabaseRoster(rows, mplusRejections, officerNotes) {
   mplusRejections = mplusRejections || {};
+  officerNotes = officerNotes || {};
   var players = [];
   (rows || []).forEach(function (row) {
     var nameRealm = String(row.name_realm || '').trim();
@@ -1844,7 +1876,7 @@ function mapSupabaseRoster(rows, mplusRejections) {
       mPlusNote: row.m_plus_note || '',
       mPlusRejected: mPlusRejected,
       mPlusRejectionNote: mPlusRejected ? mplusRejections[row.id] : '',
-      officerNote: row.officer_notes || '',
+      officerNote: officerNotes[row.id] || '',
       tierPiecesEquipped: row.tier_pieces_equipped,
       tierPiecesSyncedAt: row.tier_pieces_synced_at || '',
       bonusRollEncounterId: row.bonus_roll_encounter_id || null,
@@ -3696,6 +3728,8 @@ function loadData(onCoreReady, onHeavyReady) {
   var settingsPromise = fetchSupabaseSettings();
   // Fired alongside; the core callback waits for it before mapping the roster's M+ rejection badges.
   var mplusRejectionsPromise = fetchSupabaseMPlusRejections();
+  // Fired alongside; the core callback waits for it before mapping officer notes (#925).
+  var officerNotesPromise = fetchSupabaseOfficerNotes();
   // Fired alongside; the heavy callback waits for it before setting lootCounts.
   var lootPromise = fetchSupabaseLoot();
   // Fired alongside; the heavy callback waits for it before setting bisList.
@@ -3749,24 +3783,27 @@ function loadData(onCoreReady, onHeavyReady) {
   // and onSuccess wired the GAS heavy-chunk callback in the same tick.
   // Neither is needed once GAS calls nothing at all.
   function applyCoreData() {
-    return Promise.all([rosterPromise, settingsPromise, mplusRejectionsPromise]).then(function (results) {
-      var rows = results[0];
-      var settingsConfig = results[1];
-      var mplusRejections = results[2];
-      var data = { roster: [] };
-      var mapped = rows ? mapSupabaseRoster(rows, mplusRejections) : null;
-      if (mapped && mapped.length) data.roster = mapped;
-      applyTeamSettingsToData(data, settingsConfig);
-      DATA = data;
-      DATA._loadedAt = new Date();
-      try {
-        onCoreReady();
-      } catch (e) {
-        showError('Could not load roster data. ' + e.message);
-        return false;
+    return Promise.all([rosterPromise, settingsPromise, mplusRejectionsPromise, officerNotesPromise]).then(
+      function (results) {
+        var rows = results[0];
+        var settingsConfig = results[1];
+        var mplusRejections = results[2];
+        var officerNotes = results[3];
+        var data = { roster: [] };
+        var mapped = rows ? mapSupabaseRoster(rows, mplusRejections, officerNotes) : null;
+        if (mapped && mapped.length) data.roster = mapped;
+        applyTeamSettingsToData(data, settingsConfig);
+        DATA = data;
+        DATA._loadedAt = new Date();
+        try {
+          onCoreReady();
+        } catch (e) {
+          showError('Could not load roster data. ' + e.message);
+          return false;
+        }
+        return true;
       }
-      return true;
-    });
+    );
   }
 
   // Merges the heavy Supabase reads into DATA. Every field defaults to an
