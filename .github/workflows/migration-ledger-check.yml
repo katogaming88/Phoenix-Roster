@@ -19,6 +19,19 @@ name: Migration ledger check
 # Known limit: SQL run in the editor with no committed file is invisible here
 # (that is `supabase db diff` territory, not wired up).
 #
+# The same run enforces two rules about the 14-digit filename prefix (#927),
+# which is a sort key shared between two machines and so has to come from one
+# clock. Order: a pending file may not sort below the newest version already
+# applied on prod, since `supabase db push` refuses the whole run when one
+# does. Clock: a file added by this event may not carry a stamp ahead of the
+# Eastern wall clock at the commit that added it, which is what a `supabase
+# migration new` UTC stamp and a hand-typed round number both look like.
+#
+# The clock rule needs history, hence fetch-depth: 0, and it judges the event's
+# own new files rather than the pending ones, so running `db push` does not
+# silence it. A squash merge rewrites the author date to merge time, so the
+# pull_request run is the one with teeth; the push run is a backstop.
+#
 # The weekly schedule is the backstop for drift that lands without a PR
 # touching migrations; failures there ping Discord via the db-backup.yml
 # pattern, since scheduled-workflow failure emails only reach whoever last
@@ -28,6 +41,7 @@ on:
     paths:
       - 'supabase/migrations/**'
       - 'scripts/ci/migration-ledger-check.js'
+      - 'scripts/ci/migration-new.js'
       - '.github/workflows/migration-ledger-check.yml'
   push:
     branches: [main]
@@ -48,7 +62,11 @@ jobs:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
+      # Full history: the clock rule reads the author date of the commit that
+      # added each new file, and a shallow checkout has no such commit.
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Check required secret is set
         id: check_secret
@@ -60,6 +78,36 @@ jobs:
             exit 1
           fi
 
+      # What this event adds, for the clock rule. A schedule or a manual run
+      # adds nothing and so judges nothing; the order rule and the ledger
+      # comparison still run on every event.
+      - name: List the migrations this event adds
+        id: new_files
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          case "$EVENT" in
+            pull_request) BASE="origin/$BASE_REF" ;;
+            push) BASE="$BEFORE" ;;
+            *) BASE="" ;;
+          esac
+
+          ARGS=""
+          COUNT=0
+          if [ -n "$BASE" ] && git rev-parse --verify --quiet "$BASE^{commit}" > /dev/null; then
+            for FILE in $(git diff --name-only --diff-filter=A "$BASE" HEAD -- supabase/migrations/); do
+              ARGS="$ARGS --new $FILE"
+              COUNT=$((COUNT + 1))
+            done
+          else
+            echo "No usable base for $EVENT, so the clock rule judges nothing this run."
+          fi
+
+          echo "This event adds $COUNT migration file(s)."
+          echo "args=$ARGS" >> "$GITHUB_OUTPUT"
+
       # Two commands on purpose, not a pipeline: a pipe's exit code is the
       # last command's, so a failed psql would feed an empty ledger to the
       # script and misreport every local migration as drift. Separated, a
@@ -68,9 +116,10 @@ jobs:
         id: compare
         env:
           DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          NEW_ARGS: ${{ steps.new_files.outputs.args }}
         run: |
           psql "$DB_URL" -tAc "select version from supabase_migrations.schema_migrations" > ledger.txt
-          node scripts/ci/migration-ledger-check.js < ledger.txt
+          node scripts/ci/migration-ledger-check.js $NEW_ARGS < ledger.txt
 
       - name: Notify Discord on scheduled failure
         if: failure() && github.event_name == 'schedule'

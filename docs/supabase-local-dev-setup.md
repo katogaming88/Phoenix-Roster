@@ -204,8 +204,12 @@ Known limits:
   check. Catching that needs `supabase db diff` against a shadow database,
   which is not wired up.
 - Two open PRs can carry migrations whose timestamps interleave; the CLI
-  refuses out-of-order pushes. Renaming the not-yet-pushed file to a later
-  timestamp is the usual fix.
+  refuses out-of-order pushes. Since #927 the check catches that before the
+  push does: it fails a pending file that sorts below the newest version
+  applied on prod, and separately fails a file stamped ahead of the Eastern
+  wall clock at the commit that added it, which is what a UTC stamp looks
+  like. Both name the same fix,
+  `npm run migration:new -- --rename supabase/migrations/<file>`.
 
 ## Known quirk: vector container restart loop (Windows)
 

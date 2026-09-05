@@ -4,7 +4,7 @@ A running record of settled database/schema decisions and the reasoning behind t
 
 Issues carrying a decision are tagged with the `decision` label: `gh issue list --label decision --state all`.
 
-Each heading's date is the real calendar date the decision was made. It is deliberately **not** taken from the accompanying migration's filename: those timestamps only have to increase monotonically, and have drifted well ahead of real time (the migration written on 2026-07-11 is named `20260726...`). Entries from 2026-07-12 through 2026-07-18 were dated that way by mistake and have been corrected to when they were actually committed.
+Each heading's date is the real calendar date the decision was made. It is deliberately **not** taken from the accompanying migration's filename: those timestamps only have to increase monotonically, and have drifted well ahead of real time (the migration written on 2026-07-11 is named `20260726...`). Entries from 2026-07-12 through 2026-07-18 were dated that way by mistake and have been corrected to when they were actually committed. Since #927 new files are stamped by `npm run migration:new`, from the Eastern wall clock, and CI fails one that runs ahead of it, so the drift stops here rather than being corrected after the fact.
 
 ---
 
