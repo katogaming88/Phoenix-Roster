@@ -57,6 +57,8 @@ player_equipped_gear,Officers write player_equipped_gear,public,ALL,PERMISSIVE,"
    FROM players
   WHERE (players.id = player_equipped_gear.player_id))) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())"
 player_equipped_gear,Public read player_equipped_gear,public,SELECT,PERMISSIVE,true,
+player_officer_notes,Claude readers read player_officer_notes,claude_readers,SELECT,PERMISSIVE,true,
+player_officer_notes,Officers write player_officer_notes,public,ALL,PERMISSIVE,"((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_guild_officer() OR is_site_admin())","((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_guild_officer() OR is_site_admin())"
 player_wcl_season_perf,Claude readers read player_wcl_season_perf,claude_readers,SELECT,PERMISSIVE,true,
 player_wcl_season_perf,Officers write player_wcl_season_perf,public,ALL,PERMISSIVE,"((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())","((my_team_role(team_id) = ANY (ARRAY['officer'::text, 'team_leader'::text])) OR is_site_admin())"
 player_wcl_season_perf,Public read player_wcl_season_perf,public,SELECT,PERMISSIVE,true,

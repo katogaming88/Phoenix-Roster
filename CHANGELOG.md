@@ -8,6 +8,27 @@ with each release split into `### Frontend` (drives the version number) and
 
 ---
 
+## [3.91.3] - 2026-09-05
+
+### Frontend
+
+- Officer notes and removal reasons are no longer readable by people who should not see them
+  ([#925](https://github.com/katogaming88/WGA-Raid-Hub/issues/925)). The roster read that every page
+  makes carried them to anyone, so the private note an officer leaves on a raider, and the reason
+  behind each removal, came back to signed-out visitors and to every signed-in raider alike. They
+  now load through a separate officer-only read. Nothing on the public page changes, and the officer
+  dashboard shows and saves them exactly as before.
+
+### Backend
+
+- The three columns move to a new `player_officer_notes` table with officer-scoped policies, and
+  drop off `players`. A column-level revoke could not fix this: the public and officer pages share
+  one roster query, and officers and raiders share one database role, so the split had to be per row
+  rather than per column. `m_plus_note` stays where it is, because the public profile renders it.
+- Removing a player goes through a new `archive_player()` function, so the archive timestamp on
+  `players` and the reason on the new table are written together instead of as two separate calls
+  that could half-fail.
+
 ## [3.91.2] - 2026-09-05
 
 ### Frontend

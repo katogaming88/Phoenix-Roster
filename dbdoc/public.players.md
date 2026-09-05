@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | integer | nextval('players_id_seq'::regclass) | false | [public.attendance](public.attendance.md) [public.bis_items](public.bis_items.md) [public.bis_requests](public.bis_requests.md) [public.rclc_loot](public.rclc_loot.md) [public.mplus_exclusion_requests](public.mplus_exclusion_requests.md) [public.player_wcl_season_perf](public.player_wcl_season_perf.md) [public.priority_order](public.priority_order.md) [public.scoring](public.scoring.md) [public.season_signups](public.season_signups.md) [public.self_received_requests](public.self_received_requests.md) [public.streamers](public.streamers.md) [public.notifications](public.notifications.md) [public.item_preferences](public.item_preferences.md) [public.boe_items](public.boe_items.md) [public.priority_conflict_dismissals](public.priority_conflict_dismissals.md) [public.player_equipped_gear](public.player_equipped_gear.md) [public.priority_stale_dismissals](public.priority_stale_dismissals.md) [public.raid_rsvps](public.raid_rsvps.md) [public.raid_rsvp_reminders_sent](public.raid_rsvp_reminders_sent.md) |  |  |
+| id | integer | nextval('players_id_seq'::regclass) | false | [public.attendance](public.attendance.md) [public.bis_items](public.bis_items.md) [public.bis_requests](public.bis_requests.md) [public.rclc_loot](public.rclc_loot.md) [public.mplus_exclusion_requests](public.mplus_exclusion_requests.md) [public.player_wcl_season_perf](public.player_wcl_season_perf.md) [public.priority_order](public.priority_order.md) [public.scoring](public.scoring.md) [public.season_signups](public.season_signups.md) [public.self_received_requests](public.self_received_requests.md) [public.streamers](public.streamers.md) [public.notifications](public.notifications.md) [public.item_preferences](public.item_preferences.md) [public.boe_items](public.boe_items.md) [public.priority_conflict_dismissals](public.priority_conflict_dismissals.md) [public.player_equipped_gear](public.player_equipped_gear.md) [public.priority_stale_dismissals](public.priority_stale_dismissals.md) [public.raid_rsvps](public.raid_rsvps.md) [public.raid_rsvp_reminders_sent](public.raid_rsvp_reminders_sent.md) [public.player_officer_notes](public.player_officer_notes.md) |  |  |
 | team_id | integer |  | false |  | [public.teams](public.teams.md) |  |
 | name_realm | text |  | false |  |  |  |
 | class_spec_id | integer |  | true |  | [public.classes_specs](public.classes_specs.md) |  |
@@ -19,21 +19,17 @@
 | archived_at | timestamp with time zone |  | true |  |  |  |
 | updated_at | timestamp with time zone |  | true |  |  |  |
 | bis_allowed | boolean | false | false |  |  |  |
-| officer_notes | text |  | true |  |  |  |
 | is_backup_tank | boolean | false | false |  |  |  |
 | is_backup_healer | boolean | false | false |  |  |  |
 | wishlist_allowed | boolean | false | false |  |  |  |
 | tier_pieces_equipped | integer |  | true |  |  |  |
 | tier_pieces_synced_at | timestamp with time zone |  | true |  |  |  |
 | bonus_roll_encounter_id | integer |  | true |  | [public.raid_encounters](public.raid_encounters.md) |  |
-| archived_reason | text |  | true |  |  |  |
-| archived_reason_detail | text |  | true |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| players_archived_reason_check | CHECK | CHECK (((archived_reason IS NULL) OR (archived_reason = ANY (ARRAY['schedule_conflict'::text, 'performance'::text, 'drama'::text, 'moved_guilds'::text, 'switching_mains'::text, 'other'::text])))) |
 | players_tier_pieces_equipped_range | CHECK | CHECK (((tier_pieces_equipped IS NULL) OR ((tier_pieces_equipped >= 0) AND (tier_pieces_equipped <= 5)))) |
 | players_class_spec_id_fkey | FOREIGN KEY | FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE |
 | players_pkey | PRIMARY KEY | PRIMARY KEY (id) |
@@ -80,6 +76,7 @@ erDiagram
 "public.priority_stale_dismissals" }o--o| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL"
 "public.raid_rsvps" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.raid_rsvp_reminders_sent" }o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
+"public.player_officer_notes" |o--|| "public.players" : "FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE"
 "public.players" }o--|| "public.teams" : "FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE"
 "public.players" }o--o| "public.classes_specs" : "FOREIGN KEY (class_spec_id) REFERENCES classes_specs(id) ON UPDATE CASCADE"
 "public.players" }o--o| "public.team_members" : "FOREIGN KEY (team_member_id) REFERENCES team_members(id) ON DELETE SET NULL"
@@ -101,15 +98,12 @@ erDiagram
   timestamp_with_time_zone archived_at
   timestamp_with_time_zone updated_at
   boolean bis_allowed
-  text officer_notes
   boolean is_backup_tank
   boolean is_backup_healer
   boolean wishlist_allowed
   integer tier_pieces_equipped
   timestamp_with_time_zone tier_pieces_synced_at
   integer bonus_roll_encounter_id FK
-  text archived_reason
-  text archived_reason_detail
 }
 "public.attendance" {
   integer id
@@ -333,6 +327,14 @@ erDiagram
   date raid_date
   text checkpoint
   timestamp_with_time_zone sent_at
+}
+"public.player_officer_notes" {
+  integer player_id FK
+  integer team_id FK
+  text officer_notes
+  text archived_reason
+  text archived_reason_detail
+  timestamp_with_time_zone updated_at
 }
 "public.teams" {
   integer id

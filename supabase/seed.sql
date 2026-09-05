@@ -71,6 +71,12 @@ insert into public.bis_requests (id, team_id, player_id, bis_link, status) value
 insert into public.mplus_exclusion_requests (id, team_id, player_id, reason, status) values
   (1, 1, 1, 'seed test reason', 'pending');
 
+-- #925: player 1 carries the note so the gated-table matrix has a row to
+-- prove invisible to anon and raiders. Player 2 is left without one, so the
+-- write assertions have a free primary key to insert against.
+insert into public.player_officer_notes (player_id, team_id, officer_notes) values
+  (1, 1, 'seed officer note');
+
 -- Signup 1 exercises the gated-table matrix; 2 and 3 are approved so the
 -- pending_roster view and add_signup_to_roster() have rows to work with.
 insert into public.season_signups (id, team_id, signup_name_realm, class_spec_id, season, status) values

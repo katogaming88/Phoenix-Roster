@@ -205,6 +205,21 @@ describe('mapSupabaseRoster', () => {
     expect(mapped[0].mPlusRejectionNote).toBe('');
   });
 
+  // #925: officer_notes moved off players onto player_officer_notes, so the
+  // note arrives as a third map keyed by player id, the same shape the M+
+  // rejections already use, rather than as a column on the row.
+  it('resolves officerNote from the officer-notes map, keyed by player id', () => {
+    const row = { ...SUPABASE_ROW, id: 7 };
+    const mapped = sandbox.mapSupabaseRoster([row], {}, { 7: 'watch the pulls' });
+    expect(mapped[0].officerNote).toBe('watch the pulls');
+  });
+
+  it('leaves officerNote empty when the map has no entry, or no map at all', () => {
+    const row = { ...SUPABASE_ROW, id: 7 };
+    expect(sandbox.mapSupabaseRoster([row], {}, {})[0].officerNote).toBe('');
+    expect(sandbox.mapSupabaseRoster([row])[0].officerNote).toBe('');
+  });
+
   it('skips rows without a role or name, like getRoster() does', () => {
     const rows = [{ ...SUPABASE_ROW, classes_specs: null }, { ...SUPABASE_ROW, name_realm: '  ' }, SUPABASE_ROW];
     const mapped = sandbox.mapSupabaseRoster(rows);
@@ -226,6 +241,8 @@ describe('fetchSupabaseRoster', () => {
     await expect(sandbox.fetchSupabaseRoster()).resolves.toEqual(rows);
     expect(calls.from).toBe('players');
     expect(calls.select).toContain('classes_specs(class, spec, role)');
+    // #925: officer_notes left this select when it moved to player_officer_notes.
+    expect(calls.select).not.toMatch(/officer_notes/);
     expect(calls.eq).toEqual([['team_id', 1]]);
     expect(calls.is).toEqual([['archived_at', null]]);
     expect(calls.order).toEqual(['name_realm']);
@@ -249,6 +266,42 @@ describe('fetchSupabaseRoster', () => {
     const { supabase } = mockSupabase(() => ({ data: [], error: null }));
     const sandbox = loadCommonJs(supabase);
     await expect(sandbox.fetchSupabaseRoster()).resolves.toBeNull();
+  });
+});
+
+describe('fetchSupabaseOfficerNotes', () => {
+  it('resolves an empty map when the CDN script never loaded', async () => {
+    const sandbox = loadCommonJs();
+    await expect(sandbox.fetchSupabaseOfficerNotes()).resolves.toEqual({});
+  });
+
+  it('queries the side table for the configured team and keys by player id', async () => {
+    const rows = [
+      { player_id: 7, officer_notes: 'watch the pulls' },
+      { player_id: 9, officer_notes: null }
+    ];
+    const { calls, supabase } = mockSupabase(() => ({ data: rows, error: null }));
+    const sandbox = loadCommonJs(supabase);
+    await expect(sandbox.fetchSupabaseOfficerNotes()).resolves.toEqual({ 7: 'watch the pulls', 9: '' });
+    expect(calls.from).toBe('player_officer_notes');
+    expect(calls.eq).toEqual([['team_id', 1]]);
+  });
+
+  // A signed-out visitor gets zero rows from RLS rather than an error, and a
+  // real failure must not block the roster load, so both land on {} and the
+  // page renders without notes.
+  it('resolves an empty map on an error result', async () => {
+    const { supabase } = mockSupabase(() => ({ data: null, error: { message: 'nope' } }));
+    const sandbox = loadCommonJs(supabase);
+    await expect(sandbox.fetchSupabaseOfficerNotes()).resolves.toEqual({});
+  });
+
+  it('resolves an empty map on a rejected query', async () => {
+    const { supabase } = mockSupabase(() => {
+      throw new Error('network down');
+    });
+    const sandbox = loadCommonJs(supabase);
+    await expect(sandbox.fetchSupabaseOfficerNotes()).resolves.toEqual({});
   });
 });
 

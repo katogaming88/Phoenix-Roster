@@ -40,6 +40,7 @@ const GATED = [
   'boe_managers',
   'guild_officers',
   'mplus_exclusion_requests',
+  'player_officer_notes',
   'season_signups',
   'self_received_requests',
   'site_admins',
